@@ -1,0 +1,79 @@
+{
+  "name": "grok-cli-bootstrap",
+  "version": "0.1.0",
+  "description": "Replayable Grok CLI customizations for the local-llm-dev-tools stack: portable agent skills, MCP code memory, and config fragments.",
+  "last_updated": "2026-07-11",
+  "fits_repo_goals": [
+    "Grok CLI as primary interface",
+    "MCP-style code memory",
+    "Reproducible integration patterns",
+    "Agent process skills (ADR / OQ / docs) for multithreaded pipeline work"
+  ],
+  "first_party_skills": {
+    "install_to": "~/.grok/skills/",
+    "source": "bootstrap/grok-cli/skills/",
+    "skills": [
+      {
+        "name": "adr",
+        "origin": "user-authored 2026-07-10 (gom-jobbar process session)",
+        "purpose": "Portable architecture decision log process"
+      },
+      {
+        "name": "docs",
+        "origin": "user-authored 2026-07-10",
+        "purpose": "Operator + agent module documentation discipline"
+      },
+      {
+        "name": "open-questions",
+        "origin": "user-authored 2026-07-10",
+        "purpose": "Central TBD / parking-lot log for multithreaded agents"
+      },
+      {
+        "name": "karpathy-guidelines",
+        "origin": "https://github.com/forrestchang/andrej-karpathy-skills",
+        "pinned_commit": "2c606141936f1eeef17fa3043a72095b4765b9c2",
+        "license": "MIT",
+        "purpose": "Behavioral guidelines against LLM overcomplication"
+      }
+    ]
+  },
+  "external_skills": {
+    "ponytail": {
+      "install_mode": "skills.paths (extra scan dir, not copied into ~/.grok/skills)",
+      "vendored_snapshot": "bootstrap/grok-cli/skills-external/ponytail/",
+      "upstream": "https://github.com/DietrichGebert/ponytail.git",
+      "pinned_commit": "8e69b4a55f735e1319999064f82786b838cb3d7b",
+      "skills": [
+        "ponytail",
+        "ponytail-audit",
+        "ponytail-debt",
+        "ponytail-gain",
+        "ponytail-help",
+        "ponytail-review"
+      ],
+      "notes": "Snapshot of skills/ only (~100KB). Prefer upstream update when intentionally refreshing; re-run install after updating snapshot."
+    }
+  },
+  "mcp": {
+    "codebase-memory": {
+      "command": "codebase-memory-mcp",
+      "install": "curl -fsSL https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.sh | bash -s -- --skip-config",
+      "upstream": "https://github.com/DeusData/codebase-memory-mcp.git",
+      "pinned_commit_at_capture": "ee68144af5453addda995a27cce8142999f318fb",
+      "config_key": "mcp_servers.codebase-memory",
+      "notes": "Official installer downloads latest release binary to ~/.local/bin. This bootstrap then wires Grok config idempotently."
+    }
+  },
+  "config": {
+    "fragment": "bootstrap/grok-cli/config/config.fragment.toml",
+    "target": "~/.grok/config.toml",
+    "merge_policy": "Idempotent section upsert; never overwrite auth.json or wipe unrelated keys. Creates backup before first write."
+  },
+  "not_included": [
+    "Grok binary itself (install via https://x.ai/cli/install.sh)",
+    "auth.json / API keys / browser session tokens",
+    "Session history, memory indices, worktrees",
+    "Marketplace plugins (docx/pptx) — reinstall via Grok marketplace if needed",
+    "Built-in Grok.com GitHub remote tools (account-bound)"
+  ]
+}

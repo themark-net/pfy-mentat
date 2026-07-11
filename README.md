@@ -15,20 +15,32 @@ Repository: https://github.com/themark-net/local-llm-dev-tools
 - Support Grok CLI as primary interface initially, with fallback/hybrid to other identified toolsets based on task requirements.
 - Provide selective, reproducible copies of critical tools via subtree/submodule or pinned commits while keeping the tracking repo lean.
 
-## Current Status (v0.2 - Methodology & Tracking Infrastructure)
+## Current Status (v0.3 - Grok CLI bootstrap + methodology)
 
 - Repo created with comprehensive structure.
 - Categorization taxonomy and staged ranking rubric defined (CATEGORIZATION.md).
 - Placeholder for first seed X post still pending content extraction.
-- **New in v0.2**: Full methodology for selective git subtree / submodule / pinned-SHA tracking of individual tools (SUBTREES.md) and handling of aggregate/list repos (sources/aggregates.md + extended data/tools.json).
-- Seeded demonstration tools in TOOLS.md and data/tools.json using default pinned-commit approach (no bloat from large repos).
-- No pipelines or integration code yet; catalog + methodology complete and ready for first real X seed or aggregate.
+- **v0.2**: Selective git subtree / submodule / pinned-SHA tracking (SUBTREES.md) + aggregates intake.
+- **New in v0.3**: Replayable **Grok CLI bootstrap** under `bootstrap/grok-cli/` — first real integration artifact. Packages portable skills (`adr`, `docs`, `open-questions`, `karpathy-guidelines`), ponytail skill snapshot, MCP `codebase-memory` wiring, and an idempotent `install.sh` for new environments.
+- Seeded tools in TOOLS.md / data/tools.json include bootstrap stack components + prior demo entries.
 
 **Next immediate steps**:
-1. Provide content/summary from https://x.com/i/status/2075994424484732984 → full categorization + scoring pass (individual tool or aggregate).
-2. Add first real aggregate or individual tool using the new SUBTREES.md / sources/aggregates.md workflows.
-3. Prototype evaluation harness or example integration (LiteLLM + DSPy + MCP memory).
+1. Provide content/summary from https://x.com/i/status/2075994424484732984 → full categorization + scoring pass.
+2. Add first real aggregate or individual tool using SUBTREES.md / sources/aggregates.md workflows.
+3. Prototype evaluation harness (LiteLLM + DSPy + MCP memory) on top of the bootstrap environment.
 4. Optionally add first selective subtree/submodule once a qualifying high-value tool is identified.
+
+## Grok CLI bootstrap (new machine)
+
+```bash
+# After installing Grok: curl -fsSL https://x.ai/cli/install.sh | bash
+git clone git@github.com:themark-net/local-llm-dev-tools.git
+cd local-llm-dev-tools
+./bootstrap/grok-cli/install.sh --with-codebase-memory
+grok login   # or export XAI_API_KEY=...
+```
+
+Details, flags, and refresh workflow: [bootstrap/grok-cli/README.md](bootstrap/grok-cli/README.md).
 
 ## Repository Structure
 
@@ -36,17 +48,23 @@ Repository: https://github.com/themark-net/local-llm-dev-tools
 local-llm-dev-tools/
 ├── README.md
 ├── CATEGORIZATION.md          # Taxonomy + staged 0-100 rubric + refinement process
-├── SUBTREES.md                # NEW: Selective subtree/submodule/pinned-SHA policy + exact workflows
+├── SUBTREES.md                # Selective subtree/submodule/pinned-SHA policy + workflows
 ├── TOOLS.md                   # Master scored table + integration notes (Grok CLI, MCP, DSPy)
 ├── sources/
-│   ├── x-posts.md             # Log of X seed posts (first one pending)
-│   └── aggregates.md          # NEW: Log + intake template for aggregate/list repos + synthesis process
+│   ├── x-posts.md             # Log of X seed posts
+│   └── aggregates.md          # Aggregate/list repos intake + synthesis
 ├── data/
-│   └── tools.json             # v0.2 extended schema with pinned_commit, subtree_path, source_aggregate, aggregates array
+│   └── tools.json             # Structured catalog (pins, bootstrap paths, scores)
+├── bootstrap/
+│   └── grok-cli/              # Replayable Grok skills + MCP + config install
+│       ├── install.sh
+│       ├── manifest.json
+│       ├── skills/            # adr, docs, open-questions, karpathy-guidelines
+│       └── skills-external/   # ponytail snapshot (skills.paths)
 ├── examples/
 │   └── integration-patterns/  # Future: scripts, compose files, GitHub Actions
 ├── pipelines/                 # Future: continuous eval & deploy harnesses
-└── .github/                   # Future: issue/PR templates for new tool/aggregate submissions
+└── .github/                   # Future: issue/PR templates
 ```
 
 ## Categorization Taxonomy & Ranking (Summary)
@@ -61,17 +79,21 @@ Rare high-value, small, heavily customized tools may use `git subtree` under `to
 
 Aggregate/list repos (awesome-lists, comparison tables) are logged in sources/aggregates.md, assigned a handling tier (A=submodule/subtree, B=pin+archive, C=extract only), and synthesized into the central TOOLS.md / data/tools.json using the rubric. This keeps one authoritative, scored catalog while still preserving source context.
 
-## Initial Seeded Tools (Demonstration)
+## Initial Seeded Tools
 
-See TOOLS.md for full details. All currently use the default pinned-commit approach.
+See TOOLS.md for full details.
 
-| Tool | Primary Category | Overall Score | Tier | Tracking Method |
-|------|------------------|---------------|------|-----------------|
+| Tool | Primary Category | Overall | Tier | Tracking Method |
+|------|------------------|---------|------|-----------------|
+| **Grok CLI bootstrap** | Pipeline & CI/CD | 94 | S | first-party under `bootstrap/grok-cli/` |
+| codebase-memory-mcp | Memory & RAG | 91 | S | pinned upstream + optional binary install |
 | LiteLLM | Proxy & Routing | 93 | S | pinned_commit + shallow clone |
 | Ollama | Inference & Serving | 92 | S | pinned_commit + shallow clone |
 | Continue.dev | Coding & Dev Agents | 90 | S | pinned_commit + shallow clone |
+| ponytail (skills) | Coding & Dev Agents | 86 | A | skills snapshot in bootstrap |
 | Aider | Coding & Dev Agents | 87 | A | pinned_commit + shallow clone |
 | DSPy | Agent Frameworks | 85 | A | pinned_commit + shallow clone |
+| karpathy-guidelines | Coding & Dev Agents | 84 | A | vendored skill (MIT) |
 
 **Placeholder for Seed X Post**: Awaiting content. Will be processed via sources/x-posts.md → rubric scoring → appropriate tracking method (pinned / subtree / aggregate synthesis).
 
@@ -85,4 +107,4 @@ All additions should improve the Grok CLI + MCP + pipeline vision or fill a clea
 
 ---
 
-* v0.2 methodology implemented 2026-07-11. Ready for first real seed data.*
+* v0.3 Grok CLI bootstrap added 2026-07-11. Methodology from v0.2 remains the catalog backbone.*

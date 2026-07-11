@@ -1,0 +1,267 @@
+#!/usr/bin/env bash
+# install.sh — Replay Grok CLI customizations from local-llm-dev-tools.
+#
+# Idempotent. Safe to re-run. Does not touch auth tokens.
+#
+# Usage:
+#   ./bootstrap/grok-cli/install.sh
+#   ./bootstrap/grok-cli/install.sh --dry-run
+#   ./bootstrap/grok-cli/install.sh --skills-only
+#   ./bootstrap/grok-cli/install.sh --with-codebase-memory
+#   ./bootstrap/grok-cli/install.sh --no-ponytail
+#   ./bootstrap/grok-cli/install.sh --no-permission-mode
+#
+# Env:
+#   GROK_HOME          default: ~/.grok
+#   GROK_SKILLS_DIR    default: $GROK_HOME/skills
+#   SKIP_CODEBASE_MEMORY=1
+#   SKIP_PONYTAIL=1
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+SKILLS_SRC="$SCRIPT_DIR/skills"
+PONYTAIL_SRC="$SCRIPT_DIR/skills-external/ponytail"
+MERGE_PY="$SCRIPT_DIR/scripts/merge_config.py"
+
+GROK_HOME="${GROK_HOME:-$HOME/.grok}"
+GROK_SKILLS_DIR="${GROK_SKILLS_DIR:-$GROK_HOME/skills}"
+CONFIG_TOML="$GROK_HOME/config.toml"
+
+DRY_RUN=0
+SKILLS_ONLY=0
+CONFIG_ONLY=0
+MCP_ONLY=0
+WITH_CODEBASE_MEMORY=0
+NO_PONYTAIL=0
+NO_PERMISSION_MODE=0
+FORCE=0
+VERIFY=0
+
+log()  { printf '==> %s\n' "$*"; }
+warn() { printf 'warn: %s\n' "$*" >&2; }
+die()  { printf 'error: %s\n' "$*" >&2; exit 1; }
+
+usage() {
+  sed -n '2,20p' "$0" | sed 's/^# \?//'
+  exit 0
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h|--help) usage ;;
+    --dry-run) DRY_RUN=1; shift ;;
+    --skills-only) SKILLS_ONLY=1; shift ;;
+    --config-only) CONFIG_ONLY=1; shift ;;
+    --mcp-only) MCP_ONLY=1; shift ;;
+    --with-codebase-memory) WITH_CODEBASE_MEMORY=1; shift ;;
+    --no-ponytail) NO_PONYTAIL=1; shift ;;
+    --no-permission-mode) NO_PERMISSION_MODE=1; shift ;;
+    --force) FORCE=1; shift ;;
+    --verify) VERIFY=1; shift ;;
+    *) die "unknown argument: $1 (try --help)" ;;
+  esac
+done
+
+[[ -d "$SKILLS_SRC" ]] || die "skills source missing: $SKILLS_SRC"
+[[ -f "$MERGE_PY" ]] || die "merge script missing: $MERGE_PY"
+
+# Honour env skips
+if [[ "${SKIP_PONYTAIL:-0}" == "1" ]]; then NO_PONYTAIL=1; fi
+if [[ "${SKIP_CODEBASE_MEMORY:-0}" == "1" ]]; then WITH_CODEBASE_MEMORY=0; fi
+
+run() {
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    printf 'dry-run:'
+    printf ' %q' "$@"
+    printf '\n'
+  else
+    "$@"
+  fi
+}
+
+install_first_party_skills() {
+  log "Installing first-party skills → $GROK_SKILLS_DIR"
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    find "$SKILLS_SRC" -mindepth 1 -maxdepth 1 -type d -printf 'dry-run: would install skill %f\n'
+    return 0
+  fi
+  mkdir -p "$GROK_SKILLS_DIR"
+  local skill
+  for skill in "$SKILLS_SRC"/*/; do
+    [[ -d "$skill" ]] || continue
+    local name
+    name="$(basename "$skill")"
+    local dest="$GROK_SKILLS_DIR/$name"
+    if [[ -e "$dest" && "$FORCE" -ne 1 ]]; then
+      # Overwrite skill content (idempotent refresh of managed skills)
+      :
+    fi
+    mkdir -p "$dest"
+    # Prefer rsync if available
+    if command -v rsync >/dev/null 2>&1; then
+      rsync -a --delete "$skill" "$dest/"
+    else
+      rm -rf "$dest"
+      mkdir -p "$dest"
+      cp -a "$skill"/. "$dest/"
+    fi
+    log "  skill: $name"
+  done
+}
+
+install_ponytail_path() {
+  if [[ "$NO_PONYTAIL" -eq 1 ]]; then
+    log "Skipping ponytail skills path (--no-ponytail)"
+    PONYTAIL_ABS=""
+    return 0
+  fi
+  [[ -d "$PONYTAIL_SRC" ]] || die "ponytail snapshot missing: $PONYTAIL_SRC"
+  PONYTAIL_ABS="$(cd "$PONYTAIL_SRC" && pwd)"
+  log "Ponytail skills path: $PONYTAIL_ABS"
+  # skills stay in-repo; config.paths points here so updates are git-pullable
+}
+
+install_codebase_memory() {
+  if [[ "$WITH_CODEBASE_MEMORY" -ne 1 ]]; then
+    log "Skipping codebase-memory binary install (pass --with-codebase-memory to fetch)"
+    if ! command -v codebase-memory-mcp >/dev/null 2>&1; then
+      warn "codebase-memory-mcp not on PATH; MCP entry will be configured but inactive until installed"
+    else
+      log "Found existing: $(command -v codebase-memory-mcp)"
+    fi
+    return 0
+  fi
+  log "Installing codebase-memory-mcp (official installer, --skip-config)"
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "dry-run: curl -fsSL https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.sh | bash -s -- --skip-config"
+    return 0
+  fi
+  curl -fsSL https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.sh \
+    | bash -s -- --skip-config
+  command -v codebase-memory-mcp >/dev/null 2>&1 \
+    || warn "install finished but codebase-memory-mcp not on PATH (check ~/.local/bin)"
+}
+
+merge_config() {
+  log "Merging Grok config → $CONFIG_TOML"
+  local args=(python3 "$MERGE_PY" --config "$CONFIG_TOML")
+  if [[ -n "${PONYTAIL_ABS:-}" ]]; then
+    args+=(--ponytail-path "$PONYTAIL_ABS")
+  fi
+  if [[ "$NO_PERMISSION_MODE" -eq 1 ]]; then
+    args+=(--permission-mode "")
+  fi
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    args+=(--dry-run)
+  fi
+  "${args[@]}"
+}
+
+verify() {
+  log "Verifying install"
+  local ok=1
+  local name
+  for name in adr docs open-questions karpathy-guidelines; do
+    if [[ -f "$GROK_SKILLS_DIR/$name/SKILL.md" ]]; then
+      echo "  OK skill $name"
+    else
+      echo "  MISSING skill $name"
+      ok=0
+    fi
+  done
+  if [[ "$NO_PONYTAIL" -ne 1 ]]; then
+    if [[ -f "$PONYTAIL_SRC/ponytail/SKILL.md" ]]; then
+      echo "  OK ponytail snapshot"
+    else
+      echo "  MISSING ponytail snapshot"
+      ok=0
+    fi
+  fi
+  if [[ -f "$CONFIG_TOML" ]]; then
+    if grep -q 'mcp_servers.codebase-memory' "$CONFIG_TOML"; then
+      echo "  OK config MCP codebase-memory"
+    else
+      echo "  MISSING config MCP codebase-memory"
+      ok=0
+    fi
+    if grep -q '\[memory\]' "$CONFIG_TOML" && grep -q 'enabled = true' "$CONFIG_TOML"; then
+      echo "  OK memory enabled (section present)"
+    fi
+  else
+    echo "  MISSING $CONFIG_TOML"
+    ok=0
+  fi
+  if command -v grok >/dev/null 2>&1; then
+    echo "  OK grok binary: $(grok --version 2>/dev/null || echo present)"
+  else
+    warn "grok not on PATH — install from https://x.ai/cli/install.sh"
+  fi
+  if command -v codebase-memory-mcp >/dev/null 2>&1; then
+    echo "  OK codebase-memory-mcp on PATH"
+  else
+    echo "  note: codebase-memory-mcp not on PATH (use --with-codebase-memory)"
+  fi
+  [[ "$ok" -eq 1 ]] || die "verification failed"
+  log "Verification passed"
+}
+
+# --- main -------------------------------------------------------------------
+
+log "local-llm-dev-tools Grok CLI bootstrap"
+log "repo: $REPO_ROOT"
+log "GROK_HOME: $GROK_HOME"
+
+PONYTAIL_ABS=""
+
+if [[ "$MCP_ONLY" -eq 1 ]]; then
+  WITH_CODEBASE_MEMORY=1
+  install_codebase_memory
+  install_ponytail_path
+  merge_config
+  [[ "$VERIFY" -eq 1 ]] && verify
+  log "Done (mcp-only)."
+  exit 0
+fi
+
+if [[ "$CONFIG_ONLY" -eq 1 ]]; then
+  install_ponytail_path
+  merge_config
+  [[ "$VERIFY" -eq 1 ]] && verify
+  log "Done (config-only)."
+  exit 0
+fi
+
+if [[ "$SKILLS_ONLY" -eq 1 ]]; then
+  install_first_party_skills
+  install_ponytail_path
+  # still wire paths so ponytail is discoverable
+  merge_config
+  [[ "$VERIFY" -eq 1 ]] && verify
+  log "Done (skills-only)."
+  exit 0
+fi
+
+# Full install
+install_first_party_skills
+install_ponytail_path
+install_codebase_memory
+merge_config
+verify
+
+cat <<EOF
+
+Bootstrap complete.
+
+Next steps:
+  1. Ensure Grok is installed:  curl -fsSL https://x.ai/cli/install.sh | bash
+  2. Authenticate if needed:    grok login   (or export XAI_API_KEY=...)
+  3. Restart any running Grok sessions so skills/MCP reload.
+  4. Optional binary fetch:     $0 --with-codebase-memory
+  5. In a project: "Index this project" (codebase-memory) once MCP is live.
+
+Managed skills: adr, docs, open-questions, karpathy-guidelines
+Extra skills path: ${PONYTAIL_ABS:-"(disabled)"}
+Config: $CONFIG_TOML
+Manifest: $SCRIPT_DIR/manifest.json
+EOF

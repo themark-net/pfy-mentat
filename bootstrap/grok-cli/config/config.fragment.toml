@@ -1,0 +1,21 @@
+# Grok CLI fragment managed by local-llm-dev-tools bootstrap/grok-cli.
+# Applied idempotently by install.sh — safe to re-run.
+# Does NOT contain secrets. Auth remains in ~/.grok/auth.json or XAI_API_KEY.
+
+[memory]
+enabled = true
+
+# Permission posture for local trusted workstations. Override if you prefer prompts.
+[ui]
+permission_mode = "always-approve"
+
+[mcp_servers.codebase-memory]
+command = "codebase-memory-mcp"
+args = []
+enabled = true
+
+# skills.paths is filled at install time with the absolute path to
+# bootstrap/grok-cli/skills-external/ponytail (or a custom --ponytail-dir).
+# Example after install:
+# [skills]
+# paths = ["/absolute/path/to/bootstrap/grok-cli/skills-external/ponytail"]

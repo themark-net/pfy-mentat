@@ -1,19 +1,40 @@
 {
-  "version": "0.2.0",
-  "last_updated": "2026-07-11T19:56:00Z",
-  "description": "Structured catalog of local LLM dev tools for scripting, pipeline automation, and dashboard generation. Extended in v0.2 with subtree/submodule/pinned fields and aggregate source tracking. Populated from rubric-scored entries in TOOLS.md and synthesis from X posts or aggregates.",
+  "version": "0.3.0",
+  "last_updated": "2026-07-11T20:12:00Z",
+  "description": "Structured catalog of local LLM dev tools for scripting, pipeline automation, and dashboard generation. v0.3 adds first-party Grok CLI bootstrap path and MCP/skill stack entries.",
   "schema_notes": {
     "required_for_all": ["name", "primary_category", "github", "scores", "tier"],
     "optional_tracking": {
       "pinned_commit": "Exact SHA or tag for reproducibility in pipelines (default approach for most tools)",
       "subtree_path": "Relative path if added via git subtree (rare, see SUBTREES.md)",
       "submodule": "true/false or path if added as git submodule",
+      "bootstrap_path": "Path under this repo for first-party installable integration packages",
       "source_aggregate": "Slug or name of aggregate/list repo this tool was synthesized from (see sources/aggregates.md)",
       "x_post_id": "Status ID if directly from an X post seed"
     },
-    "aggregates_array": "Top-level array for logged aggregates (parallel to tools array). Each has url, date_saved, handling_tier, etc."
+    "aggregates_array": "Top-level array for logged aggregates (parallel to tools array)."
   },
   "tools": [
+    {
+      "name": "Grok CLI bootstrap",
+      "primary_category": "Pipeline & CI/CD Components",
+      "github": "https://github.com/themark-net/local-llm-dev-tools",
+      "scores": { "s1": 95, "s2": 90, "s3": 98, "s4": 88, "overall": 94 },
+      "tier": "S",
+      "tags": ["grok-cli", "mcp-compatible", "code-memory", "pipeline", "local-first"],
+      "bootstrap_path": "bootstrap/grok-cli",
+      "notes": "First-party replayable install: skills (adr/docs/open-questions/karpathy-guidelines), ponytail skills.paths, codebase-memory MCP config, memory enabled. Run ./bootstrap/grok-cli/install.sh"
+    },
+    {
+      "name": "codebase-memory-mcp",
+      "primary_category": "Memory & RAG Systems",
+      "github": "https://github.com/DeusData/codebase-memory-mcp",
+      "scores": { "s1": 92, "s2": 88, "s3": 95, "s4": 85, "overall": 91 },
+      "tier": "S",
+      "tags": ["mcp-compatible", "code-memory", "local-first", "rag"],
+      "pinned_commit": "ee68144af5453addda995a27cce8142999f318fb",
+      "notes": "Grok MCP code-graph server. Install binary via official install.sh --skip-config; config owned by bootstrap/grok-cli."
+    },
     {
       "name": "LiteLLM",
       "primary_category": "Proxy & Routing",
@@ -43,6 +64,28 @@
       "tags": ["ide-integration", "coding-agent", "local-first", "tool-calling"],
       "pinned_commit": "v1.x-or-sha",
       "notes": "Best IDE surface. High MCP/repo context synergy. Default pinned-SHA approach."
+    },
+    {
+      "name": "ponytail",
+      "primary_category": "Coding & Dev Agents",
+      "github": "https://github.com/DietrichGebert/ponytail",
+      "scores": { "s1": 80, "s2": 92, "s3": 88, "s4": 82, "overall": 86 },
+      "tier": "A",
+      "tags": ["terminal", "coding-agent", "local-first", "grok-cli"],
+      "pinned_commit": "8e69b4a55f735e1319999064f82786b838cb3d7b",
+      "bootstrap_path": "bootstrap/grok-cli/skills-external/ponytail",
+      "notes": "Skills-only snapshot registered via Grok skills.paths. Full repo not embedded."
+    },
+    {
+      "name": "karpathy-guidelines",
+      "primary_category": "Coding & Dev Agents",
+      "github": "https://github.com/forrestchang/andrej-karpathy-skills",
+      "scores": { "s1": 78, "s2": 95, "s3": 85, "s4": 80, "overall": 84 },
+      "tier": "A",
+      "tags": ["coding-agent", "grok-cli", "local-first"],
+      "pinned_commit": "2c606141936f1eeef17fa3043a72095b4765b9c2",
+      "bootstrap_path": "bootstrap/grok-cli/skills/karpathy-guidelines",
+      "notes": "MIT single skill vendored into bootstrap first-party skills install."
     }
   ],
   "aggregates": [
