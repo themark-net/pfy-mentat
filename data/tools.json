@@ -1,9 +1,15 @@
 {
-  "version": "0.3.0",
-  "last_updated": "2026-07-11T20:12:00Z",
+  "version": "0.3.1",
+  "last_updated": "2026-07-11T21:00:00Z",
   "description": "Structured catalog of local LLM dev tools for scripting, pipeline automation, and dashboard generation. v0.3 adds first-party Grok CLI bootstrap path and MCP/skill stack entries.",
   "schema_notes": {
-    "required_for_all": ["name", "primary_category", "github", "scores", "tier"],
+    "required_for_all": [
+      "name",
+      "primary_category",
+      "github",
+      "scores",
+      "tier"
+    ],
     "optional_tracking": {
       "pinned_commit": "Exact SHA or tag for reproducibility in pipelines (default approach for most tools)",
       "subtree_path": "Relative path if added via git subtree (rare, see SUBTREES.md)",
@@ -19,19 +25,82 @@
       "name": "Grok CLI bootstrap",
       "primary_category": "Pipeline & CI/CD Components",
       "github": "https://github.com/themark-net/local-llm-dev-tools",
-      "scores": { "s1": 95, "s2": 90, "s3": 98, "s4": 88, "overall": 94 },
+      "scores": {
+        "s1": 95,
+        "s2": 90,
+        "s3": 98,
+        "s4": 88,
+        "overall": 94
+      },
       "tier": "S",
-      "tags": ["grok-cli", "mcp-compatible", "code-memory", "pipeline", "local-first"],
+      "tags": [
+        "grok-cli",
+        "mcp-compatible",
+        "code-memory",
+        "pipeline",
+        "local-first"
+      ],
       "bootstrap_path": "bootstrap/grok-cli",
       "notes": "First-party replayable install: skills (adr/docs/open-questions/karpathy-guidelines), ponytail skills.paths, codebase-memory MCP config, memory enabled. Run ./bootstrap/grok-cli/install.sh"
+    },
+    {
+      "name": "project-process bootstrap",
+      "primary_category": "Pipeline & CI/CD Components",
+      "github": "https://github.com/themark-net/local-llm-dev-tools",
+      "scores": {
+        "s1": 92,
+        "s2": 95,
+        "s3": 96,
+        "s4": 80,
+        "overall": 92
+      },
+      "tier": "S",
+      "tags": [
+        "grok-cli",
+        "pipeline",
+        "local-first",
+        "agentic"
+      ],
+      "bootstrap_path": "bootstrap/project-process",
+      "notes": "Scaffold DESIGN/ADR/TODO/OQ/AGENTS for new projects. Skills: project-process + adr/docs/open-questions. Verdict: light framework sufficient vs adr-tools/SaaS."
+    },
+    {
+      "name": "adr-tools",
+      "primary_category": "Pipeline & CI/CD Components",
+      "github": "https://github.com/npryce/adr-tools",
+      "scores": {
+        "s1": 70,
+        "s2": 90,
+        "s3": 75,
+        "s4": 85,
+        "overall": 78
+      },
+      "tier": "B",
+      "tags": [
+        "pipeline",
+        "local-first"
+      ],
+      "pinned_commit": "latest-or-pin-when-adopted",
+      "notes": "Optional CLI companion for ADR numbering. Not a replacement for project-process skills/scaffold."
     },
     {
       "name": "codebase-memory-mcp",
       "primary_category": "Memory & RAG Systems",
       "github": "https://github.com/DeusData/codebase-memory-mcp",
-      "scores": { "s1": 92, "s2": 88, "s3": 95, "s4": 85, "overall": 91 },
+      "scores": {
+        "s1": 92,
+        "s2": 88,
+        "s3": 95,
+        "s4": 85,
+        "overall": 91
+      },
       "tier": "S",
-      "tags": ["mcp-compatible", "code-memory", "local-first", "rag"],
+      "tags": [
+        "mcp-compatible",
+        "code-memory",
+        "local-first",
+        "rag"
+      ],
       "pinned_commit": "ee68144af5453addda995a27cce8142999f318fb",
       "notes": "Grok MCP code-graph server. Install binary via official install.sh --skip-config; config owned by bootstrap/grok-cli."
     },
@@ -39,9 +108,21 @@
       "name": "LiteLLM",
       "primary_category": "Proxy & Routing",
       "github": "https://github.com/BerriAI/litellm",
-      "scores": { "s1": 95, "s2": 85, "s3": 98, "s4": 90, "overall": 93 },
+      "scores": {
+        "s1": 95,
+        "s2": 85,
+        "s3": 98,
+        "s4": 90,
+        "overall": 93
+      },
       "tier": "S",
-      "tags": ["litellm-ready", "openai-shim", "grok-cli", "multi-llm", "proxy"],
+      "tags": [
+        "litellm-ready",
+        "openai-shim",
+        "grok-cli",
+        "multi-llm",
+        "proxy"
+      ],
       "pinned_commit": "latest-main-or-specific-sha-here",
       "notes": "Critical unification layer for Grok CLI + local hybrid pipelines. Default approach: pinned commit + shallow clone in pipelines."
     },
@@ -49,9 +130,20 @@
       "name": "Ollama",
       "primary_category": "Inference & Serving",
       "github": "https://github.com/ollama/ollama",
-      "scores": { "s1": 90, "s2": 88, "s3": 95, "s4": 95, "overall": 92 },
+      "scores": {
+        "s1": 90,
+        "s2": 88,
+        "s3": 95,
+        "s4": 95,
+        "overall": 92
+      },
       "tier": "S",
-      "tags": ["local-first", "consumer-hw", "openai-shim", "tool-calling"],
+      "tags": [
+        "local-first",
+        "consumer-hw",
+        "openai-shim",
+        "tool-calling"
+      ],
       "pinned_commit": "latest-or-specific",
       "notes": "Default local backend. Grok CLI entrypoint via base_url. No subtree (large history). Use pinned + shallow clone."
     },
@@ -59,9 +151,20 @@
       "name": "Continue.dev",
       "primary_category": "Coding & Dev Agents",
       "github": "https://github.com/continuedev/continue",
-      "scores": { "s1": 92, "s2": 80, "s3": 92, "s4": 88, "overall": 90 },
+      "scores": {
+        "s1": 92,
+        "s2": 80,
+        "s3": 92,
+        "s4": 88,
+        "overall": 90
+      },
       "tier": "S",
-      "tags": ["ide-integration", "coding-agent", "local-first", "tool-calling"],
+      "tags": [
+        "ide-integration",
+        "coding-agent",
+        "local-first",
+        "tool-calling"
+      ],
       "pinned_commit": "v1.x-or-sha",
       "notes": "Best IDE surface. High MCP/repo context synergy. Default pinned-SHA approach."
     },
@@ -69,9 +172,20 @@
       "name": "ponytail",
       "primary_category": "Coding & Dev Agents",
       "github": "https://github.com/DietrichGebert/ponytail",
-      "scores": { "s1": 80, "s2": 92, "s3": 88, "s4": 82, "overall": 86 },
+      "scores": {
+        "s1": 80,
+        "s2": 92,
+        "s3": 88,
+        "s4": 82,
+        "overall": 86
+      },
       "tier": "A",
-      "tags": ["terminal", "coding-agent", "local-first", "grok-cli"],
+      "tags": [
+        "terminal",
+        "coding-agent",
+        "local-first",
+        "grok-cli"
+      ],
       "pinned_commit": "8e69b4a55f735e1319999064f82786b838cb3d7b",
       "bootstrap_path": "bootstrap/grok-cli/skills-external/ponytail",
       "notes": "Skills-only snapshot registered via Grok skills.paths. Full repo not embedded."
@@ -80,9 +194,19 @@
       "name": "karpathy-guidelines",
       "primary_category": "Coding & Dev Agents",
       "github": "https://github.com/forrestchang/andrej-karpathy-skills",
-      "scores": { "s1": 78, "s2": 95, "s3": 85, "s4": 80, "overall": 84 },
+      "scores": {
+        "s1": 78,
+        "s2": 95,
+        "s3": 85,
+        "s4": 80,
+        "overall": 84
+      },
       "tier": "A",
-      "tags": ["coding-agent", "grok-cli", "local-first"],
+      "tags": [
+        "coding-agent",
+        "grok-cli",
+        "local-first"
+      ],
       "pinned_commit": "2c606141936f1eeef17fa3043a72095b4765b9c2",
       "bootstrap_path": "bootstrap/grok-cli/skills/karpathy-guidelines",
       "notes": "MIT single skill vendored into bootstrap first-party skills install."

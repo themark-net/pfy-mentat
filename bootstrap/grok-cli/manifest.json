@@ -11,7 +11,7 @@
   ],
   "first_party_skills": {
     "install_to": "~/.grok/skills/",
-    "source": "bootstrap/grok-cli/skills/",
+    "source": "bootstrap/grok-cli/skills/ (+ project-process from sibling package)",
     "skills": [
       {
         "name": "adr",
@@ -34,8 +34,16 @@
         "pinned_commit": "2c606141936f1eeef17fa3043a72095b4765b9c2",
         "license": "MIT",
         "purpose": "Behavioral guidelines against LLM overcomplication"
+      },
+      {
+        "name": "project-process",
+        "origin": "bootstrap/project-process/",
+        "purpose": "Scaffold DESIGN+ADR+TODO+OQ into any new/existing project"
       }
     ]
+  },
+  "related_packages": {
+    "project_process": "bootstrap/project-process/ — per-repo process scaffold (init.sh)"
   },
   "external_skills": {
     "ponytail": {

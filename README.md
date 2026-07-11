@@ -15,22 +15,38 @@ Repository: https://github.com/themark-net/local-llm-dev-tools
 - Support Grok CLI as primary interface initially, with fallback/hybrid to other identified toolsets based on task requirements.
 - Provide selective, reproducible copies of critical tools via subtree/submodule or pinned commits while keeping the tracking repo lean.
 
+## Process docs (agents & humans)
+
+| Artifact | Path | Role |
+|----------|------|------|
+| **Design** | [docs/DESIGN.md](docs/DESIGN.md) | Master goals, system shape, non-goals |
+| **Architecture** | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Short structural snapshot |
+| **ADR** | [docs/adr/](docs/adr/README.md) | Settled decisions + **rejected alternatives** |
+| **TODO** | [docs/TODO.md](docs/TODO.md) | Ordered next steps (links to OQs) |
+| **Open questions** | [docs/OPEN_QUESTIONS.md](docs/OPEN_QUESTIONS.md) | TBDs; detail may live next to work citing `OQ-NNNN` |
+| **Agent entry** | [AGENTS.md](AGENTS.md) | Mandatory read list + do-nots |
+
+When architecture pivots: `/adr`. When something is unsettled: `/open-questions`. Work queue: `docs/TODO.md`.
+
 ## Current Status (v0.3 - Grok CLI bootstrap + methodology)
 
 - Repo created with comprehensive structure.
 - Categorization taxonomy and staged ranking rubric defined (CATEGORIZATION.md).
-- Placeholder for first seed X post still pending content extraction.
+- Placeholder for first seed X post still pending content extraction ([OQ-0001](docs/open-questions/OQ-0001-seed-x-post-content.md)).
 - **v0.2**: Selective git subtree / submodule / pinned-SHA tracking (SUBTREES.md) + aggregates intake.
-- **New in v0.3**: Replayable **Grok CLI bootstrap** under `bootstrap/grok-cli/` — first real integration artifact. Packages portable skills (`adr`, `docs`, `open-questions`, `karpathy-guidelines`), ponytail skill snapshot, MCP `codebase-memory` wiring, and an idempotent `install.sh` for new environments.
+- **v0.3**: Replayable **Grok CLI bootstrap** under `bootstrap/grok-cli/`.
+- **Process layout**: DESIGN + multi-file ADR + TODO + open questions (ADR-0001).
 - Seeded tools in TOOLS.md / data/tools.json include bootstrap stack components + prior demo entries.
 
-**Next immediate steps**:
-1. Provide content/summary from https://x.com/i/status/2075994424484732984 → full categorization + scoring pass.
-2. Add first real aggregate or individual tool using SUBTREES.md / sources/aggregates.md workflows.
-3. Prototype evaluation harness (LiteLLM + DSPy + MCP memory) on top of the bootstrap environment.
-4. Optionally add first selective subtree/submodule once a qualifying high-value tool is identified.
+**Next immediate steps** (authoritative list: [docs/TODO.md](docs/TODO.md)):
+1. Seed X post intake — [T-0001](docs/TODO.md) / [OQ-0001](docs/open-questions/OQ-0001-seed-x-post-content.md)
+2. First real aggregate or high-value tool — T-0002
+3. Evaluation harness prototype — T-0003 / [OQ-0002](docs/open-questions/OQ-0002-eval-harness-shape.md)
+4. Optional first subtree only if criteria met — T-0005 / [OQ-0003](docs/open-questions/OQ-0003-first-subtree-candidate.md)
 
-## Grok CLI bootstrap (new machine)
+## Bootstrap (new machine + new projects)
+
+### Operator environment (Grok skills + MCP)
 
 ```bash
 # After installing Grok: curl -fsSL https://x.ai/cli/install.sh | bash
@@ -40,31 +56,48 @@ cd local-llm-dev-tools
 grok login   # or export XAI_API_KEY=...
 ```
 
-Details, flags, and refresh workflow: [bootstrap/grok-cli/README.md](bootstrap/grok-cli/README.md).
+Installs skills: `adr`, `docs`, `open-questions`, `karpathy-guidelines`, **`project-process`**, plus ponytail path + codebase-memory MCP wiring.  
+Details: [bootstrap/grok-cli/README.md](bootstrap/grok-cli/README.md).
+
+### New project process scaffold (DESIGN / ADR / TODO / OQ)
+
+```bash
+mkdir -p ~/work/my-app && cd ~/work/my-app && git init
+/path/to/local-llm-dev-tools/bootstrap/project-process/init.sh . \
+  --name my-app \
+  --vision "One-line product vision" \
+  --install-skills
+```
+
+Or in Grok: `/project-process init .`  
+Details + evaluation vs heavier tools: [bootstrap/project-process/README.md](bootstrap/project-process/README.md).
 
 ## Repository Structure
 
 ```
 local-llm-dev-tools/
 ├── README.md
-├── CATEGORIZATION.md          # Taxonomy + staged 0-100 rubric + refinement process
-├── SUBTREES.md                # Selective subtree/submodule/pinned-SHA policy + workflows
-├── TOOLS.md                   # Master scored table + integration notes (Grok CLI, MCP, DSPy)
+├── AGENTS.md                  # Agent entry: mandatory reads + process rules
+├── CATEGORIZATION.md          # Taxonomy + staged 0-100 rubric
+├── SUBTREES.md                # Selective subtree/submodule/pinned-SHA policy
+├── TOOLS.md                   # Master scored table + integration notes
+├── docs/
+│   ├── DESIGN.md              # Master design (goals + shape)
+│   ├── ARCHITECTURE.md        # Structural snapshot
+│   ├── TODO.md                # Central next steps → OQ links
+│   ├── OPEN_QUESTIONS.md      # Central TBD index
+│   ├── adr/                   # ADRs (decisions + rejected paths)
+│   └── open-questions/        # OQ detail files
 ├── sources/
-│   ├── x-posts.md             # Log of X seed posts
-│   └── aggregates.md          # Aggregate/list repos intake + synthesis
+│   ├── x-posts.md
+│   └── aggregates.md
 ├── data/
-│   └── tools.json             # Structured catalog (pins, bootstrap paths, scores)
+│   └── tools.json
 ├── bootstrap/
-│   └── grok-cli/              # Replayable Grok skills + MCP + config install
-│       ├── install.sh
-│       ├── manifest.json
-│       ├── skills/            # adr, docs, open-questions, karpathy-guidelines
-│       └── skills-external/   # ponytail snapshot (skills.paths)
-├── examples/
-│   └── integration-patterns/  # Future: scripts, compose files, GitHub Actions
-├── pipelines/                 # Future: continuous eval & deploy harnesses
-└── .github/                   # Future: issue/PR templates
+│   ├── grok-cli/              # Operator env: skills + MCP + config
+│   └── project-process/       # Per-repo DESIGN/ADR/TODO/OQ scaffold + skill
+├── examples/                  # Future integration patterns
+└── pipelines/                 # Future eval & deploy harnesses
 ```
 
 ## Categorization Taxonomy & Ranking (Summary)
@@ -86,6 +119,7 @@ See TOOLS.md for full details.
 | Tool | Primary Category | Overall | Tier | Tracking Method |
 |------|------------------|---------|------|-----------------|
 | **Grok CLI bootstrap** | Pipeline & CI/CD | 94 | S | first-party under `bootstrap/grok-cli/` |
+| **project-process bootstrap** | Pipeline & CI/CD | 92 | S | first-party under `bootstrap/project-process/` |
 | codebase-memory-mcp | Memory & RAG | 91 | S | pinned upstream + optional binary install |
 | LiteLLM | Proxy & Routing | 93 | S | pinned_commit + shallow clone |
 | Ollama | Inference & Serving | 92 | S | pinned_commit + shallow clone |
@@ -105,6 +139,8 @@ See TOOLS.md for full details.
 
 All additions should improve the Grok CLI + MCP + pipeline vision or fill a clear gap in the scored catalog.
 
+Architecture pivots: update [docs/adr/](docs/adr/README.md). Unsettled work: [docs/OPEN_QUESTIONS.md](docs/OPEN_QUESTIONS.md) + [docs/TODO.md](docs/TODO.md).
+
 ---
 
-* v0.3 Grok CLI bootstrap added 2026-07-11. Methodology from v0.2 remains the catalog backbone.*
+* v0.3 Grok CLI bootstrap + process docs (DESIGN/ADR/TODO/OQ) 2026-07-11. Methodology from v0.2 remains the catalog backbone.*

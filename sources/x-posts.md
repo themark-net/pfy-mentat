@@ -25,6 +25,17 @@ This enables traceability from social signal to evaluated component.
 5. Add to TOOLS.md with notes, tags, and potential integration points.
 6. Update this log.
 
+### Entry 002: ADR / process docs for coding agents (research sweep)
+
+- **URL**: multiple (semantic + keyword search 2026-07-11) — e.g. https://x.com/martinfowler/status/2036467195538968695 , https://x.com/KingBootoshi/status/2062106571669446800 , https://x.com/santtiagom_/status/2069083778228552024 , https://x.com/therobertta_/status/2073845367784017939 , https://x.com/jbdamask/status/2075216922153566671
+- **Date**: 2026-07-11 (search date)
+- **Poster**: community aggregate (Fowler, practitioners using Claude/Codex, skill authors)
+- **Summary**: Strong consensus that **in-repo ADRs** (Context / Decision / Consequences / Alternatives) improve multi-session agent alignment. Practitioners tell agents to maintain ADRs during architecture chats. Community Claude skills for ADR exist; classic tooling is **adr-tools** + template catalogs. No dominant “open questions parking lot” product for agents—markdown/issues fill that niche.
+- **Extracted Repos/Tools**: adr-tools (https://github.com/npryce/adr-tools); ADR template collections; optional emerging enforcement (Mneme / Decision Guardian — watch list). Our response: **project-process** scaffold + skills, not a new platform.
+- **TOOLS.md Link**: project-process bootstrap (S); adr-tools (B optional)
+- **Notes**: Verdict recorded in ADR-0005 and `bootstrap/project-process/.../evaluation.md` — light framework sufficient.
+- **Status**: Analyzed — process kit shipped under `bootstrap/project-process/`
+
 ## Future Entries Format
 
 When adding new X-sourced tools or papers:

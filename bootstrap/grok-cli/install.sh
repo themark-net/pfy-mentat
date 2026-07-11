@@ -22,6 +22,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 SKILLS_SRC="$SCRIPT_DIR/skills"
 PONYTAIL_SRC="$SCRIPT_DIR/skills-external/ponytail"
+PROJECT_PROCESS_SKILL="$SCRIPT_DIR/../project-process/skills/project-process"
 MERGE_PY="$SCRIPT_DIR/scripts/merge_config.py"
 
 GROK_HOME="${GROK_HOME:-$HOME/.grok}"
@@ -108,6 +109,23 @@ install_first_party_skills() {
     fi
     log "  skill: $name"
   done
+  # project-process skill (scaffold DESIGN/ADR/TODO/OQ into any repo)
+  if [[ -d "$PROJECT_PROCESS_SKILL" ]]; then
+    local dest="$GROK_SKILLS_DIR/project-process"
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+      echo "dry-run: would install skill project-process"
+    else
+      mkdir -p "$dest"
+      if command -v rsync >/dev/null 2>&1; then
+        rsync -a --delete "$PROJECT_PROCESS_SKILL/" "$dest/"
+      else
+        rm -rf "$dest"; mkdir -p "$dest"; cp -a "$PROJECT_PROCESS_SKILL"/. "$dest/"
+      fi
+      log "  skill: project-process"
+    fi
+  else
+    warn "project-process skill missing at $PROJECT_PROCESS_SKILL"
+  fi
 }
 
 install_ponytail_path() {
@@ -162,7 +180,7 @@ verify() {
   log "Verifying install"
   local ok=1
   local name
-  for name in adr docs open-questions karpathy-guidelines; do
+  for name in adr docs open-questions karpathy-guidelines project-process; do
     if [[ -f "$GROK_SKILLS_DIR/$name/SKILL.md" ]]; then
       echo "  OK skill $name"
     else
@@ -260,8 +278,11 @@ Next steps:
   4. Optional binary fetch:     $0 --with-codebase-memory
   5. In a project: "Index this project" (codebase-memory) once MCP is live.
 
-Managed skills: adr, docs, open-questions, karpathy-guidelines
+Managed skills: adr, docs, open-questions, karpathy-guidelines, project-process
 Extra skills path: ${PONYTAIL_ABS:-"(disabled)"}
 Config: $CONFIG_TOML
 Manifest: $SCRIPT_DIR/manifest.json
+
+New project process scaffold:
+  $REPO_ROOT/bootstrap/project-process/init.sh /path/to/repo --name <name>
 EOF

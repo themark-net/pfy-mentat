@@ -1,0 +1,13 @@
+{
+  "name": "project-process-bootstrap",
+  "version": "0.1.0",
+  "description": "Replayable DESIGN + ADR + TODO + open-questions scaffold and Grok skills for new projects.",
+  "last_updated": "2026-07-11",
+  "components": {
+    "scaffold": "init.sh + templates/",
+    "skills": ["project-process"],
+    "companion_skills_from": "bootstrap/grok-cli/skills/{adr,docs,open-questions}"
+  },
+  "evaluation": "skills/project-process/references/evaluation.md",
+  "verdict": "Light markdown framework sufficient; optional adr-tools later; do not replace with heavy SaaS by default."
+}
