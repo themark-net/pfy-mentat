@@ -1,7 +1,18 @@
 {
-  "version": "0.1.0",
-  "last_updated": "2026-07-11T19:45:00Z",
-  "description": "Structured catalog of local LLM dev tools for scripting, pipeline automation, and dashboard generation. Populated initially from README/TOOLS.md seeds. Future: auto-updated via GitHub Actions or evaluation harness.",
+  "version": "0.2.0",
+  "last_updated": "2026-07-11T19:56:00Z",
+  "description": "Structured catalog of local LLM dev tools for scripting, pipeline automation, and dashboard generation. Extended in v0.2 with subtree/submodule/pinned fields and aggregate source tracking. Populated from rubric-scored entries in TOOLS.md and synthesis from X posts or aggregates.",
+  "schema_notes": {
+    "required_for_all": ["name", "primary_category", "github", "scores", "tier"],
+    "optional_tracking": {
+      "pinned_commit": "Exact SHA or tag for reproducibility in pipelines (default approach for most tools)",
+      "subtree_path": "Relative path if added via git subtree (rare, see SUBTREES.md)",
+      "submodule": "true/false or path if added as git submodule",
+      "source_aggregate": "Slug or name of aggregate/list repo this tool was synthesized from (see sources/aggregates.md)",
+      "x_post_id": "Status ID if directly from an X post seed"
+    },
+    "aggregates_array": "Top-level array for logged aggregates (parallel to tools array). Each has url, date_saved, handling_tier, etc."
+  },
   "tools": [
     {
       "name": "LiteLLM",
@@ -10,7 +21,8 @@
       "scores": { "s1": 95, "s2": 85, "s3": 98, "s4": 90, "overall": 93 },
       "tier": "S",
       "tags": ["litellm-ready", "openai-shim", "grok-cli", "multi-llm", "proxy"],
-      "notes": "Critical unification layer for Grok CLI + local hybrid pipelines."
+      "pinned_commit": "latest-main-or-specific-sha-here",
+      "notes": "Critical unification layer for Grok CLI + local hybrid pipelines. Default approach: pinned commit + shallow clone in pipelines."
     },
     {
       "name": "Ollama",
@@ -19,7 +31,8 @@
       "scores": { "s1": 90, "s2": 88, "s3": 95, "s4": 95, "overall": 92 },
       "tier": "S",
       "tags": ["local-first", "consumer-hw", "openai-shim", "tool-calling"],
-      "notes": "Default local backend. Excellent Grok CLI entrypoint."
+      "pinned_commit": "latest-or-specific",
+      "notes": "Default local backend. Grok CLI entrypoint via base_url. No subtree (large history). Use pinned + shallow clone."
     },
     {
       "name": "Continue.dev",
@@ -28,9 +41,20 @@
       "scores": { "s1": 92, "s2": 80, "s3": 92, "s4": 88, "overall": 90 },
       "tier": "S",
       "tags": ["ide-integration", "coding-agent", "local-first", "tool-calling"],
-      "notes": "Best IDE surface. High MCP code memory synergy."
+      "pinned_commit": "v1.x-or-sha",
+      "notes": "Best IDE surface. High MCP/repo context synergy. Default pinned-SHA approach."
     }
-    // Additional tools from TOOLS.md to be expanded here for automation
+  ],
+  "aggregates": [
+    {
+      "slug": "pending-first-x-or-example",
+      "url": "https://x.com/i/status/2075994424484732984 (or aggregate github url)",
+      "date_saved": "2026-07-11",
+      "source": "X post seed",
+      "handling_tier": "TBD (A/B/C per sources/aggregates.md template)",
+      "tools_extracted_count": 0,
+      "status": "pending_content"
+    }
   ],
   "x_posts": [
     {
