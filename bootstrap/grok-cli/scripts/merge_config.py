@@ -10,6 +10,9 @@ and unrelated sections). Only upserts:
   [skills] paths += ponytail path (creates [skills] if missing)
 
 Creates a timestamped backup by default.
+
+IMPORTANT: multi-line TOML arrays (paths = [ ... ]) are consumed as a whole
+when rewriting skills.paths — never rewrite only the first line.
 """
 from __future__ import annotations
 
@@ -36,16 +39,17 @@ def backup(path: Path) -> Path | None:
 def section_header(line: str) -> str | None:
     """Return section name for [name], or None for plain lines / [[aot]]."""
     if AOT_RE.match(line):
-        return None  # stay in previous logical table-array context; caller treats as non-header
+        return None
     m = HEADER_RE.match(line)
     return m.group(1) if m else None
 
 
-def parse_string_array(rhs: str) -> list[str]:
-    return re.findall(r'"([^"]*)"', rhs)
+def parse_string_array(text: str) -> list[str]:
+    return re.findall(r'"([^"]*)"', text)
 
 
 def format_string_array(items: list[str]) -> str:
+    """Single-line array — safe for surgical rewrite."""
     return "[" + ", ".join(f'"{i}"' for i in items) + "]"
 
 
@@ -62,6 +66,53 @@ def paths_contain(items: list[str], wanted: str) -> bool:
     return False
 
 
+def consume_toml_value(lines: list[str], start: int) -> tuple[str, int]:
+    """Return (value_text, next_index) for a TOML assignment starting at start.
+
+    Handles:
+      key = "x"
+      key = ["a", "b"]
+      key = [
+        "a",
+        "b",
+      ]
+    """
+    raw = lines[start].rstrip("\n")
+    if "=" not in raw:
+        return raw, start + 1
+    rhs = raw.split("=", 1)[1]
+    # Balanced brackets/quotes from the RHS of the first line, continuing as needed
+    buf = rhs
+    i = start + 1
+    # Count unquoted brackets
+    def unbalanced(s: str) -> int:
+        depth = 0
+        in_str = False
+        escape = False
+        for ch in s:
+            if escape:
+                escape = False
+                continue
+            if ch == "\\" and in_str:
+                escape = True
+                continue
+            if ch == '"':
+                in_str = not in_str
+                continue
+            if in_str:
+                continue
+            if ch == "[":
+                depth += 1
+            elif ch == "]":
+                depth -= 1
+        return depth
+
+    while unbalanced(buf) > 0 and i < len(lines):
+        buf += "\n" + lines[i].rstrip("\n")
+        i += 1
+    return buf, i
+
+
 def merge(
     text: str,
     *,
@@ -69,9 +120,6 @@ def merge(
     permission_mode: str | None,
 ) -> str:
     lines = text.splitlines(keepends=True)
-    if text and not text.endswith("\n"):
-        # normalize: we'll rejoin with preserved endings
-        pass
 
     out: list[str] = []
     current: str | None = None
@@ -79,7 +127,6 @@ def merge(
     seen_ui = False
     seen_mcp = False
     seen_skills = False
-    # When replaying mcp section, skip old body until next real header
     skip_mcp_body = False
     memory_has_enabled = False
     ui_has_permission = False
@@ -116,7 +163,7 @@ def merge(
         if skip_mcp_body:
             if hdr is not None:
                 skip_mcp_body = False
-                # fall through to handle this header
+                # fall through
             elif AOT_RE.match(raw):
                 skip_mcp_body = False
                 out.append(line)
@@ -127,7 +174,6 @@ def merge(
                 continue
 
         if hdr is not None:
-            # Leaving previous section — ensure required keys
             flush_section_tail(current)
             current = hdr
 
@@ -141,14 +187,13 @@ def merge(
                 out.append(line)
             elif hdr == "mcp_servers.codebase-memory":
                 seen_mcp = True
-                # Replace entire section with owned block; skip old body
                 out.append("[mcp_servers.codebase-memory]\n")
                 out.append('command = "codebase-memory-mcp"\n')
                 out.append("args = []\n")
                 out.append("enabled = true\n")
                 out.append("\n")
                 skip_mcp_body = True
-                current = None  # already fully written
+                current = None
             elif hdr == "skills":
                 seen_skills = True
                 skills_has_paths = False
@@ -167,6 +212,7 @@ def merge(
                 memory_has_enabled = True
             else:
                 out.append(line)
+            i += 1
         elif current == "ui":
             if re.match(r"^permission_mode\s*=", raw):
                 if permission_mode:
@@ -177,32 +223,47 @@ def merge(
                     ui_has_permission = True
             else:
                 out.append(line)
+            i += 1
         elif current == "skills":
             if re.match(r"^paths\s*=", raw):
                 skills_has_paths = True
+                value_text, next_i = consume_toml_value(lines, i)
                 if ponytail_path:
-                    items = parse_string_array(raw)
+                    items = parse_string_array(value_text)
                     if not paths_contain(items, ponytail_path):
                         items.append(ponytail_path)
                     out.append(f"paths = {format_string_array(items)}\n")
                 else:
-                    out.append(line)
+                    # preserve original multi-line block
+                    for j in range(i, next_i):
+                        out.append(lines[j])
+                i = next_i
             elif re.match(r"^ignore\s*=", raw):
                 skills_has_ignore = True
-                out.append(line)
+                _value_text, next_i = consume_toml_value(lines, i)
+                # Preserve original single-line assignment when possible
+                if next_i == i + 1:
+                    out.append(line)
+                else:
+                    out.append("ignore = []\n")
+                i = next_i
             elif re.match(r"^disabled\s*=", raw):
                 skills_has_disabled = True
-                out.append(line)
+                _value_text, next_i = consume_toml_value(lines, i)
+                if next_i == i + 1:
+                    out.append(line)
+                else:
+                    out.append("disabled = []\n")
+                i = next_i
             else:
                 out.append(line)
+                i += 1
         else:
             out.append(line)
-        i += 1
+            i += 1
 
-    # EOF flush
     flush_section_tail(current)
 
-    # Append missing owned sections
     def ensure_trailing_nl() -> None:
         if out and not out[-1].endswith("\n"):
             out[-1] = out[-1] + "\n"
@@ -216,9 +277,6 @@ def merge(
         ensure_trailing_nl()
         out.append("\n[ui]\n")
         out.append(f'permission_mode = "{permission_mode}"\n')
-    elif permission_mode and seen_ui and not ui_has_permission:
-        # edge: empty [ui] section already flushed — already handled in flush
-        pass
 
     if not seen_mcp:
         ensure_trailing_nl()
@@ -254,6 +312,17 @@ def main() -> int:
     text = path.read_text(encoding="utf-8") if path.exists() else ""
     perm = args.permission_mode if args.permission_mode != "" else None
     new = merge(text, ponytail_path=args.ponytail_path, permission_mode=perm)
+
+    # Validate TOML before writing
+    try:
+        import tomllib
+
+        tomllib.loads(new)
+    except Exception as e:
+        print(f"error: merge produced invalid TOML: {e}", file=sys.stderr)
+        print("--- bad output ---", file=sys.stderr)
+        print(new, file=sys.stderr)
+        return 1
 
     if new == text:
         print(f"config unchanged: {path}")
