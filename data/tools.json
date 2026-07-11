@@ -1,0 +1,43 @@
+{
+  "version": "0.1.0",
+  "last_updated": "2026-07-11T19:45:00Z",
+  "description": "Structured catalog of local LLM dev tools for scripting, pipeline automation, and dashboard generation. Populated initially from README/TOOLS.md seeds. Future: auto-updated via GitHub Actions or evaluation harness.",
+  "tools": [
+    {
+      "name": "LiteLLM",
+      "primary_category": "Proxy & Routing",
+      "github": "https://github.com/BerriAI/litellm",
+      "scores": { "s1": 95, "s2": 85, "s3": 98, "s4": 90, "overall": 93 },
+      "tier": "S",
+      "tags": ["litellm-ready", "openai-shim", "grok-cli", "multi-llm", "proxy"],
+      "notes": "Critical unification layer for Grok CLI + local hybrid pipelines."
+    },
+    {
+      "name": "Ollama",
+      "primary_category": "Inference & Serving",
+      "github": "https://github.com/ollama/ollama",
+      "scores": { "s1": 90, "s2": 88, "s3": 95, "s4": 95, "overall": 92 },
+      "tier": "S",
+      "tags": ["local-first", "consumer-hw", "openai-shim", "tool-calling"],
+      "notes": "Default local backend. Excellent Grok CLI entrypoint."
+    },
+    {
+      "name": "Continue.dev",
+      "primary_category": "Coding & Dev Agents",
+      "github": "https://github.com/continuedev/continue",
+      "scores": { "s1": 92, "s2": 80, "s3": 92, "s4": 88, "overall": 90 },
+      "tier": "S",
+      "tags": ["ide-integration", "coding-agent", "local-first", "tool-calling"],
+      "notes": "Best IDE surface. High MCP code memory synergy."
+    }
+    // Additional tools from TOOLS.md to be expanded here for automation
+  ],
+  "x_posts": [
+    {
+      "id": "2075994424484732984",
+      "url": "https://x.com/i/status/2075994424484732984",
+      "status": "pending_content",
+      "tools_extracted": []
+    }
+  ]
+}
