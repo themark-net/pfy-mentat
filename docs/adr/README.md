@@ -15,6 +15,7 @@
 | [0006](0006-deployment-profiles.md) | Deployment profiles local-only → max-performance + env registry | Accepted | 2026-07-12 |
 | [0007](0007-write-guard-mcp-layer.md) | Write-guard MCP as filesystem write mediation layer | Accepted (design) | 2026-07-12 |
 | [0008](0008-one-shot-workflow.md) | One-shot workflow: min questions, cheap iteration, lab prerequisites | Accepted | 2026-07-12 |
+| [0009](0009-skill-port-hybrid-strategy.md) | Hybrid skill ports: first-party core + skills.paths snapshots | Accepted | 2026-07-12 |
 
 ## How to add
 
