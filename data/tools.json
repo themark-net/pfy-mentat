@@ -39,7 +39,7 @@
         "code-memory",
         "pipeline",
         "local-first"
-      },
+      ],
       "bootstrap_path": "bootstrap/grok-cli",
       "notes": "First-party replayable install: skills (adr/docs/open-questions/karpathy-guidelines), ponytail skills.paths, codebase-memory MCP config, memory enabled. Run ./bootstrap/grok-cli/install.sh"
     },
@@ -60,7 +60,7 @@
         "pipeline",
         "local-first",
         "agentic"
-      },
+      ],
       "bootstrap_path": "bootstrap/project-process",
       "notes": "Scaffold DESIGN/ADR/TODO/OQ/AGENTS for new projects. Skills: project-process + adr/docs/open-questions. Verdict: light framework sufficient vs adr-tools/SaaS."
     },
@@ -266,7 +266,9 @@
       "author": "@chenzeling4 (Zane Chen)",
       "date": "2026-07-11",
       "status": "processed",
-      "tools_extracted": ["colibri"],
+      "tools_extracted": [
+        "colibri"
+      ],
       "summary": "Colibri: pure C, zero-dep inference engine running GLM-5.2 744B MoE (~40B active) on ~25GB RAM laptop by streaming experts from disk. Single ~2400-line C core. CLI + OpenAI serve mode. High engagement (3k+ likes, 3.5k bookmarks)."
     }
   ]
