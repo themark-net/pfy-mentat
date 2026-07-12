@@ -48,10 +48,14 @@ Branching for Docker Desktop vs Engine, macOS vs Linux paths, and optional MCP i
 1. ~~Select harness (agent-cage)~~  
 2. Host smoke (`make smoke-host`)  
 3. Full cage smoke (`make smoke-integration`)  
-4. First tool smokes: LiteLLM recipe, MCP codebase-memory, repowise  
-5. Optional Grok-in-cage overlay  
+4. ~~First tool smokes: LiteLLM, codebase-memory, repowise, write-guard~~ — `make smoke-*`  
+5. ~~Optional Grok-in-cage overlay~~ (see overlays/grok)  
+
+One-shot DoD templates: [one-shot-example-dods.md](one-shot-example-dods.md).
 
 ## Related
 
 - [plan-mobile-seed-integration.md](plan-mobile-seed-integration.md)  
 - [TODO.md](../TODO.md)  
+- [one-shot-example-dods.md](one-shot-example-dods.md)  
+

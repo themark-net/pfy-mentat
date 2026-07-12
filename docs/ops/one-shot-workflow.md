@@ -134,6 +134,20 @@ Or: “one-shot: …” / “unattended until green: …”
 
 Agent should load this doc + profile + harness status, then enter the loop.
 
+### Ready-made DoDs for this repo’s smokes
+
+Copy-paste contracts for LiteLLM, codebase-memory, repowise, write-guard, and full regression:
+
+→ **[one-shot-example-dods.md](one-shot-example-dods.md)**
+
+| Green target | One-shot area |
+|--------------|---------------|
+| `make smoke-litellm-ollama` | LiteLLM → host Ollama (gateway :11435) |
+| `make smoke-codebase-memory` | codebase-memory-mcp index+search |
+| `make smoke-repowise` | repowise health (zero LLM) |
+| `make smoke-context-tools` | both context tools + compare note |
+| `make smoke-write-guard` | write-guard audit/enforce policy |
+
 ---
 
 ## Relationship to other modes

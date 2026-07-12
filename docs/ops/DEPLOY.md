@@ -65,18 +65,29 @@ Details: [harness/agent-cage/overlays/grok/README.md](../../harness/agent-cage/o
 ## 6. Docs skills
 
 - `/catalog-docs` — keep this repo documented  
-- `/one-shot` — optional unattended mode (needs DoD + lab)  
+- `/one-shot` — unattended-until-green (DoD + lab); example DoDs: [one-shot-example-dods.md](one-shot-example-dods.md)  
 - Process: DESIGN / ADR / TODO / OQ  
+
+## 7. Integration smokes (after cage up)
+
+Prefer these over ad-hoc host-only checks ([harness framework](harness-integration-framework.md)):
+
+| Target | What |
+|--------|------|
+| `make smoke-write-guard` | Write-guard policy (audit/enforce) |
+| `make smoke-codebase-memory` | codebase-memory-mcp index+search |
+| `make smoke-repowise` | repowise health (zero LLM) |
+| `make smoke-context-tools` | both context tools |
+| `make smoke-litellm-ollama` | LiteLLM → host Ollama (needs gateway) |
 
 ## Not fully automated yet
 
 | Item | Status |
 |------|--------|
 | Write-guard MCP server | v0.1 implemented (`make smoke-write-guard`); mcp-host wiring optional |
-| LiteLLM profile recipes | TODO T-0012 |
+| LiteLLM profile recipes | local-only MVP done; balanced/max still open (T-0012) |
 | Full eval harness | TODO T-0003 / OQ-0002 |
 | OpenCode / Claude validation | TODO T-0040 (P3) |
-| One-shot everyday use | Optional; not required |
 
 ## Verify checklist
 
@@ -85,3 +96,5 @@ Details: [harness/agent-cage/overlays/grok/README.md](../../harness/agent-cage/o
 - [ ] `grok --version` on host  
 - [ ] `make cage-test` green (stack up)  
 - [ ] Optional: `make cage-grok-smoke` green  
+- [ ] Optional: `make smoke-write-guard` / `smoke-context-tools` / `smoke-litellm-ollama`  
+
