@@ -206,7 +206,7 @@ verify() {
   log "Verifying install"
   local ok=1
   local name
-  for name in adr docs open-questions karpathy-guidelines project-process catalog-docs one-shot marketing-council; do
+  for name in adr docs open-questions karpathy-guidelines project-process catalog-docs one-shot marketing-council investigate; do
     if [[ -f "$GROK_SKILLS_DIR/$name/SKILL.md" ]]; then
       echo "  OK skill $name"
     else

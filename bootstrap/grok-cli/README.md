@@ -138,7 +138,8 @@ rsync -a --delete /path/to/ponytail/skills/ bootstrap/grok-cli/skills-external/p
 **Core** = process backbone we edit, small surface, default-on, license-safe (criteria in ADR-0009).  
 **Bulk upstream** packs use the **same methods as ponytail** (snapshot + paths + pin + opt-out), not full-tree embed into first-party skills.
 
-**T-0011 ports:** `marketing-council` (first-party) · `mattpocock` tdd/code-review/to-spec (`--no-mattpocock` to skip).
+**T-0011 ports:** `marketing-council` (first-party) · `mattpocock` tdd/code-review/to-spec (`--no-mattpocock` to skip).  
+**T-0017:** `investigate` first-party RCA skill (gstack method rewrite, not raw snapshot).
 
 ## Relationship to catalog entries
 

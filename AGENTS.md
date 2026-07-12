@@ -36,7 +36,7 @@ Also use as needed: `CATEGORIZATION.md`, `SUBTREES.md`, `TOOLS.md`, `bootstrap/g
 # optional: --with-codebase-memory
 ```
 
-Portable skills: `adr`, `docs`, `open-questions`, `karpathy-guidelines`, `project-process`, `one-shot`, `marketing-council`; ponytail + mattpocock subset (via `skills.paths`).  
+Portable skills: `adr`, `docs`, `open-questions`, `karpathy-guidelines`, `project-process`, `one-shot`, `marketing-council`, **`investigate`** (RCA); ponytail + mattpocock subset (via `skills.paths`).  
 **This repo:** `/catalog-docs` — document the catalog (README, triple-write, harness); source `.grok/skills/catalog-docs/`.
 
 ### Role router (gstack patterns, docs-first — T-0014)
@@ -48,6 +48,7 @@ Map **Think → Plan → Build → Review → Test → Ship → Reflect** withou
 | Product rethink (CEO) | Scope challenge → `/adr` or `/open-questions` |
 | Plan / eng manager | mattpocock **`to-spec`** (paths) + DoD list |
 | Build | Coding agent + karpathy / ponytail; **`/one-shot`** if DoD + lab ready |
+| Debug / RCA | **`/investigate`** — Iron Law: no fix without root-cause hypothesis (T-0017) |
 | Review | mattpocock **`code-review`** (paths); optional second persona |
 | QA | `make cage-test`, `make smoke-*` (see [docs/modules/examples-smokes.md](docs/modules/examples-smokes.md)) |
 | Security | write-guard + cage policy; not full gstack `/cso` |

@@ -22,6 +22,7 @@ gstack implements that as many Claude Code slash skills (`/plan-ceo-review`, `/r
 | **Eng manager / architecture** | `/plan-eng-review`, `/autoplan` | **`/adr`** + DESIGN; plan via **mattpocock `to-spec`** (paths); one-shot DoD for scoped builds |
 | **Designer / UX smell** | `/plan-design-review`, `/design-consultation` | Human taste + checklist in PR; optional later paths skill if needed |
 | **Implementer** | implement after plan | Grok coding loop + **karpathy-guidelines** + **ponytail**; **`/one-shot`** when DoD is clear |
+| **Debugger / RCA** | `/investigate` | **`/investigate`** first-party (T-0017) — Iron Law, phases, DEBUG REPORT |
 | **Reviewer** | `/review` | **mattpocock `code-review`** (paths); cross-persona review notes in AGENTS |
 | **QA** | `/qa`, `/qa-only`, `/browse` | **`make cage-test`**, **`make smoke-*`**, host tests; cage shell for repro |
 | **Security / CSO** | `/cso`, `/guard` | Policy: write-guard (`make smoke-write-guard`), cage network whitelist; threat notes in ADR if needed |
@@ -116,16 +117,17 @@ Role: retro.
 | Upstream skills are **Claude-harness-heavy** (generated preamble, hooks, `gstack/bin`) | **Raw `skills.paths` snapshot is not viable** for almost any gstack skill |
 | Largest **method** gaps | **`investigate`** (RCA / Iron Law) and **`cso`** (OWASP/STRIDE audit ≠ write-guard) |
 | Overlap already covered | `review`≈mattpocock code-review; `spec`≈to-spec; ship/QA stages via recipes + cage smokes |
-| **Recommended single deeper port** | **First-party rewrite of the `investigate` method** (not rsync of SKILL.md) |
-| Second candidate (later) | First-party **cso checklist** rewrite — larger; after investigate if still needed |
+| **Recommended single deeper port** | **`/investigate` shipped** (T-0017 first-party method rewrite) |
+| Second candidate (later) | First-party **cso checklist** rewrite — larger; optional if still needed |
 
-Promotion still requires operator “go” for the rewrite (T-0017). Default remains **docs + AGENTS router** until then.
+Default for other gstack roles remains **docs + AGENTS router**.
 
 ## Related
 
 - [gstack-skill-port-comparison.md](gstack-skill-port-comparison.md) — attributes + scored shortlist  
 - [AGENTS.md](../../AGENTS.md) — role router section  
 - [ADR-0009](../adr/0009-skill-port-hybrid-strategy.md)  
-- T-0011 mattpocock / marketing-council ports · T-0014 docs recipes · **T-0017** optional investigate rewrite  
+- T-0011 mattpocock / marketing-council · T-0014 docs recipes · **T-0017** `/investigate` shipped  
+
 - [one-shot-example-dods.md](one-shot-example-dods.md)  
 

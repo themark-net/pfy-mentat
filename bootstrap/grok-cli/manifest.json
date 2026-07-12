@@ -56,6 +56,14 @@
         "pinned_commit": "5139746081be",
         "license": "MIT",
         "purpose": "First-party port: multi-advisor marketing council + dissenter (T-0011 / ADR-0009)"
+      },
+      {
+        "name": "investigate",
+        "origin": "method rewrite of garrytan/gstack investigate (not raw snapshot)",
+        "upstream": "https://github.com/garrytan/gstack",
+        "pinned_commit_at_eval": "7c9df1c568a9",
+        "license": "MIT (upstream inspiration); skill text first-party",
+        "purpose": "RCA Iron Law debugging: hypothesis before fix (T-0017 / ADR-0009)"
       }
     ]
   },

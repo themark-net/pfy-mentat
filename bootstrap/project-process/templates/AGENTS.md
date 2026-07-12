@@ -43,6 +43,7 @@ Think → Plan → Build → Review → Test → Ship → Reflect:
 | Think / product | Challenge scope → `/adr` or `/open-questions` |
 | Plan | `to-spec` (if installed) + written DoD |
 | Build | Surgical implement; `/one-shot` only with DoD + lab |
+| Debug | `/investigate` — no fix without root-cause hypothesis |
 | Review | `code-review` (if installed); second persona optional |
 | Test | Project tests + integration lab if any |
 | Ship | Feature branch → green → merge |

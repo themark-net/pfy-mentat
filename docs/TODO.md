@@ -27,7 +27,7 @@
 | ID | Priority | Status | Item | Open questions | Depends | Notes |
 |----|----------|--------|------|----------------|---------|-------|
 | T-0012 | P1 | doing | LiteLLM + Ollama recipe under `examples/` keyed by DEPLOY_PROFILE | [OQ-0002](open-questions/OQ-0002-eval-harness-shape.md) | T-0030 | **local-only MVP shipped** (`examples/litellm-ollama/`, `make smoke-litellm-ollama`); balanced/max recipes still open |
-| T-0017 | P2 | todo | **Optional:** first-party `investigate` RCA skill (gstack method rewrite, not raw snapshot) | — | T-0014 | See [gstack-skill-port-comparison.md](ops/gstack-skill-port-comparison.md); operator go required |
+
 
 | T-0003 | P1 | blocked | Prototype evaluation harness | [OQ-0002](open-questions/OQ-0002-eval-harness-shape.md) | T-0012 | |
 | T-0040 | P3 | todo | **Nice-to-have:** validate integrated setup with OpenCode and Claude Code (same cage/profiles/env) | — | — | Universal harness goal; Grok-first for now |
@@ -62,6 +62,7 @@
 | T-0006 | P2 | done | Module docs bootstrap + harness via `/catalog-docs` | docs/modules/* for grok-cli, project-process, agent-cage, write-guard, smokes |
 | T-0011 | P1 | done | Phase 1 skill ports: marketing-council first-party + mattpocock paths subset | ADR-0009; council in skills/; mattpocock tdd/code-review/to-spec via paths |
 | T-0014 | P2 | done | gstack role-pattern skills / AGENTS recipes (docs-first, not full embed) | docs/ops/gstack-role-recipes.md + AGENTS role router |
+| T-0017 | P2 | done | First-party `investigate` RCA skill (gstack method rewrite) | bootstrap/grok-cli/skills/investigate/; not raw snapshot |
 
 ## How to use
 

@@ -74,7 +74,8 @@ Therefore: **`raw_portability` is 0–1 for nearly every gstack skill.** A naive
 3. **Park cso** as optional second rewrite (security checklist + confidence gate + read-only report), not a paths snapshot.  
 4. Keep **role recipes** as the default for all other gstack roles.
 
-Implementation of (2) is a **new TODO** when operator says go — this doc is the decision record for *which* skill and *how*.
+**Implemented (T-0017):** first-party skill `bootstrap/grok-cli/skills/investigate/`
+(`/investigate`) — method rewrite only; no gstack harness.
 
 ## Attribute legend for TOOLS.md / catalog notes
 
