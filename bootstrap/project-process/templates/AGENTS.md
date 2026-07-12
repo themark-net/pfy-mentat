@@ -31,3 +31,21 @@ Instructions for coding agents working in this repository.
 - `/open-questions` / `/oq` — TBD parking lot
 - `/docs` — operator + agent module documentation
 - `/project-process` — re-scaffold or audit this layout
+- `/one-shot` — unattended until DoD green (when lab allows)
+- Optional paths packs: ponytail, mattpocock (tdd / code-review / to-spec)
+
+## Role router (gstack-style stages, no gstack install)
+
+Think → Plan → Build → Review → Test → Ship → Reflect:
+
+| Stage | Prefer |
+|-------|--------|
+| Think / product | Challenge scope → `/adr` or `/open-questions` |
+| Plan | `to-spec` (if installed) + written DoD |
+| Build | Surgical implement; `/one-shot` only with DoD + lab |
+| Review | `code-review` (if installed); second persona optional |
+| Test | Project tests + integration lab if any |
+| Ship | Feature branch → green → merge |
+| Reflect | Update TODO/OQ; heal docs |
+
+Full recipes live in the pfy-mentat catalog: `docs/ops/gstack-role-recipes.md`.
