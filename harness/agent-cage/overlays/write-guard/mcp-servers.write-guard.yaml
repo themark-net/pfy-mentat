@@ -1,0 +1,33 @@
+# Overlay snippet: add write-guard MCP alongside or instead of stock filesystem writes.
+# Install: make write-guard-overlay-install
+# Merge into ~/.agentcage/mcp-servers.yaml manually or via install target.
+#
+# Requires write-guard package on PATH inside mcp-host or agent:
+#   python -m write_guard serve
+# Prefer agent-local venv for smokes; for permanent deploy bake into image later.
+
+mcp:
+  host_ip: 172.30.0.10
+  host_port: "8096"
+  servers:
+    - name: filesystem
+      description: Read/write access to the workspace directory (stock)
+      transport: stdio
+      command: npx
+      args:
+        - "@modelcontextprotocol/server-filesystem"
+        - /workspace
+      enabled: true
+    - name: write-guard
+      description: Policy-mediated writes (audit/enforce) for /workspace
+      transport: stdio
+      command: python3
+      args:
+        - -m
+        - write_guard
+        - serve
+      env:
+        WRITE_GUARD_MODE: audit
+        WRITE_GUARD_ROOTS: /workspace
+        PYTHONPATH: /workspace/.venvs/write-guard-smoke/lib/python3.12/site-packages
+      enabled: false  # enable after package installed in image/venv used by mcp-host

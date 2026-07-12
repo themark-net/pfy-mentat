@@ -72,7 +72,7 @@ Details: [harness/agent-cage/overlays/grok/README.md](../../harness/agent-cage/o
 
 | Item | Status |
 |------|--------|
-| Write-guard MCP server | Design only (ADR-0007) |
+| Write-guard MCP server | v0.1 implemented (`make smoke-write-guard`); mcp-host wiring optional |
 | LiteLLM profile recipes | TODO T-0012 |
 | Full eval harness | TODO T-0003 / OQ-0002 |
 | OpenCode / Claude validation | TODO T-0040 (P3) |

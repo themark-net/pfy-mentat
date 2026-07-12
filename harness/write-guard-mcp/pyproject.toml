@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "write-guard-mcp"
+version = "0.1.0"
+description = "Thin MCP server mediating agent filesystem writes (audit/enforce)"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "mcp>=1.0.0",
+  "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = []
+
+[project.scripts]
+write-guard-mcp = "write_guard.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

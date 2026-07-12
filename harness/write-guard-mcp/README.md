@@ -1,36 +1,51 @@
-# write-guard-mcp (scaffold)
+# write-guard-mcp
 
-Thin MCP server to **mediate filesystem writes** for agents. Design: [docs/ops/write-guard-mcp-design.md](../../docs/ops/write-guard-mcp-design.md) · ADR-0007.
+Thin MCP server to **mediate filesystem writes** for agents.  
+Design: [docs/ops/write-guard-mcp-design.md](../../docs/ops/write-guard-mcp-design.md) · **ADR-0007**
 
 ## Status
 
-**Scaffold only on this branch.** Full stdio MCP implementation is next coding slice.
-
-Planned layout:
+**Implemented (v0.1):** policy engine, JSONL audit, stdio MCP tools, unit selftest, in-cage smoke.
 
 ```
 harness/write-guard-mcp/
-  README.md
   policy.default.yaml
-  pyproject.toml      # planned
-  src/write_guard/    # planned: MCP tools + audit log
-```
-
-## Intended run (cage)
-
-```yaml
-# overlay snippet for agent-cage mcp-servers.yaml
-- name: write-guard
-  transport: stdio
-  command: python
-  args: ["-m", "write_guard"]
-  env:
-    WRITE_GUARD_MODE: audit   # or enforce
-    WRITE_GUARD_ROOTS: /workspace
-  enabled: true
+  pyproject.toml
+  src/write_guard/     # policy, audit, MCP server
+  tests/
 ```
 
 ## Modes
 
-- `audit` — allow writes; log to `/workspace/.write-guard-audit.jsonl`
-- `enforce` — deny secrets globs / outside roots; log all attempts
+| Mode | Behavior |
+|------|----------|
+| `off` | Pass-through (no audit) |
+| `audit` | **Default** (OQ-0009): allow writes; log attempts; flag secret globs |
+| `enforce` | Deny outside roots, secret globs, deny_write_globs; delete default deny |
+
+Env: `WRITE_GUARD_MODE`, `WRITE_GUARD_ROOTS` (colon-separated), `WRITE_GUARD_POLICY`.
+
+## CLI
+
+```bash
+cd harness/write-guard-mcp
+python3 -m venv .venv && . .venv/bin/activate
+pip install -e .
+python -m write_guard selftest
+python -m write_guard check --path /workspace/.env --op write --mode enforce
+python -m write_guard serve   # MCP stdio
+```
+
+## In-cage smoke
+
+```bash
+make smoke-write-guard
+```
+
+## MCP tools
+
+`list_roots`, `list_dir`, `read_file`, `write_file`, `delete_file`, `write_status`
+
+## Cage overlay
+
+See [overlays/write-guard/](../agent-cage/overlays/write-guard/) — fragment for `mcp-servers.yaml` (entry disabled until package is on mcp-host PATH).

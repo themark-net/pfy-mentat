@@ -29,7 +29,7 @@ Related work queue: [TODO.md](TODO.md)
 | [OQ-0004](open-questions/OQ-0004-atg-prototype-relationship.md) | P2 | open | How ATG prototype relates to this catalog | T-0004 | atg-framework, TOOLS.md |
 | [OQ-0007](open-questions/OQ-0007-antigravity-need.md) | P2 | tbd | Do we need Antigravity-Manager multi-account relay? | T-0015 | LiteLLM, hybrid accounts |
 | [OQ-0008](open-questions/OQ-0008-colibri-weights-ok.md) | P2 | tbd | OK to download colibri model weights on this machine? | T-0016 | disk/RAM, colibri pin |
-| [OQ-0009](open-questions/OQ-0009-write-guard-default-mode.md) | P1 | open | Default WRITE_GUARD_MODE for new envs (audit vs enforce) | T-0031 | ADR-0007 |
+| [OQ-0009](open-questions/OQ-0009-write-guard-default-mode.md) | P1 | answered | Default WRITE_GUARD_MODE for new envs (audit vs enforce) | T-0031 | ADR-0007; default **audit** |
 | [OQ-0001](open-questions/OQ-0001-seed-x-post-content.md) | P3 | answered | Seed X post content extraction | — | Superseded by Entries 001–010 processed |
 
 ---
@@ -39,7 +39,7 @@ Related work queue: [TODO.md](TODO.md)
 1. **OQ-0005** — Grok in-image vs host-Grok + cage (default: host-Grok until overlay built).  
 2. **OQ-0006** — Skill port strategy (default: hybrid).  
 3. **OQ-0002** — Eval harness MVP = LiteLLM + Ollama smoke (recommended).  
-4. **OQ-0009** — Write-guard default `audit` vs `enforce` for new deploys.
+4. ~~**OQ-0009** — Write-guard default~~ → **answered: audit**.
 
 ## Hygiene
 

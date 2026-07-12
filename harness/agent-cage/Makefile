@@ -44,7 +44,8 @@ REPOWISE_PIP_SPEC ?= repowise==0.30.0
 	grok-overlay-install grok-overlay-uninstall grok-overlay-build grok-up grok-smoke \
 	grok-auth-import \
 	local-ollama-overlay-install local-ollama-up smoke-litellm-ollama \
-	smoke-codebase-memory smoke-repowise smoke-context-tools
+	smoke-codebase-memory smoke-repowise smoke-context-tools \
+	smoke-write-guard write-guard-overlay-install
 
 help:
 	@echo "agent-cage harness (upstream pin $(PIN))"
@@ -80,6 +81,9 @@ help:
 	@echo "  make smoke-codebase-memory    # binary index+search fixture"
 	@echo "  make smoke-repowise           # pip pin + health (zero LLM)"
 	@echo "  make smoke-context-tools      # both + T-0013 compare note"
+	@echo "Write-guard:"
+	@echo "  make smoke-write-guard        # policy selftest + audit/enforce in cage"
+	@echo "  make write-guard-overlay-install"
 
 doctor:
 	@echo "== OS =="; uname -a || true
@@ -419,3 +423,42 @@ smoke-repowise: ensure-project
 smoke-context-tools: smoke-codebase-memory smoke-repowise
 	@test -f "$(CATALOG_ROOT)/pipelines/smoke/context-tools-compare.md"
 	@echo "smoke-context-tools: PASS (see pipelines/smoke/context-tools-compare.md)"
+
+# --- write-guard MCP (T-0031) ------------------------------------------------
+
+WG_PKG := $(CATALOG_ROOT)/harness/write-guard-mcp
+WG_EXAMPLE := $(CATALOG_ROOT)/examples/write-guard-mcp
+
+write-guard-overlay-install: ensure-project
+	@mkdir -p "$(AGENTCAGE_DIR)/overlays-write-guard"
+	@cp "$(ROOT)/overlays/write-guard/mcp-servers.write-guard.yaml" \
+	  "$(AGENTCAGE_DIR)/overlays-write-guard/mcp-servers.write-guard.yaml"
+	@cp "$(ROOT)/overlays/write-guard/README.md" \
+	  "$(AGENTCAGE_DIR)/overlays-write-guard/README.md"
+	@echo "Installed write-guard overlay docs → $(AGENTCAGE_DIR)/overlays-write-guard/"
+	@echo "  Enable MCP entry after package is on mcp-host PATH (see overlay README)."
+
+smoke-write-guard: ensure-project
+	@test -f "$(WG_EXAMPLE)/run-in-cage.sh"
+	@test -d "$(WG_PKG)/src/write_guard"
+	@docker inspect agent-cage-agent --format '{{.State.Status}}' 2>/dev/null | grep -q running \
+	  || (echo "error: agent not running — make up-mcp first"; exit 1)
+	@docker exec -u root agent-cage-agent bash -lc \
+	  'mkdir -p /workspace/examples/write-guard-mcp/pkg && chown -R agent:agent /workspace/examples'
+	@# stage package + example driver
+	@docker cp "$(WG_PKG)/." agent-cage-agent:/workspace/examples/write-guard-mcp/pkg/
+	@docker cp "$(WG_EXAMPLE)/run-in-cage.sh" agent-cage-agent:/workspace/examples/write-guard-mcp/run-in-cage.sh
+	@docker cp "$(WG_EXAMPLE)/README.md" agent-cage-agent:/workspace/examples/write-guard-mcp/README.md
+	@docker exec -u root agent-cage-agent bash -lc \
+	  'chown -R agent:agent /workspace/examples/write-guard-mcp && chmod +x /workspace/examples/write-guard-mcp/run-in-cage.sh'
+	@echo "==> in-cage write-guard smoke"
+	@docker exec -u agent \
+	  -e HOME=/home/agent \
+	  -e PATH=/home/agent/.local/bin:/usr/local/bin:/usr/bin:/bin \
+	  -e WRITE_GUARD_SRC=/workspace/examples/write-guard-mcp/pkg \
+	  agent-cage-agent bash -lc \
+	  'cd /workspace/examples/write-guard-mcp && bash ./run-in-cage.sh'
+	@echo "smoke-write-guard: PASS"
+	@mkdir -p "$(CATALOG_ROOT)/pipelines/smoke/write-guard-mcp"
+	@printf '| %s | PASS | write-guard-mcp 0.1.0 | selftest+audit+enforce in cage |\n' \
+	  "$$(date -Iseconds)" >> "$(CATALOG_ROOT)/pipelines/smoke/write-guard-mcp/results.latest.md"

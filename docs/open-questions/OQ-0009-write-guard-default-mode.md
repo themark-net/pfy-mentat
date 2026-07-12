@@ -1,7 +1,7 @@
 # OQ-0009: Default WRITE_GUARD_MODE for new environments
 
 - **Priority:** P1
-- **Status:** open
+- **Status:** answered
 - **Created:** 2026-07-12
 - **Updated:** 2026-07-12
 - **Blocks:** T-0031 (write-guard MCP default behavior)
@@ -23,4 +23,4 @@
 
 **Resolution notes:**
 
-- (awaiting operator confirm)
+- 2026-07-12: Adopted **option 1 — `audit` default** for `env.example` / REGISTRY / MCP overlay. Profile `local-only` may still set `WRITE_GUARD_MODE=enforce`. Implemented with T-0031 (`harness/write-guard-mcp/`).
