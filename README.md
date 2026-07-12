@@ -148,7 +148,8 @@ local-llm-dev-tools/
 ├── SUBTREES.md                # Selective subtree/submodule/pinned-SHA policy
 ├── TOOLS.md                   # Master scored table + integration notes
 ├── .grok/skills/
-│   └── catalog-docs/          # Project skill: document this repository
+│   ├── catalog-docs/          # Document this catalog
+│   └── one-shot/              # Guardrailed unattended-until-green mode
 ├── docs/
 │   ├── DESIGN.md              # Master design (goals + shape)
 │   ├── ARCHITECTURE.md        # Structural snapshot
