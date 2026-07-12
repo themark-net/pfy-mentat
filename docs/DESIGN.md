@@ -96,17 +96,23 @@ One-line purpose: **Track · Categorize · Rank · Integrate** tools for robust 
 
 ### Near-term (see TODO)
 
-- Write-guard MCP implementation + cage overlay
-- First tool integration smokes **inside cage**
-- LiteLLM + Ollama recipe keyed by `DEPLOY_PROFILE`
-- Skill ports (mattpocock / marketing-council / gstack patterns)
-- Optional grok-in-image overlay (OQ-0005)
+Active queue is mostly **blocked P2** decisions + **T-0040** (other harness validation). Natural follow-ons after MVP lab:
+
+- Eval harness v0.2 (more tasks / multi-model; DSPy still deferred)
+- Catalog re-score pass using smokes + `make eval-mvp`
+- Write-guard → mcp-host default wiring (server already green)
+- Unlock one blocked P2 (OQ-0003 / 0004 / 0007 / 0008)
+
+### Delivered recently (was near-term)
+
+- Write-guard MCP v0.1 + cage smoke · in-cage tool smokes · LiteLLM profile recipes · skill ports (ADR-0009) · eval harness MVP (OQ-0002 opt5) · grok-in-image overlay (**OQ-0005 answered**)
 
 ### Later / research
 
 - Automated scoring dashboard from `data/tools.json`
 - Continuous pipeline CI for agent evals
 - Hybrid local model routing defaults as scored recipes
+- DSPy + MCP scored tier (post eval MVP)
 
 ---
 

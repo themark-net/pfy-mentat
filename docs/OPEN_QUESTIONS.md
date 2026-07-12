@@ -23,7 +23,7 @@ Related work queue: [TODO.md](TODO.md)
 | ID | Priority | Status | Title | Blocks | Related |
 |----|----------|--------|-------|--------|---------|
 | [OQ-0002](open-questions/OQ-0002-eval-harness-shape.md) | **P1** | answered | Eval harness = tier0 smokes + tier1 scored task (opt 5); DSPy later | — | ADR-0002; T-0003 |
-| [OQ-0005](open-questions/OQ-0005-grok-in-cage-strategy.md) | **P1** | open | Grok vs Claude-in-cage vs host-Grok + cage workspace | T-0020, T-0021, T-0022 | harness/agent-cage |
+| [OQ-0005](open-questions/OQ-0005-grok-in-cage-strategy.md) | **P1** | answered | Dual path: host-Grok default + optional grok-in-image (T-0022) | — | ADR-0002; overlays/grok |
 | [OQ-0006](open-questions/OQ-0006-skill-port-strategy.md) | **P1** | promoted-to-adr | Skill port strategy: hybrid first-party + paths snapshots | — | [ADR-0009](adr/0009-skill-port-hybrid-strategy.md) |
 | [OQ-0003](open-questions/OQ-0003-first-subtree-candidate.md) | P2 | tbd | First subtree/submodule candidate (if any) | T-0005 | SUBTREES.md, ADR-0003 |
 | [OQ-0004](open-questions/OQ-0004-atg-prototype-relationship.md) | P2 | open | How ATG prototype relates to this catalog | T-0004 | atg-framework, TOOLS.md |
