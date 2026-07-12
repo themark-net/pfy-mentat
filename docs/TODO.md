@@ -35,7 +35,7 @@
 | T-0016 | P2 | blocked | Optional colibri build+serve | [OQ-0008](open-questions/OQ-0008-colibri-weights-ok.md) | — | |
 | T-0004 | P2 | blocked | ATG prototype coupling | [OQ-0004](open-questions/OQ-0004-atg-prototype-relationship.md) | — | |
 | T-0005 | P2 | blocked | Optional first subtree | [OQ-0003](open-questions/OQ-0003-first-subtree-candidate.md) | — | |
-| T-0006 | P2 | todo | Module docs bootstrap + harness via `/catalog-docs` | — | — | |
+
 | T-0007 | P3 | todo | adr-tools companion docs if requested | — | — | |
 | T-0002 | P3 | todo | Aggregate synthesis if needed | — | — | |
 
@@ -58,6 +58,7 @@
 | T-0013 | P1 | done | repowise smoke vs codebase-memory (prefer in-cage) | pipelines/smoke/context-tools-compare.md; both smokes green 2026-07-12 |
 | T-0031 | P1 | done | **Write-guard MCP implement** (stdio server + cage overlay) | harness/write-guard-mcp v0.1; make smoke-write-guard; OQ-0009 audit default |
 | T-0032 | P1 | done | **One-shot skill polish + example DoDs** for cage/tool smokes | docs/ops/one-shot-example-dods.md; skill points at make smoke-* |
+| T-0006 | P2 | done | Module docs bootstrap + harness via `/catalog-docs` | docs/modules/* for grok-cli, project-process, agent-cage, write-guard, smokes |
 
 ## How to use
 

@@ -91,11 +91,13 @@ After a new X post / paper intake:
 
 Operator + agent module doc under `docs/modules/` (or ops runbook under `docs/ops/`) for:
 
-- `bootstrap/grok-cli`
-- `bootstrap/project-process`
-- `harness/agent-cage`
+- `bootstrap/grok-cli` → `docs/modules/bootstrap-grok-cli.md`
+- `bootstrap/project-process` → `docs/modules/bootstrap-project-process.md`
+- `harness/agent-cage` → `docs/modules/harness-agent-cage.md`
+- `harness/write-guard-mcp` → `docs/modules/write-guard-mcp.md`
+- `examples/` smokes → `docs/modules/examples-smokes.md`
 
-Use the portable `/docs` module template fields: how to run, env/vars table, entry points, invariants, ADR links.
+Use the portable `/docs` module template fields: how to run, env/vars table, entry points, invariants, ADR links. Index: `docs/modules/README.md`.
 
 ### `harness`
 

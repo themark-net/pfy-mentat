@@ -1,7 +1,7 @@
 {
   "version": "0.4.0",
-  "last_updated": "2026-07-12T06:09:43Z",
-  "description": "Structured catalog. v0.4: Phase 0 sync of mobile seeds 004-010 + agent-cage harness entry; tools.json repaired and expanded.",
+  "last_updated": "2026-07-12T09:00:00Z",
+  "description": "Structured catalog. v0.4+: Phase 0 seeds + harness + Multica (Entry 012) triple-write.",
   "schema_notes": {
     "required_for_all": [
       "name",
@@ -421,6 +421,31 @@
       ],
       "x_post_id": "2075807299638014212",
       "notes": "Practice list not a repo. Principles \u2192 AGENTS.md / context-budget skill. Complements repowise."
+    },
+    {
+      "name": "Multica",
+      "primary_category": "Agent Frameworks & Orchestration",
+      "github": "https://github.com/multica-ai/multica",
+      "scores": {
+        "s1": 88,
+        "s2": 78,
+        "s3": 92,
+        "s4": 95,
+        "overall": 88
+      },
+      "tier": "A",
+      "tags": [
+        "multi-agent",
+        "orchestration",
+        "workflow",
+        "skills",
+        "self-host",
+        "docker",
+        "local-first"
+      ],
+      "pinned_commit": "2a48ffa2aa73",
+      "x_post_id": "2075999281996312951",
+      "notes": "Managed agents platform (board, issue assignment, human+AI timeline, Skills). X Entry 012. Complements gstack; Docker self-host. Evaluate daemon vs Grok CLI separately; not a replacement for agent-cage isolation."
     }
   ],
   "aggregates": [

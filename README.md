@@ -78,6 +78,7 @@ pfy-mentat does not treat “it builds on my machine” as success. While we can
 | **Agent entry** | [AGENTS.md](AGENTS.md) | Mandatory read list + do-nots |
 | **Contributing** | [CONTRIBUTING.md](CONTRIBUTING.md) | How to add seeds/tools |
 | **Catalog docs skill** | `/catalog-docs` | Keep README, triple-write catalog, harness docs consistent |
+| **Module docs** | [docs/modules/](docs/modules/README.md) | Operator + agent maps for bootstrap, cage, write-guard, smokes |
 
 When architecture pivots: `/adr`. When something is unsettled: `/open-questions`. When documenting this repo: **`/catalog-docs`**. Work queue: `docs/TODO.md`.
 
@@ -170,7 +171,7 @@ Details: [bootstrap/project-process/README.md](bootstrap/project-process/README.
 ### Container harness (integration lab)
 
 **Prefer testing catalog integrations inside this cage** (versioned images), not only on the host.  
-**Filesystem writes:** stock cage MCP can r/w `/workspace`; a **write-guard MCP** (audit/enforce) is designed as an extra layer — [docs/ops/write-guard-mcp-design.md](docs/ops/write-guard-mcp-design.md) · ADR-0007.
+**Filesystem writes:** stock cage MCP can r/w `/workspace`; **write-guard MCP** v0.1 adds audit/enforce policy — `make smoke-write-guard` · [docs/modules/write-guard-mcp.md](docs/modules/write-guard-mcp.md) · ADR-0007.
 
 From **repo root** (do not run bare `make test` expecting cage — use `cage-*` targets):
 
@@ -210,7 +211,8 @@ pfy-mentat/
 │   ├── OPEN_QUESTIONS.md      # Central TBD index
 │   ├── adr/                   # ADRs (decisions + rejected paths)
 │   ├── open-questions/        # OQ detail files
-│   ├── ops/                   # DEPLOY, plans, harness framework
+│   ├── ops/                   # DEPLOY, plans, harness framework, one-shot DoDs
+│   ├── modules/               # First-party package maps (bootstrap, cage, smokes)
 │   └── automation/            # Standing monitors (e.g. tom-doer)
 ├── sources/
 │   ├── x-posts.md             # X/social seed log + receipts (Entries 001+)
@@ -239,7 +241,7 @@ See [CATEGORIZATION.md](CATEGORIZATION.md) and [TOOLS.md](TOOLS.md). Tools get S
 | **agent-cage (PNNL)** | 90 | S | pin + `harness/agent-cage/` |
 | codebase-memory-mcp | 91 | S | pin + bootstrap MCP |
 | LiteLLM / Ollama | 93 / 92 | S | pinned_commit |
-| repowise / gstack / mattpocock / marketing-skills | 85–88 | A | pin / skill snapshots |
+| repowise / gstack / Multica / mattpocock / marketing-skills | 85–88 | A | pin / skill snapshots |
 | colibri | 86 | A | pin (weights not in-repo) |
 
 Full table: [TOOLS.md](TOOLS.md). Seeds: [sources/x-posts.md](sources/x-posts.md).
