@@ -89,13 +89,17 @@ One-line purpose: **Track · Categorize · Rank · Integrate** tools for robust 
 - Process docs layout (this file + ADR + TODO + OQ)
 - **project-process bootstrap** (`bootstrap/project-process/`) — replayable scaffold + `/project-process` skill for new repos
 - Phase 0 catalog sync for mobile seeds 003–010 + **agent-cage** as primary container harness (`harness/agent-cage/`)
+- agent-cage baseline smoke green (policy tests); root `make cage-*` UX
+- **Deployment profiles** + env registry (`local-only` / `balanced` / `max-performance`) — ADR-0006
+- **Write-guard MCP design** (filesystem write mediation) — ADR-0007; implement next
 
 ### Near-term (see TODO)
 
-- agent-cage `make setup/up-mcp` smoke + first tool integration smokes
-- LiteLLM + Ollama recipe; repowise efficiency test
+- Write-guard MCP implementation + cage overlay
+- First tool integration smokes **inside cage**
+- LiteLLM + Ollama recipe keyed by `DEPLOY_PROFILE`
 - Skill ports (mattpocock / marketing-council / gstack patterns)
-- Evaluation harness prototype inside cage where possible
+- Optional grok-in-image overlay (OQ-0005)
 
 ### Later / research
 

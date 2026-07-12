@@ -12,6 +12,8 @@
 | [0003](0003-default-pinned-commit-tracking.md) | Default tool tracking = pinned commit | Accepted | 2026-07-11 |
 | [0004](0004-first-party-grok-bootstrap-package.md) | First-party Grok bootstrap under `bootstrap/grok-cli/` | Accepted | 2026-07-11 |
 | [0005](0005-light-process-framework-not-heavy-tools.md) | Keep light DESIGN/ADR/TODO/OQ framework; do not replace with heavy tools | Accepted | 2026-07-11 |
+| [0006](0006-deployment-profiles.md) | Deployment profiles local-only → max-performance + env registry | Accepted | 2026-07-12 |
+| [0007](0007-write-guard-mcp-layer.md) | Write-guard MCP as filesystem write mediation layer | Accepted (design) | 2026-07-12 |
 
 ## How to add
 

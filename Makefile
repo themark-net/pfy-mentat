@@ -9,10 +9,15 @@ SHELL := /bin/bash
 HARNESS := harness/agent-cage
 
 .PHONY: help cage-doctor cage-setup cage-init cage-up cage-up-mcp cage-down \
-	cage-shell cage-status cage-test cage-logs cage-smoke-host catalog-json
+	cage-shell cage-status cage-test cage-logs cage-smoke-host catalog-json \
+	env-init env-check
 
 help:
 	@echo "local-llm-dev-tools"
+	@echo ""
+	@echo "Environment (secrets never in git):"
+	@echo "  make env-init         Create .env from bootstrap/env/env.example if missing"
+	@echo "  make env-check        Validate required vars for DEPLOY_PROFILE"
 	@echo ""
 	@echo "Agent cage (integration lab) — from repo root:"
 	@echo "  make cage-doctor      Host/docker checks"
@@ -30,6 +35,9 @@ help:
 	@echo ""
 	@echo "Catalog:"
 	@echo "  make catalog-json     Validate data/tools.json parses"
+	@echo ""
+	@echo "Profiles: local-only | balanced | max-performance  (DEPLOY_PROFILE)"
+	@echo "  see config/profiles/ and docs/ops/deployment-profiles.md"
 
 cage-doctor:
 	@$(MAKE) -C $(HARNESS) doctor
@@ -66,3 +74,16 @@ cage-smoke-host:
 
 catalog-json:
 	@python3 -c "import json; json.load(open('data/tools.json')); print('data/tools.json: OK')"
+
+env-init:
+	@if [ -f .env ]; then \
+	  echo ".env already exists (not overwriting)"; \
+	else \
+	  cp bootstrap/env/env.example .env; \
+	  echo "Created .env from bootstrap/env/env.example — edit secrets before use"; \
+	fi
+	@echo "Registry: bootstrap/env/REGISTRY.md"
+	@echo "Profiles: config/profiles/{local-only,balanced,max-performance}.env"
+
+env-check:
+	@python3 bootstrap/env/check_env.py

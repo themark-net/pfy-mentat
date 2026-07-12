@@ -1,0 +1,17 @@
+# Default write-guard policy (used when server is implemented)
+roots:
+  - /workspace
+deny_globs:
+  - "**/.env"
+  - "**/.env.*"
+  - "**/auth.json"
+  - "**/*secret*"
+  - "**/*.pem"
+  - "**/*credentials*"
+allow_write_globs:
+  - "/workspace/**"
+deny_write_globs:
+  - "/workspace/.write-guard-audit.jsonl"  # append-only via server, not agent tools
+modes:
+  default: audit
+audit_log: /workspace/.write-guard-audit.jsonl

@@ -69,14 +69,31 @@ Plans: [docs/ops/plan-mobile-seed-integration.md](docs/ops/plan-mobile-seed-inte
 
 ## Bootstrap (new machine + new projects)
 
-### Operator environment (Grok skills + MCP)
+### 1. Clone + environment profiles (do this first)
+
+```bash
+git clone git@github.com:themark-net/local-llm-dev-tools.git
+cd local-llm-dev-tools
+make env-init                 # creates .env from example (gitignored)
+# edit .env: DEPLOY_PROFILE=local-only|balanced|max-performance + secrets
+make env-check                # validates required vars for profile
+```
+
+| Profile | Intent |
+|---------|--------|
+| `local-only` | Local models only; no cloud keys required |
+| `balanced` | Default — local bulk + cloud (e.g. Grok) for hard tasks |
+| `max-performance` | Cloud-first; local optional |
+
+Registry of all vars: [bootstrap/env/REGISTRY.md](bootstrap/env/REGISTRY.md).  
+Design: [docs/ops/deployment-profiles.md](docs/ops/deployment-profiles.md) · ADR-0006.
+
+### 2. Operator environment (Grok skills + MCP)
 
 ```bash
 # After installing Grok: curl -fsSL https://x.ai/cli/install.sh | bash
-git clone git@github.com:themark-net/local-llm-dev-tools.git
-cd local-llm-dev-tools
 ./bootstrap/grok-cli/install.sh --with-codebase-memory
-grok login   # or export XAI_API_KEY=...
+grok login   # or set XAI_API_KEY in .env
 ```
 
 Installs skills: `adr`, `docs`, `open-questions`, `karpathy-guidelines`, `project-process`, **`catalog-docs`**, plus ponytail path + codebase-memory MCP wiring.  
@@ -97,7 +114,8 @@ Details: [bootstrap/project-process/README.md](bootstrap/project-process/README.
 
 ### Container harness (integration lab)
 
-**Prefer testing catalog integrations inside this cage** (versioned images), not only on the host.
+**Prefer testing catalog integrations inside this cage** (versioned images), not only on the host.  
+**Filesystem writes:** stock cage MCP can r/w `/workspace`; a **write-guard MCP** (audit/enforce) is designed as an extra layer — [docs/ops/write-guard-mcp-design.md](docs/ops/write-guard-mcp-design.md) · ADR-0007.
 
 From **repo root** (do not run bare `make test` expecting cage — use `cage-*` targets):
 
