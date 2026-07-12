@@ -46,7 +46,7 @@ REPOWISE_PIP_SPEC ?= repowise==0.30.0
 	local-ollama-overlay-install local-ollama-up smoke-litellm-ollama \
 	smoke-codebase-memory smoke-repowise smoke-context-tools \
 	smoke-write-guard write-guard-overlay-install \
-	eval-tier0 eval-tier1 eval-mvp
+	eval-tier0 eval-tier1 eval-mvp eval-suite eval-matrix eval-v02
 
 help:
 	@echo "agent-cage harness (upstream pin $(PIN))"
@@ -85,10 +85,13 @@ help:
 	@echo "Write-guard:"
 	@echo "  make smoke-write-guard        # policy selftest + audit/enforce in cage"
 	@echo "  make write-guard-overlay-install"
-	@echo "Eval MVP (OQ-0002 opt5):"
+	@echo "Eval (OQ-0002 opt5 + v0.2):"
 	@echo "  make eval-tier0               # connectivity smoke (litellm-ollama)"
-	@echo "  make eval-tier1               # scored coding task in cage"
+	@echo "  make eval-tier1               # one scored task (EVAL_TASK)"
 	@echo "  make eval-mvp                 # tier0 + tier1"
+	@echo "  make eval-suite               # all tasks, gate model"
+	@echo "  make eval-matrix              # tasks × EVAL_MODELS (gate must pass)"
+	@echo "  make eval-v02                 # tier0 + suite"
 
 doctor:
 	@echo "== OS =="; uname -a || true
@@ -443,17 +446,19 @@ write-guard-overlay-install: ensure-project
 	@echo "Installed write-guard overlay docs → $(AGENTCAGE_DIR)/overlays-write-guard/"
 	@echo "  Enable MCP entry after package is on mcp-host PATH (see overlay README)."
 
-# --- Eval harness MVP (OQ-0002 option 5 / T-0003) ----------------------------
+# --- Eval harness (OQ-0002 option 5 / T-0003 MVP + T-0041 v0.2) --------------
 
 EVAL_EXAMPLE := $(CATALOG_ROOT)/examples/eval-harness
 EVAL_TASK ?= 001-is-palindrome
 # Capable local coder for scored tasks (tiny deepseek-coder fails often).
 EVAL_MODEL ?= qwen2.5:14b
+# Multi-model matrix (missing models → SKIP cell; gate still must pass).
+EVAL_MODELS ?= qwen2.5:14b,codestral:22b,deepseek-coder:6.7b-instruct
+EVAL_GATE_MODEL ?= $(EVAL_MODEL)
+EVAL_MODE ?= single
 
-eval-tier0: smoke-litellm-ollama
-	@echo "eval-tier0: PASS (smoke-litellm-ollama)"
-
-eval-tier1: ensure-project
+# Shared: copy harness into cage and run run-in-cage.sh with EVAL_MODE.
+define eval-in-cage
 	@test -f "$(EVAL_EXAMPLE)/run-in-cage.sh"
 	@$(LITELLM_EXAMPLE)/host-ollama-gateway.sh start
 	@docker inspect agent-cage-agent --format '{{.State.Status}}' 2>/dev/null | grep -q running \
@@ -463,24 +468,62 @@ eval-tier1: ensure-project
 	@docker cp "$(EVAL_EXAMPLE)/." agent-cage-agent:/workspace/examples/eval-harness/
 	@docker exec -u root agent-cage-agent bash -lc \
 	  'chown -R agent:agent /workspace/examples/eval-harness && chmod +x /workspace/examples/eval-harness/*.sh /workspace/examples/eval-harness/*.py'
-	@echo "==> eval tier1 scored task ($(EVAL_TASK)) model=$(EVAL_MODEL)"
+	@echo "==> eval $(1) task=$(EVAL_TASK) model=$(EVAL_MODEL) models=$(EVAL_MODELS)"
 	@docker exec -u agent \
 	  -e HOME=/home/agent \
 	  -e PATH=/home/agent/.local/bin:/usr/local/bin:/usr/bin:/bin \
 	  -e OPENAI_BASE_URL=http://host.docker.internal:11435/v1 \
 	  -e EVAL_MODEL=$(EVAL_MODEL) \
+	  -e EVAL_MODELS=$(EVAL_MODELS) \
+	  -e EVAL_GATE_MODEL=$(EVAL_GATE_MODEL) \
+	  -e EVAL_MODE=$(1) \
 	  -e LITELLM_SMOKE_MODEL=$(EVAL_MODEL) \
 	  -e EVAL_TASK=$(EVAL_TASK) \
+	  -e EVAL_MATRIX_MD=/tmp/eval-matrix-out.md \
+	  -e EVAL_RESULT_JSON=/tmp/eval-result.json \
 	  agent-cage-agent bash -lc \
 	  'cd /workspace/examples/eval-harness && bash ./run-in-cage.sh'
-	@echo "eval-tier1: PASS"
 	@mkdir -p "$(CATALOG_ROOT)/pipelines/eval"
-	@printf '| %s | 1 | PASS | %s | model=%s LiteLLM→Ollama scored task |\n' \
+endef
+
+eval-tier0: smoke-litellm-ollama
+	@echo "eval-tier0: PASS (smoke-litellm-ollama)"
+
+eval-tier1: ensure-project
+	$(call eval-in-cage,single)
+	@echo "eval-tier1: PASS"
+	@printf '| %s | 1 | PASS | %s | model=%s single task |\n' \
 	  "$$(date -Iseconds)" "$(EVAL_TASK)" "$(EVAL_MODEL)" \
 	  >> "$(CATALOG_ROOT)/pipelines/eval/results.latest.md"
 
+# v0.2: all tasks under examples/eval-harness/tasks/ with gate model
+eval-suite: ensure-project
+	$(call eval-in-cage,suite)
+	@echo "eval-suite: PASS"
+	@printf '| %s | suite | PASS | all tasks | gate=%s |\n' \
+	  "$$(date -Iseconds)" "$(EVAL_GATE_MODEL)" \
+	  >> "$(CATALOG_ROOT)/pipelines/eval/results.latest.md"
+	@docker exec -u agent agent-cage-agent bash -lc \
+	  'test -f /tmp/eval-matrix-out.md && cat /tmp/eval-matrix-out.md' \
+	  >> "$(CATALOG_ROOT)/pipelines/eval/results.latest.md" 2>/dev/null || true
+
+# v0.2: tasks × models matrix (gate model must pass all tasks)
+eval-matrix: ensure-project
+	$(call eval-in-cage,matrix)
+	@echo "eval-matrix: PASS (gate $(EVAL_GATE_MODEL))"
+	@printf '| %s | matrix | PASS | tasks×models | gate=%s models=%s |\n' \
+	  "$$(date -Iseconds)" "$(EVAL_GATE_MODEL)" "$(EVAL_MODELS)" \
+	  >> "$(CATALOG_ROOT)/pipelines/eval/results.latest.md"
+	@docker exec -u agent agent-cage-agent bash -lc \
+	  'test -f /tmp/eval-matrix-out.md && cat /tmp/eval-matrix-out.md' \
+	  >> "$(CATALOG_ROOT)/pipelines/eval/results.latest.md" 2>/dev/null || true
+
 eval-mvp: eval-tier0 eval-tier1
 	@echo "eval-mvp: PASS (OQ-0002 option 5)"
+
+# Full v0.2 ladder: connectivity + multi-task suite (gate model)
+eval-v02: eval-tier0 eval-suite
+	@echo "eval-v02: PASS (suite + tier0)"
 
 smoke-write-guard: ensure-project
 	@test -f "$(WG_EXAMPLE)/run-in-cage.sh"

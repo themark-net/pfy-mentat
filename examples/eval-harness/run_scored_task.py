@@ -11,7 +11,6 @@ import json
 import os
 import re
 import sys
-import tempfile
 from pathlib import Path
 
 
@@ -74,6 +73,119 @@ def load_tests(path: Path):
     return mod.run_tests
 
 
+def resolve_model() -> str:
+    return (
+        os.environ.get("EVAL_MODEL")
+        or os.environ.get("LITELLM_SMOKE_MODEL")
+        or "qwen2.5:14b"
+    )
+
+
+def score_task(
+    task: str,
+    tasks_root: Path,
+    *,
+    model_name: str | None = None,
+    base: str | None = None,
+    api_key: str | None = None,
+    max_tokens: int = 512,
+) -> dict:
+    """Run one task; return result dict with pass/failures (never raises for score fails)."""
+    task_dir = tasks_root / task
+    prompt_path = task_dir / "prompt.txt"
+    tests_path = task_dir / "test_task.py"
+    if not prompt_path.is_file() or not tests_path.is_file():
+        return {
+            "task": task,
+            "model": model_name or resolve_model(),
+            "pass": False,
+            "failures": [f"task incomplete: {task_dir}"],
+            "error": "incomplete_task",
+            "skip": False,
+        }
+
+    base = (base or os.environ.get("OPENAI_BASE_URL", "http://host.docker.internal:11435/v1")).rstrip(
+        "/"
+    )
+    model_name = model_name or resolve_model()
+    api_key = api_key or os.environ.get("OLLAMA_API_KEY", "ollama")
+    litellm_model = f"openai/{model_name}"
+
+    try:
+        from litellm import completion
+    except ImportError:
+        return {
+            "task": task,
+            "model": litellm_model,
+            "pass": False,
+            "failures": ["litellm not installed"],
+            "error": "import",
+            "skip": False,
+        }
+
+    prompt = prompt_path.read_text(encoding="utf-8")
+    try:
+        resp = completion(
+            model=litellm_model,
+            api_base=base,
+            api_key=api_key,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=max_tokens,
+            temperature=0,
+        )
+    except Exception as e:  # noqa: BLE001
+        return {
+            "task": task,
+            "model": litellm_model,
+            "pass": False,
+            "failures": [f"completion failed: {e}"],
+            "error": "completion",
+            "skip": False,
+        }
+
+    raw = (resp.choices[0].message.content or "").strip()
+    code = extract_python(raw)
+    if not code:
+        return {
+            "task": task,
+            "model": litellm_model,
+            "pass": False,
+            "failures": ["empty model code"],
+            "error": "empty",
+            "code_preview": "",
+            "raw_chars": len(raw),
+            "skip": False,
+        }
+
+    ns: dict = {}
+    try:
+        exec(compile(code, "<candidate>", "exec"), ns, ns)  # noqa: S102
+    except Exception as e:  # noqa: BLE001
+        return {
+            "task": task,
+            "model": litellm_model,
+            "pass": False,
+            "failures": [f"compile/exec: {type(e).__name__}: {e}"],
+            "error": "exec",
+            "code_preview": code[:500],
+            "raw_chars": len(raw),
+            "skip": False,
+        }
+
+    run_tests = load_tests(tests_path)
+    fails = run_tests(ns)
+    return {
+        "task": task,
+        "model": litellm_model,
+        "pass": len(fails) == 0,
+        "failures": fails,
+        "code_preview": code[:500],
+        "raw_chars": len(raw),
+        "code_chars": len(code),
+        "skip": False,
+    }
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument(
@@ -88,80 +200,37 @@ def main() -> int:
     )
     args = ap.parse_args()
 
-    task_dir = args.tasks_root / args.task
-    prompt_path = task_dir / "prompt.txt"
-    tests_path = task_dir / "test_task.py"
-    if not prompt_path.is_file() or not tests_path.is_file():
-        print(f"error: task incomplete: {task_dir}", file=sys.stderr)
-        return 1
-
+    model_name = resolve_model()
     base = os.environ.get("OPENAI_BASE_URL", "http://host.docker.internal:11435/v1").rstrip("/")
-    model_name = (
-        os.environ.get("EVAL_MODEL")
-        or os.environ.get("LITELLM_SMOKE_MODEL")
-        or "qwen2.5:14b"
+    print(f"eval tier1: task={args.task} base={base} model=openai/{model_name}", flush=True)
+
+    result = score_task(args.task, args.tasks_root, model_name=model_name, base=base)
+    print(
+        f"eval: model_output_chars={result.get('raw_chars', '?')} "
+        f"code_chars={result.get('code_chars', '?')}",
+        flush=True,
     )
-    api_key = os.environ.get("OLLAMA_API_KEY", "ollama")
-    litellm_model = f"openai/{model_name}"
+    print(
+        json.dumps(
+            {k: result[k] for k in ("task", "model", "pass", "failures") if k in result},
+            indent=2,
+        ),
+        flush=True,
+    )
 
-    print(f"eval tier1: task={args.task} base={base} model={litellm_model}", flush=True)
-
-    try:
-        from litellm import completion
-    except ImportError:
-        print("error: litellm not installed", file=sys.stderr)
-        return 1
-
-    prompt = prompt_path.read_text(encoding="utf-8")
-    try:
-        resp = completion(
-            model=litellm_model,
-            api_base=base,
-            api_key=api_key,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=512,
-            temperature=0,
-        )
-    except Exception as e:  # noqa: BLE001
-        print(f"error: completion failed: {e}", file=sys.stderr)
-        return 1
-
-    raw = (resp.choices[0].message.content or "").strip()
-    code = extract_python(raw)
-    print(f"eval: model_output_chars={len(raw)} code_chars={len(code)}", flush=True)
-    if not code:
-        print("error: empty model code", file=sys.stderr)
-        return 1
-
-    # Execute candidate in isolated namespace
-    ns: dict = {}
-    try:
-        exec(compile(code, "<candidate>", "exec"), ns, ns)  # noqa: S102
-    except Exception as e:  # noqa: BLE001
-        print(f"SCORE: FAIL (compile/exec: {type(e).__name__}: {e})", flush=True)
+    if result.get("error") == "exec":
+        print(f"SCORE: FAIL ({result['failures'][0]})", flush=True)
         print("--- code ---", flush=True)
-        print(code[:2000], flush=True)
+        print((result.get("code_preview") or "")[:2000], flush=True)
         return 1
 
-    run_tests = load_tests(tests_path)
-    fails = run_tests(ns)
-    result = {
-        "task": args.task,
-        "model": litellm_model,
-        "pass": len(fails) == 0,
-        "failures": fails,
-        "code_preview": code[:500],
-    }
-    print(json.dumps({k: result[k] for k in ("task", "model", "pass", "failures")}, indent=2), flush=True)
-
-    if fails:
+    if not result.get("pass"):
         print("SCORE: FAIL", flush=True)
-        for f in fails:
+        for f in result.get("failures") or []:
             print(f"  - {f}", flush=True)
         return 1
 
     print("SCORE: PASS", flush=True)
-    # optional write artifact for cage workspace
     out = os.environ.get("EVAL_RESULT_JSON")
     if out:
         Path(out).write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")

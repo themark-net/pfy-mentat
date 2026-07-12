@@ -14,7 +14,7 @@ HARNESS := harness/agent-cage
 	cage-grok-smoke cage-grok-uninstall cage-grok-auth-import \
 	local-ollama-overlay-install local-ollama-up smoke-litellm-ollama \
 	smoke-codebase-memory smoke-repowise smoke-context-tools \
-	smoke-write-guard eval-tier0 eval-tier1 eval-mvp
+	smoke-write-guard eval-tier0 eval-tier1 eval-mvp eval-suite eval-matrix eval-v02
 
 help:
 	@echo "pfy-mentat"
@@ -47,6 +47,7 @@ help:
 	@echo "  make smoke-codebase-memory / smoke-repowise / smoke-context-tools"
 	@echo "  make smoke-write-guard      # T-0031 write-guard MCP policy smoke"
 	@echo "  make eval-tier0|eval-tier1|eval-mvp  # OQ-0002 opt5 scored eval"
+	@echo "  make eval-suite|eval-matrix|eval-v02 # v0.2 multi-task / multi-model"
 	@echo ""
 	@echo "Or:  cd harness/agent-cage && make help"
 	@echo ""
@@ -139,6 +140,15 @@ eval-tier1:
 
 eval-mvp:
 	@$(MAKE) -C $(HARNESS) eval-mvp
+
+eval-suite:
+	@$(MAKE) -C $(HARNESS) eval-suite
+
+eval-matrix:
+	@$(MAKE) -C $(HARNESS) eval-matrix
+
+eval-v02:
+	@$(MAKE) -C $(HARNESS) eval-v02
 
 env-init:
 	@if [ -f .env ]; then \

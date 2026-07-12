@@ -124,6 +124,26 @@ Assumptions:
 
 ---
 
+## E2. Eval v0.2 suite / matrix (T-0041)
+
+```text
+/one-shot Eval harness v0.2: multi-task suite + optional multi-model matrix.
+
+DoD:
+1. make eval-v02 exits 0 (tier0 + all tasks, gate EVAL_MODEL)
+2. tasks include 001-is-palindrome and 002-fix-sum-evens
+3. make eval-matrix exits 0 for gate model; missing models may SKIP
+4. pipelines/eval/results.latest.md has suite/matrix rows
+5. No DSPy required
+
+Assumptions:
+- Cage up; host Ollama + gateway; gate model present (default qwen2.5:14b)
+```
+
+**Green:** `make eval-v02` (matrix optional: `make eval-matrix`)
+
+---
+
 ## F. Full smoke ladder (regression)
 
 ```text

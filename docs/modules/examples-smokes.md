@@ -14,6 +14,7 @@ Cage agent must be running (`make cage-up-mcp` or `make local-ollama-up`).
 | `make smoke-context-tools` | both context tools + compare note |
 | `make smoke-litellm-ollama` | LiteLLM → host Ollama via gateway :11435 |
 | `make eval-tier0` / `eval-tier1` / `eval-mvp` | OQ-0002 opt5: connectivity + scored coding task |
+| `make eval-suite` / `eval-matrix` / `eval-v02` | T-0041: multi-task suite + multi-model matrix |
 
 | Layout | Role |
 |--------|------|

@@ -35,3 +35,4 @@
 - **Implementation:** `examples/eval-harness/` + `make eval-tier0` / `make eval-tier1` / `make eval-mvp` (T-0003).
 - **Models:** tier0 keeps `LITELLM_SMOKE_MODEL` (tiny OK). Tier1 defaults to `EVAL_MODEL=qwen2.5:14b` — `deepseek-coder:latest` (~1B) is unreliable for scoring (prose/syntax).
 - **Verified:** `make eval-mvp` green (2026-07-12) with SCORE: PASS on `001-is-palindrome`.
+- **v0.2 (T-0041):** second task `002-fix-sum-evens`; `make eval-suite` / `eval-matrix` / `eval-v02`; gate model must pass all tasks; extra models are observational (SKIP if absent).

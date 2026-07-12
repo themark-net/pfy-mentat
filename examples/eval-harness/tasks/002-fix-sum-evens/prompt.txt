@@ -1,0 +1,18 @@
+Fix the buggy Python function below. Output only the corrected function source.
+No markdown fences, no explanation, no tests.
+
+Bug: sum_evens should add even numbers (n % 2 == 0), not odds.
+
+Broken code:
+def sum_evens(nums: list) -> int:
+    total = 0
+    for n in nums:
+        if n % 2 == 1:
+            total += n
+    return total
+
+Requirements after fix:
+- sum_evens([]) == 0
+- sum_evens([1, 2, 3, 4]) == 6
+- sum_evens([1, 3, 5]) == 0
+- sum_evens([2, 4, 6]) == 12

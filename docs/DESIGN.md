@@ -98,14 +98,13 @@ One-line purpose: **Track · Categorize · Rank · Integrate** tools for robust 
 
 Active queue is mostly **blocked P2** decisions + **T-0040** (other harness validation). Natural follow-ons after MVP lab:
 
-- Eval harness v0.2 (more tasks / multi-model; DSPy still deferred)
-- Catalog re-score pass using smokes + `make eval-mvp`
+- Catalog re-score pass using smokes + `make eval-v02` / matrix
 - Write-guard → mcp-host default wiring (server already green)
 - Unlock one blocked P2 (OQ-0003 / 0004 / 0007 / 0008)
 
 ### Delivered recently (was near-term)
 
-- Write-guard MCP v0.1 + cage smoke · in-cage tool smokes · LiteLLM profile recipes · skill ports (ADR-0009) · eval harness MVP (OQ-0002 opt5) · grok-in-image overlay (**OQ-0005 answered**)
+- Write-guard MCP v0.1 + cage smoke · in-cage tool smokes · LiteLLM profile recipes · skill ports (ADR-0009) · eval harness MVP + v0.2 suite/matrix (OQ-0002 / T-0041) · grok-in-image overlay (**OQ-0005 answered**)
 
 ### Later / research
 
