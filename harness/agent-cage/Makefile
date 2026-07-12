@@ -193,17 +193,20 @@ grok-auth-import: ensure-project
 	  || (echo "error: no host $(HOME)/.grok/auth.json — run 'grok login' on the host first"; exit 1)
 	@mkdir -p "$(AGENTCAGE_DIR)/grok-home"
 	@chmod 700 "$(AGENTCAGE_DIR)/grok-home"
-	@cp "$(HOME)/.grok/auth.json" "$(AGENTCAGE_DIR)/grok-home/auth.json"
-	@# Prefer ownership matching cage agent; else world rw so agent can read/refresh (dir is 700)
+	@cp "$(HOME)/.grok/auth.json" "$(AGENTCAGE_DIR)/grok-home/auth.json" 2>/dev/null \
+	  || sudo cp "$(HOME)/.grok/auth.json" "$(AGENTCAGE_DIR)/grok-home/auth.json"
 	@chown $(CAGE_AGENT_UID):$(CAGE_AGENT_GID) "$(AGENTCAGE_DIR)/grok-home/auth.json" 2>/dev/null \
 	  || sudo chown $(CAGE_AGENT_UID):$(CAGE_AGENT_GID) "$(AGENTCAGE_DIR)/grok-home/auth.json" 2>/dev/null \
 	  || true
 	@if python3 -c "import os; st=os.stat('$(AGENTCAGE_DIR)/grok-home/auth.json'); raise SystemExit(0 if st.st_uid==$(CAGE_AGENT_UID) else 1)"; then \
-	  chmod 600 "$(AGENTCAGE_DIR)/grok-home/auth.json"; \
+	  chmod 600 "$(AGENTCAGE_DIR)/grok-home/auth.json" 2>/dev/null || sudo chmod 600 "$(AGENTCAGE_DIR)/grok-home/auth.json"; \
 	else \
-	  chmod 666 "$(AGENTCAGE_DIR)/grok-home/auth.json"; \
-	  echo "note: auth.json set to mode 666 (agent uid $(CAGE_AGENT_UID) chown failed; dir remains 700)"; \
+	  chmod 666 "$(AGENTCAGE_DIR)/grok-home/auth.json" 2>/dev/null || sudo chmod 666 "$(AGENTCAGE_DIR)/grok-home/auth.json"; \
+	  echo "note: auth.json mode 666 (chown to $(CAGE_AGENT_UID) failed; dir remains 700)"; \
 	fi
+	@docker exec -u root agent-cage-agent bash -lc \
+	  'chown agent:agent /home/agent/.grok/auth.json; chmod 600 /home/agent/.grok/auth.json' \
+	  2>/dev/null || true
 	@echo "Imported host OIDC/browser session → $(AGENTCAGE_DIR)/grok-home/auth.json"
 	@echo "  auth_mode/email (redacted check):"
 	@python3 -c "import json,os; p='$(AGENTCAGE_DIR)/grok-home/auth.json'; d=json.load(open(p)); \
