@@ -2,13 +2,14 @@
 set -euo pipefail
 
 # agenc-launch — opinionated primary wrapper for AgenC runtime
-# Enforces update freshness and daemon health on every launch.
+# Enforces update freshness (with caching/offline support) and daemon health on every launch.
 # This is the recommended entry point for all AgenC-based sessions in this project.
 
 AGENC_CMD="${AGENC_CMD:-agenc}"
 UPDATE_CHECK="${AGENC_UPDATE_CHECK:-1}"          # 1 = perform update check, 0 = skip
 UPDATE_MODE="${AGENC_UPDATE_MODE:-nonblocking}"  # nonblocking | blocking | off
 DAEMON_AUTOSTART="${AGENC_DAEMON_AUTOSTART:-1}"
+OFFLINE_MODE="${AGENC_OFFLINE:-0}"              # 1 = offline mode (skip network, use cache)
 
 log() { printf '[agenc-launch] %s\n' "$*" >&2; }
 warn() { printf '[agenc-launch] WARNING: %s\n' "$*" >&2; }
@@ -16,6 +17,12 @@ warn() { printf '[agenc-launch] WARNING: %s\n' "$*" >&2; }
 # Global kill switch
 if [[ "${AGENC_NO_UPDATE:-0}" == "1" ]]; then
   UPDATE_CHECK=0
+fi
+
+# Offline mode: force skip updates and rely on local cache
+if [[ "$OFFLINE_MODE" == "1" ]]; then
+  UPDATE_CHECK=0
+  log "OFFLINE mode enabled — skipping runtime update checks (using cached artifact)"
 fi
 
 if [[ "$UPDATE_CHECK" == "1" ]]; then
