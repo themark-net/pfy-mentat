@@ -13,6 +13,8 @@ Use **versioned container images** so every catalog integration is:
 - MCP-capable
 - comparable across tools and OSes (Linux / macOS / WSL via Make)
 
+**Rule of thumb:** if you are integrating a catalog tool (LiteLLM, repowise, skills, colibri, …), the **smoke that proves it works** should run **inside agent-cage** (or a documented image derived from it), not only on the developer host. Host checks validate pins/JSON/CLI install only.
+
 ## Lifecycle (per tool)
 
 ```text

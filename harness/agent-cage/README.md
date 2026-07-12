@@ -3,98 +3,93 @@
 Primary **containerized agent sandbox** for this catalog. Version images, isolate network/MCP, and run integration tests against other tools without polluting the host.
 
 **Upstream:** https://github.com/pnnl/agent-cage  
-**Pin:** see `PINNED_COMMIT` (default tracking method per ADR-0003)  
-**Related (not primary):** [cleat](https://github.com/cleatdev/cleat) (Claude-focused cage), [chaserhkj/agent-cage](https://github.com/chaserhkj/agent-cage) (Podman/microVM)
+**Pin (source):** `PINNED_COMMIT`  
+**Runtime project (CLI):** `$AGENTCAGE_DIR` default **`~/.agentcage`** (created by `agentcage init`)
 
-## Why this one
+## What went wrong in a typical first session
 
-| Need | agent-cage (PNNL) |
-|------|-------------------|
-| Full OS for agents | Ubuntu agent container |
-| Network control | mitmproxy + policies + audit |
-| MCP | First-class `up --mcp`, `mcp-servers.yaml` |
-| Reproducible tests | Docker images + compose + pinned SHA |
-| Multi-agent host | Harness-agnostic (Claude, Cline, LangGraph, custom; Grok via install-in-cage) |
+| Symptom | Cause | Fix |
+|---------|--------|-----|
+| `Could not find Agent Cage project directory` | Ran `agentcage` from the **catalog** repo root | `agentcage init` once, **or** `export AGENTCAGE_DIR=~/.agentcage` |
+| `make test` → No rule to make target | Ran `make` from catalog root without our root Makefile (or old tree) | `make cage-test` from root, or `cd harness/agent-cage && make test` |
+| `make agentcage` fails | No such target | Use `make cage-up-mcp` / `make cage-test` |
+| Tests FAIL `service "agent" is not running` | Ran `test` before `up` | `make cage-up-mcp` (wait for build), then `make cage-test` |
+| Empty status table | Project exists but nothing started | `agentcage up` or `make cage-up-mcp` |
 
-Matches prior multi-dev experience: containers isolate CLI/agent + MCP; a **Makefile** gives OS-friendly branching (Linux / macOS / WSL) without rewriting bash conditionals for every target.
+## Quick start (copy/paste)
 
-## Quick start
+From **catalog repo root** (recommended):
 
 ```bash
-# From catalog repo
+export PATH="$HOME/.local/bin:$PATH"
+cd ~/DEVELOP/local-llm-dev-tools
+git pull origin main   # or your feature branch
+
+make cage-doctor
+make cage-setup        # CLI + optional pinned source clone
+make cage-init         # materialize ~/.agentcage (once per machine)
+make cage-up-mcp       # START containers — first build can take a long time
+make cage-status
+make cage-test
+make cage-shell        # Ubuntu agent; /workspace is host ~/.agentcage/workspace
+make cage-down         # when finished
+```
+
+Equivalent from this directory:
+
+```bash
 cd harness/agent-cage
-make doctor          # docker / compose / pin checks
-make setup           # shallow clone @ pin + install agentcage CLI
-make up-mcp          # start sandbox with MCP overlay
-make shell           # agent Ubuntu shell
-make test            # quick policy connectivity tests
-make down
+make setup && make init && make up-mcp && make test
 ```
 
-Override clone location:
+Direct CLI (after init):
 
 ```bash
-make setup CAGE_DIR=$HOME/src/agent-cage
+export PATH="$HOME/.local/bin:$PATH"
+export AGENTCAGE_DIR="$HOME/.agentcage"   # optional if default
+agentcage up --mcp
+agentcage status
+agentcage test --quick
+agentcage shell
+agentcage down
 ```
 
-## Layout
+## Two directories (do not confuse them)
 
-```
-harness/agent-cage/
-├── README.md
-├── Makefile           # multi-OS entrypoints
-├── PINNED_COMMIT
-├── manifest.json
-└── overlays/          # optional compose / MCP snippets for this catalog
-    └── README.md
-```
+| Path | Role |
+|------|------|
+| `~/.local/share/local-llm-dev-tools/agent-cage` | Optional **source pin** checkout (editable CLI install) |
+| `~/.agentcage` | **Runtime project** for compose/policies/workspace (`agentcage init`) |
 
-Upstream lives **outside** this git tree (default `~/.local/share/local-llm-dev-tools/agent-cage`) so we stay lean (no full subtree).
+The CLI looks for: `AGENTCAGE_DIR` env → walk up for compose → else `~/.agentcage`.
 
-## Testing catalog tools (framework)
+## Integration testing rule (this catalog)
 
-Use the cage as the **integration lab** for other TOOLS.md entries:
+**New integration work for catalog tools should be exercised inside the cage** (versioned images + MCP + network policy), not only on the host:
 
-1. **Pin tool** in `data/tools.json` (already done for seeds).
-2. **Start cage** with MCP if the tool is MCP-related: `make up-mcp`.
-3. **Install tool inside agent** (or mount workspace):
-   - clone/pin into `$(CAGE_DIR)/workspace/` (host-persisted), or
-   - `apt`/`pip`/`npm` inside `make shell` (proxy-policy constrained).
-4. **Record smoke** under `examples/integration-patterns/` or future `pipelines/smoke/<tool>/`:
-   - image tag / pin used
-   - commands run
-   - pass/fail + tok/s or latency notes
-5. **Update TOOLS.md notes** with empirical results.
+1. `make cage-up-mcp`
+2. `make cage-shell` → install/pin tool under `/workspace` (or mount)
+3. Run smoke commands; capture notes in TOOLS.md / `pipelines/smoke/<tool>/`
+4. `make cage-down` when done
 
-Suggested first tools **inside** the cage after agent-cage itself:
+Host-only checks (`make cage-smoke-host`) validate pins/JSON/docker — not a substitute for cage smokes.
 
-| Order | Tool | Why in cage |
-|-------|------|-------------|
-| 1 | LiteLLM + Ollama (host Ollama via proxy policy if needed) | Hybrid routing recipe |
-| 2 | codebase-memory-mcp | MCP path already native |
-| 3 | repowise | Efficiency comparison |
-| 4 | Skill ports (marketing-council, mattpocock subset) | Install Grok/Claude skills; no host clutter |
-| 5 | colibri | Heavy/slow experiment; isolation helps |
+See [docs/ops/harness-integration-framework.md](../../docs/ops/harness-integration-framework.md).
 
-## Grok CLI note
+## Targets
 
-Upstream docs emphasize Claude/Cline/LangGraph. Patterns for Grok:
+| Target | Action |
+|--------|--------|
+| `doctor` | docker, compose, agentcage, AGENTCAGE_DIR |
+| `setup` | clone pin + install CLI |
+| `init` | `agentcage init --path $AGENTCAGE_DIR` |
+| `up` / `up-mcp` | start stack |
+| `status` / `test` / `shell` / `down` | operate |
+| `smoke-host` | no containers |
+| `smoke-integration` | init if needed → up-mcp → test |
 
-1. Install `grok` CLI **inside** the agent image (custom Dockerfile overlay) with API key via env policy, or  
-2. Run Grok on **host** while mounting project/`workspace` and using cage only for untrusted tool/MCP experiments.
+Repo root mirrors these as `make cage-*`.
 
-Add overlays under `overlays/` as we harden a preferred path (tracked as follow-up TODO).
+## Grok
 
-## Make vs bash
-
-| | Make | bash-only |
-|---|------|-----------|
-| Branch by OS | natural (`ifeq`, separate targets) | easy to drift |
-| Documented targets | `make help` | ad-hoc flags |
-| Multi-dev (Linux/macOS/WSL) | one entry surface | per-OS scripts |
-
-We standardize on **Make** for harness lifecycle; scripts stay thin.
-
-## Security
-
-Upstream is a research prototype — read their SECURITY / production-hardening docs before untrusted agents. Default: run cage with least network policy that still allows the smoke under test.
+Grok-on-host vs Grok-in-image is **OQ-0005**. First cage test does **not** require Grok inside the container — use `shell` + MCP/policy tests.

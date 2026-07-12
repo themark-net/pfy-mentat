@@ -97,16 +97,24 @@ Details: [bootstrap/project-process/README.md](bootstrap/project-process/README.
 
 ### Container harness (integration lab)
 
+**Prefer testing catalog integrations inside this cage** (versioned images), not only on the host.
+
+From **repo root** (do not run bare `make test` expecting cage — use `cage-*` targets):
+
 ```bash
-cd harness/agent-cage
-make doctor && make setup && make up-mcp   # sandbox + MCP overlay
-make shell                                 # Ubuntu agent
-make test                                  # policy smoke
-make down
+export PATH="$HOME/.local/bin:$PATH"
+make cage-doctor
+make cage-setup          # install agentcage CLI
+make cage-init           # once → ~/.agentcage runtime project
+make cage-up-mcp         # START stack (first build is slow)
+make cage-status && make cage-test
+make cage-shell          # agent Ubuntu; workspace ~/.agentcage/workspace
+make cage-down
 ```
 
-Upstream: [pnnl/agent-cage](https://github.com/pnnl/agent-cage) (pinned SHA in `harness/agent-cage/PINNED_COMMIT`).  
-Use the cage to version **images** and test catalog tools in isolation (LiteLLM, repowise, skill installs, etc.).  
+Or: `cd harness/agent-cage && make help`.
+
+Upstream: [pnnl/agent-cage](https://github.com/pnnl/agent-cage). Runtime dir after init: **`~/.agentcage`**.  
 Details: [harness/agent-cage/README.md](harness/agent-cage/README.md).
 
 ## Repository Structure

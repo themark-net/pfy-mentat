@@ -25,8 +25,8 @@
 
 | ID | Priority | Status | Item | Open questions | Depends | Notes |
 |----|----------|--------|------|----------------|---------|-------|
-| T-0020 | P0 | doing | **agent-cage harness:** complete first lab path (`up-mcp` + `test` + document) | [OQ-0005](open-questions/OQ-0005-grok-in-cage-strategy.md) | — | Scaffold + `make setup` done; full cage smoke not finished |
-| T-0021 | P1 | blocked | Cage smoke-integration + first tool smokes (LiteLLM, MCP memory, repowise) | [OQ-0005](open-questions/OQ-0005-grok-in-cage-strategy.md), [OQ-0002](open-questions/OQ-0002-eval-harness-shape.md) | T-0020 | Wait until cage up-mcp verified |
+| T-0020 | P0 | doing | **agent-cage harness:** first lab path (`init` + `up-mcp` + `test`) in a live session | [OQ-0005](open-questions/OQ-0005-grok-in-cage-strategy.md) | — | Operator UX fixed on feature/agent-cage-operator-ux; **you** run up-mcp (images not started yet) |
+| T-0021 | P1 | blocked | Cage smoke-integration + first tool smokes **inside cage** (LiteLLM, MCP, repowise) | [OQ-0005](open-questions/OQ-0005-grok-in-cage-strategy.md), [OQ-0002](open-questions/OQ-0002-eval-harness-shape.md) | T-0020 | Integrations must be proven in versioned containers, not host-only |
 | T-0012 | P1 | todo | LiteLLM + Ollama integration recipe under `examples/` | [OQ-0002](open-questions/OQ-0002-eval-harness-shape.md) | — | litellm already in gom-jobbar venv; prefer cage later |
 | T-0011 | P1 | blocked | Phase 1 skill ports: mattpocock subset + marketing-council Grok skill | [OQ-0006](open-questions/OQ-0006-skill-port-strategy.md) | — | Need port strategy choice |
 | T-0013 | P1 | todo | repowise smoke vs codebase-memory efficiency comparison | — | T-0021 (preferred) | Can start host-side if cage delayed |
