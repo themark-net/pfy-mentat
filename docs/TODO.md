@@ -30,7 +30,7 @@
 
 | T-0003 | P1 | blocked | Prototype evaluation harness | [OQ-0002](open-questions/OQ-0002-eval-harness-shape.md) | T-0012 | |
 | T-0040 | P3 | todo | **Nice-to-have:** validate integrated setup with OpenCode and Claude Code (same cage/profiles/env) | — | — | Universal harness goal; Grok-first for now |
-| T-0014 | P2 | todo | gstack role-pattern skills / AGENTS recipes (docs-first, not full embed) | — | T-0011 | ADR-0009: docs/AGENTS first |
+
 | T-0015 | P2 | blocked | Optional Antigravity-Manager eval | [OQ-0007](open-questions/OQ-0007-antigravity-need.md) | — | |
 | T-0016 | P2 | blocked | Optional colibri build+serve | [OQ-0008](open-questions/OQ-0008-colibri-weights-ok.md) | — | |
 | T-0004 | P2 | blocked | ATG prototype coupling | [OQ-0004](open-questions/OQ-0004-atg-prototype-relationship.md) | — | |
@@ -60,6 +60,7 @@
 | T-0032 | P1 | done | **One-shot skill polish + example DoDs** for cage/tool smokes | docs/ops/one-shot-example-dods.md; skill points at make smoke-* |
 | T-0006 | P2 | done | Module docs bootstrap + harness via `/catalog-docs` | docs/modules/* for grok-cli, project-process, agent-cage, write-guard, smokes |
 | T-0011 | P1 | done | Phase 1 skill ports: marketing-council first-party + mattpocock paths subset | ADR-0009; council in skills/; mattpocock tdd/code-review/to-spec via paths |
+| T-0014 | P2 | done | gstack role-pattern skills / AGENTS recipes (docs-first, not full embed) | docs/ops/gstack-role-recipes.md + AGENTS role router |
 
 ## How to use
 

@@ -307,9 +307,9 @@
         "workflow",
         "claude-code"
       ],
-      "pinned_commit": "latest-main-pin-on-eval",
+      "pinned_commit": "7c9df1c568a9-docs-only",
       "x_post_id": "2075933298627383473",
-      "notes": "23 specialist skills + power tools. Patterns portable to Grok; do not full-embed large tree. Use for role-router recipes + selective skill ports."
+      "notes": "X Entry 010. Docs-first role recipes (T-0014): docs/ops/gstack-role-recipes.md + AGENTS.md router. No skills.paths full embed (ADR-0009). Upstream pin observed 7c9df1c568a9."
     },
     {
       "name": "mattpocock/skills",

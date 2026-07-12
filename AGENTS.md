@@ -36,8 +36,26 @@ Also use as needed: `CATEGORIZATION.md`, `SUBTREES.md`, `TOOLS.md`, `bootstrap/g
 # optional: --with-codebase-memory
 ```
 
-Portable skills: `adr`, `docs`, `open-questions`, `karpathy-guidelines`, `project-process`, ponytail (via skills path).  
+Portable skills: `adr`, `docs`, `open-questions`, `karpathy-guidelines`, `project-process`, `one-shot`, `marketing-council`; ponytail + mattpocock subset (via `skills.paths`).  
 **This repo:** `/catalog-docs` — document the catalog (README, triple-write, harness); source `.grok/skills/catalog-docs/`.
+
+### Role router (gstack patterns, docs-first — T-0014)
+
+Map **Think → Plan → Build → Review → Test → Ship → Reflect** without installing gstack:
+
+| Stage / role | Prefer |
+|--------------|--------|
+| Product rethink (CEO) | Scope challenge → `/adr` or `/open-questions` |
+| Plan / eng manager | mattpocock **`to-spec`** (paths) + DoD list |
+| Build | Coding agent + karpathy / ponytail; **`/one-shot`** if DoD + lab ready |
+| Review | mattpocock **`code-review`** (paths); optional second persona |
+| QA | `make cage-test`, `make smoke-*` (see [docs/modules/examples-smokes.md](docs/modules/examples-smokes.md)) |
+| Security | write-guard + cage policy; not full gstack `/cso` |
+| Ship | Feature branch → green checks → merge; [DEPLOY.md](docs/ops/DEPLOY.md) |
+| Reflect | Update TODO/OQ; `/docs` or `/catalog-docs` if modules changed |
+| Marketing multi-view | **`/marketing-council`** |
+
+Full recipes and non-goals: **[docs/ops/gstack-role-recipes.md](docs/ops/gstack-role-recipes.md)**. Do **not** clone garrytan/gstack into this repo (ADR-0009).
 
 ### Scaffold process into another repo
 
@@ -96,4 +114,4 @@ This repo supports robust, production-like agentic coding setups inspired by hig
 
 These practices draw from production agentic setups and harness engineering resources. Adapt and extend via skills in `bootstrap/grok-cli/skills/` and project templates. Prioritize composable, controllable elements over monolithic frameworks.
 
-Reference related resources: Learn Harness Engineering site, Matt Pocock skills (for reusable planning/TDD/review flows), and repo's own process docs for implementation.
+Reference related resources: Learn Harness Engineering site, Matt Pocock skills (planning/TDD/review via paths), gstack **role patterns** (docs only — [gstack-role-recipes.md](docs/ops/gstack-role-recipes.md)), and repo process docs for implementation.
