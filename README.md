@@ -38,6 +38,7 @@ After `./bootstrap/grok-cli/install.sh`, these are available:
 | Skill | Slash | Purpose |
 |-------|-------|---------|
 | **catalog-docs** | `/catalog-docs` | **This repo’s** documentation skill (README, TOOLS/json/x-posts triple-write, harness, audit) |
+| **one-shot** | `/one-shot` | Min questions; cheap local→cage→cloud loops until DoD green (lab required) |
 | docs | `/docs` | Portable module/ops docs for any project |
 | adr | `/adr` | Architecture decisions + rejected alternatives |
 | open-questions | `/open-questions` | TBD parking lot |
