@@ -27,6 +27,7 @@
 | ID | Priority | Status | Item | Open questions | Depends | Notes |
 |----|----------|--------|------|----------------|---------|-------|
 | T-0030 | P0 | doing | **Env registry + profiles:** `make env-init/check`, REGISTRY, profile files | — | — | Branch `feature/env-profiles-and-write-guard` |
+| T-0032 | P1 | todo | **One-shot skill polish + example DoDs** for cage/tool smokes | — | T-0030 | ADR-0008; docs/ops/one-shot-workflow.md shipped |
 | T-0031 | P1 | todo | **Write-guard MCP implement** (stdio server + cage overlay) | [OQ-0009](open-questions/OQ-0009-write-guard-default-mode.md) | T-0030 | Design ADR-0007; scaffold under harness/write-guard-mcp |
 | T-0021 | P1 | todo | Cage tool smokes **inside cage** (LiteLLM recipe, MCP memory, repowise) | [OQ-0002](open-questions/OQ-0002-eval-harness-shape.md), [OQ-0005](open-questions/OQ-0005-grok-in-cage-strategy.md) | — | Cage baseline green; host-Grok OK for now |
 | T-0012 | P1 | todo | LiteLLM + Ollama recipe under `examples/` keyed by DEPLOY_PROFILE | [OQ-0002](open-questions/OQ-0002-eval-harness-shape.md) | T-0030 | Register any new vars in REGISTRY |

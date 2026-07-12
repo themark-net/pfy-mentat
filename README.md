@@ -45,7 +45,8 @@ After `./bootstrap/grok-cli/install.sh`, these are available:
 | karpathy-guidelines | (auto) | Anti-overcomplication defaults |
 | ponytail | (via skills path) | Minimalism / YAGNI modes |
 
-Project skill source of truth: [`.grok/skills/catalog-docs/`](.grok/skills/catalog-docs/) (also vendored under `bootstrap/grok-cli/skills/catalog-docs/` for reinstall).
+Project skill source of truth: [`.grok/skills/`](.grok/skills/) (also vendored under `bootstrap/grok-cli/skills/` for reinstall).  
+One-shot design: [docs/ops/one-shot-workflow.md](docs/ops/one-shot-workflow.md) · ADR-0008.
 
 **Catalog triple-write rule:** every processed tool seed must update `sources/x-posts.md` (if social/paper) **and** `TOOLS.md` **and** `data/tools.json` (JSON must parse). `/catalog-docs seed` or `/catalog-docs audit` enforces this.
 

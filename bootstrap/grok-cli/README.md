@@ -28,6 +28,7 @@ This is the first concrete integration under `local-llm-dev-tools` — not anoth
 | `karpathy-guidelines` | Anti-overcomplication behavioral guidelines (MIT, from [andrej-karpathy-skills](https://github.com/forrestchang/andrej-karpathy-skills)) |
 | `project-process` | Scaffold DESIGN / ADR / TODO / OQ / AGENTS into any repo (`/project-process`) — from sibling [../project-process/](../project-process/) |
 | `catalog-docs` | **This catalog’s** documentation skill: README, triple-write TOOLS/json/x-posts, harness docs (`/catalog-docs`) |
+| `one-shot` | Min-question delivery loop with cost ladder + lab prerequisites (`/one-shot`) |
 
 ### External skills path (not copied into `~/.grok/skills`)
 

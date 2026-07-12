@@ -180,7 +180,7 @@ verify() {
   log "Verifying install"
   local ok=1
   local name
-  for name in adr docs open-questions karpathy-guidelines project-process catalog-docs; do
+  for name in adr docs open-questions karpathy-guidelines project-process catalog-docs one-shot; do
     if [[ -f "$GROK_SKILLS_DIR/$name/SKILL.md" ]]; then
       echo "  OK skill $name"
     else
@@ -278,7 +278,7 @@ Next steps:
   4. Optional binary fetch:     $0 --with-codebase-memory
   5. In a project: "Index this project" (codebase-memory) once MCP is live.
 
-Managed skills: adr, docs, open-questions, karpathy-guidelines, project-process, catalog-docs
+Managed skills: adr, docs, open-questions, karpathy-guidelines, project-process, catalog-docs, one-shot
 Extra skills path: ${PONYTAIL_ABS:-"(disabled)"}
 Config: $CONFIG_TOML
 Manifest: $SCRIPT_DIR/manifest.json

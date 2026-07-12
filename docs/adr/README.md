@@ -14,6 +14,7 @@
 | [0005](0005-light-process-framework-not-heavy-tools.md) | Keep light DESIGN/ADR/TODO/OQ framework; do not replace with heavy tools | Accepted | 2026-07-11 |
 | [0006](0006-deployment-profiles.md) | Deployment profiles local-only → max-performance + env registry | Accepted | 2026-07-12 |
 | [0007](0007-write-guard-mcp-layer.md) | Write-guard MCP as filesystem write mediation layer | Accepted (design) | 2026-07-12 |
+| [0008](0008-one-shot-workflow.md) | One-shot workflow: min questions, cheap iteration, lab prerequisites | Accepted | 2026-07-12 |
 
 ## How to add
 

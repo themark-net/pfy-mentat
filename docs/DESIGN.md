@@ -92,6 +92,7 @@ One-line purpose: **Track · Categorize · Rank · Integrate** tools for robust 
 - agent-cage baseline smoke green (policy tests); root `make cage-*` UX
 - **Deployment profiles** + env registry (`local-only` / `balanced` / `max-performance`) — ADR-0006
 - **Write-guard MCP design** (filesystem write mediation) — ADR-0007; implement next
+- **One-shot workflow** — minimize questions; cheap iteration; lab prerequisites — ADR-0008 · `/one-shot`
 
 ### Near-term (see TODO)
 
