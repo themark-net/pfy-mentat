@@ -27,15 +27,20 @@ Copies host `auth.json` into the cage’s isolated Grok home (not a live bind of
 ```bash
 make cage-grok-install
 make cage-grok-auth-import   # ~/.grok/auth.json → ~/.agentcage/grok-home/auth.json
-make cage-grok-build
-make cage-grok-up
-make cage-grok-smoke
+make cage-grok-build         # rebuild after Dockerfile changes
+make cage-grok-up            # MUST use this — not plain cage-up-mcp / agentcage up
+make cage-grok-smoke         # expect grok 0.x.x + auth.json present
 make cage-shell
 # [cage] grok --version
 # [cage] grok -p "ping" --always-approve   # uses imported session
 ```
 
-Re-import after host re-login if the cage copy expires.
+**Pitfalls fixed in this overlay:**
+
+1. **`agentcage up` ignores compose override** when it passes `-f docker-compose.yaml`. Always use **`make cage-grok-up`** (explicit third `-f` for override).
+2. **Do not bind-mount the whole `.grok` tree** — that hid `.grok/downloads/` and broke `grok`. Binary is installed to **`/usr/local/bin/grok`**; only **`auth.json`** is mounted.
+
+Re-import after host re-login if the cage session expires.
 
 ### 2) Device login inside cage (separate session)
 

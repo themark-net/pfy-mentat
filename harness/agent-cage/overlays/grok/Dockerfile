@@ -1,29 +1,37 @@
-# Grok-in-cage: extend the built agent-cage agent image with Grok CLI.
-# Secrets: pass XAI_API_KEY (or use grok login volume) at runtime — never bake keys.
-#
-# Build (after base cage images exist):
-#   make -C harness/agent-cage grok-overlay-build
+# Grok-in-cage: extend agent-cage-agent with Grok CLI.
+# Binary is copied to /usr/local/bin so a mounted auth-only volume does not hide it.
+# Auth: mount auth.json at /home/agent/.grok/auth.json at runtime (OIDC session).
 #
 ARG BASE_IMAGE=agent-cage-agent:latest
 FROM ${BASE_IMAGE}
 
-USER root
-
-# Install Grok CLI as agent user into /home/agent/.grok
 USER agent
 WORKDIR /home/agent
 ENV HOME=/home/agent
+ENV GROK_HOME=/home/agent/.grok
 ENV GROK_BIN_DIR=/home/agent/.local/bin
-# Install script respects proxy env already set on the agent service
+
+# Install into user home, then copy real binary to a path not covered by auth mounts
+USER root
+RUN mkdir -p /home/agent/.grok /home/agent/.local/bin \
+    && chown -R agent:agent /home/agent/.grok /home/agent/.local
+
+USER agent
 RUN curl -fsSL https://x.ai/cli/install.sh | bash \
-    && test -x /home/agent/.local/bin/grok || test -x /home/agent/.grok/bin/grok \
-    && (/home/agent/.local/bin/grok --version || /home/agent/.grok/bin/grok --version)
+    && GROK_REAL="$(readlink -f /home/agent/.local/bin/grok 2>/dev/null || readlink -f /home/agent/.grok/bin/grok)" \
+    && test -n "$GROK_REAL" && test -x "$GROK_REAL" \
+    && cp -a "$GROK_REAL" /tmp/grok-bin \
+    && /tmp/grok-bin --version
 
-ENV PATH="/home/agent/.local/bin:/home/agent/.grok/bin:${PATH}"
+USER root
+RUN install -m 0755 /tmp/grok-bin /usr/local/bin/grok \
+    && ln -sfn /usr/local/bin/grok /usr/local/bin/agent \
+    && rm -f /tmp/grok-bin \
+    && /usr/local/bin/grok --version
 
-# Runtime auth (set via compose env_file / -e) — do not COPY secrets
-# XAI_API_KEY=
-# Optional: mount host ~/.grok/auth.json read-only for browser session reuse (advanced)
+# Keep a writable .grok for auth.json (file mount target directory)
+RUN mkdir -p /home/agent/.grok && chown -R agent:agent /home/agent/.grok
 
+ENV PATH="/usr/local/bin:/home/agent/.local/bin:${PATH}"
 WORKDIR /workspace
 USER agent

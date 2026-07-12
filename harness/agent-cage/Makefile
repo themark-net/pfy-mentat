@@ -179,7 +179,7 @@ grok-overlay-install: ensure-project
 	@echo "  docker/docker-compose.override.yaml"
 	@echo "  docker/overlays-grok/Dockerfile"
 	@echo "  policies/coding-agent-grok.yaml"
-	@echo "  grok-home/  (mount as /home/agent/.grok — put auth.json here)"
+	@echo "  grok-home/auth.json mounted at /home/agent/.grok/auth.json"
 	@echo "Next: make grok-auth-import   # copy host browser/OIDC session"
 	@echo "      make grok-overlay-build && make grok-up"
 
@@ -215,25 +215,42 @@ grok-overlay-build: ensure-project
 	  "$(AGENTCAGE_DIR)/docker/overlays-grok"
 	@echo "Built $(GROK_IMAGE)"
 
-grok-up: ensure-cli ensure-project
-	@test -f "$(AGENTCAGE_DIR)/docker/docker-compose.override.yaml" \
-	  || (echo "error: run make grok-overlay-install first"; exit 1)
-	@mkdir -p "$(AGENTCAGE_DIR)/grok-home"
-	@if [ ! -f "$(AGENTCAGE_DIR)/grok-home/auth.json" ] && [ -z "$$XAI_API_KEY" ]; then \
-	  if [ -f "$(AGENTCAGE_DIR)/.env" ]; then set -a; . "$(AGENTCAGE_DIR)/.env"; set +a; fi; \
-	fi
-	@if [ ! -f "$(AGENTCAGE_DIR)/grok-home/auth.json" ] && [ -z "$$XAI_API_KEY" ]; then \
-	  echo "warn: no grok-home/auth.json and no XAI_API_KEY"; \
-	  echo "  → make grok-auth-import   (use host browser/OIDC session), or"; \
-	  echo "  → inside cage: grok login --device-auth, or"; \
-	  echo "  → set XAI_API_KEY in $(AGENTCAGE_DIR)/.env (API key fallback)"; \
-	fi
-	$(MAKE) up-mcp POLICY=coding-agent-grok
+# agentcage CLI only passes -f docker-compose.yaml (+ mcp). It does NOT load
+# docker-compose.override.yaml when -f is set. Grok-up must call compose itself.
+COMPOSE_DIR = $(AGENTCAGE_DIR)/docker
+COMPOSE_GROK = docker compose -p agent-cage \
+	-f $(COMPOSE_DIR)/docker-compose.yaml \
+	-f $(COMPOSE_DIR)/docker-compose.mcp.yaml \
+	-f $(COMPOSE_DIR)/docker-compose.override.yaml
 
-grok-smoke: ensure-cli ensure-project
+grok-up: ensure-project
+	@test -f "$(COMPOSE_DIR)/docker-compose.override.yaml" \
+	  || (echo "error: run make grok-overlay-install first"; exit 1)
+	@docker image inspect $(GROK_IMAGE) >/dev/null 2>&1 \
+	  || (echo "error: $(GROK_IMAGE) missing — run make grok-overlay-build"; exit 1)
+	@mkdir -p "$(AGENTCAGE_DIR)/grok-home"
+	@if [ ! -f "$(AGENTCAGE_DIR)/grok-home/auth.json" ]; then \
+	  echo "warn: no grok-home/auth.json — run make grok-auth-import or device-login in cage"; \
+	fi
+	@echo "==> docker compose up with Grok override (POLICY=coding-agent-grok)"
+	@echo "    Note: agentcage CLI ignores compose override; this target uses -f override explicitly."
+	@if [ -f "$(AGENTCAGE_DIR)/.env" ]; then set -a; . "$(AGENTCAGE_DIR)/.env"; set +a; fi; \
+	cd "$(COMPOSE_DIR)" && \
+	POLICY=coding-agent-grok \
+	$(COMPOSE_GROK) --env-file "$(AGENTCAGE_DIR)/.env" up -d 2>/dev/null \
+	|| POLICY=coding-agent-grok $(COMPOSE_GROK) up -d
+	@echo "Waiting for agent container..."
+	@sleep 3
+	@docker inspect agent-cage-agent --format 'image={{.Config.Image}}' 
+	@echo "Next: make grok-smoke && make shell"
+
+grok-smoke: ensure-project
+	@echo "==> which image is running?"
+	@docker inspect agent-cage-agent --format 'Config.Image={{.Config.Image}}' 2>/dev/null \
+	  || (echo "error: agent-cage-agent not running — make grok-up"; exit 1)
 	@echo "==> grok --version inside agent container"
-	docker exec -u agent \
+	@docker exec -u agent \
 	  -e HOME=/home/agent \
 	  -e GROK_HOME=/home/agent/.grok \
-	  -e PATH=/home/agent/.local/bin:/home/agent/.grok/bin:/usr/bin:/bin \
-	  agent-cage-agent bash -lc 'grok --version'
+	  -e PATH=/usr/local/bin:/home/agent/.local/bin:/usr/bin:/bin \
+	  agent-cage-agent bash -lc 'command -v grok; grok --version; ls -la /usr/local/bin/grok /home/agent/.grok/auth.json 2>/dev/null || true'
