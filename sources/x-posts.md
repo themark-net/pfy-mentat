@@ -36,6 +36,17 @@ This enables traceability from social signal to evaluated component.
 - **Notes**: Verdict recorded in ADR-0005 and `bootstrap/project-process/.../evaluation.md` — light framework sufficient.
 - **Status**: Analyzed — process kit shipped under `bootstrap/project-process/`
 
+### Entry 003: colibri - Extreme Low-Resource MoE Inference Engine
+
+- **URL**: https://x.com/i/status/2075731830477877612
+- **Date**: 2026-07-11
+- **Poster**: @chenzeling4 (Zane Chen)
+- **Summary / Key Claims**: Colibri runs GLM-5.2 (744B-parameter MoE, only ~40B active per token) on a laptop with 25GB RAM in pure C with zero dependencies. ~2,400-line C file core. Keeps dense part (~17B params) resident in RAM (~9.9GB at int4); streams routed experts from disk on demand. Provides CLI chat and OpenAI-compatible serve mode. No GPU, no BLAS, no Python runtime. Exceptional engineering for consumer hardware.
+- **Extracted Repos / Tools**: https://github.com/JustVugg/colibri (core inference engine). Pre-converted int4 model weights available on HF (jlnsrk/GLM-5.2-colibri-int4). Recent Tauri desktop shell addition.
+- **TOOLS.md Link**: Added new row in Inference & Serving category (A tier, overall 86). Detailed integration notes on low-RAM flagship model enablement, serve endpoint for pipelines, and speed tradeoffs.
+- **Notes**: Highest-signal external X seed to date for the catalog. Enables practical local use of flagship-scale MoE without datacenter hardware. Zero-deps + pure C = excellent reproducibility and pipeline friendliness. S1 very high (consumer HW access to 744B-class reasoning). S2 reflects current disk-streaming speed limits (0.05–1+ tok/s; faster on high-end NVMe/M-series). Strong community validation via rapid stars and engagement. Pinned specific recent commit. Recommended next: empirical testing of serve mode with LiteLLM/Grok CLI, tok/s benchmarks on target hardware, and MCP context integration potential.
+- **Status**: Processed and cataloged (initial scores applied; hands-on eval + score refinement queued)
+
 ## Future Entries Format
 
 When adding new X-sourced tools or papers:
