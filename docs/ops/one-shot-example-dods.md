@@ -104,7 +104,27 @@ Assumptions:
 
 ---
 
-## E. Full smoke ladder (regression)
+## E. Eval MVP (OQ-0002 option 5)
+
+```text
+/one-shot Eval harness MVP: tier0 connectivity + tier1 scored task.
+
+DoD:
+1. make eval-tier0 exits 0 (smoke-litellm-ollama)
+2. make eval-tier1 exits 0 (001-is-palindrome SCORE: PASS)
+3. pipelines/eval/results.latest.md updated
+4. No DSPy required (deferred)
+
+Assumptions:
+- Cage up; host Ollama + gateway
+- Tier-1 model present (default EVAL_MODEL=qwen2.5:14b; override as needed)
+```
+
+**Green:** `make eval-mvp`
+
+---
+
+## F. Full smoke ladder (regression)
 
 ```text
 /one-shot Re-run all in-cage catalog smokes (regression).

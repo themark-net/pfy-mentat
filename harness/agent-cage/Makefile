@@ -45,7 +45,8 @@ REPOWISE_PIP_SPEC ?= repowise==0.30.0
 	grok-auth-import \
 	local-ollama-overlay-install local-ollama-up smoke-litellm-ollama \
 	smoke-codebase-memory smoke-repowise smoke-context-tools \
-	smoke-write-guard write-guard-overlay-install
+	smoke-write-guard write-guard-overlay-install \
+	eval-tier0 eval-tier1 eval-mvp
 
 help:
 	@echo "agent-cage harness (upstream pin $(PIN))"
@@ -84,6 +85,10 @@ help:
 	@echo "Write-guard:"
 	@echo "  make smoke-write-guard        # policy selftest + audit/enforce in cage"
 	@echo "  make write-guard-overlay-install"
+	@echo "Eval MVP (OQ-0002 opt5):"
+	@echo "  make eval-tier0               # connectivity smoke (litellm-ollama)"
+	@echo "  make eval-tier1               # scored coding task in cage"
+	@echo "  make eval-mvp                 # tier0 + tier1"
 
 doctor:
 	@echo "== OS =="; uname -a || true
@@ -437,6 +442,45 @@ write-guard-overlay-install: ensure-project
 	  "$(AGENTCAGE_DIR)/overlays-write-guard/README.md"
 	@echo "Installed write-guard overlay docs → $(AGENTCAGE_DIR)/overlays-write-guard/"
 	@echo "  Enable MCP entry after package is on mcp-host PATH (see overlay README)."
+
+# --- Eval harness MVP (OQ-0002 option 5 / T-0003) ----------------------------
+
+EVAL_EXAMPLE := $(CATALOG_ROOT)/examples/eval-harness
+EVAL_TASK ?= 001-is-palindrome
+# Capable local coder for scored tasks (tiny deepseek-coder fails often).
+EVAL_MODEL ?= qwen2.5:14b
+
+eval-tier0: smoke-litellm-ollama
+	@echo "eval-tier0: PASS (smoke-litellm-ollama)"
+
+eval-tier1: ensure-project
+	@test -f "$(EVAL_EXAMPLE)/run-in-cage.sh"
+	@$(LITELLM_EXAMPLE)/host-ollama-gateway.sh start
+	@docker inspect agent-cage-agent --format '{{.State.Status}}' 2>/dev/null | grep -q running \
+	  || (echo "error: agent not running — make local-ollama-up first"; exit 1)
+	@docker exec -u root agent-cage-agent bash -lc \
+	  'mkdir -p /workspace/examples/eval-harness && chown -R agent:agent /workspace/examples'
+	@docker cp "$(EVAL_EXAMPLE)/." agent-cage-agent:/workspace/examples/eval-harness/
+	@docker exec -u root agent-cage-agent bash -lc \
+	  'chown -R agent:agent /workspace/examples/eval-harness && chmod +x /workspace/examples/eval-harness/*.sh /workspace/examples/eval-harness/*.py'
+	@echo "==> eval tier1 scored task ($(EVAL_TASK)) model=$(EVAL_MODEL)"
+	@docker exec -u agent \
+	  -e HOME=/home/agent \
+	  -e PATH=/home/agent/.local/bin:/usr/local/bin:/usr/bin:/bin \
+	  -e OPENAI_BASE_URL=http://host.docker.internal:11435/v1 \
+	  -e EVAL_MODEL=$(EVAL_MODEL) \
+	  -e LITELLM_SMOKE_MODEL=$(EVAL_MODEL) \
+	  -e EVAL_TASK=$(EVAL_TASK) \
+	  agent-cage-agent bash -lc \
+	  'cd /workspace/examples/eval-harness && bash ./run-in-cage.sh'
+	@echo "eval-tier1: PASS"
+	@mkdir -p "$(CATALOG_ROOT)/pipelines/eval"
+	@printf '| %s | 1 | PASS | %s | model=%s LiteLLM→Ollama scored task |\n' \
+	  "$$(date -Iseconds)" "$(EVAL_TASK)" "$(EVAL_MODEL)" \
+	  >> "$(CATALOG_ROOT)/pipelines/eval/results.latest.md"
+
+eval-mvp: eval-tier0 eval-tier1
+	@echo "eval-mvp: PASS (OQ-0002 option 5)"
 
 smoke-write-guard: ensure-project
 	@test -f "$(WG_EXAMPLE)/run-in-cage.sh"

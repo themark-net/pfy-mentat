@@ -22,7 +22,7 @@ Related work queue: [TODO.md](TODO.md)
 
 | ID | Priority | Status | Title | Blocks | Related |
 |----|----------|--------|-------|--------|---------|
-| [OQ-0002](open-questions/OQ-0002-eval-harness-shape.md) | **P1** | tbd | Evaluation harness shape (LiteLLM + DSPy + MCP?) | T-0003, T-0012, T-0021 | ADR-0002 |
+| [OQ-0002](open-questions/OQ-0002-eval-harness-shape.md) | **P1** | answered | Eval harness = tier0 smokes + tier1 scored task (opt 5); DSPy later | — | ADR-0002; T-0003 |
 | [OQ-0005](open-questions/OQ-0005-grok-in-cage-strategy.md) | **P1** | open | Grok vs Claude-in-cage vs host-Grok + cage workspace | T-0020, T-0021, T-0022 | harness/agent-cage |
 | [OQ-0006](open-questions/OQ-0006-skill-port-strategy.md) | **P1** | promoted-to-adr | Skill port strategy: hybrid first-party + paths snapshots | — | [ADR-0009](adr/0009-skill-port-hybrid-strategy.md) |
 | [OQ-0003](open-questions/OQ-0003-first-subtree-candidate.md) | P2 | tbd | First subtree/submodule candidate (if any) | T-0005 | SUBTREES.md, ADR-0003 |
@@ -38,7 +38,7 @@ Related work queue: [TODO.md](TODO.md)
 
 1. **OQ-0005** — Grok in-image vs host-Grok + cage (default: host-Grok until overlay built).  
 2. ~~**OQ-0006** — Skill port strategy~~ → **ADR-0009 hybrid**.  
-3. **OQ-0002** — Eval harness beyond LiteLLM smoke (scored task / DSPy?) still open for T-0003.  
+3. ~~**OQ-0002** — Eval harness shape~~ → **option 5** (tier0 smokes + tier1 scored task; DSPy later).  
 4. ~~**OQ-0009** — Write-guard default~~ → **answered: audit**.
 
 ## Hygiene
