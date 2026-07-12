@@ -102,6 +102,17 @@ This enables traceability from social signal to evaluated component.
 - **Notes**: Excellent complement to the Jamon Holmgren setup and harness engineering resources. Provides ready-to-use, battle-tested skills that can be vendored or referenced in this repo's bootstrap/grok-cli/skills/ and project-process. Highly recommended for cataloging and potential integration (e.g., examples or templates). Aligns with composable skills theme in the repo.
 - **Status**: Processed and cataloged (dedicated entry added; recommended for skills bootstrap enhancement)
 
+### Entry 009: 21 Claude $20 Plan Hacks — Context, Token & Prompt Optimization Workflow
+
+- **URL**: https://x.com/i/status/2075807299638014212
+- **Date**: 2026-07-11
+- **Poster**: Ruben Hassid (@rubenhassid)
+- **Summary / Key Claims**: Practical list of 21 hacks to maximize the $20/month Claude plan instead of upgrading to $100. Focuses on token efficiency, context management, prompt engineering, file handling, chat/workflow habits, model selection, and feature usage. Examples: Convert PDFs to Markdown before uploading; plan in chat before using coding features; use short, specific prompts and prompt libraries; edit previous messages instead of stacking corrections; trim long about-me files and summarize periodically; use Projects for recurring context and separate new topics into fresh chats; turn off unnecessary features by default; use cheaper models (Sonnet) for simple tasks and reserve Opus for heavy work; be specific with repo exploration; use voice input for richer prompts; understand rolling 5-hour limits and split usage; know tool strengths (e.g. Gemini for images, Grok for real-time search). Includes links to exact .md prompt files via free subscription/Notion.
+- **Extracted Repos / Tools**: No new GitHub repo in the post. Main value is the curated list of efficiency hacks and workflow patterns (prompt libraries, context budgeting, summarization/reset strategies). Complements tools like repowise (token savings) and skills collections.
+- **TOOLS.md Link**: Added under Context & Token Efficiency / Prompt Engineering & Skills (or cross-referenced in Agent Frameworks). Strong practical value for pipeline cost/token optimization and agent workflow robustness.
+- **Notes**: Highly relevant despite being Claude-specific — the principles are universal for any LLM usage (local Ollama + hybrid setups, Grok CLI pipelines, agent loops). Directly supports repo goals around token efficiency (see repowise), context management (MCP, codebase-memory, RAG), prompt/skill engineering (Matt Pocock skills, marketing-council), and robust workflows (Jamon Holmgren setup, harness engineering). Many hacks translate to local agent instructions: better context curation to reduce re-reads, prompt libraries as reusable skills, periodic summarization for long sessions, specific scoping for coding agents, model routing. Can inspire new skills (e.g., context budget auditor, prompt library manager, smart summarizer/reset) or enhancements to AGENTS.md / project templates. Excellent complement to existing efficiency and scaffolding resources.
+- **Status**: Processed and cataloged (added as workflow/efficiency resource; potential for new skills or AGENTS.md integration noted)
+
 ## Future Entries Format
 
 When adding new X-sourced tools or papers:
