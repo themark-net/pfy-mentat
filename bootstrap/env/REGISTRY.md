@@ -34,7 +34,9 @@ When integrating a new tool, **add a row here in the same PR** as the integratio
 | `OLLAMA_GATEWAY_PORT` | no | local-only, balanced (cage smokes) | `11435` | `examples/litellm-ollama/host-ollama-gateway.sh` | Publishes `0.0.0.0:11435` → `127.0.0.1:11434` without sudo |
 | `LITELLM_SMOKE_MODEL` | no | smoke | `deepseek-coder:latest` | `make smoke-litellm-ollama` | Prefer smallest local coding model already pulled |
 | `LITELLM_MASTER_KEY` | **yes** | optional | — | LiteLLM proxy auth | If running shared LiteLLM |
-| `LITELLM_CONFIG` | no | optional | `config/litellm/local-only.yaml` | LiteLLM | Router sketch for local-only; see `examples/litellm-ollama/` |
+| `LITELLM_CONFIG` | no | all (when using LiteLLM) | `config/litellm/<profile>.yaml` | LiteLLM | `local-only.yaml` · `balanced.yaml` · `max-performance.yaml` — see `config/litellm/README.md` |
+| `OLLAMA_API_BASE` | no | local-only, balanced, max (fallback) | `http://127.0.0.1:11434` | LiteLLM `ollama/*` | No `/v1` suffix; cage: `http://host.docker.internal:11435` |
+| `LITELLM_CLOUD_MODEL` | no | balanced, max-performance | `xai/grok-3` | LiteLLM cloud aliases | Override if provider model ID differs |
 | `GROK_HOME` | no | all | `$HOME/.grok` | Grok CLI | Skills, config, sessions |
 | `CODEBASE_MEMORY_MCP` | no | optional | `codebase-memory-mcp` | Grok MCP | Command on PATH |
 | `WRITE_GUARD_MODE` | no | all (when MCP enabled) | `audit` | write-guard MCP (planned) | `off` \| `audit` \| `enforce` |

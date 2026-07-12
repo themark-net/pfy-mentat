@@ -1,0 +1,52 @@
+# LiteLLM router — balanced profile (T-0012)
+# Local bulk + cloud for hard tasks. Secrets from environment only (never commit).
+#
+# Select: export DEPLOY_PROFILE=balanced LITELLM_CONFIG=config/litellm/balanced.yaml
+# Host Ollama api_base: http://127.0.0.1:11434
+# Cage Ollama api_base:  http://host.docker.internal:11435  (via host-ollama-gateway)
+#
+# Cloud model IDs may change; override via env when needed:
+#   LITELLM_CLOUD_MODEL=xai/grok-3
+
+model_list:
+  # --- Local (bulk / cheap) ---
+  - model_name: local-coder
+    litellm_params:
+      model: ollama/deepseek-coder:latest
+      api_base: os.environ/OLLAMA_API_BASE
+      # Set OLLAMA_API_BASE=http://127.0.0.1:11434 (host) or
+      # http://host.docker.internal:11435 (cage). Fallback below if unset is not
+      # applied by LiteLLM; document in profile .env.
+
+  - model_name: local-default
+    litellm_params:
+      model: ollama/deepseek-coder:latest
+      api_base: os.environ/OLLAMA_API_BASE
+
+  # --- Cloud (hard planning / reasoning) ---
+  # Requires XAI_API_KEY (or other provider key mapped below).
+  - model_name: cloud-hard
+    litellm_params:
+      model: os.environ/LITELLM_CLOUD_MODEL
+      api_key: os.environ/XAI_API_KEY
+
+  - model_name: cloud-default
+    litellm_params:
+      model: os.environ/LITELLM_CLOUD_MODEL
+      api_key: os.environ/XAI_API_KEY
+
+# Fallback: if cloud-hard fails, try local-coder (rate limit / offline)
+router_settings:
+  routing_strategy: simple-shuffle
+  num_retries: 1
+  timeout: 300
+  fallbacks:
+    - cloud-hard: [local-coder]
+    - cloud-default: [local-coder]
+
+litellm_settings:
+  drop_params: true
+  request_timeout: 300
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY

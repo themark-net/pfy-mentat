@@ -1,0 +1,44 @@
+# LiteLLM router — max-performance profile (T-0012)
+# Cloud-first; local optional fallback. Secrets from environment only.
+#
+# Select: export DEPLOY_PROFILE=max-performance LITELLM_CONFIG=config/litellm/max-performance.yaml
+# Requires: XAI_API_KEY (or set LITELLM_CLOUD_MODEL + matching key)
+# Optional local: OLLAMA_API_BASE + Ollama running
+
+model_list:
+  # --- Cloud primary ---
+  - model_name: cloud-default
+    litellm_params:
+      model: os.environ/LITELLM_CLOUD_MODEL
+      api_key: os.environ/XAI_API_KEY
+
+  - model_name: cloud-hard
+    litellm_params:
+      model: os.environ/LITELLM_CLOUD_MODEL
+      api_key: os.environ/XAI_API_KEY
+
+  # --- Local optional fallback ---
+  - model_name: local-coder
+    litellm_params:
+      model: ollama/deepseek-coder:latest
+      api_base: os.environ/OLLAMA_API_BASE
+
+  - model_name: local-default
+    litellm_params:
+      model: ollama/deepseek-coder:latest
+      api_base: os.environ/OLLAMA_API_BASE
+
+router_settings:
+  routing_strategy: simple-shuffle
+  num_retries: 2
+  timeout: 300
+  fallbacks:
+    - cloud-default: [local-coder]
+    - cloud-hard: [local-coder]
+
+litellm_settings:
+  drop_params: true
+  request_timeout: 300
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
