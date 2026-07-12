@@ -55,7 +55,9 @@ Map **Think → Plan → Build → Review → Test → Ship → Reflect** withou
 | Reflect | Update TODO/OQ; `/docs` or `/catalog-docs` if modules changed |
 | Marketing multi-view | **`/marketing-council`** |
 
-Full recipes and non-goals: **[docs/ops/gstack-role-recipes.md](docs/ops/gstack-role-recipes.md)**. Do **not** clone garrytan/gstack into this repo (ADR-0009).
+Full recipes and non-goals: **[docs/ops/gstack-role-recipes.md](docs/ops/gstack-role-recipes.md)**.  
+Deeper-port scores (why not raw gstack install): **[docs/ops/gstack-skill-port-comparison.md](docs/ops/gstack-skill-port-comparison.md)**.  
+Do **not** clone garrytan/gstack into this repo (ADR-0009).
 
 ### Scaffold process into another repo
 

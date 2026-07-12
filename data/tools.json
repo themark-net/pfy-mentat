@@ -305,11 +305,13 @@
         "multi-agent",
         "roles",
         "workflow",
-        "claude-code"
+        "claude-code",
+        "docs-only",
+        "raw-port-blocked"
       ],
       "pinned_commit": "7c9df1c568a9-docs-only",
       "x_post_id": "2075933298627383473",
-      "notes": "X Entry 010. Docs-first role recipes (T-0014): docs/ops/gstack-role-recipes.md + AGENTS.md router. No skills.paths full embed (ADR-0009). Upstream pin observed 7c9df1c568a9."
+      "notes": "X Entry 010. Placement tags: docs-only (T-0014), raw-port-blocked for skills.paths. Comparison attrs: docs/ops/gstack-skill-port-comparison.md. Recommended single deeper port: first-party rewrite of investigate RCA method (T-0017), not rsync. Upstream pin 7c9df1c568a9."
     },
     {
       "name": "mattpocock/skills",
