@@ -3,12 +3,13 @@
 - **Priority:** P2
 - **Status:** open
 - **Created:** 2026-07-11
-- **Updated:** 2026-07-11
-- **Blocks:** Clear integration notes / optional pipeline experiment
+- **Updated:** 2026-07-12
+- **Blocks:** T-0004 (catalog coupling notes)
 - **Blocked-by:** —
 - **Related-ADR:** —
 - **Related-code:** TOOLS.md ATG row; external https://github.com/themark-net/atg-framework
 - **Feature/runbook:** paper-analysis-workflow
+- **Related-TODO:** T-0004
 
 **Question:** Is `atg-framework` a sibling experiment only, a future submodule, or the reference implementation that pipelines here should call?
 

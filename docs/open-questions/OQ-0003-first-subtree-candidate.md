@@ -3,12 +3,13 @@
 - **Priority:** P2
 - **Status:** tbd
 - **Created:** 2026-07-11
-- **Updated:** 2026-07-11
-- **Blocks:** First use of embed path under `tools/`
+- **Updated:** 2026-07-12
+- **Blocks:** T-0005 (optional first subtree/submodule)
 - **Blocked-by:** No candidate yet meeting SUBTREES.md all-criteria gate
 - **Related-ADR:** ADR-0003
 - **Related-code:** `SUBTREES.md`, future `tools/`
 - **Feature/runbook:** selective-embed
+- **Related-TODO:** T-0005
 
 **Question:** Which tool, if any, should be the first subtree or submodule?
 

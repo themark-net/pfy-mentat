@@ -1,27 +1,23 @@
 # OQ-0001: Seed X post content extraction
 
-- **Priority:** P0
-- **Status:** open
+- **Priority:** P3
+- **Status:** answered
 - **Created:** 2026-07-11
-- **Updated:** 2026-07-11
-- **Blocks:** Completing first full intake cycle for the seed post
-- **Blocked-by:** Access to post content / summary from operator
+- **Updated:** 2026-07-12
+- **Blocks:** — (no longer blocks catalog)
+- **Blocked-by:** —
 - **Related-ADR:** —
-- **Related-code:** `sources/x-posts.md`, `data/tools.json` x_posts entry
+- **Related-code:** `sources/x-posts.md`, `TOOLS.md`, `data/tools.json`
 - **Feature/runbook:** catalog-seed
+- **Related-TODO:** T-0001 (done)
 
-**Question:** What is the full content/summary of https://x.com/i/status/2075994424484732984, and should intake treat it as an individual tool, paper, or aggregate?
+**Question:** What is the content of the original seed X post, and how should it be tracked?
 
-**Context:** Repo seeded with placeholder for this post. ATG paper path already produced a prototype repo; seed post may be the same or adjacent narrative. Without content, scoring and tracking method stay blocked.
-
-**Options:**
-
-1. Operator pastes summary → full categorization + score pass
-2. Agent fetches public post text if available → draft score for human confirm
-3. Close as superseded by ATG intake already done if post is solely ATG pointer
-
-**Recommendation:** Confirm identity vs ATG; if same seed, mark x-post entry linked and close duplicate work.
+**Context:** Early repo had a placeholder for status 2075994424484732984.
 
 **Resolution notes:**
 
-- (append dated notes; never delete)
+- **2026-07-12:** Answered by work, not a single paste. Entry 001 (ATG) processed (paper + prototype repo). Entries 003–010 processed with triple-write hygiene (Phase 0). Placeholder path is obsolete; intake process is live via x-posts + TOOLS + tools.json + `/catalog-docs seed`.
+- Status set to `answered`. Priority dropped to P3 historical.
+
+**Options (historical):** operator paste / fetch / supersede by ATG — **supersede by full seed wave** chosen in practice.
