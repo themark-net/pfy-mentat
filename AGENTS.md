@@ -36,7 +36,8 @@ Also use as needed: `CATEGORIZATION.md`, `SUBTREES.md`, `TOOLS.md`, `bootstrap/g
 # optional: --with-codebase-memory
 ```
 
-Portable skills: `adr`, `docs`, `open-questions`, `karpathy-guidelines`, `project-process`, ponytail (via skills path).
+Portable skills: `adr`, `docs`, `open-questions`, `karpathy-guidelines`, `project-process`, ponytail (via skills path).  
+**This repo:** `/catalog-docs` — document the catalog (README, triple-write, harness); source `.grok/skills/catalog-docs/`.
 
 ### Scaffold process into another repo
 

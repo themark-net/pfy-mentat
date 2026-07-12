@@ -39,6 +39,11 @@
         "name": "project-process",
         "origin": "bootstrap/project-process/",
         "purpose": "Scaffold DESIGN+ADR+TODO+OQ into any new/existing project"
+      },
+      {
+        "name": "catalog-docs",
+        "origin": "bootstrap/grok-cli/skills/catalog-docs/ and .grok/skills/catalog-docs/",
+        "purpose": "Document this catalog repo: README, triple-write, harness, audit"
       }
     ]
   },
