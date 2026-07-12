@@ -43,25 +43,25 @@ doctor:
 setup:
 	@mkdir -p "$(dir $(CAGE_DIR))"
 	@if [ ! -d "$(CAGE_DIR)/.git" ]; then \
-	  echo "==> shallow clone $(UPSTREAM) @ $(PIN)"; \
-	  git clone --filter=blob:none --no-checkout $(UPSTREAM) "$(CAGE_DIR)"; \
-	  git -C "$(CAGE_DIR)" fetch --depth 1 origin $(PIN); \
+	  echo "==> clone $(UPSTREAM) @ $(PIN)"; \
+	  git clone --filter=blob:none $(UPSTREAM) "$(CAGE_DIR)"; \
 	  git -C "$(CAGE_DIR)" checkout $(PIN); \
 	else \
 	  echo "==> already cloned; make update to re-pin"; \
 	fi
 	@echo "==> install agentcage CLI (uv tool preferred)"
 	@if command -v uv >/dev/null 2>&1; then \
-	  uv tool install -e "$(CAGE_DIR)" || uv pip install --system -e "$(CAGE_DIR)" || \
-	    (cd "$(CAGE_DIR)" && pip install -e . --user); \
+	  uv tool install -e "$(CAGE_DIR)" || true; \
+	  command -v agentcage >/dev/null 2>&1 || uv tool install -e "$(CAGE_DIR)"; \
 	else \
 	  (cd "$(CAGE_DIR)" && python3 -m pip install -e . --user); \
 	fi
+	@command -v agentcage >/dev/null 2>&1 && agentcage --help >/dev/null && echo "agentcage CLI OK" || echo "warn: agentcage not on PATH (check uv tool dir / ~/.local/bin)"
 	@echo "Next: make up   or   make up-mcp"
 
 update:
 	@test -d "$(CAGE_DIR)/.git" || (echo "run make setup first"; exit 1)
-	git -C "$(CAGE_DIR)" fetch --depth 1 origin $(PIN)
+	git -C "$(CAGE_DIR)" fetch origin
 	git -C "$(CAGE_DIR)" checkout $(PIN)
 	@echo "checked out $(PIN)"
 
