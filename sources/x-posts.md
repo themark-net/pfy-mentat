@@ -179,6 +179,17 @@ This enables traceability from social signal to evaluated component.
 - **Notes**: Strong complement to gstack (Entry 010), Multica (Entry 012), and multi-agent workflows. Provides the missing real-time visibility layer for running multiple sessions in parallel. Low redundancy — it's focused observability, not full orchestration or skills. High fit for evaluation criteria: High Workflow Relevance (Monitoring multi-session agent work), High Integration Ease (Claude Code focused, easy to adopt), High Reproducibility (open source GitHub repo), Low Redundancy. Excellent for practical multi-agent setups. Recommend: (1) Catalog as monitoring tool. (2) Good addition for harness / multi-session reproduction templates. (3) Synergistic with gstack/Multica for full visibility in complex workflows.
 - **Status**: Processed and cataloged (added as practical monitoring resource; useful for multi-agent evaluation)
 
+### Entry 016: Claude Company Org Chart — 42+ Curated Skills Pack (Departments + Installable Skills)
+
+- **URL**: https://x.com/i/status/2076221471375122811
+- **Date**: 2026-07-12 (post)
+- **Poster**: Charlie Hills (@charliejhills)
+- **Summary / Key Claims**: Curated collection of 42+ installable skills for Claude, organized like a real company org chart (Developers, Designers, Marketing, Social Media, Finance, Small Business, Legal). Each department has specific skills with direct GitHub/install links (e.g., Superpowers, Context7, Skill Creator, UI UX Pro Max, Taste, Marketing skills pack, etc.). Every skill is real and installable. Turns Claude into a full "company" of specialized agents.
+- **Extracted Repos / Tools**: Multiple linked repos including https://github.com/obra/superpowers, https://github.com/upstash/context7, and various skill packs (marketing, social, finance, legal, small business). Pattern: curated, installable SKILL.md-style packs organized by business function.
+- **TOOLS.md Link**: New row under Agent Frameworks & Orchestration / Skills & Prompt Engineering. High-signal curated skill library with org-chart structure.
+- **Notes**: Excellent large-scale complement to gstack (Entry 010), Multica (Entry 012), and skills collections (Matt Pocock, marketing-council). Provides a broad "company departments" org structure on top of reusable skills. Strong overlap in the skills/reusable prompt pattern but at much larger scale (42+ skills across business functions). Low-to-medium redundancy risk — it's a curated, installable library rather than a new framework. High fit for evaluation criteria: Very High Relevance (broad skills across domains), High Integration (many direct install links), High Reproducibility (GitHub-based skills), Medium Redundancy (extends existing skills theme at scale). Perfect for the repo's reproduction goal — easy to document as a best-practice "AI company" skill library. Recommend: (1) Catalog as major skills resource. (2) Strong candidate for examples/ or bootstrap/ integration (many installable skills). (3) Synergistic with gstack/Multica for role-based + org-structured agent teams.
+- **Status**: Processed and cataloged (added as major curated skills resource; high value for broad domain coverage)
+
 ## Future Entries Format
 
 When adding new X-sourced tools or papers:
