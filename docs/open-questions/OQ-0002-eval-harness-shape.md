@@ -26,4 +26,4 @@
 
 **Resolution notes:**
 
-- (awaiting operator confirm of option 2, or alternative)
+- 2026-07-12: Operator one-shot Track A assumed **option 2** (LiteLLM + Ollama smoke, no full eval harness). In-cage smoke green via `make smoke-litellm-ollama` (host gateway :11435, policy `coding-agent-local`, model `deepseek-coder:latest`). Full DSPy/eval harness still open (T-0003).

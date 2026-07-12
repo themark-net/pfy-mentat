@@ -1,0 +1,24 @@
+# LiteLLM router sketch — local-only profile (T-0012)
+# Used as documentation + optional litellm --config path.
+# In-cage smoke uses OpenAI-compatible api_base to host Ollama (see examples/litellm-ollama/).
+
+model_list:
+  - model_name: local-coder
+    litellm_params:
+      model: ollama/deepseek-coder:latest
+      api_base: http://host.docker.internal:11435
+      # On the host (outside cage), use:
+      # api_base: http://127.0.0.1:11434
+
+  - model_name: local-default
+    litellm_params:
+      model: ollama/deepseek-coder:latest
+      api_base: http://host.docker.internal:11435
+
+litellm_settings:
+  drop_params: true
+  request_timeout: 300
+
+general_settings:
+  # No master key required for local smoke; set LITELLM_MASTER_KEY if exposing proxy.
+  master_key: null

@@ -28,8 +28,8 @@
 |----|----------|--------|------|----------------|---------|-------|
 | T-0032 | P1 | todo | **One-shot skill polish + example DoDs** for cage/tool smokes | — | T-0030 | ADR-0008; docs/ops/one-shot-workflow.md shipped |
 | T-0031 | P1 | todo | **Write-guard MCP implement** (stdio server + cage overlay) | [OQ-0009](open-questions/OQ-0009-write-guard-default-mode.md) | T-0030 | Design ADR-0007; scaffold under harness/write-guard-mcp |
-| T-0021 | P1 | todo | Cage tool smokes **inside cage** (LiteLLM recipe, MCP memory, repowise) | [OQ-0002](open-questions/OQ-0002-eval-harness-shape.md), [OQ-0005](open-questions/OQ-0005-grok-in-cage-strategy.md) | — | Cage baseline green; host-Grok OK for now |
-| T-0012 | P1 | todo | LiteLLM + Ollama recipe under `examples/` keyed by DEPLOY_PROFILE | [OQ-0002](open-questions/OQ-0002-eval-harness-shape.md) | T-0030 | Register any new vars in REGISTRY |
+| T-0021 | P1 | todo | Cage tool smokes **inside cage** (MCP memory, repowise; LiteLLM done) | [OQ-0002](open-questions/OQ-0002-eval-harness-shape.md), [OQ-0005](open-questions/OQ-0005-grok-in-cage-strategy.md) | — | LiteLLM→Ollama in-cage smoke green 2026-07-12; MCP/repowise remain |
+| T-0012 | P1 | doing | LiteLLM + Ollama recipe under `examples/` keyed by DEPLOY_PROFILE | [OQ-0002](open-questions/OQ-0002-eval-harness-shape.md) | T-0030 | **local-only MVP shipped** (`examples/litellm-ollama/`, `make smoke-litellm-ollama`); balanced/max recipes still open |
 | T-0011 | P1 | blocked | Phase 1 skill ports: mattpocock subset + marketing-council | [OQ-0006](open-questions/OQ-0006-skill-port-strategy.md) | — | Need port strategy |
 | T-0013 | P1 | todo | repowise smoke vs codebase-memory (prefer in-cage) | — | T-0021 | |
 | T-0003 | P1 | blocked | Prototype evaluation harness | [OQ-0002](open-questions/OQ-0002-eval-harness-shape.md) | T-0012 | |

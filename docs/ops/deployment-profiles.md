@@ -46,7 +46,7 @@ make env-check                # validate required vars for profile
 | balanced | local for “small” tasks; `xai/*` or grok for “large” | operator-defined |
 | max-performance | `xai/*` / strong cloud | local if cloud rate-limited |
 
-Exact model IDs live in `config/litellm/` when that recipe lands (T-0012) — not hard-coded here.
+Exact model IDs and cage URLs: [config/litellm/local-only.yaml](../../config/litellm/local-only.yaml) and [examples/litellm-ollama/](../../examples/litellm-ollama/) (T-0012). In-cage smoke: `make smoke-litellm-ollama` (host gateway port **11435** when Ollama is localhost-only).
 
 ### Grok Build auth (not just an API key)
 

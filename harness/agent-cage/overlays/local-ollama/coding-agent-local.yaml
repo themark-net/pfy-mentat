@@ -1,0 +1,60 @@
+# Policy: coding-agent + host Ollama via host.docker.internal (whitelist)
+# Install: make local-ollama-overlay-install
+# Use:     POLICY=coding-agent-local make local-ollama-up
+#
+# Agent traffic still goes through the cage proxy. Host Ollama is reached as:
+#   agent → mitmproxy → host.docker.internal:<gateway-port> → host socat → 127.0.0.1:11434
+# See examples/litellm-ollama/README.md (host gateway).
+
+policy:
+  name: "coding-agent-local"
+  version: "1.0"
+  mode: "whitelist"
+
+  defaults:
+    max_request_size_bytes: 10485760
+    max_response_size_bytes: 104857600
+    timeout_seconds: 300
+    log_level: "info"
+    log_bodies: false
+
+  domains:
+    # --- Host Ollama (via docker host-gateway + user-space port forward) ---
+    - pattern: "host.docker.internal"
+      methods: ["GET", "HEAD", "POST", "OPTIONS"]
+
+    # --- Package Registries (pip install litellm in-cage) ---
+    - pattern: "*.pypi.org"
+      methods: ["GET", "HEAD"]
+    - pattern: "files.pythonhosted.org"
+      methods: ["GET", "HEAD"]
+    - pattern: "pypi.org"
+      methods: ["GET", "HEAD"]
+    - pattern: "registry.npmjs.org"
+      methods: ["GET", "HEAD"]
+    - pattern: "*.npmjs.org"
+      methods: ["GET", "HEAD"]
+
+    # --- Source / docs ---
+    - pattern: "github.com"
+      methods: ["GET", "HEAD", "POST"]
+    - pattern: "*.githubusercontent.com"
+      methods: ["GET", "HEAD"]
+    - pattern: "docs.python.org"
+      methods: ["GET", "HEAD"]
+
+    # --- OS packages (apt) ---
+    - pattern: "*.ubuntu.com"
+      methods: ["GET", "HEAD"]
+    - pattern: "*.debian.org"
+      methods: ["GET", "HEAD"]
+    - pattern: "archive.ubuntu.com"
+      methods: ["GET", "HEAD"]
+    - pattern: "security.ubuntu.com"
+      methods: ["GET", "HEAD"]
+
+  content_filters: []
+  rate_limits:
+    global:
+      requests_per_minute: 500
+      requests_per_hour: 10000
