@@ -1,9 +1,23 @@
-# Compose override: use Grok-enabled agent image.
+# Compose override: Grok-enabled agent image + auth wiring.
 # Installed into $AGENTCAGE_DIR/docker/ by: make grok-overlay-install
-# Docker Compose auto-merges docker-compose.override.yaml in the same directory.
 #
-# Auth: set XAI_API_KEY in the environment or in $AGENTCAGE_DIR/.env (not in git).
-#   echo "XAI_API_KEY=xai-..." >> ~/.agentcage/.env
+# Auth (pick one — browser subscription is primary, not XAI_API_KEY):
+#
+#   A) IMPORT (default workflow via make grok-auth-import)
+#      Copies host ~/.grok/auth.json into the cage volume at runtime dir
+#      (~/.agentcage/grok-home/auth.json) so the container can use your
+#      OIDC session without sharing a live bind mount.
+#
+#   B) MOUNT (optional, concurrent host+cage refresh risk)
+#      Set GROK_AUTH_MOUNT=1 when installing/running so host auth.json is
+#      bind-mounted. Token refresh may rewrite the host file.
+#
+#   C) DEVICE LOGIN inside cage (separate session)
+#      make cage-shell → grok login --device-auth
+#      (prints URL/code; complete in a browser on any machine)
+#
+#   D) API key fallback only (console.x.ai) — optional for CI
+#      XAI_API_KEY in ~/.agentcage/.env  (used if no session in auth.json)
 
 services:
   agent:
@@ -14,8 +28,12 @@ services:
       args:
         BASE_IMAGE: agent-cage-agent:latest
     environment:
-      - XAI_API_KEY=${XAI_API_KEY:-}
+      # Home for Grok state inside container (skills optional; auth required)
+      - HOME=/home/agent
+      - GROK_HOME=/home/agent/.grok
       - PATH=/home/agent/.local/bin:/home/agent/.grok/bin:/opt/agent-env/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-    # Optional: reuse host grok auth (uncomment if you accept that risk)
-    # volumes:
-    #   - ${HOME}/.grok/auth.json:/home/agent/.grok/auth.json:ro
+      # API key is OPTIONAL fallback — browser/OIDC session in auth.json is primary
+      - XAI_API_KEY=${XAI_API_KEY:-}
+    volumes:
+      # Imported or host-synced Grok home fragment (auth.json lives here)
+      - ../grok-home:/home/agent/.grok

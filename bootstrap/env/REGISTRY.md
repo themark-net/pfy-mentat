@@ -22,8 +22,11 @@ When integrating a new tool, **add a row here in the same PR** as the integratio
 | `DEPLOY_PROFILE` | no | all | `balanced` | bootstrap, harness, recipes | Selects local-only / balanced / max-performance |
 | `AGENTCAGE_DIR` | no | harness | `$HOME/.agentcage` | harness/agent-cage, agentcage CLI | Runtime cage project after `init` |
 | `PATH` (incl. `~/.local/bin`) | no | all | — | grok, agentcage, uv tools | Document in README only |
-| `XAI_API_KEY` | **yes** | balanced, max-performance | — | Grok CLI / API, LiteLLM grok route, **grok-in-cage** | Prefer env / `~/.agentcage/.env`; never bake into images |
-| `POLICY` | no | harness | `default` or `coding-agent-grok` | agent-cage compose | `coding-agent-grok` allows x.ai / grok.com hosts |
+| `XAI_API_KEY` | **yes** | optional / CI | — | Grok **API key fallback** only | Used if **no** session in `auth.json`. Subscription users usually **do not** need this |
+| Host `~/.grok/auth.json` | **yes** | Grok Build default | created by `grok login` | Grok CLI OIDC/browser session | **Primary auth** for interactive Grok; mode `oidc` + refresh_token |
+| Cage `~/.agentcage/grok-home/auth.json` | **yes** | grok-in-cage | via `make cage-grok-auth-import` | Grok inside agent container | Copy of host session or device-login result; chmod 600 |
+| `GROK_HOME` | no | optional | `$HOME/.grok` | Grok CLI state dir | In cage: `/home/agent/.grok` (volume) |
+| `POLICY` | no | harness | `default` or `coding-agent-grok` | agent-cage compose | `coding-agent-grok` allows x.ai / grok.com / auth.x.ai |
 | `OPENAI_API_KEY` | **yes** | optional | — | LiteLLM OpenAI backends | Optional cloud fallback |
 | `ANTHROPIC_API_KEY` | **yes** | optional | — | Claude-in-cage experiments | Optional |
 | `OPENAI_BASE_URL` | no | local-only, balanced | `http://host.docker.internal:11434/v1` | LiteLLM, agents → Ollama | Host Ollama from inside cage needs gateway/host-gateway |

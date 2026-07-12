@@ -34,7 +34,8 @@ POLICY ?= default
 
 .PHONY: help setup init update up up-mcp down shell status test logs dashboard \
 	smoke-host smoke-integration doctor ensure-cli ensure-project \
-	grok-overlay-install grok-overlay-uninstall grok-overlay-build grok-up grok-smoke
+	grok-overlay-install grok-overlay-uninstall grok-overlay-build grok-up grok-smoke \
+	grok-auth-import
 
 help:
 	@echo "agent-cage harness (upstream pin $(PIN))"

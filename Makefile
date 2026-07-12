@@ -11,7 +11,7 @@ HARNESS := harness/agent-cage
 .PHONY: help cage-doctor cage-setup cage-init cage-up cage-up-mcp cage-down \
 	cage-shell cage-status cage-test cage-logs cage-smoke-host catalog-json \
 	env-init env-check cage-grok-install cage-grok-build cage-grok-up \
-	cage-grok-smoke cage-grok-uninstall
+	cage-grok-smoke cage-grok-uninstall cage-grok-auth-import
 
 help:
 	@echo "local-llm-dev-tools"
