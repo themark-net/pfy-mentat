@@ -104,18 +104,28 @@ Role: retro.
 | Require Bun/Claude Code for pfy-mentat bootstrap | Grok-first (ADR-0002) |
 | Treat Multica as gstack | Multica = board/teammates platform; gstack = role skill factory |
 
-## Optional later (not T-0014)
+## Deeper port investigation (single skill)
 
-If a **single** gstack skill proves essential and small, promote via ADR-0009:
+**Completed:** attribute-based comparison of high-value gstack skills vs this stack.  
+**Detail + scoring table:** [gstack-skill-port-comparison.md](gstack-skill-port-comparison.md).
 
-1. Curated **paths snapshot** under `skills-external/gstack-<name>/`, or  
-2. Thin **first-party** rewrite if we must edit for Grok process.
+### Headline results
 
-Default remains **docs + AGENTS router**.
+| Finding | Implication |
+|---------|-------------|
+| Upstream skills are **Claude-harness-heavy** (generated preamble, hooks, `gstack/bin`) | **Raw `skills.paths` snapshot is not viable** for almost any gstack skill |
+| Largest **method** gaps | **`investigate`** (RCA / Iron Law) and **`cso`** (OWASP/STRIDE audit ≠ write-guard) |
+| Overlap already covered | `review`≈mattpocock code-review; `spec`≈to-spec; ship/QA stages via recipes + cage smokes |
+| **Recommended single deeper port** | **First-party rewrite of the `investigate` method** (not rsync of SKILL.md) |
+| Second candidate (later) | First-party **cso checklist** rewrite — larger; after investigate if still needed |
+
+Promotion still requires operator “go” for the rewrite (T-0017). Default remains **docs + AGENTS router** until then.
 
 ## Related
 
+- [gstack-skill-port-comparison.md](gstack-skill-port-comparison.md) — attributes + scored shortlist  
 - [AGENTS.md](../../AGENTS.md) — role router section  
 - [ADR-0009](../adr/0009-skill-port-hybrid-strategy.md)  
-- T-0011 mattpocock / marketing-council ports  
+- T-0011 mattpocock / marketing-council ports · T-0014 docs recipes · **T-0017** optional investigate rewrite  
 - [one-shot-example-dods.md](one-shot-example-dods.md)  
+

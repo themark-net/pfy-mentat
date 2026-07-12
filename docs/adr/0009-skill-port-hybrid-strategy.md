@@ -45,7 +45,7 @@ Otherwise: **paths snapshot** (curated) or **docs-only**.
 |--------|-----------|--------|
 | marketing-council (core pattern) | **First-party** port of council/dissenter SKILL(s) | Small, process-shaped; rewrite for Grok |
 | mattpocock plan/review/TDD subset | **paths snapshot** curated subset | Like ponytail; pin + skills.paths |
-| gstack | **Docs + AGENTS recipes** first; optional later paths for 1–2 roles | Avoid full 23-skill embed (T-0014) |
+| gstack | **Docs + AGENTS recipes** first; optional **first-party method rewrite** only | Avoid full embed (T-0014). Eval: [gstack-skill-port-comparison.md](../ops/gstack-skill-port-comparison.md) — raw paths blocked; top candidate **investigate** method (T-0017) |
 | ponytail | Already **paths snapshot** | Template for bulk packs |
 | karpathy-guidelines | Already **first-party** (vendored single skill) | Fits core criteria |
 
@@ -62,5 +62,6 @@ Otherwise: **paths snapshot** (curated) or **docs-only**.
 
 - T-0011 unblocked under hybrid rules.
 - install.sh may gain additional `skills.paths` entries over time; keep opt-out flags.
-- Catalog TOOLS notes should say “first-party port” vs “paths snapshot” vs “docs pattern”.
+- Catalog TOOLS notes should say “first-party port” vs “paths snapshot” vs “docs pattern” vs “raw-port-blocked”.
 - Supersedes open state of OQ-0006 (promoted here).
+- **2026-07-12 deeper-port eval:** gstack skills are not raw-paths candidates; optional single deeper port is a **first-party rewrite of the investigate (RCA) method** (T-0017), not a gstack tree snapshot.
