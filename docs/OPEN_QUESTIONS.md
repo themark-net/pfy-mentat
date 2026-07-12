@@ -36,7 +36,11 @@ Related work queue: [TODO.md](TODO.md)
 
 ## Needs operator input soon (P1)
 
-1. **OQ-0005** — Grok in-image vs host-Grok + cage (default: host-Grok until overlay built).  
+*No open P1 OQs.* Remaining active OQs are P2 (subtree, ATG, Antigravity, colibri weights).
+
+Recently closed:
+
+1. ~~**OQ-0005** — Grok in-cage~~ → **answered: dual path** (host-Grok default + optional grok-in-image / T-0022).  
 2. ~~**OQ-0006** — Skill port strategy~~ → **ADR-0009 hybrid**.  
 3. ~~**OQ-0002** — Eval harness shape~~ → **option 5** (tier0 smokes + tier1 scored task; DSPy later).  
 4. ~~**OQ-0009** — Write-guard default~~ → **answered: audit**.
