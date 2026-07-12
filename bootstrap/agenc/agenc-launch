@@ -4,12 +4,22 @@ set -euo pipefail
 # agenc-launch — opinionated primary wrapper for AgenC runtime
 # Enforces update freshness (with caching/offline support) and daemon health on every launch.
 # This is the recommended entry point for all AgenC-based sessions in this project.
+#
+# Upstream: https://github.com/tetsuo-ai/agenc-core
+# Install:  curl -fsSL https://get.agenc.ag/install.sh | sh
+#           or: make agenc-install
+# Update:   agenc update   (NOT "runtime update")
 
 AGENC_CMD="${AGENC_CMD:-agenc}"
 UPDATE_CHECK="${AGENC_UPDATE_CHECK:-1}"          # 1 = perform update check, 0 = skip
 UPDATE_MODE="${AGENC_UPDATE_MODE:-nonblocking}"  # nonblocking | blocking | off
 DAEMON_AUTOSTART="${AGENC_DAEMON_AUTOSTART:-1}"
 OFFLINE_MODE="${AGENC_OFFLINE:-0}"              # 1 = offline mode (skip network, use cache)
+
+# Prefer user-local install prefix
+if [[ -d "${HOME}/.local/bin" ]]; then
+  export PATH="${HOME}/.local/bin:${PATH}"
+fi
 
 log() { printf '[agenc-launch] %s\n' "$*" >&2; }
 warn() { printf '[agenc-launch] WARNING: %s\n' "$*" >&2; }
@@ -28,12 +38,12 @@ fi
 if [[ "$UPDATE_CHECK" == "1" ]]; then
   case "$UPDATE_MODE" in
     blocking)
-      log "Running blocking runtime update check..."
-      "$AGENC_CMD" runtime update || warn "Update command returned non-zero (continuing)"
+      log "Running blocking runtime update check (agenc update)..."
+      "$AGENC_CMD" update || warn "Update command returned non-zero (continuing)"
       ;;
     nonblocking|*)
       log "Running non-blocking runtime update check in background..."
-      ("$AGENC_CMD" runtime update >/dev/null 2>&1 || true) &
+      ("$AGENC_CMD" update >/dev/null 2>&1 || true) &
       ;;
   esac
 fi

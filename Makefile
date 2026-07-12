@@ -14,7 +14,8 @@ HARNESS := harness/agent-cage
 	cage-grok-smoke cage-grok-uninstall cage-grok-auth-import \
 	local-ollama-overlay-install local-ollama-up smoke-litellm-ollama \
 	smoke-codebase-memory smoke-repowise smoke-context-tools \
-	smoke-write-guard eval-tier0 eval-tier1 eval-mvp eval-suite eval-matrix eval-v02
+	smoke-write-guard eval-tier0 eval-tier1 eval-mvp eval-suite eval-matrix eval-v02 \
+	agenc-install agenc-smoke
 
 help:
 	@echo "pfy-mentat"
@@ -48,6 +49,10 @@ help:
 	@echo "  make smoke-write-guard      # T-0031 write-guard MCP policy smoke"
 	@echo "  make eval-tier0|eval-tier1|eval-mvp  # OQ-0002 opt5 scored eval"
 	@echo "  make eval-suite|eval-matrix|eval-v02 # v0.2 multi-task / multi-model"
+	@echo ""
+	@echo "AgenC (host agent runtime — not agent-cage):"
+	@echo "  make agenc-install      # official get.agenc.ag (Node>=25; user-local Node bootstrap OK)"
+	@echo "  make agenc-smoke        # wrapper + daemon smoke (exit 2 if not installed)"
 	@echo ""
 	@echo "Or:  cd harness/agent-cage && make help"
 	@echo ""
@@ -149,6 +154,15 @@ eval-matrix:
 
 eval-v02:
 	@$(MAKE) -C $(HARNESS) eval-v02
+
+# --- AgenC host runtime (tetsuo-ai) ------------------------------------------
+agenc-install:
+	@chmod +x bootstrap/agenc/install.sh bootstrap/agenc/agenc-launch
+	@./bootstrap/agenc/install.sh
+
+agenc-smoke:
+	@chmod +x bootstrap/agenc/smoke.sh bootstrap/agenc/agenc-launch
+	@./bootstrap/agenc/smoke.sh
 
 env-init:
 	@if [ -f .env ]; then \

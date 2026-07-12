@@ -1,59 +1,89 @@
 # AgenC Bootstrap & Launch Wrapper
 
-**AgenC is the primary runtime** for this project (see `AGENTS.md` → Primary Runtime Policy).
+**AgenC is the primary host agent runtime** for this project (daemon-backed coding agent).  
+**agent-cage** remains the high-isolation **container lab** for untrusted workloads.
 
-## Primary Entry Point
+| Layer | Tool | Role |
+|-------|------|------|
+| Host agent runtime | **AgenC** (`agenc`) | Day-to-day daemon + TUI / `--print` / plugins |
+| Isolation lab | **agent-cage** | Docker sandbox + network policy + MCP smokes |
 
-Use `agenc-launch` (recommended) instead of calling `agenc` directly. It adds:
+Upstream: [tetsuo-ai/agenc-core](https://github.com/tetsuo-ai/agenc-core) · site [agenc.ag](https://agenc.ag) · install docs in upstream `docs/install.md`.
 
-- Non-blocking (configurable) runtime update check on every launch
-- Offline/caching resilience (`AGENC_OFFLINE=1`)
-- Daemon health verification
-- Clean hand-off to the real `agenc` binary
+## Official install
 
 ```bash
-# Make executable
+# One-liner (macOS/Linux) — requires Node.js >= 25
+curl -fsSL https://get.agenc.ag/install.sh | sh
+
+# Or npm launcher (same runtime contract)
+npm install -g @tetsuo-ai/agenc
+
+# Via this repo (bootstraps Node 25 user-local if needed)
+make agenc-install
+```
+
+State lives under `AGENC_HOME` (default `~/.agenc`). Wrapper install prefix default `~/.local/bin`.
+
+## Primary entry point
+
+Use `agenc-launch` (recommended) instead of calling `agenc` directly:
+
+```bash
 chmod +x bootstrap/agenc/agenc-launch
+# optional alias
+alias agenc="$PWD/bootstrap/agenc/agenc-launch"
 
-# Recommended: add to PATH or create alias
-# e.g. in ~/.zshrc or ~/.bashrc
-alias agenc="$HOME/path/to/local-llm-dev-tools/bootstrap/agenc/agenc-launch"
-
-agenc-launch "your prompt here"
-agenc-launch daemon status
-agenc-launch --help
+./bootstrap/agenc/agenc-launch --help
+./bootstrap/agenc/agenc-launch daemon status
 ```
 
-## Environment Variables
+It adds:
 
-| Variable                    | Default     | Effect                                                                 |
-|-----------------------------|-------------|------------------------------------------------------------------------|
-| `AGENC_UPDATE_CHECK`        | `1`         | Set to `0` to skip update check                                        |
-| `AGENC_UPDATE_MODE`         | `nonblocking` | `blocking` (wait) or `nonblocking`                                   |
-| `AGENC_DAEMON_AUTOSTART`    | `1`         | Set to `0` to skip daemon health check                                 |
-| `AGENC_NO_UPDATE`           | `0`         | Global kill-switch for all update checks                               |
-| `AGENC_OFFLINE`             | `0`         | Set to `1` for full offline mode (skip network updates, use local cache) |
+- Non-blocking (configurable) **`agenc update`** on launch  
+- Offline/caching resilience (`AGENC_OFFLINE=1`)  
+- Daemon health verification  
+- Clean hand-off to the real `agenc` binary  
 
-## Caching & Offline Resilience
+## Smoke test
 
-- When `AGENC_OFFLINE=1`, the wrapper forces `UPDATE_CHECK=0` and relies on whatever runtime artifact is already cached locally by AgenC (typically under `~/.agenc` or the path shown by `agenc runtime where`).
-- This provides strong local-first resilience without needing a full subtree copy of AgenC.
-- For even stronger caching, you can pre-populate the cache by running a normal (online) update once, then switch to offline mode.
+```bash
+make agenc-install   # once
+make agenc-smoke     # wrapper + help + daemon (+ doctor if available)
 
-Future improvement: Add an explicit `cache-runtime.sh` helper that pins a specific artifact SHA and downloads it on demand.
-
-## Scheduling Updates
-
-For periodic deeper updates you can use a simple cron or systemd timer:
-
-```cron
-# Daily at 03:00
-0 3 * * * /full/path/to/agenc-launch runtime update >/dev/null 2>&1 || true
+# optional LLM one-shot (needs provider keys / onboard)
+AGENC_SMOKE_LLM=1 make agenc-smoke
 ```
 
-Later we will add a proper scheduled background skill inside AgenC itself.
+| Exit | Meaning |
+|------|---------|
+| 0 | Pass |
+| 1 | Fail |
+| 2 | Skip — `agenc` not installed |
 
-## Related Files
+## Environment variables
 
-- `AGENTS.md` — Primary Runtime Policy section
-- Future: skills and integration docs under `integration/agenc/`
+| Variable | Default | Effect |
+|----------|---------|--------|
+| `AGENC_UPDATE_CHECK` | `1` | Set `0` to skip update check |
+| `AGENC_UPDATE_MODE` | `nonblocking` | `blocking` or `nonblocking` |
+| `AGENC_DAEMON_AUTOSTART` | `1` | Set `0` to skip daemon health check |
+| `AGENC_NO_UPDATE` | `0` | Kill-switch for all update checks |
+| `AGENC_OFFLINE` | `0` | `1` = skip network updates (local cache) |
+| `AGENC_HOME` | `~/.agenc` | Runtime state root |
+| `AGENC_INSTALL_METHOD` | `official` | `official` (get.agenc.ag) or `npm` |
+| `AGENC_INSTALL_DAEMON` | `0` | `1` to install user systemd/launchd service |
+| `AGENC_BOOTSTRAP_NODE` | `1` | Fetch user-local Node 25+ if system Node too old |
+| `AGENC_SMOKE_LLM` | `0` | `1` to run headless print in smoke |
+
+## Requirements
+
+- **Node.js ≥ 25** (upstream). `make agenc-install` can bootstrap Node under `~/.local/share/pfy-mentat/node`.
+- **ripgrep (`rg`)** recommended (`agenc doctor` reports it).
+- Provider for real model calls: default **xAI** (`XAI_API_KEY` / Grok OAuth). See upstream providers docs.
+
+## Related
+
+- `integration/agenc/` — augmentation skills (loop-engineering pack)
+- `harness/agent-cage/` — container lab (complement, not replacement)
+- Upstream update: `agenc update` (not `runtime update`)

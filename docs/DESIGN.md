@@ -105,7 +105,7 @@ One-line purpose: **Track · Categorize · Rank · Integrate** tools for robust 
 
 ### Delivered recently (was near-term)
 
-- Write-guard MCP v0.1 + cage smoke · in-cage tool smokes · LiteLLM profile recipes · skill ports (ADR-0009) · eval harness MVP + v0.2 suite/matrix (OQ-0002 / T-0041) · grok-in-image overlay (**OQ-0005 answered**)
+- Write-guard MCP v0.1 + cage smoke · in-cage tool smokes · LiteLLM profile recipes · skill ports (ADR-0009) · eval harness MVP + v0.2 suite/matrix (OQ-0002 / T-0041) · grok-in-image overlay (**OQ-0005 answered**) · **AgenC host runtime** install + smoke (T-0044; complements agent-cage)
 
 ### Later / research
 

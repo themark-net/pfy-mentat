@@ -1,43 +1,51 @@
 # AgenC as Primary Runtime + Augmentation Layer
 
-**Status**: AgenC is the official primary runtime for this project (effective 2026-07-12).
+**Status:** Primary **host** agent runtime for this project (2026-07-12).  
+**Upstream:** [tetsuo-ai/agenc-core](https://github.com/tetsuo-ai/agenc-core) · install [get.agenc.ag](https://get.agenc.ag/install.sh) · npm `@tetsuo-ai/agenc`
 
-This directory contains the integration and augmentation layer on top of AgenC.
+This directory is the **augmentation layer** (skills/plugins) on top of AgenC.  
+Install + smoke live under [`bootstrap/agenc/`](../../bootstrap/agenc/).
 
-## Core Decision
+## Core decision
 
-- **Primary runtime**: AgenC (daemon-backed, native OS sandboxing with bubblewrap/Landlock/Seatbelt, MCP client+server, plugin/skill system).
-- **High-isolation complement**: agent-cage (full container/VM with network policy) for high-risk or untrusted workloads.
-- **No full subtree** of AgenC — we use the official install + runtime update mechanism for maintainability.
+| Runtime | Role |
+|---------|------|
+| **AgenC** | Primary host coding agent: daemon, TUI/`--print`, MCP, plugins, OS sandbox (bubblewrap/Landlock/Seatbelt) |
+| **agent-cage** | High-isolation **container** lab (network policy, untrusted installs, catalog smokes) |
 
-## Key Components
+No full subtree of AgenC — use official install + `agenc update`.
 
-- `bootstrap/agenc/agenc-launch` — Primary entry point with update enforcement and offline/caching resilience (`AGENC_OFFLINE=1`).
-- `bootstrap/agenc/README.md` — Usage, env vars, and caching guidance.
-- `AGENTS.md` — Primary Runtime Policy section (AgenC + agent-cage hybrid).
+## Operator commands
 
-## Augmentation Layer
+```bash
+make agenc-install   # official installer (bootstraps Node 25+ if needed)
+make agenc-smoke     # host smoke: launcher offline path + help + daemon
 
-Skills, plugins, memory backends, loop patterns, and orchestration logic from this repo are ported here as AgenC-compatible plugins/skills.
+# day-to-day
+./bootstrap/agenc/agenc-launch --help
+./bootstrap/agenc/agenc-launch daemon status
+```
 
-### Current Packs
+## Key components
+
+- `bootstrap/agenc/agenc-launch` — update + daemon + exec hand-off (`AGENC_OFFLINE=1` supported)
+- `bootstrap/agenc/install.sh` — wraps `https://get.agenc.ag/install.sh` (or npm)
+- `bootstrap/agenc/smoke.sh` — `make agenc-smoke`
+- Skills under `integration/agenc/skills/`
+
+### Current packs
 
 - **loop-engineering/**
-  - `4-tier-autonomy.md` — Turn-based, goal-based, time-based, proactive tiers.
-  - `14-step-roadmap.md` — Complete progression from manual prompting to production autonomous loops.
-  - `plugin-manifest.json` — Pack manifest for AgenC plugin loading.
-  - `loop-engineering-plugin-setup.md` — Wiring/registration instructions.
+  - `14-step-roadmap.md` — progression from manual prompting to autonomous loops  
+  - (more pack files may land later: tiers, plugin-manifest)
 
-## Resilience Strategy
+## Resilience
 
-- Official AgenC install + `agenc runtime update`.
-- `agenc-launch` wrapper for on-launch checks and offline mode.
-- Future: explicit pinned-artifact cache helper and scheduled background update skill.
+- Official install + `agenc update`
+- `agenc-launch` for on-launch checks and offline mode
+- Future: pinned-artifact cache helper / scheduled background update skill
 
-## Next Priorities
+## Related
 
-- Expand loop-engineering pack (goal evaluator, proactive router, scheduled loops).
-- Port additional high-value patterns (gstack roles, Graphify-style memory, self-healing docs).
-- Build unified skill loader and test harness on top of AgenC.
-
-See `AGENTS.md` for the full policy and `bootstrap/agenc/` for the deployment wrapper.
+- Bootstrap README: [bootstrap/agenc/README.md](../../bootstrap/agenc/README.md)
+- Cage lab: [harness/agent-cage/](../../harness/agent-cage/)

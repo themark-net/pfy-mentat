@@ -24,7 +24,7 @@
 
 ## Active (sorted P0 → P3)
 
-**Session park (2026-07-12):** No in-flight `doing` work. Main is clean at eval v0.2 + OQ-0005 closed. Resume from the parked rows below (not critical path).
+**Session park (2026-07-12):** AgenC install + `make agenc-smoke` shipped. Resume catalog re-score / P2 OQs as needed.
 
 | ID | Priority | Status | Item | Open questions | Depends | Notes |
 |----|----------|--------|------|----------------|---------|-------|
@@ -64,6 +64,7 @@
 | T-0012 | P1 | done | LiteLLM recipes by DEPLOY_PROFILE (local / balanced / max) | config/litellm/{local-only,balanced,max-performance}.yaml + cage smoke |
 | T-0003 | P1 | done | Eval harness MVP (OQ-0002 option 5) | tier0 smokes + tier1 scored task; make eval-mvp; DSPy deferred |
 | T-0041 | P1 | done | Eval harness v0.2: multi-task suite + multi-model matrix | 002-fix-sum-evens; make eval-suite/matrix/v02; 3×2 matrix green |
+| T-0044 | P1 | done | AgenC official install + `make agenc-smoke` | get.agenc.ag / @tetsuo-ai/agenc; Node 25 bootstrap; wrapper uses `agenc update` |
 
 ## How to use
 
