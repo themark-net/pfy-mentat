@@ -183,17 +183,33 @@ grok-overlay-install: ensure-project
 	@echo "Next: make grok-auth-import   # copy host browser/OIDC session"
 	@echo "      make grok-overlay-build && make grok-up"
 
+# Cage agent uid is 1001 in stock agent-cage image. Host copies are often uid 1000
+# and mode 600 → agent cannot read auth.json → Grok falls back to ApiKey → 401 / OIDC noise.
+CAGE_AGENT_UID ?= 1001
+CAGE_AGENT_GID ?= 1001
+
 grok-auth-import: ensure-project
 	@test -f "$(HOME)/.grok/auth.json" \
 	  || (echo "error: no host $(HOME)/.grok/auth.json — run 'grok login' on the host first"; exit 1)
 	@mkdir -p "$(AGENTCAGE_DIR)/grok-home"
 	@chmod 700 "$(AGENTCAGE_DIR)/grok-home"
-	@cp -a "$(HOME)/.grok/auth.json" "$(AGENTCAGE_DIR)/grok-home/auth.json"
-	@chmod 600 "$(AGENTCAGE_DIR)/grok-home/auth.json"
+	@cp "$(HOME)/.grok/auth.json" "$(AGENTCAGE_DIR)/grok-home/auth.json"
+	@# Prefer ownership matching cage agent; else world rw so agent can read/refresh (dir is 700)
+	@chown $(CAGE_AGENT_UID):$(CAGE_AGENT_GID) "$(AGENTCAGE_DIR)/grok-home/auth.json" 2>/dev/null \
+	  || sudo chown $(CAGE_AGENT_UID):$(CAGE_AGENT_GID) "$(AGENTCAGE_DIR)/grok-home/auth.json" 2>/dev/null \
+	  || true
+	@if python3 -c "import os; st=os.stat('$(AGENTCAGE_DIR)/grok-home/auth.json'); raise SystemExit(0 if st.st_uid==$(CAGE_AGENT_UID) else 1)"; then \
+	  chmod 600 "$(AGENTCAGE_DIR)/grok-home/auth.json"; \
+	else \
+	  chmod 666 "$(AGENTCAGE_DIR)/grok-home/auth.json"; \
+	  echo "note: auth.json set to mode 666 (agent uid $(CAGE_AGENT_UID) chown failed; dir remains 700)"; \
+	fi
 	@echo "Imported host OIDC/browser session → $(AGENTCAGE_DIR)/grok-home/auth.json"
 	@echo "  auth_mode/email (redacted check):"
-	@python3 -c "import json; d=json.load(open('$(AGENTCAGE_DIR)/grok-home/auth.json')); \
-	  v=next(iter(d.values())); print('  mode=', v.get('auth_mode'), ' email=', v.get('email','?'), ' expires_at=', v.get('expires_at','?'))"
+	@python3 -c "import json,os; p='$(AGENTCAGE_DIR)/grok-home/auth.json'; d=json.load(open(p)); \
+	  v=next(iter(d.values())); st=os.stat(p); \
+	  print('  mode=', v.get('auth_mode'), ' email=', v.get('email','?'), ' expires_at=', v.get('expires_at','?')); \
+	  print('  file uid:gid=', st.st_uid, st.st_gid, ' perm=', oct(st.st_mode)[-3:])"
 	@echo "Re-run import after host 'grok login' if the cage session expires."
 
 grok-overlay-uninstall:
@@ -241,16 +257,23 @@ grok-up: ensure-project
 	|| POLICY=coding-agent-grok $(COMPOSE_GROK) up -d
 	@echo "Waiting for agent container..."
 	@sleep 3
-	@docker inspect agent-cage-agent --format 'image={{.Config.Image}}' 
+	@# Fix auth.json ownership inside container (bind mount may show host uid)
+	@docker exec -u root agent-cage-agent bash -lc \
+	  'if [ -f /home/agent/.grok/auth.json ]; then chown agent:agent /home/agent/.grok/auth.json; chmod 600 /home/agent/.grok/auth.json; fi' \
+	  2>/dev/null || true
+	@docker inspect agent-cage-agent --format 'image={{.Config.Image}}'
 	@echo "Next: make grok-smoke && make shell"
 
 grok-smoke: ensure-project
 	@echo "==> which image is running?"
 	@docker inspect agent-cage-agent --format 'Config.Image={{.Config.Image}}' 2>/dev/null \
 	  || (echo "error: agent-cage-agent not running — make grok-up"; exit 1)
-	@echo "==> grok --version inside agent container"
+	@docker exec -u root agent-cage-agent bash -lc \
+	  'if [ -f /home/agent/.grok/auth.json ]; then chown agent:agent /home/agent/.grok/auth.json; chmod 600 /home/agent/.grok/auth.json; ls -ln /home/agent/.grok/auth.json; fi' \
+	  2>/dev/null || true
+	@echo "==> grok --version + auth smoke inside agent container"
 	@docker exec -u agent \
 	  -e HOME=/home/agent \
 	  -e GROK_HOME=/home/agent/.grok \
 	  -e PATH=/usr/local/bin:/home/agent/.local/bin:/usr/bin:/bin \
-	  agent-cage-agent bash -lc 'command -v grok; grok --version; ls -la /usr/local/bin/grok /home/agent/.grok/auth.json 2>/dev/null || true'
+	  agent-cage-agent bash -lc 'command -v grok; grok --version; test -r /home/agent/.grok/auth.json && echo auth.json:readable || echo auth.json:NOT_READABLE'

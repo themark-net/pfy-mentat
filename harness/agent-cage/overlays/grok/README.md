@@ -38,7 +38,8 @@ make cage-shell
 **Pitfalls fixed in this overlay:**
 
 1. **`agentcage up` ignores compose override** when it passes `-f docker-compose.yaml`. Always use **`make cage-grok-up`** (explicit third `-f` for override).
-2. **Do not bind-mount the whole `.grok` tree** — that hid `.grok/downloads/` and broke `grok`. Binary is installed to **`/usr/local/bin/grok`**; only **`auth.json`** is mounted.
+2. **Do not bind-mount the whole `.grok` tree** — that hid `.grok/downloads/` and broke `grok`. Binary is at **`/usr/local/bin/grok`**; only **`auth.json`** is mounted.
+3. **auth.json ownership** — host file is often uid 1000; cage user `agent` is **1001**. If agent cannot read `auth.json`, Grok falls back to **ApiKey** and fails (`401 bad-credentials` or OIDC errors). `make grok-auth-import` and `grok-up`/`grok-smoke` chown the file to `agent`.
 
 Re-import after host re-login if the cage session expires.
 
