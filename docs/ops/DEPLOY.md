@@ -86,7 +86,7 @@ Prefer these over ad-hoc host-only checks ([harness framework](harness-integrati
 |------|--------|
 | Write-guard MCP server | v0.1 implemented (`make smoke-write-guard`); mcp-host wiring optional |
 | LiteLLM profile recipes | **T-0012 done** — `config/litellm/{local-only,balanced,max-performance}.yaml` |
-| Full eval harness | TODO T-0003 / OQ-0002 |
+| Full eval harness | **MVP done** (OQ-0002 opt5): `make eval-mvp`; DSPy later |
 | OpenCode / Claude validation | TODO T-0040 (P3) |
 
 ## Verify checklist

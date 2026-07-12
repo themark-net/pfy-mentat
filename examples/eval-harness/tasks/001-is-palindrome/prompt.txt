@@ -1,0 +1,13 @@
+Write exactly one Python function. Output only the function source code.
+No markdown fences, no comments outside the function, no explanation.
+
+Signature:
+def is_palindrome(s: str) -> bool:
+
+Behavior (exact characters, case-sensitive):
+- is_palindrome("") is True
+- is_palindrome("aba") is True
+- is_palindrome("ab") is False
+- is_palindrome("Aa") is False
+
+Return whether s equals its reverse.

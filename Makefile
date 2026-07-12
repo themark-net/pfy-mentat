@@ -14,7 +14,7 @@ HARNESS := harness/agent-cage
 	cage-grok-smoke cage-grok-uninstall cage-grok-auth-import \
 	local-ollama-overlay-install local-ollama-up smoke-litellm-ollama \
 	smoke-codebase-memory smoke-repowise smoke-context-tools \
-	smoke-write-guard
+	smoke-write-guard eval-tier0 eval-tier1 eval-mvp
 
 help:
 	@echo "pfy-mentat"
@@ -46,6 +46,7 @@ help:
 	@echo "  make smoke-litellm-ollama   # exit 0 required; runs inside agent-cage only"
 	@echo "  make smoke-codebase-memory / smoke-repowise / smoke-context-tools"
 	@echo "  make smoke-write-guard      # T-0031 write-guard MCP policy smoke"
+	@echo "  make eval-tier0|eval-tier1|eval-mvp  # OQ-0002 opt5 scored eval"
 	@echo ""
 	@echo "Or:  cd harness/agent-cage && make help"
 	@echo ""
@@ -129,6 +130,15 @@ smoke-context-tools:
 
 smoke-write-guard:
 	@$(MAKE) -C $(HARNESS) smoke-write-guard
+
+eval-tier0:
+	@$(MAKE) -C $(HARNESS) eval-tier0
+
+eval-tier1:
+	@$(MAKE) -C $(HARNESS) eval-tier1
+
+eval-mvp:
+	@$(MAKE) -C $(HARNESS) eval-mvp
 
 env-init:
 	@if [ -f .env ]; then \

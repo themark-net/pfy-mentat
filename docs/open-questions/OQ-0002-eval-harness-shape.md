@@ -1,29 +1,37 @@
 # OQ-0002: Evaluation harness shape (LiteLLM + DSPy + MCP)
 
 - **Priority:** P1
-- **Status:** tbd
+- **Status:** answered → implemented as option **5** (T-0003 MVP)
 - **Created:** 2026-07-11
 - **Updated:** 2026-07-12
-- **Blocks:** T-0003 (eval harness prototype), informs T-0012 / T-0021
+- **Blocks:** — (was T-0003)
 - **Blocked-by:** —
 - **Related-ADR:** ADR-0002 (Grok primary)
-- **Related-code:** `examples/`, `pipelines/`, `harness/agent-cage/`
+- **Related-code:** `examples/eval-harness/`, `examples/litellm-ollama/`, `pipelines/smoke/`, `harness/agent-cage/`
 - **Feature/runbook:** eval-harness-mvp
 - **Related-TODO:** T-0003, T-0012, T-0021
 
 **Question:** What is the minimal first eval harness?
 
-**Context:** DESIGN near-term lists LiteLLM + DSPy + MCP. agent-cage is now the isolation lab. Need smallest path that proves catalog integration.
+**Context:** DESIGN near-term lists LiteLLM + DSPy + MCP. agent-cage is the isolation lab. Connectivity smokes already exist.
 
 **Options:**
 
 1. **Grok headless script only** — fastest; weak local-stack story
-2. **LiteLLM + Ollama smoke + one scored coding task** (inside or outside cage) — matches hybrid goal **(recommended)**
+2. **LiteLLM + Ollama smoke + one scored coding task** — matches hybrid goal
 3. **DSPy optimizable module + MCP retrieve** — highest alignment, more glue
-4. **All smokes only inside agent-cage** — best isolation; depends on OQ-0005 for Grok
+4. **All smokes only inside agent-cage** — connectivity only; weak for TOOLS re-scoring
+5. **Hybrid tiers** — smokes = tier 0; one scored in-cage task = tier 1; DSPy deferred
 
-**Recommendation:** Option 2 as MVP; run smokes via agent-cage when T-0020 complete; leave DSPy as P1 follow-on.
+**Recommendation (historical):** Option 2; refined to **5** after smokes shipped.
 
-**Resolution notes:**
+## Resolution notes
 
-- 2026-07-12: Operator one-shot Track A assumed **option 2** (LiteLLM + Ollama smoke, no full eval harness). In-cage smoke green via `make smoke-litellm-ollama` (host gateway :11435, policy `coding-agent-local`, model `deepseek-coder:latest`). Full DSPy/eval harness still open (T-0003).
+- **2026-07-12 (early):** Track A assumed option 2 for connectivity; `make smoke-litellm-ollama` green.
+- **2026-07-12 (operator):** Chose **option 5**.
+  - **Tier 0:** existing `make smoke-*` ladder (connectivity / install).
+  - **Tier 1:** one fixed scored coding task in cage via LiteLLM→Ollama; pass/fail + `results.latest.md`.
+  - **Later:** DSPy + MCP (option 3) as follow-on, not MVP.
+- **Implementation:** `examples/eval-harness/` + `make eval-tier0` / `make eval-tier1` / `make eval-mvp` (T-0003).
+- **Models:** tier0 keeps `LITELLM_SMOKE_MODEL` (tiny OK). Tier1 defaults to `EVAL_MODEL=qwen2.5:14b` — `deepseek-coder:latest` (~1B) is unreliable for scoring (prose/syntax).
+- **Verified:** `make eval-mvp` green (2026-07-12) with SCORE: PASS on `001-is-palindrome`.
