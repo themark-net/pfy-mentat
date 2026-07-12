@@ -24,7 +24,7 @@ Related work queue: [TODO.md](TODO.md)
 |----|----------|--------|-------|--------|---------|
 | [OQ-0002](open-questions/OQ-0002-eval-harness-shape.md) | **P1** | tbd | Evaluation harness shape (LiteLLM + DSPy + MCP?) | T-0003, T-0012, T-0021 | ADR-0002 |
 | [OQ-0005](open-questions/OQ-0005-grok-in-cage-strategy.md) | **P1** | open | Grok vs Claude-in-cage vs host-Grok + cage workspace | T-0020, T-0021, T-0022 | harness/agent-cage |
-| [OQ-0006](open-questions/OQ-0006-skill-port-strategy.md) | **P1** | open | Skill port strategy: first-party ports vs skills.paths snapshots vs docs-only | T-0011, T-0014 | ADR-0003, bootstrap skills |
+| [OQ-0006](open-questions/OQ-0006-skill-port-strategy.md) | **P1** | promoted-to-adr | Skill port strategy: hybrid first-party + paths snapshots | — | [ADR-0009](adr/0009-skill-port-hybrid-strategy.md) |
 | [OQ-0003](open-questions/OQ-0003-first-subtree-candidate.md) | P2 | tbd | First subtree/submodule candidate (if any) | T-0005 | SUBTREES.md, ADR-0003 |
 | [OQ-0004](open-questions/OQ-0004-atg-prototype-relationship.md) | P2 | open | How ATG prototype relates to this catalog | T-0004 | atg-framework, TOOLS.md |
 | [OQ-0007](open-questions/OQ-0007-antigravity-need.md) | P2 | tbd | Do we need Antigravity-Manager multi-account relay? | T-0015 | LiteLLM, hybrid accounts |
@@ -37,8 +37,8 @@ Related work queue: [TODO.md](TODO.md)
 ## Needs operator input soon (P1)
 
 1. **OQ-0005** — Grok in-image vs host-Grok + cage (default: host-Grok until overlay built).  
-2. **OQ-0006** — Skill port strategy (default: hybrid).  
-3. **OQ-0002** — Eval harness MVP = LiteLLM + Ollama smoke (recommended).  
+2. ~~**OQ-0006** — Skill port strategy~~ → **ADR-0009 hybrid**.  
+3. **OQ-0002** — Eval harness beyond LiteLLM smoke (scored task / DSPy?) still open for T-0003.  
 4. ~~**OQ-0009** — Write-guard default~~ → **answered: audit**.
 
 ## Hygiene

@@ -125,6 +125,17 @@ rsync -a --delete /path/to/ponytail/skills/ bootstrap/grok-cli/skills-external/p
 ./bootstrap/grok-cli/install.sh --skills-only
 ```
 
+### Skill port policy (ADR-0009 hybrid)
+
+| Kind | Location | How Grok sees it |
+|------|----------|------------------|
+| **Core (first-party)** | `skills/` | Copied into `~/.grok/skills/` on install |
+| **External pack (ponytail model)** | `skills-external/<pack>/` | `[skills].paths` absolute path — **not** copied into `~/.grok/skills/` |
+| **Docs-only** | TOOLS / AGENTS recipes | No install |
+
+**Core** = process backbone we edit, small surface, default-on, license-safe (criteria in ADR-0009).  
+**Bulk upstream** packs use the **same methods as ponytail** (snapshot + paths + pin + opt-out), not full-tree embed into first-party skills.
+
 ## Relationship to catalog entries
 
 See `TOOLS.md` / `data/tools.json` for scored entries:

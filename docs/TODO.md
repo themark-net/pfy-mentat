@@ -27,10 +27,10 @@
 | ID | Priority | Status | Item | Open questions | Depends | Notes |
 |----|----------|--------|------|----------------|---------|-------|
 | T-0012 | P1 | doing | LiteLLM + Ollama recipe under `examples/` keyed by DEPLOY_PROFILE | [OQ-0002](open-questions/OQ-0002-eval-harness-shape.md) | T-0030 | **local-only MVP shipped** (`examples/litellm-ollama/`, `make smoke-litellm-ollama`); balanced/max recipes still open |
-| T-0011 | P1 | blocked | Phase 1 skill ports: mattpocock subset + marketing-council | [OQ-0006](open-questions/OQ-0006-skill-port-strategy.md) | — | Need port strategy |
+| T-0011 | P1 | todo | Phase 1 skill ports: marketing-council first-party + mattpocock paths subset | — | — | ADR-0009 hybrid; see OQ-0006 resolution |
 | T-0003 | P1 | blocked | Prototype evaluation harness | [OQ-0002](open-questions/OQ-0002-eval-harness-shape.md) | T-0012 | |
 | T-0040 | P3 | todo | **Nice-to-have:** validate integrated setup with OpenCode and Claude Code (same cage/profiles/env) | — | — | Universal harness goal; Grok-first for now |
-| T-0014 | P2 | blocked | gstack role-pattern skills / AGENTS recipes | [OQ-0006](open-questions/OQ-0006-skill-port-strategy.md) | T-0011 | |
+| T-0014 | P2 | todo | gstack role-pattern skills / AGENTS recipes (docs-first, not full embed) | — | T-0011 | ADR-0009: docs/AGENTS first |
 | T-0015 | P2 | blocked | Optional Antigravity-Manager eval | [OQ-0007](open-questions/OQ-0007-antigravity-need.md) | — | |
 | T-0016 | P2 | blocked | Optional colibri build+serve | [OQ-0008](open-questions/OQ-0008-colibri-weights-ok.md) | — | |
 | T-0004 | P2 | blocked | ATG prototype coupling | [OQ-0004](open-questions/OQ-0004-atg-prototype-relationship.md) | — | |
