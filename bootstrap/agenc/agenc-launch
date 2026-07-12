@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# agenc-launch — opinionated primary wrapper for AgenC runtime
+# Enforces update freshness and daemon health on every launch.
+# This is the recommended entry point for all AgenC-based sessions in this project.
+
+AGENC_CMD="${AGENC_CMD:-agenc}"
+UPDATE_CHECK="${AGENC_UPDATE_CHECK:-1}"          # 1 = perform update check, 0 = skip
+UPDATE_MODE="${AGENC_UPDATE_MODE:-nonblocking}"  # nonblocking | blocking | off
+DAEMON_AUTOSTART="${AGENC_DAEMON_AUTOSTART:-1}"
+
+log() { printf '[agenc-launch] %s\n' "$*" >&2; }
+warn() { printf '[agenc-launch] WARNING: %s\n' "$*" >&2; }
+
+# Global kill switch
+if [[ "${AGENC_NO_UPDATE:-0}" == "1" ]]; then
+  UPDATE_CHECK=0
+fi
+
+if [[ "$UPDATE_CHECK" == "1" ]]; then
+  case "$UPDATE_MODE" in
+    blocking)
+      log "Running blocking runtime update check..."
+      "$AGENC_CMD" runtime update || warn "Update command returned non-zero (continuing)"
+      ;;
+    nonblocking|*)
+      log "Running non-blocking runtime update check in background..."
+      ("$AGENC_CMD" runtime update >/dev/null 2>&1 || true) &
+      ;;
+  esac
+fi
+
+# Ensure daemon is healthy (launcher usually autostarts it)
+if [[ "$DAEMON_AUTOSTART" == "1" ]]; then
+  if ! "$AGENC_CMD" daemon status >/dev/null 2>&1; then
+    log "Starting AgenC daemon..."
+    "$AGENC_CMD" daemon start || warn "Daemon start failed or was already running"
+  fi
+fi
+
+# Hand off to the real agenc binary with all original arguments
+exec "$AGENC_CMD" "$@"
