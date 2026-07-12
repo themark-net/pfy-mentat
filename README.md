@@ -241,7 +241,7 @@ See [CATEGORIZATION.md](CATEGORIZATION.md) and [TOOLS.md](TOOLS.md). Tools get S
 | **agent-cage (PNNL)** | 90 | S | pin + `harness/agent-cage/` |
 | codebase-memory-mcp | 91 | S | pin + bootstrap MCP |
 | LiteLLM / Ollama | 93 / 92 | S | pinned_commit |
-| repowise / gstack / mattpocock / marketing-skills | 85–88 | A | pin / skill snapshots |
+| repowise / gstack / Multica / mattpocock / marketing-skills | 85–88 | A | pin / skill snapshots |
 | colibri | 86 | A | pin (weights not in-repo) |
 
 Full table: [TOOLS.md](TOOLS.md). Seeds: [sources/x-posts.md](sources/x-posts.md).
