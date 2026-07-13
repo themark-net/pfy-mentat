@@ -40,7 +40,8 @@ help:
 	@echo "Grok Build in cage (primary operator path — T-0045):"
 	@echo "  make cage-grok              # ensure up + workspace + MCP ready, print how to launch"
 	@echo "  make cage-grok-shell        # interactive bash at /workspace/pfy-mentat"
-	@echo "  make cage-grok-run ARGS='…' # interactive grok in catalog tree (default: no args)"
+	@echo "  make cage-grok-run PROMPT='…'   # interactive grok; prompt is one string"
+	@echo "  make cage-grok-run FLAGS='--always-approve' PROMPT='…'"
 	@echo "  First-time once: cage-grok-install → auth-import → build → up"
 	@echo "  Daily:           make cage-grok   then cage-grok-shell | cage-grok-run"
 	@echo "  make cage-workspace-sync    # re-sync catalog → /workspace/pfy-mentat"
@@ -131,7 +132,7 @@ cage-grok-shell:
 	@$(MAKE) -C $(HARNESS) grok-shell
 
 cage-grok-run:
-	@$(MAKE) -C $(HARNESS) grok-run ARGS='$(ARGS)'
+	@$(MAKE) -C $(HARNESS) grok-run PROMPT='$(PROMPT)' FLAGS='$(FLAGS)' ARGS='$(ARGS)'
 
 cage-grok-uninstall:
 	@$(MAKE) -C $(HARNESS) grok-overlay-uninstall

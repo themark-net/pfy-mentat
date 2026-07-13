@@ -39,8 +39,12 @@ make cage-grok                             # = grok-ensure: up + sync + ready + 
 # Get into a session
 make cage-grok-shell                       # bash at /workspace/pfy-mentat  (then: grok)
 make cage-grok-run                         # drop straight into interactive Grok TUI
-make cage-grok-run ARGS='--always-approve "list top-level files"'
+make cage-grok-run PROMPT='list top-level files'
+make cage-grok-run FLAGS='--always-approve' PROMPT='list top-level files'
 ```
+
+**Prompt quoting:** pass the whole initial message as `PROMPT='…'` (one Make variable).  
+Do **not** use unquoted multi-word `ARGS=Read docs/foo.md and …` — Make/shell split it and Grok treats path tokens as extra CLI arguments.
 
 **Not** `make cage-shell` alone if you want the Grok image + catalog tree + MCP preset — use **`cage-grok*`**.
 

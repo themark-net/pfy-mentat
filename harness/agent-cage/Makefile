@@ -436,8 +436,8 @@ grok-ensure: ensure-project
 	@echo ""
 	@echo "=== Launch Grok Build in cage ==="
 	@echo "  make cage-grok-shell     # bash at /workspace/pfy-mentat"
-	@echo "  make cage-grok-run       # interactive grok (add ARGS='fix X')"
-	@echo "  Or: make cage-shell && cd /workspace/pfy-mentat && grok"
+	@echo "  make cage-grok-run PROMPT='…'   # interactive grok (quoted prompt)"
+	@echo "  Or: make cage-grok-shell && grok"
 	@echo "MCP: project filesystem → mcp-host /workspace (includes pfy-mentat/)"
 	@echo "Local models: make local-ollama-up + smoke-litellm-ollama (separate path)"
 
@@ -454,21 +454,33 @@ grok-shell: ensure-project
 	  -w /workspace/$(WORKSPACE_REPO_NAME) \
 	  agent-cage-agent bash -l
 
-# Interactive Grok session in catalog tree. ARGS forwarded to grok (optional).
-# Example: make grok-run ARGS='--always-approve "summarize README"'
+# Interactive Grok session in catalog tree.
+# Prompt must stay ONE argv for grok (spaces break if unquoted).
+#
+#   make cage-grok-run PROMPT='Read docs/ops/foo.md and implement T-0047'
+#   make cage-grok-run FLAGS='--always-approve' PROMPT='summarize README'
+#   make cage-grok-run                          # bare TUI, no initial prompt
+#   make cage-grok-run ARGS='…'                 # back-compat alias for PROMPT
+#
+# Avoid: ARGS with bare paths as separate shell words (old bug).
+PROMPT ?=
+FLAGS ?=
 ARGS ?=
 grok-run: ensure-project
 	@docker inspect agent-cage-agent --format '{{.State.Status}}' 2>/dev/null | grep -q running \
 	  || (echo "error: agent not running — make grok-ensure first"; exit 1)
 	@test -f "$(WORKSPACE_REPO)/README.md" || $(MAKE) workspace-sync
 	@test -f "$(WORKSPACE_REPO)/.grok/config.toml" || $(MAKE) grok-mcp-preset
-	@echo "==> grok $(ARGS)  @ /workspace/$(WORKSPACE_REPO_NAME)"
-	@docker exec -it -u agent \
-	  -e HOME=/home/agent \
-	  -e GROK_HOME=/home/agent/.grok \
-	  -e PATH=/usr/local/bin:/home/agent/.local/bin:/usr/bin:/bin \
-	  -w /workspace/$(WORKSPACE_REPO_NAME) \
-	  agent-cage-agent bash -lc 'exec grok $(ARGS)'
+	@prompt='$(if $(strip $(PROMPT)),$(PROMPT),$(ARGS))'; \
+	  echo "==> grok $(FLAGS) [prompt chars: $$(printf '%s' \"$$prompt\" | wc -c)] @ /workspace/$(WORKSPACE_REPO_NAME)"; \
+	  docker exec -it -u agent \
+	    -e HOME=/home/agent \
+	    -e GROK_HOME=/home/agent/.grok \
+	    -e PATH=/usr/local/bin:/home/agent/.local/bin:/usr/bin:/bin \
+	    -e GROK_PROMPT="$$prompt" \
+	    -w /workspace/$(WORKSPACE_REPO_NAME) \
+	    agent-cage-agent bash -lc \
+	    'if [ -n "$$GROK_PROMPT" ]; then exec grok $(FLAGS) "$$GROK_PROMPT"; else exec grok $(FLAGS); fi'
 
 # --- Local Ollama (host) + LiteLLM in-cage smoke -----------------------------
 
