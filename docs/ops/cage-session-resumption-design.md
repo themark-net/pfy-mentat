@@ -1,6 +1,6 @@
 # Design: Cage Grok session resumption (repo-isolated)
 
-**Status:** Design (implement as T-0047)  
+**Status:** Implemented (T-0047) — sessions volume + host import + resume targets  
 **Related:** T-0045 (launch path), ADR-0002 (Grok primary), ADR-0010 (not AgenC)  
 **Upstream behavior:** Grok Build sessions under `$GROK_HOME/sessions/<url-encoded-cwd>/`
 

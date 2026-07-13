@@ -24,6 +24,23 @@ Tokens refresh automatically via `refresh_token` until refresh fails (then re-lo
 
 Copies host `auth.json` into the cage’s isolated Grok home (not a live bind of your whole `~/.grok`):
 
+### Sessions (resume old chats)
+
+Grok keys sessions by **absolute cwd**. Cage cwd is `/workspace/pfy-mentat`, which is **not** the same key as host `/home/.../local-llm-dev-tools`.
+
+| Store | Path |
+|-------|------|
+| Persistent host store | `~/.agentcage/grok-state/sessions` → mounted at `/home/agent/.grok/sessions` |
+| Cage repo sessions | `…/sessions/%2Fworkspace%2Fpfy-mentat/<uuid>/` |
+| Host-desktop sessions (this repo) | `~/.grok/sessions/%2Fhome%2F…%2Flocal-llm-dev-tools/` |
+
+```bash
+make cage-grok-sessions-import-host   # copy host project sessions into cage key (rewrite cwd)
+make cage-grok-sessions               # list what Grok sees in cage
+make cage-grok-resume                 # grok --continue
+make cage-grok-resume ID=019f52c9-…   # specific session
+```
+
 ### How you actually launch Grok
 
 ```bash

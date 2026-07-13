@@ -1,7 +1,8 @@
-# Grok image + auth.json only (do not mount whole .grok — that hid the binary).
+# Grok image + auth.json + persistent sessions (do not mount whole .grok — that hid the binary).
 # make grok-overlay-install → $AGENTCAGE_DIR/docker/docker-compose.override.yaml
 #
-# Auth: make grok-auth-import  →  ~/.agentcage/grok-home/auth.json
+# Auth:     make grok-auth-import  →  ~/.agentcage/grok-home/auth.json
+# Sessions: ~/.agentcage/grok-state/sessions → /home/agent/.grok/sessions (T-0047)
 
 services:
   agent:
@@ -19,3 +20,5 @@ services:
     volumes:
       # File mount: OIDC session only (refresh may rewrite this file)
       - ../grok-home/auth.json:/home/agent/.grok/auth.json
+      # Directory mount: Grok sessions survive cage recreate; keyed by cage cwd
+      - ../grok-state/sessions:/home/agent/.grok/sessions

@@ -16,7 +16,8 @@ HARNESS := harness/agent-cage
 	local-ollama-overlay-install local-ollama-up smoke-litellm-ollama \
 	smoke-codebase-memory smoke-repowise smoke-context-tools \
 	smoke-write-guard eval-tier0 eval-tier1 eval-mvp eval-suite eval-matrix eval-v02 \
-	cage-grok cage-grok-shell cage-grok-run
+	cage-grok cage-grok-shell cage-grok-run cage-grok-sessions cage-grok-resume \
+	cage-grok-sessions-import-host
 
 help:
 	@echo "pfy-mentat"
@@ -40,13 +41,15 @@ help:
 	@echo "Grok Build in cage (primary operator path — T-0045):"
 	@echo "  make cage-grok              # ensure up + workspace + MCP ready, print how to launch"
 	@echo "  make cage-grok-shell        # interactive bash at /workspace/pfy-mentat"
-	@echo "  make cage-grok-run PROMPT='…'   # interactive grok; prompt is one string"
-	@echo "  make cage-grok-run FLAGS='--always-approve' PROMPT='…'"
-	@echo "  First-time once: cage-grok-install → auth-import → build → up"
-	@echo "  Daily:           make cage-grok   then cage-grok-shell | cage-grok-run"
+	@echo "  make cage-grok-run PROMPT='…'   # new session; prompt is one string"
+	@echo "  make cage-grok-sessions         # list Grok sessions for cage repo cwd"
+	@echo "  make cage-grok-resume           # continue most recent (or ID=uuid)"
+	@echo "  make cage-grok-sessions-import-host  # map host project sessions → cage"
+	@echo "  First-time: cage-grok-install → auth-import → build → cage-grok"
+	@echo "  Daily:      make cage-grok   then resume | run | shell"
 	@echo "  make cage-workspace-sync    # re-sync catalog → /workspace/pfy-mentat"
-	@echo "  make cage-grok-ready        # smoke: version + workspace + filesystem MCP"
 	@echo "  Auth: host 'grok login' then make cage-grok-auth-import"
+	@echo "  Sessions persist: ~/.agentcage/grok-state/sessions (not host ~/.grok alone)"
 	@echo ""
 	@echo "LiteLLM + Ollama (in-cage smoke, local-only):"
 	@echo "  make local-ollama-overlay-install"
@@ -133,6 +136,15 @@ cage-grok-shell:
 
 cage-grok-run:
 	@$(MAKE) -C $(HARNESS) grok-run PROMPT='$(PROMPT)' FLAGS='$(FLAGS)' ARGS='$(ARGS)'
+
+cage-grok-sessions:
+	@$(MAKE) -C $(HARNESS) grok-sessions
+
+cage-grok-resume:
+	@$(MAKE) -C $(HARNESS) grok-resume ID='$(ID)'
+
+cage-grok-sessions-import-host:
+	@$(MAKE) -C $(HARNESS) grok-sessions-import-host
 
 cage-grok-uninstall:
 	@$(MAKE) -C $(HARNESS) grok-overlay-uninstall

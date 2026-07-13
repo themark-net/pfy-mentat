@@ -43,7 +43,8 @@ REPOWISE_PIP_SPEC ?= repowise==0.30.0
 	smoke-host smoke-integration doctor ensure-cli ensure-project \
 	grok-overlay-install grok-overlay-uninstall grok-overlay-build grok-up grok-smoke \
 	grok-auth-import workspace-sync grok-mcp-preset grok-ready \
-	grok-ensure grok-shell grok-run \
+	grok-ensure grok-shell grok-run grok-state-init grok-sessions-export \
+	grok-sessions-import-host grok-sessions grok-resume \
 	local-ollama-overlay-install local-ollama-up smoke-litellm-ollama \
 	smoke-codebase-memory smoke-repowise smoke-context-tools \
 	smoke-write-guard write-guard-overlay-install \
@@ -206,11 +207,29 @@ smoke-integration: smoke-host ensure-cli
 
 # --- Grok-in-image overlay ---------------------------------------------------
 
+GROK_STATE_DIR := $(AGENTCAGE_DIR)/grok-state
+GROK_SESSIONS_HOST := $(GROK_STATE_DIR)/sessions
+
+# Host store for Grok sessions (T-0047). Idempotent.
+grok-state-init: ensure-project
+	@mkdir -p "$(GROK_SESSIONS_HOST)"
+	@chmod 700 "$(GROK_STATE_DIR)" 2>/dev/null || true
+	@chmod 700 "$(GROK_SESSIONS_HOST)" 2>/dev/null || true
+	@# If container has sessions not yet on host, export them once before first mount.
+	@if docker inspect agent-cage-agent --format '{{.State.Status}}' 2>/dev/null | grep -q running; then \
+	  if [ -z "$$(find "$(GROK_SESSIONS_HOST)" -mindepth 1 -maxdepth 1 2>/dev/null | head -1)" ]; then \
+	    echo "==> exporting in-container sessions → $(GROK_SESSIONS_HOST)"; \
+	    docker cp agent-cage-agent:/home/agent/.grok/sessions/. "$(GROK_SESSIONS_HOST)/" 2>/dev/null || true; \
+	  fi; \
+	fi
+	@echo "grok-state-init: $(GROK_SESSIONS_HOST)"
+
 grok-overlay-install: ensure-project
 	@test -f "$(GROK_OVERLAY)/Dockerfile"
 	@mkdir -p "$(AGENTCAGE_DIR)/docker/overlays-grok"
 	@mkdir -p "$(AGENTCAGE_DIR)/grok-home"
 	@chmod 700 "$(AGENTCAGE_DIR)/grok-home"
+	@$(MAKE) grok-state-init
 	@cp "$(GROK_OVERLAY)/Dockerfile" "$(AGENTCAGE_DIR)/docker/overlays-grok/Dockerfile"
 	@cp "$(GROK_OVERLAY)/docker-compose.override.yaml" "$(AGENTCAGE_DIR)/docker/docker-compose.override.yaml"
 	@cp "$(GROK_OVERLAY)/coding-agent-grok.yaml" "$(AGENTCAGE_DIR)/policies/coding-agent-grok.yaml"
@@ -220,8 +239,10 @@ grok-overlay-install: ensure-project
 	@echo "  docker/docker-compose.override.yaml"
 	@echo "  docker/overlays-grok/Dockerfile"
 	@echo "  policies/coding-agent-grok.yaml"
-	@echo "  grok-home/auth.json mounted at /home/agent/.grok/auth.json"
+	@echo "  grok-home/auth.json → /home/agent/.grok/auth.json"
+	@echo "  grok-state/sessions → /home/agent/.grok/sessions (persistent)"
 	@echo "Next: make grok-auth-import   # copy host browser/OIDC session"
+	@echo "      make grok-sessions-import-host   # map host project sessions into cage cwd"
 	@echo "      make grok-overlay-build && make grok-up"
 
 # Cage agent uid is 1001 in stock agent-cage image. Host copies are often uid 1000
@@ -288,6 +309,9 @@ grok-up: ensure-project
 	  || (echo "error: run make grok-overlay-install first"; exit 1)
 	@docker image inspect $(GROK_IMAGE) >/dev/null 2>&1 \
 	  || (echo "error: $(GROK_IMAGE) missing — run make grok-overlay-build"; exit 1)
+	@$(MAKE) grok-state-init
+	@# Re-install override so sessions volume is present (idempotent)
+	@cp "$(GROK_OVERLAY)/docker-compose.override.yaml" "$(COMPOSE_DIR)/docker-compose.override.yaml"
 	@mkdir -p "$(AGENTCAGE_DIR)/grok-home"
 	@if [ ! -f "$(AGENTCAGE_DIR)/grok-home/auth.json" ]; then \
 	  echo "warn: no grok-home/auth.json — run make grok-auth-import or device-login in cage"; \
@@ -301,12 +325,14 @@ grok-up: ensure-project
 	|| POLICY=coding-agent-grok $(COMPOSE_GROK) up -d
 	@echo "Waiting for agent container..."
 	@sleep 3
-	@# Fix auth.json ownership inside container (bind mount may show host uid)
+	@# Fix auth.json + sessions ownership inside container (bind mount may show host uid)
 	@docker exec -u root agent-cage-agent bash -lc \
-	  'if [ -f /home/agent/.grok/auth.json ]; then chown agent:agent /home/agent/.grok/auth.json; chmod 600 /home/agent/.grok/auth.json; fi' \
+	  'if [ -f /home/agent/.grok/auth.json ]; then chown agent:agent /home/agent/.grok/auth.json; chmod 600 /home/agent/.grok/auth.json; fi; \
+	   if [ -d /home/agent/.grok/sessions ]; then chown -R agent:agent /home/agent/.grok/sessions; fi' \
 	  2>/dev/null || true
 	@docker inspect agent-cage-agent --format 'image={{.Config.Image}}'
-	@echo "Next: make grok-smoke && make shell"
+	@docker exec -u agent agent-cage-agent bash -lc 'findmnt /home/agent/.grok/sessions 2>/dev/null || mount | grep sessions || ls -la /home/agent/.grok/sessions | head -5'
+	@echo "Next: make grok-sessions-import-host && make grok-sessions"
 
 grok-smoke: ensure-project
 	@echo "==> which image is running?"
@@ -413,6 +439,60 @@ grok-ready: ensure-project
 	  >> "$(CATALOG_ROOT)/pipelines/smoke/cage-grok/results.latest.md"
 	@echo "grok-ready: PASS (T-0045)"
 
+# Export live container sessions to host store (before wipe / after work).
+grok-sessions-export: ensure-project
+	@$(MAKE) grok-state-init
+	@docker inspect agent-cage-agent --format '{{.State.Status}}' 2>/dev/null | grep -q running \
+	  || (echo "error: agent not running"; exit 1)
+	@echo "==> export container sessions → $(GROK_SESSIONS_HOST)"
+	@docker cp agent-cage-agent:/home/agent/.grok/sessions/. "$(GROK_SESSIONS_HOST)/"
+	@echo "grok-sessions-export: OK"
+
+# Map host-cwd sessions for this catalog repo into cage cwd key (so old host chats appear).
+grok-sessions-import-host: ensure-project
+	@$(MAKE) grok-state-init
+	@chmod +x "$(ROOT)/scripts/import-host-sessions-for-cage.sh"
+	@HOST_CWD="$(CATALOG_ROOT)" CAGE_CWD="/workspace/$(WORKSPACE_REPO_NAME)" \
+	  AGENTCAGE_DIR="$(AGENTCAGE_DIR)" \
+	  "$(ROOT)/scripts/import-host-sessions-for-cage.sh"
+	@docker inspect agent-cage-agent --format '{{.State.Status}}' 2>/dev/null | grep -q running \
+	  && docker exec -u root agent-cage-agent bash -lc \
+	    'chown -R agent:agent /home/agent/.grok/sessions 2>/dev/null || true' \
+	  || true
+	@echo "grok-sessions-import-host: done (re-run grok-up if sessions mount was missing)"
+
+# List sessions Grok sees for /workspace/pfy-mentat
+grok-sessions: ensure-project
+	@docker inspect agent-cage-agent --format '{{.State.Status}}' 2>/dev/null | grep -q running \
+	  || (echo "error: agent not running — make grok-up"; exit 1)
+	@docker exec -u agent \
+	  -e HOME=/home/agent -e GROK_HOME=/home/agent/.grok \
+	  -e PATH=/usr/local/bin:/home/agent/.local/bin:/usr/bin:/bin \
+	  -w /workspace/$(WORKSPACE_REPO_NAME) \
+	  agent-cage-agent bash -lc 'grok sessions list'
+
+# Resume most recent session for catalog cwd, or ID=...
+ID ?=
+grok-resume: ensure-project
+	@docker inspect agent-cage-agent --format '{{.State.Status}}' 2>/dev/null | grep -q running \
+	  || (echo "error: agent not running — make grok-up"; exit 1)
+	@test -f "$(WORKSPACE_REPO)/README.md" || $(MAKE) workspace-sync
+	@if [ -n "$(ID)" ]; then \
+	  echo "==> grok --resume $(ID)"; \
+	  docker exec -it -u agent \
+	    -e HOME=/home/agent -e GROK_HOME=/home/agent/.grok \
+	    -e PATH=/usr/local/bin:/home/agent/.local/bin:/usr/bin:/bin \
+	    -w /workspace/$(WORKSPACE_REPO_NAME) \
+	    agent-cage-agent bash -lc 'exec grok --resume $(ID)'; \
+	else \
+	  echo "==> grok --continue (most recent for cwd)"; \
+	  docker exec -it -u agent \
+	    -e HOME=/home/agent -e GROK_HOME=/home/agent/.grok \
+	    -e PATH=/usr/local/bin:/home/agent/.local/bin:/usr/bin:/bin \
+	    -w /workspace/$(WORKSPACE_REPO_NAME) \
+	    agent-cage-agent bash -lc 'exec grok --continue'; \
+	fi
+
 # Idempotent “get me to a launchable Grok in cage” ladder (safe to re-run).
 grok-ensure: ensure-project
 	@$(MAKE) grok-overlay-install
@@ -424,22 +504,20 @@ grok-ensure: ensure-project
 	fi
 	@docker image inspect $(GROK_IMAGE) >/dev/null 2>&1 \
 	  || $(MAKE) grok-overlay-build
-	@img=$$(docker inspect agent-cage-agent --format '{{.Config.Image}}' 2>/dev/null || true); \
-	  st=$$(docker inspect agent-cage-agent --format '{{.State.Status}}' 2>/dev/null || true); \
-	  if [ "$$st" != "running" ] || ! echo "$$img" | grep -q grok; then \
-	    $(MAKE) grok-up; \
-	  else \
-	    echo "agent already running image=$$img"; \
-	  fi
+	@# Always re-apply compose override + up so sessions volume is attached
+	@$(MAKE) grok-up
+	@$(MAKE) grok-sessions-import-host
 	@$(MAKE) workspace-sync
 	@$(MAKE) grok-ready
 	@echo ""
 	@echo "=== Launch Grok Build in cage ==="
-	@echo "  make cage-grok-shell     # bash at /workspace/pfy-mentat"
-	@echo "  make cage-grok-run PROMPT='…'   # interactive grok (quoted prompt)"
-	@echo "  Or: make cage-grok-shell && grok"
+	@echo "  make cage-grok-sessions          # list sessions for this repo"
+	@echo "  make cage-grok-resume            # continue most recent"
+	@echo "  make cage-grok-resume ID=uuid    # resume specific"
+	@echo "  make cage-grok-run PROMPT='…'    # new session with prompt"
+	@echo "  make cage-grok-shell             # bash then: grok / grok -c"
+	@echo "Sessions host store: $(GROK_SESSIONS_HOST)"
 	@echo "MCP: project filesystem → mcp-host /workspace (includes pfy-mentat/)"
-	@echo "Local models: make local-ollama-up + smoke-litellm-ollama (separate path)"
 
 # Interactive shell in catalog tree (Grok binary on PATH from image).
 grok-shell: ensure-project
