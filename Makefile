@@ -17,7 +17,7 @@ HARNESS := harness/agent-cage
 	smoke-codebase-memory smoke-repowise smoke-context-tools \
 	smoke-write-guard eval-tier0 eval-tier1 eval-mvp eval-suite eval-matrix eval-v02 \
 	cage-grok cage-grok-shell cage-grok-run cage-grok-sessions cage-grok-resume \
-	cage-grok-sessions-import-host
+	cage-grok-sessions-import-host cage-grok-net-smoke
 
 help:
 	@echo "pfy-mentat"
@@ -50,6 +50,8 @@ help:
 	@echo "  make cage-workspace-sync    # re-sync catalog → /workspace/pfy-mentat"
 	@echo "  Auth: host 'grok login' then make cage-grok-auth-import"
 	@echo "  Sessions persist: ~/.agentcage/grok-state/sessions (not host ~/.grok alone)"
+	@echo "  make cage-grok-net-smoke    # proxy must allow auth.x.ai + cli-chat-proxy"
+	@echo "  TUI crash left mouse junk?  host shell:  reset"
 	@echo ""
 	@echo "LiteLLM + Ollama (in-cage smoke, local-only):"
 	@echo "  make local-ollama-overlay-install"
@@ -145,6 +147,9 @@ cage-grok-resume:
 
 cage-grok-sessions-import-host:
 	@$(MAKE) -C $(HARNESS) grok-sessions-import-host
+
+cage-grok-net-smoke:
+	@$(MAKE) -C $(HARNESS) grok-net-smoke
 
 cage-grok-uninstall:
 	@$(MAKE) -C $(HARNESS) grok-overlay-uninstall

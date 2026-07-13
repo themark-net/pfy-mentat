@@ -44,7 +44,7 @@ REPOWISE_PIP_SPEC ?= repowise==0.30.0
 	grok-overlay-install grok-overlay-uninstall grok-overlay-build grok-up grok-smoke \
 	grok-auth-import workspace-sync grok-mcp-preset grok-ready \
 	grok-ensure grok-shell grok-run grok-state-init grok-sessions-export \
-	grok-sessions-import-host grok-sessions grok-resume \
+	grok-sessions-import-host grok-sessions grok-resume grok-net-smoke \
 	local-ollama-overlay-install local-ollama-up smoke-litellm-ollama \
 	smoke-codebase-memory smoke-repowise smoke-context-tools \
 	smoke-write-guard write-guard-overlay-install \
@@ -78,9 +78,11 @@ help:
 	@echo "  make grok-ready             # T-0045 smoke (version+workspace+MCP)"
 	@echo "  make grok-ensure            # idempotent: overlay+auth+build+up+sync+ready"
 	@echo "  make grok-shell             # interactive bash @ /workspace/pfy-mentat"
-	@echo "  make grok-run ARGS='…'      # interactive grok in catalog tree"
+	@echo "  make grok-run PROMPT='…'    # interactive grok in catalog tree"
+	@echo "  make grok-net-smoke         # verify proxy allows xAI / cli-chat-proxy"
 	@echo "  make grok-overlay-uninstall # remove override from runtime project"
 	@echo "  Auth: browser/OIDC → auth.json (primary); XAI_API_KEY optional fallback"
+	@echo "  If TUI corrupts terminal after crash: run  reset  (host shell)"
 	@echo ""
 	@echo "LiteLLM + host Ollama (in-cage smoke):"
 	@echo "  make local-ollama-overlay-install"
@@ -233,6 +235,9 @@ grok-overlay-install: ensure-project
 	@cp "$(GROK_OVERLAY)/Dockerfile" "$(AGENTCAGE_DIR)/docker/overlays-grok/Dockerfile"
 	@cp "$(GROK_OVERLAY)/docker-compose.override.yaml" "$(AGENTCAGE_DIR)/docker/docker-compose.override.yaml"
 	@cp "$(GROK_OVERLAY)/coding-agent-grok.yaml" "$(AGENTCAGE_DIR)/policies/coding-agent-grok.yaml"
+	@# Active policy mount uses POLICY name; keep file fresh for mitm hot-reload
+	@cp "$(GROK_OVERLAY)/coding-agent-grok.yaml" "$(AGENTCAGE_DIR)/policies/coding-agent-grok.yaml"
+	@touch "$(AGENTCAGE_DIR)/policies/coding-agent-grok.yaml"
 	@# ensure auth.json path exists so volume mount is a file-friendly dir
 	@touch "$(AGENTCAGE_DIR)/grok-home/.keep"
 	@echo "Installed Grok overlay into $(AGENTCAGE_DIR)"
@@ -316,15 +321,17 @@ grok-up: ensure-project
 	@if [ ! -f "$(AGENTCAGE_DIR)/grok-home/auth.json" ]; then \
 	  echo "warn: no grok-home/auth.json — run make grok-auth-import or device-login in cage"; \
 	fi
+	@# Always re-copy Grok policy so proxy mount path POLICY=coding-agent-grok is correct
+	@cp "$(GROK_OVERLAY)/coding-agent-grok.yaml" "$(AGENTCAGE_DIR)/policies/coding-agent-grok.yaml"
 	@echo "==> docker compose up with Grok override (POLICY=coding-agent-grok)"
 	@echo "    Note: agentcage CLI ignores compose override; this target uses -f override explicitly."
 	@if [ -f "$(AGENTCAGE_DIR)/.env" ]; then set -a; . "$(AGENTCAGE_DIR)/.env"; set +a; fi; \
 	cd "$(COMPOSE_DIR)" && \
 	POLICY=coding-agent-grok \
-	$(COMPOSE_GROK) --env-file "$(AGENTCAGE_DIR)/.env" up -d 2>/dev/null \
-	|| POLICY=coding-agent-grok $(COMPOSE_GROK) up -d
+	$(COMPOSE_GROK) --env-file "$(AGENTCAGE_DIR)/.env" up -d --force-recreate proxy agent 2>/dev/null \
+	|| POLICY=coding-agent-grok $(COMPOSE_GROK) up -d --force-recreate proxy agent
 	@echo "Waiting for agent container..."
-	@sleep 3
+	@sleep 4
 	@# Fix auth.json + sessions ownership inside container (bind mount may show host uid)
 	@docker exec -u root agent-cage-agent bash -lc \
 	  'if [ -f /home/agent/.grok/auth.json ]; then chown agent:agent /home/agent/.grok/auth.json; chmod 600 /home/agent/.grok/auth.json; fi; \
@@ -332,6 +339,7 @@ grok-up: ensure-project
 	  2>/dev/null || true
 	@docker inspect agent-cage-agent --format 'image={{.Config.Image}}'
 	@docker exec -u agent agent-cage-agent bash -lc 'findmnt /home/agent/.grok/sessions 2>/dev/null || mount | grep sessions || ls -la /home/agent/.grok/sessions | head -5'
+	@$(MAKE) grok-net-smoke || (echo "warn: grok-net-smoke failed — API may still be blocked"; true)
 	@echo "Next: make grok-sessions-import-host && make grok-sessions"
 
 grok-smoke: ensure-project
@@ -438,6 +446,43 @@ grok-ready: ensure-project
 	@printf '| %s | cage-grok-ready | PASS | workspace+MCP+grok |\n' "$$(date -Iseconds)" \
 	  >> "$(CATALOG_ROOT)/pipelines/smoke/cage-grok/results.latest.md"
 	@echo "grok-ready: PASS (T-0045)"
+
+# Verify cage proxy allows Grok Build CLI egress (not a model completion).
+grok-net-smoke: ensure-project
+	@docker inspect agent-cage-agent --format '{{.State.Status}}' 2>/dev/null | grep -q running \
+	  || (echo "error: agent not running"; exit 1)
+	@echo "==> grok-net-smoke (proxy allowlist for Grok CLI)"
+	@docker exec -u agent agent-cage-agent bash -lc 'set -e; \
+	  fail=0; \
+	  check() { \
+	    url="$$1"; want="$$2"; \
+	    out=$$(mktemp); \
+	    code=000; \
+	    for attempt in 1 2 3; do \
+	      code=$$(curl -sS -m 15 -o "$$out" -w "%{http_code}" "$$url" 2>/dev/null || echo 000); \
+	      body=$$(head -c 160 "$$out" 2>/dev/null | tr "\n" " "); \
+	      if echo "$$body" | grep -q blocked_by_agent_cage; then \
+	        echo "FAIL $$url  proxy-blocked  $$body"; fail=1; rm -f "$$out"; return; \
+	      fi; \
+	      if [ "$$code" != "000" ] && [ "$$code" != "502" ]; then break; fi; \
+	      sleep 2; \
+	    done; \
+	    case " $$want " in \
+	      *" $$code "*) echo "OK   $$url  http=$$code" ;; \
+	      *) echo "WARN $$url  http=$$code (wanted: $$want)  $$body" ;; \
+	    esac; \
+	    rm -f "$$out"; \
+	  }; \
+	  check "https://auth.x.ai/.well-known/openid-configuration" "200"; \
+	  check "https://api.x.ai/" "200 421 404"; \
+	  check "https://cli-chat-proxy.grok.com/" "401 403 404 200"; \
+	  check "https://storage.googleapis.com/" "200 400 404"; \
+	  check "https://grok.com/" "200 301 302 403 404"; \
+	  if [ "$$fail" -ne 0 ]; then \
+	    echo "hint: make cage-grok-up (POLICY=coding-agent-grok); check ~/.agentcage/logs/audit.jsonl"; \
+	    exit 1; \
+	  fi; \
+	  echo "grok-net-smoke: PASS (no proxy blocks on critical hosts)"'
 
 # Export live container sessions to host store (before wipe / after work).
 grok-sessions-export: ensure-project

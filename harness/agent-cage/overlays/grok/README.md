@@ -24,6 +24,16 @@ Tokens refresh automatically via `refresh_token` until refresh fails (then re-lo
 
 Copies host `auth.json` into the cage’s isolated Grok home (not a live bind of your whole `~/.grok`):
 
+### Network / “Grok cannot connect to CLI API”
+
+All agent HTTPS goes through the cage **whitelist proxy**. If Grok fails to reach the API:
+
+1. Confirm policy is **`coding-agent-grok`** (not bare `default` / incomplete `coding-agent-local`).  
+   `make cage-grok-up` forces `POLICY=coding-agent-grok` and recreates proxy+agent.
+2. Run: **`make cage-grok-net-smoke`** — must not show `blocked_by_agent_cage` for `auth.x.ai`, `cli-chat-proxy.grok.com`, `storage.googleapis.com`.
+3. Check `~/.agentcage/logs/audit.jsonl` for `"event": "blocked"` on those hosts.
+4. **TUI crash / mouse types as text** — Grok TUI died without restoring the terminal. On the **host** shell: `reset` (or close the tab). Unrelated to host Grok outside the cage.
+
 ### Sessions (resume old chats)
 
 Grok keys sessions by **absolute cwd**. Cage cwd is `/workspace/pfy-mentat`, which is **not** the same key as host `/home/.../local-llm-dev-tools`.

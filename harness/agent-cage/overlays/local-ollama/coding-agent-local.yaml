@@ -23,6 +23,30 @@ policy:
     - pattern: "host.docker.internal"
       methods: ["GET", "HEAD", "POST", "OPTIONS"]
 
+    # --- xAI / Grok (keep Grok Build usable if this policy is active) ---
+    - pattern: "x.ai"
+      methods: ["GET", "HEAD", "POST", "PUT", "OPTIONS"]
+    - pattern: "*.x.ai"
+      methods: ["GET", "HEAD", "POST", "PUT", "OPTIONS"]
+    - pattern: "api.x.ai"
+      methods: ["GET", "HEAD", "POST", "PUT", "OPTIONS"]
+    - pattern: "auth.x.ai"
+      methods: ["GET", "HEAD", "POST", "PUT", "OPTIONS"]
+    - pattern: "accounts.x.ai"
+      methods: ["GET", "HEAD", "POST", "PUT", "OPTIONS"]
+    - pattern: "console.x.ai"
+      methods: ["GET", "HEAD", "POST", "PUT", "OPTIONS"]
+    - pattern: "grok.com"
+      methods: ["GET", "HEAD", "POST", "PUT", "OPTIONS"]
+    - pattern: "*.grok.com"
+      methods: ["GET", "HEAD", "POST", "PUT", "OPTIONS"]
+    - pattern: "cli-chat-proxy.grok.com"
+      methods: ["GET", "HEAD", "POST", "PUT", "OPTIONS"]
+    - pattern: "storage.googleapis.com"
+      methods: ["GET", "HEAD"]
+    - pattern: "*.googleapis.com"
+      methods: ["GET", "HEAD", "POST"]
+
     # --- Package Registries (pip install litellm in-cage) ---
     - pattern: "*.pypi.org"
       methods: ["GET", "HEAD"]

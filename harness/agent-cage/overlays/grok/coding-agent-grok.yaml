@@ -1,38 +1,57 @@
-# Policy: coding-agent + xAI / Grok API hosts (whitelist mode)
-# Install: make grok-overlay-install  → copies as policies/coding-agent-grok.yaml
-# Use:     POLICY=coding-agent-grok make up-mcp
-#      or: agentcage up --mcp --policy coding-agent-grok
+# Policy: coding-agent + xAI/Grok Build CLI + host Ollama (whitelist)
+# Install: make grok-overlay-install  → policies/coding-agent-grok.yaml
+# Use:     POLICY=coding-agent-grok make grok-up   (always for Grok-in-cage)
+#
+# Note: mitmproxy matching uses single-label glob: *.x.ai matches auth.x.ai,
+# but does NOT match apex grok.com — list apex hosts explicitly.
+# Grok Build also hits storage.googleapis.com for CLI artifacts and grok.com for telemetry.
 
 policy:
   name: "coding-agent-grok"
-  version: "1.0"
+  version: "1.1"
   mode: "whitelist"
 
   defaults:
     max_request_size_bytes: 10485760
     max_response_size_bytes: 104857600
-    timeout_seconds: 120
+    timeout_seconds: 300
     log_level: "info"
     log_bodies: false
 
   domains:
-    # --- xAI / Grok ---
+    # --- xAI / Grok Build CLI (required for chat API + auth refresh) ---
     - pattern: "x.ai"
-      methods: ["GET", "HEAD", "POST"]
+      methods: ["GET", "HEAD", "POST", "PUT", "OPTIONS"]
     - pattern: "*.x.ai"
-      methods: ["GET", "HEAD", "POST"]
+      methods: ["GET", "HEAD", "POST", "PUT", "OPTIONS"]
     - pattern: "api.x.ai"
-      methods: ["GET", "HEAD", "POST"]
-    - pattern: "cli-chat-proxy.grok.com"
-      methods: ["GET", "HEAD", "POST"]
-    - pattern: "*.grok.com"
-      methods: ["GET", "HEAD", "POST"]
+      methods: ["GET", "HEAD", "POST", "PUT", "OPTIONS"]
+    - pattern: "auth.x.ai"
+      methods: ["GET", "HEAD", "POST", "PUT", "OPTIONS"]
     - pattern: "accounts.x.ai"
-      methods: ["GET", "HEAD", "POST"]
+      methods: ["GET", "HEAD", "POST", "PUT", "OPTIONS"]
     - pattern: "console.x.ai"
+      methods: ["GET", "HEAD", "POST", "PUT", "OPTIONS"]
+    # Apex + subdomains (telemetry, marketing assets)
+    - pattern: "grok.com"
+      methods: ["GET", "HEAD", "POST", "PUT", "OPTIONS"]
+    - pattern: "*.grok.com"
+      methods: ["GET", "HEAD", "POST", "PUT", "OPTIONS"]
+    - pattern: "cli-chat-proxy.grok.com"
+      methods: ["GET", "HEAD", "POST", "PUT", "OPTIONS"]
+    # CLI release artifacts (blocked without this → update/bootstrap failures)
+    - pattern: "storage.googleapis.com"
+      methods: ["GET", "HEAD"]
+    - pattern: "*.googleapis.com"
       methods: ["GET", "HEAD", "POST"]
+    - pattern: "googleapis.com"
+      methods: ["GET", "HEAD"]
 
-    # --- AI APIs (from upstream coding-agent) ---
+    # --- Host Ollama (so Grok+local can share one policy) ---
+    - pattern: "host.docker.internal"
+      methods: ["GET", "HEAD", "POST", "OPTIONS"]
+
+    # --- Other AI APIs ---
     - pattern: "api.openai.com"
       methods: ["POST", "GET"]
     - pattern: "api.anthropic.com"
@@ -44,6 +63,8 @@ policy:
 
     # --- Package Registries ---
     - pattern: "*.pypi.org"
+      methods: ["GET", "HEAD"]
+    - pattern: "pypi.org"
       methods: ["GET", "HEAD"]
     - pattern: "files.pythonhosted.org"
       methods: ["GET", "HEAD"]
@@ -71,6 +92,8 @@ policy:
       methods: ["GET", "HEAD", "POST"]
     - pattern: "*.githubusercontent.com"
       methods: ["GET", "HEAD"]
+    - pattern: "raw.githubusercontent.com"
+      methods: ["GET", "HEAD"]
     - pattern: "gitlab.com"
       methods: ["GET", "HEAD", "POST"]
     - pattern: "*.gitlab.com"
@@ -83,11 +106,17 @@ policy:
       methods: ["GET", "HEAD"]
     - pattern: "*.debian.org"
       methods: ["GET", "HEAD"]
+    - pattern: "archive.ubuntu.com"
+      methods: ["GET", "HEAD"]
+    - pattern: "security.ubuntu.com"
+      methods: ["GET", "HEAD"]
     - pattern: "dl-cdn.alpinelinux.org"
       methods: ["GET", "HEAD"]
 
     # --- Documentation ---
     - pattern: "docs.python.org"
+      methods: ["GET", "HEAD"]
+    - pattern: "docs.x.ai"
       methods: ["GET", "HEAD"]
     - pattern: "nodejs.org"
       methods: ["GET", "HEAD"]
@@ -97,5 +126,9 @@ policy:
       methods: ["GET", "HEAD"]
     - pattern: "*.stackoverflow.com"
       methods: ["GET", "HEAD"]
-    - pattern: "raw.githubusercontent.com"
-      methods: ["GET", "HEAD"]
+
+  content_filters: []
+  rate_limits:
+    global:
+      requests_per_minute: 500
+      requests_per_hour: 10000
