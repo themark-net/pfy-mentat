@@ -43,6 +43,7 @@ REPOWISE_PIP_SPEC ?= repowise==0.30.0
 	smoke-host smoke-integration doctor ensure-cli ensure-project \
 	grok-overlay-install grok-overlay-uninstall grok-overlay-build grok-up grok-smoke \
 	grok-auth-import workspace-sync grok-mcp-preset grok-ready \
+	grok-ensure grok-shell grok-run \
 	local-ollama-overlay-install local-ollama-up smoke-litellm-ollama \
 	smoke-codebase-memory smoke-repowise smoke-context-tools \
 	smoke-write-guard write-guard-overlay-install \
@@ -73,7 +74,10 @@ help:
 	@echo "  make workspace-sync         # sync catalog repo → /workspace/pfy-mentat"
 	@echo "  make grok-mcp-preset        # project .grok MCP → cage filesystem server"
 	@echo "  make grok-smoke             # grok --version + auth.json"
-	@echo "  make grok-ready             # T-0045: up path smoke (version+workspace+MCP)"
+	@echo "  make grok-ready             # T-0045 smoke (version+workspace+MCP)"
+	@echo "  make grok-ensure            # idempotent: overlay+auth+build+up+sync+ready"
+	@echo "  make grok-shell             # interactive bash @ /workspace/pfy-mentat"
+	@echo "  make grok-run ARGS='…'      # interactive grok in catalog tree"
 	@echo "  make grok-overlay-uninstall # remove override from runtime project"
 	@echo "  Auth: browser/OIDC → auth.json (primary); XAI_API_KEY optional fallback"
 	@echo ""
@@ -136,10 +140,14 @@ setup:
 	@echo "Next: make init   then   make up-mcp"
 
 init: ensure-cli
-	@echo "==> agentcage init --path $(AGENTCAGE_DIR)"
-	agentcage init --path "$(AGENTCAGE_DIR)" --no-completion
+	@if [ -f "$(AGENTCAGE_DIR)/docker/docker-compose.yaml" ] || [ -f "$(AGENTCAGE_DIR)/docker-compose.yaml" ]; then \
+	  echo "init: already present at $(AGENTCAGE_DIR) (skip — idempotent)"; \
+	else \
+	  echo "==> agentcage init --path $(AGENTCAGE_DIR)"; \
+	  agentcage init --path "$(AGENTCAGE_DIR)" --no-completion; \
+	fi
 	@echo "Runtime project: $(AGENTCAGE_DIR)"
-	@echo "Next: make up-mcp"
+	@echo "Next: make up-mcp   (or: make grok-ensure for Grok Build path)"
 
 update:
 	@test -d "$(CAGE_SRC)/.git" || (echo "run make setup first"; exit 1)
@@ -404,6 +412,63 @@ grok-ready: ensure-project
 	@printf '| %s | cage-grok-ready | PASS | workspace+MCP+grok |\n' "$$(date -Iseconds)" \
 	  >> "$(CATALOG_ROOT)/pipelines/smoke/cage-grok/results.latest.md"
 	@echo "grok-ready: PASS (T-0045)"
+
+# Idempotent “get me to a launchable Grok in cage” ladder (safe to re-run).
+grok-ensure: ensure-project
+	@$(MAKE) grok-overlay-install
+	@if [ ! -f "$(AGENTCAGE_DIR)/grok-home/auth.json" ]; then \
+	  echo "==> no cage auth.json — importing host session"; \
+	  $(MAKE) grok-auth-import; \
+	else \
+	  echo "auth: $(AGENTCAGE_DIR)/grok-home/auth.json present (re-import: make grok-auth-import)"; \
+	fi
+	@docker image inspect $(GROK_IMAGE) >/dev/null 2>&1 \
+	  || $(MAKE) grok-overlay-build
+	@img=$$(docker inspect agent-cage-agent --format '{{.Config.Image}}' 2>/dev/null || true); \
+	  st=$$(docker inspect agent-cage-agent --format '{{.State.Status}}' 2>/dev/null || true); \
+	  if [ "$$st" != "running" ] || ! echo "$$img" | grep -q grok; then \
+	    $(MAKE) grok-up; \
+	  else \
+	    echo "agent already running image=$$img"; \
+	  fi
+	@$(MAKE) workspace-sync
+	@$(MAKE) grok-ready
+	@echo ""
+	@echo "=== Launch Grok Build in cage ==="
+	@echo "  make cage-grok-shell     # bash at /workspace/pfy-mentat"
+	@echo "  make cage-grok-run       # interactive grok (add ARGS='fix X')"
+	@echo "  Or: make cage-shell && cd /workspace/pfy-mentat && grok"
+	@echo "MCP: project filesystem → mcp-host /workspace (includes pfy-mentat/)"
+	@echo "Local models: make local-ollama-up + smoke-litellm-ollama (separate path)"
+
+# Interactive shell in catalog tree (Grok binary on PATH from image).
+grok-shell: ensure-project
+	@docker inspect agent-cage-agent --format '{{.State.Status}}' 2>/dev/null | grep -q running \
+	  || (echo "error: agent not running — make grok-ensure first"; exit 1)
+	@test -f "$(WORKSPACE_REPO)/README.md" || $(MAKE) workspace-sync
+	@echo "==> shell as agent @ /workspace/$(WORKSPACE_REPO_NAME)  (exit to leave)"
+	@docker exec -it -u agent \
+	  -e HOME=/home/agent \
+	  -e GROK_HOME=/home/agent/.grok \
+	  -e PATH=/usr/local/bin:/home/agent/.local/bin:/usr/bin:/bin \
+	  -w /workspace/$(WORKSPACE_REPO_NAME) \
+	  agent-cage-agent bash -l
+
+# Interactive Grok session in catalog tree. ARGS forwarded to grok (optional).
+# Example: make grok-run ARGS='--always-approve "summarize README"'
+ARGS ?=
+grok-run: ensure-project
+	@docker inspect agent-cage-agent --format '{{.State.Status}}' 2>/dev/null | grep -q running \
+	  || (echo "error: agent not running — make grok-ensure first"; exit 1)
+	@test -f "$(WORKSPACE_REPO)/README.md" || $(MAKE) workspace-sync
+	@test -f "$(WORKSPACE_REPO)/.grok/config.toml" || $(MAKE) grok-mcp-preset
+	@echo "==> grok $(ARGS)  @ /workspace/$(WORKSPACE_REPO_NAME)"
+	@docker exec -it -u agent \
+	  -e HOME=/home/agent \
+	  -e GROK_HOME=/home/agent/.grok \
+	  -e PATH=/usr/local/bin:/home/agent/.local/bin:/usr/bin:/bin \
+	  -w /workspace/$(WORKSPACE_REPO_NAME) \
+	  agent-cage-agent bash -lc 'exec grok $(ARGS)'
 
 # --- Local Ollama (host) + LiteLLM in-cage smoke -----------------------------
 

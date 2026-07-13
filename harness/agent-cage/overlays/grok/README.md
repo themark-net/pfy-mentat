@@ -24,17 +24,31 @@ Tokens refresh automatically via `refresh_token` until refresh fails (then re-lo
 
 Copies host `auth.json` into the cage’s isolated Grok home (not a live bind of your whole `~/.grok`):
 
+### How you actually launch Grok
+
 ```bash
+# Once per machine (idempotent after first success)
+make cage-setup && make cage-init          # if ~/.agentcage missing
 make cage-grok-install
-make cage-grok-auth-import   # ~/.grok/auth.json → ~/.agentcage/grok-home/auth.json
-make cage-grok-build         # rebuild after Dockerfile changes
-make cage-grok-up            # MUST use this — not plain cage-up-mcp / agentcage up
-make cage-workspace-sync     # catalog repo → /workspace/pfy-mentat + MCP preset
-make cage-grok-ready         # T-0045: version + workspace + filesystem MCP
-make cage-shell
-# [cage] cd /workspace/pfy-mentat && grok --version
-# [cage] cd /workspace/pfy-mentat && grok mcp list   # filesystem → mcp-host
-# [cage] grok -p "ping" --always-approve             # uses imported session
+make cage-grok-auth-import                 # needs host: grok login
+make cage-grok-build
+
+# Daily / re-run (idempotent ladder)
+make cage-grok                             # = grok-ensure: up + sync + ready + print next step
+
+# Get into a session
+make cage-grok-shell                       # bash at /workspace/pfy-mentat  (then: grok)
+make cage-grok-run                         # drop straight into interactive Grok TUI
+make cage-grok-run ARGS='--always-approve "list top-level files"'
+```
+
+**Not** `make cage-shell` alone if you want the Grok image + catalog tree + MCP preset — use **`cage-grok*`**.
+
+```bash
+# Low-level (same as grok-ensure pieces)
+make cage-grok-up            # MUST use this — not plain cage-up-mcp (loads compose override)
+make cage-workspace-sync     # catalog → /workspace/pfy-mentat + MCP preset
+make cage-grok-ready         # smoke
 ```
 
 ### Filesystem MCP on the local (catalog) repo
@@ -48,6 +62,16 @@ make cage-shell
 | Grok project config | `/workspace/pfy-mentat/.grok/config.toml` (HTTP URL to mcp-host) |
 
 `make cage-grok-ready` proves: Grok binary + auth, synced catalog tree, MCP initialize, `grok mcp list` shows **filesystem**.
+
+### Can Grok call “local agents”?
+
+| Capability | Status today |
+|------------|----------------|
+| **Filesystem MCP** on cage `/workspace` (includes catalog) | **Yes** — wired by `grok-mcp-preset` |
+| **Grok built-in tools / subagents** (`grok --agent`, `--agents`) | **Yes** — Grok Build CLI feature; runs *inside* the cage process |
+| **Host Ollama as model backend** | Separate path: `make local-ollama-up` + LiteLLM smoke; not auto-selected by Grok overlay |
+| **AgenC marketplace / multi-agent job bus** | **No** — demoted ([ADR-0010](../../../../docs/adr/0010-reject-agenc-as-primary-runtime.md)); re-eval TODO later |
+| **Other CLIs as Grok MCP tools** (Claude/OpenCode) | Not preset; optional future MCP entries |
 
 **Pitfalls fixed in this overlay:**
 

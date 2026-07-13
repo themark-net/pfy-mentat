@@ -39,6 +39,7 @@ Package README: [harness/agent-cage/README.md](../../harness/agent-cage/README.m
 | Cage Grok auth | `make cage-grok-auth-import` → `~/.agentcage/grok-home/auth.json` |
 | Catalog in workspace | `make cage-workspace-sync` → `/workspace/pfy-mentat` |
 | Grok + filesystem MCP ready | `make cage-grok-ready` (T-0045) |
+| Launch Grok session | `make cage-grok` then `cage-grok-shell` or `cage-grok-run` |
 
 ## Agent map
 

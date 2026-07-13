@@ -16,12 +16,14 @@ AgenC was installed and smoked (T-0044), then **uninstalled** after operator tri
 | Daemon + gateway | Always-on agent | Prefer cage + Makefile smokes first |
 | ACP → Grok Build composer | Nested Grok Build | Prefer **Grok CLI primary**, not wrap |
 
-## Optional re-install (not recommended)
+## Optional re-install (not recommended — no Make targets)
+
+Make targets for AgenC were **removed** (ADR-0010). Re-eval is **T-0046** only.
 
 ```bash
-# Requires Node ≥ 25; official installer
+# Requires Node ≥ 25; official installer — manual only
 ./bootstrap/agenc/install.sh
-make agenc-smoke   # only if intentionally re-evaluating
+./bootstrap/agenc/smoke.sh
 # uninstall: agenc daemon stop; rm -f ~/.local/bin/agenc; rm -rf ~/.agenc
 ```
 

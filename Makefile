@@ -16,33 +16,36 @@ HARNESS := harness/agent-cage
 	local-ollama-overlay-install local-ollama-up smoke-litellm-ollama \
 	smoke-codebase-memory smoke-repowise smoke-context-tools \
 	smoke-write-guard eval-tier0 eval-tier1 eval-mvp eval-suite eval-matrix eval-v02 \
-	agenc-install agenc-smoke
+	cage-grok cage-grok-shell cage-grok-run
 
 help:
 	@echo "pfy-mentat"
 	@echo ""
 	@echo "Environment (secrets never in git):"
-	@echo "  make env-init         Create .env from bootstrap/env/env.example if missing"
+	@echo "  make env-init         Create .env from bootstrap/env/env.example if missing (idempotent)"
 	@echo "  make env-check        Validate required vars for DEPLOY_PROFILE"
 	@echo ""
 	@echo "Agent cage (integration lab) — from repo root:"
 	@echo "  make cage-doctor      Host/docker checks"
-	@echo "  make cage-setup       Clone pin + install agentcage CLI"
-	@echo "  make cage-init        agentcage init → \$$HOME/.agentcage (once)"
+	@echo "  make cage-setup       Clone pin + install agentcage CLI (idempotent)"
+	@echo "  make cage-init        agentcage init → \$$HOME/.agentcage (skips if present)"
 	@echo "  make cage-up          Start sandbox"
 	@echo "  make cage-up-mcp      Start sandbox + MCP  (do this before cage-test)"
 	@echo "  make cage-status      Container health"
-	@echo "  make cage-shell       Shell into agent container"
+	@echo "  make cage-shell       Shell into agent container (generic)"
 	@echo "  make cage-test        Policy tests (services must already be up)"
 	@echo "  make cage-down        Stop sandbox"
 	@echo "  make cage-smoke-host  Host-only smoke (no containers)"
 	@echo ""
-	@echo "Grok-in-cage (versioned image overlay):"
-	@echo "  make cage-grok-install / cage-grok-auth-import / cage-grok-build"
-	@echo "  make cage-grok-up / cage-grok-smoke / cage-grok-ready   # T-0045 ready ladder"
-	@echo "  make cage-workspace-sync   # catalog → /workspace/pfy-mentat + filesystem MCP preset"
-	@echo "  make cage-grok-uninstall"
-	@echo "  Auth: import host ~/.grok/auth.json (browser/OIDC) or device-login in cage"
+	@echo "Grok Build in cage (primary operator path — T-0045):"
+	@echo "  make cage-grok              # ensure up + workspace + MCP ready, print how to launch"
+	@echo "  make cage-grok-shell        # interactive bash at /workspace/pfy-mentat"
+	@echo "  make cage-grok-run ARGS='…' # interactive grok in catalog tree (default: no args)"
+	@echo "  First-time once: cage-grok-install → auth-import → build → up"
+	@echo "  Daily:           make cage-grok   then cage-grok-shell | cage-grok-run"
+	@echo "  make cage-workspace-sync    # re-sync catalog → /workspace/pfy-mentat"
+	@echo "  make cage-grok-ready        # smoke: version + workspace + filesystem MCP"
+	@echo "  Auth: host 'grok login' then make cage-grok-auth-import"
 	@echo ""
 	@echo "LiteLLM + Ollama (in-cage smoke, local-only):"
 	@echo "  make local-ollama-overlay-install"
@@ -52,10 +55,6 @@ help:
 	@echo "  make smoke-write-guard      # T-0031 write-guard MCP policy smoke"
 	@echo "  make eval-tier0|eval-tier1|eval-mvp  # OQ-0002 opt5 scored eval"
 	@echo "  make eval-suite|eval-matrix|eval-v02 # v0.2 multi-task / multi-model"
-	@echo ""
-	@echo "AgenC (ADR-0010: reference only, NOT primary — prefer Grok + cage-grok-*):"
-	@echo "  make agenc-install      # optional re-eval only (get.agenc.ag)"
-	@echo "  make agenc-smoke        # only if intentionally re-evaluating"
 	@echo ""
 	@echo "Or:  cd harness/agent-cage && make help"
 	@echo ""
@@ -125,6 +124,15 @@ cage-grok-mcp-preset:
 cage-grok-ready:
 	@$(MAKE) -C $(HARNESS) grok-ready
 
+cage-grok:
+	@$(MAKE) -C $(HARNESS) grok-ensure
+
+cage-grok-shell:
+	@$(MAKE) -C $(HARNESS) grok-shell
+
+cage-grok-run:
+	@$(MAKE) -C $(HARNESS) grok-run ARGS='$(ARGS)'
+
 cage-grok-uninstall:
 	@$(MAKE) -C $(HARNESS) grok-overlay-uninstall
 
@@ -166,15 +174,6 @@ eval-matrix:
 
 eval-v02:
 	@$(MAKE) -C $(HARNESS) eval-v02
-
-# --- AgenC host runtime (tetsuo-ai) ------------------------------------------
-agenc-install:
-	@chmod +x bootstrap/agenc/install.sh bootstrap/agenc/agenc-launch
-	@./bootstrap/agenc/install.sh
-
-agenc-smoke:
-	@chmod +x bootstrap/agenc/smoke.sh bootstrap/agenc/agenc-launch
-	@./bootstrap/agenc/smoke.sh
 
 env-init:
 	@if [ -f .env ]; then \

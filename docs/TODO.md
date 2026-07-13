@@ -24,7 +24,7 @@
 
 ## Active (sorted P0 → P3)
 
-**Session (2026-07-12):** AgenC demoted (ADR-0010). **T-0045 green:** `make cage-grok-ready` (Grok in cage + workspace sync + filesystem MCP).
+**Session (2026-07-12):** AgenC demoted (ADR-0010). T-0045 green. Launch: `make cage-grok` → `cage-grok-shell` / `cage-grok-run`.
 
 | ID | Priority | Status | Item | Open questions | Depends | Notes |
 |----|----------|--------|------|----------------|---------|-------|
@@ -34,6 +34,7 @@
 | T-0016 | P2 | blocked | Optional colibri build+serve | [OQ-0008](open-questions/OQ-0008-colibri-weights-ok.md) | — | |
 | T-0004 | P2 | blocked | ATG prototype coupling | [OQ-0004](open-questions/OQ-0004-atg-prototype-relationship.md) | — | |
 | T-0005 | P2 | blocked | Optional first subtree | [OQ-0003](open-questions/OQ-0003-first-subtree-candidate.md) | — | |
+| T-0046 | P3 | todo | **Re-evaluate AgenC** when UX/auth matures (ADR-0010 gates); no make targets until then | [ADR-0010](adr/0010-reject-agenc-as-primary-runtime.md) | T-0044 | Watch: web console, marketplace jobs; scripts stay under `bootstrap/agenc/` demoted |
 | T-0040 | P3 | todo | **Nice-to-have:** validate integrated setup with OpenCode and Claude Code (same cage/profiles/env) | — | — | Universal harness goal; Grok-first for now |
 | T-0007 | P3 | todo | adr-tools companion docs if requested | — | — | |
 | T-0002 | P3 | todo | Aggregate synthesis if needed | — | — | |
