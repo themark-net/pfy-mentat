@@ -24,10 +24,11 @@
 
 ## Active (sorted P0 → P3)
 
-**Session (2026-07-12):** AgenC demoted (ADR-0010). T-0045 green. Launch: `make cage-grok` → `cage-grok-shell` / `cage-grok-run`.
+**Session (2026-07-12):** AgenC demoted (ADR-0010). T-0045 green. Launch: `make cage-grok` → shell/run. **Next:** T-0047 session resumption.
 
 | ID | Priority | Status | Item | Open questions | Depends | Notes |
 |----|----------|--------|------|----------------|---------|-------|
+| T-0047 | P1 | todo | **Cage Grok session resumption:** persist sessions on host, mount into cage, resume by repo cwd (`grok -c`/`-r`); design in docs/ops/cage-session-resumption-design.md | — | T-0045 | Repo-isolated; no full ~/.grok bind |
 | T-0042 | P2 | todo | Catalog re-score pass using smokes + `make eval-v02` / matrix | — | T-0041 | Parked: fold empirical results into TOOLS.md / data/tools.json narrative |
 | T-0043 | P2 | todo | Write-guard **mcp-host wiring** (enable server; optional disable stock FS writes) | — | T-0031 | Parked: **not** the stock filesystem MCP — that already works. Only if audit/enforce policy in real agent MCP sessions is needed |
 | T-0015 | P2 | blocked | Optional Antigravity-Manager eval | [OQ-0007](open-questions/OQ-0007-antigravity-need.md) | — | |

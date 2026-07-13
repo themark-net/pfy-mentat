@@ -98,10 +98,11 @@ One-line purpose: **Track · Categorize · Rank · Integrate** tools for robust 
 
 **Operator jump-off (ADR-0002 + ADR-0010 + T-0045):**
 
-- **Grok Build in agent-cage:** `make cage-grok-up` then `make cage-grok-ready`  
+- **Grok Build in agent-cage:** `make cage-grok` → `cage-grok-run` / `cage-grok-shell`  
 - Catalog tree at `/workspace/pfy-mentat` via `make cage-workspace-sync`  
 - **Filesystem MCP** (mcp-host) wired in project `.grok/config.toml`  
-- Not AgenC as primary ([ADR-0010](adr/0010-reject-agenc-as-primary-runtime.md))
+- Not AgenC as primary ([ADR-0010](adr/0010-reject-agenc-as-primary-runtime.md))  
+- **Next:** repo-isolated **session resumption** in cage ([design](ops/cage-session-resumption-design.md), T-0047)
 
 **Also parked:**
 
