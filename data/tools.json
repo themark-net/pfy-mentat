@@ -1,7 +1,7 @@
 {
-  "version": "0.4.0",
-  "last_updated": "2026-07-12T09:00:00Z",
-  "description": "Structured catalog. v0.4+: Phase 0 seeds + harness + Multica (Entry 012) triple-write.",
+  "version": "0.4.1",
+  "last_updated": "2026-07-13T00:30:00Z",
+  "description": "Structured catalog. v0.4.1: AgenC reference-only row (ADR-0010 demote); Multica + Phase 0 seeds retained.",
   "schema_notes": {
     "required_for_all": [
       "name",
@@ -41,7 +41,7 @@
         "local-first"
       ],
       "bootstrap_path": "bootstrap/grok-cli",
-      "notes": "First-party replayable install: skills (adr/docs/open-questions/karpathy-guidelines), ponytail skills.paths, codebase-memory MCP config, memory enabled. Run ./bootstrap/grok-cli/install.sh"
+      "notes": "First-party replayable install: skills (adr/docs/open-questions/karpathy-guidelines), ponytail skills.paths, codebase-memory MCP config, memory enabled. Run ./bootstrap/grok-cli/install.sh. Primary operator path (ADR-0002, ADR-0010)."
     },
     {
       "name": "project-process bootstrap",
@@ -63,6 +63,28 @@
       ],
       "bootstrap_path": "bootstrap/project-process",
       "notes": "Scaffold DESIGN/ADR/TODO/OQ/AGENTS for new projects. Skills: project-process + adr/docs/open-questions. Verdict: light framework sufficient vs adr-tools/SaaS."
+    },
+    {
+      "name": "AgenC",
+      "primary_category": "Coding & Dev Agents",
+      "github": "https://github.com/tetsuo-ai/agenc-core",
+      "scores": {
+        "s1": 78,
+        "s2": 70,
+        "s3": 88,
+        "s4": 82,
+        "overall": 78
+      },
+      "tier": "B",
+      "tags": [
+        "coding-agent",
+        "terminal",
+        "daemon",
+        "mcp-compatible",
+        "watch"
+      ],
+      "bootstrap_path": "bootstrap/agenc",
+      "notes": "REFERENCE ONLY — not primary (ADR-0010). Host daemon agent; get.agenc.ag / @tetsuo-ai/agenc. Trial 2026-07-12: TUI approval UX rejected vs Grok Build/Claude/OpenCode. Watch web console + marketplace jobs for possible re-creation. Prefer Grok CLI + agent-cage. Optional re-eval scripts demoted under bootstrap/agenc/."
     },
     {
       "name": "agent-cage (PNNL)",

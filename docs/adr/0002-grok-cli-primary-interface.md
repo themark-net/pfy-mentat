@@ -28,7 +28,9 @@ Rejected alternatives:
 - Bootstrap targets `~/.grok/` and Grok MCP config.
 - Integration notes in TOOLS.md prioritize Grok compatibility without ignoring other tags (`#ide-integration`, etc.).
 - Revisit if empirical pipeline work shows another harness consistently higher for core workflows (superseding ADR required).
+- **2026-07-12:** AgenC trial rejected as primary (TUI/UX) — [ADR-0010](0010-reject-agenc-as-primary-runtime.md) **affirms** this ADR; Grok CLI remains primary.
 
 ## References
 
 - README goals; `bootstrap/grok-cli/`; TOOLS.md integration column
+- ADR-0010 (AgenC not primary)

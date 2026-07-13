@@ -96,16 +96,22 @@ One-line purpose: **Track · Categorize · Rank · Integrate** tools for robust 
 
 ### Near-term (see TODO)
 
-**Parked for next session** (no open P0/P1):
+**Near-term success path (T-0045 / ADR-0010):**
+
+- **Grok Build CLI launchable inside agent-cage** with presets for **filesystem MCP** on the workspace/repo  
+- **Makefile** pipeline for smoke + versioned overlay/image changes  
+- Easy to use, easy to deploy, best-practice toolsets — **not** AgenC as jump-off ([ADR-0010](adr/0010-reject-agenc-as-primary-runtime.md))
+
+**Also parked:**
 
 - **T-0042** Catalog re-score from `make eval-v02` / matrix + smokes  
-- **T-0043** Write-guard mcp-host enablement (optional; stock `@modelcontextprotocol/server-filesystem` already provides workspace FS MCP — write-guard is policy/audit only)  
+- **T-0043** Write-guard mcp-host enablement (optional)  
 - Unlock one blocked P2 (OQ-0003 / 0004 / 0007 / 0008) when operator decides  
 - **T-0040** OpenCode/Claude validation (P3)
 
 ### Delivered recently (was near-term)
 
-- Write-guard MCP v0.1 + cage smoke · in-cage tool smokes · LiteLLM profile recipes · skill ports (ADR-0009) · eval harness MVP + v0.2 suite/matrix (OQ-0002 / T-0041) · grok-in-image overlay (**OQ-0005 answered**) · **AgenC host runtime** install + smoke (T-0044; complements agent-cage)
+- Write-guard MCP v0.1 + cage smoke · in-cage tool smokes · LiteLLM profile recipes · skill ports (ADR-0009) · eval harness MVP + v0.2 suite/matrix (OQ-0002 / T-0041) · grok-in-image overlay (**OQ-0005 answered**) · AgenC **trial** install/smoke then **demoted** (T-0044 + **ADR-0010**; catalog reference only)
 
 ### Later / research
 

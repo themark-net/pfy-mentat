@@ -88,7 +88,8 @@ Prefer these over ad-hoc host-only checks ([harness framework](harness-integrati
 | LiteLLM profile recipes | **T-0012 done** — `config/litellm/{local-only,balanced,max-performance}.yaml` |
 | Full eval harness | **MVP + v0.2:** `make eval-mvp` / `eval-v02` / `eval-matrix`; DSPy later |
 | OpenCode / Claude validation | TODO T-0040 (P3) |
-| AgenC host runtime | **`make agenc-install` + `make agenc-smoke`** (Node ≥25; not agent-cage) |
+| AgenC host runtime | **Demoted (ADR-0010)** — catalog reference only; prefer Grok CLI + `make cage-grok-*` |
+| Grok Build in cage | **T-0045:** `cage-grok-install` / `auth-import` / `build` / `up` / `smoke` + MCP filesystem on workspace |
 
 ## Verify checklist
 
