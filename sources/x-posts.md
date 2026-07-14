@@ -1,17 +1,23 @@
-### Entry 028: fable-method — Structured Problem-Solving Loop + Adversarial Verification for Any Model
+### Entry 029: Pliny Tools Ecosystem (Jailbreaks, System Prompt Leaks, Multi-Agent Hackbot, Red Teaming)
 
-- **URL**: https://x.com/i/status/2076727080402948561
+- **URL**: https://x.com/i/status/2076760743673053681
 - **Date**: 2026-07-13
-- **Poster**: Alex Prompter (@alex_prompter)
-- **Summary / Key Claims**: Distills Fable's problem-solving approach into an installable plugin any model can use. Contains three main components:
-  - `fable-method`: Structured problem-solving loop with hard failure thresholds.
-  - `fable-loop`: Runs full tasks with adversarial verification agents that check the work.
-  - `fable-judge`: Treats every "done, all tests pass" claim as unverified and independently re-runs verification.
-  Strong measured results on catching wrong tests, false completion claims, and planted frauds (e.g., Haiku went from 0/4 to 4/4 on catching wrong tests; Sonnet + plugin matched Fable itself on complex research tasks). Importantly, it adds little overhead on ordinary tasks with capable models — value concentrates on traps and weaker/unattended models. MIT licensed with all evaluation transcripts committed. Installable in Claude Code via plugin marketplace.
-- **Extracted Repos / Tools**: Primary: https://github.com/Sahir619/fable-method (MIT, full eval transcripts included). Plugin for Claude Code that brings structured verification loops to any model.
-- **TOOLS.md Link**: New row under Agent Frameworks & Orchestration / Autonomous Loops & Verification (high-signal verification/hardening tool). Strong fit for loop engineering and agent robustness.
-- **Notes**: **Excellent high-signal addition.** Directly complements and extends our loop engineering work (especially goal-based evaluators, adversarial review, and self-healing patterns from Entries 018/021/024/027). The adversarial verification + hard failure thresholds + independent judge approach is a concrete, evaluated implementation of robust goal-based and proactive loops. Strong emphasis on catching false positives in agent output is highly relevant for production hardening. Low-to-medium redundancy — it's a focused verification layer rather than a full framework. High fit for evaluation criteria: Very High Relevance (structured verification + adversarial loops), High Integration Ease (plugin format, works with existing agents), High Reproducibility (MIT + full transcripts), Low Redundancy. Perfect for the repo's focus on reliable autonomous systems. Recommend: (1) Catalog as major verification/hardening resource. (2) Strong candidate for adaptation into our loop-engineering skill pack (e.g., as a fable-method inspired evaluator or judge skill). (3) Excellent for hardening AgenC-based workflows, especially with weaker models or unattended runs.
-- **Status**: Processed and cataloged (added as high-value adversarial verification loop resource; priority for skills integration)
+- **Poster**: Mike Takahashi (@TakSec)
+- **Summary / Key Claims**: Breakdown of tools and projects by @elder_plinius (Pliny). Includes:
+  - L1B3RT4S: Jailbreak prompts
+  - G0DM0D3: Unrestricted AI
+  - 0BL1T3R4TUS: Abliteration for open-source LLMs
+  - CL4R1T4S: Leaked system prompts
+  - LeakHub: Community platform for system prompt leaks
+  - P4RS3LT0NGV3: Jailbreak payload builder
+  - T3MP3ST: Multi-agent hackbot swarm
+  - ST3GG: Steganography toolkit
+  - V3SP3R: Natural language control for Flipper Zero
+  Central hub at pliny.gg. Focused on AI red teaming, jailbreaking, prompt extraction, and offensive tooling.
+- **Extracted Repos / Tools**: Central site: https://pliny.gg/. Individual tools include jailbreak libraries, system prompt leak collections, multi-agent offensive swarms (T3MP3ST), and related red team utilities. No single dominant high-star repo highlighted; ecosystem-oriented.
+- **TOOLS.md Link**: Low priority / awareness note under Security / Red Teaming (if added at all). Limited direct fit for core catalog.
+- **Notes**: **Lower relevance to core repo goals.** This is primarily an offensive/red teaming and jailbreaking ecosystem. While T3MP3ST (multi-agent hackbot swarm) has some conceptual overlap with multi-agent orchestration and loop engineering, the overall focus on jailbreaks, unrestricted models, prompt leaking, and hacking tools does not strongly align with the repo's emphasis on productive, reliable, local/self-hosted agent frameworks, skills, and workflows. The multi-agent aspect (T3MP3ST) could be noted as an extreme/offensive counterpart to our more constructive loop engineering and gstack-style patterns, but it is not a priority for cataloging or reproduction. Recommend: Track at awareness level only for red teaming/safety context. Do not prioritize for TOOLS.md or deep evaluation unless specific red team use cases emerge.
+- **Status**: Processed and cataloged (added with low-relevance note; awareness-level entry for red teaming ecosystem)
 
 ## Future Entries Format
 
