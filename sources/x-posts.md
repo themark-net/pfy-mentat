@@ -1,13 +1,13 @@
-### Entry 044: Memvid — MP4-Based Agent Memory System (Git-like Versioning, Rewind, Replay, Branch)
+### Entry 045: Bonsai 27B — Extreme 1-Bit Quantization for Browser-Based Local Inference
 
-- **URL**: https://x.com/i/status/2077064295209443504
+- **URL**: https://x.com/i/status/2077087411079700782
 - **Date**: 2026-07-14
-- **Poster**: How To Prompt (@HowToPrompt__)
-- **Summary / Key Claims**: Memvid packages an agent's entire memory, data, embeddings, search index, and metadata into simple MP4 files. No database, no server, no sidecar files required. Claims significant performance gains over traditional RAG/vector DBs (+35% long-term memory, +76% multi-hop reasoning, 1,372× faster, 0.025ms latency). Key innovation: memory is append-only and versioned like git — rewind, replay, or branch any past state for debugging and time-travel analysis. Fully offline, model-agnostic, with SDKs for Python, Node, Rust, and CLI. 15.7k stars, 100% open source.
-- **Extracted Repos / Tools**: Primary: https://github.com/memvid/memvid — MP4-based agent memory system with git-like versioning.
-- **TOOLS.md Link**: New row under Context & Memory / RAG & Long-Term Memory (high-signal novel memory backend).
-- **Notes**: **Very high relevance for context and memory management.** This is a groundbreaking approach to agent memory that directly addresses long-term context, debugging past states, and avoiding the complexity of traditional vector databases. The git-like rewind/replay/branch capability is extremely powerful for reliable agent workflows and aligns perfectly with our focus on context optimization, self-healing, and robust long-running loops. Strong potential for local agent setups. High fit for evaluation criteria: Very High Relevance (novel memory backend with versioning), High Integration Ease (SDKs + CLI), High Reproducibility (open source with strong claims), Low Redundancy. Recommend: (1) Catalog as major innovative memory tool. (2) Strong candidate for deep evaluation and potential integration into our agent stack (especially for long-term memory and debugging in loop engineering). (3) Excellent for exploring alternatives to traditional RAG/vector stores in local environments.
-- **Status**: Processed and cataloged (added as high-value novel agent memory system; priority for context/memory category)
+- **Poster**: Xenova (@xenovacom)
+- **Summary / Key Claims**: Bonsai 27B uses 1-bit quantization to shrink a 54GB model down to just 3.8GB (-93% size) while retaining ~90% of its intelligence. Runs locally in the browser via custom WebGPU kernels (developed with Fable 5 and GPT-5.6 Sol). Represents a major leap in making large models practical for local/browser-based inference.
+- **Extracted Repos / Tools**: Model collection on Hugging Face (PrismML Bonsai 27B). Custom WebGPU kernels for browser inference. Strong demonstration of extreme quantization + browser execution.
+- **TOOLS.md Link**: New row under Inference & Serving / Extreme Quantization & Browser Inference (high-signal extreme quantization example).
+- **Notes**: **High relevance for local/browser inference.** This showcases cutting-edge extreme quantization (1-bit) that makes large models feasible for local and even browser-based deployment. The combination of massive size reduction with strong performance retention is directly useful for practical local LLM setups, especially on resource-constrained devices or in-browser scenarios. High fit for evaluation criteria: Very High Relevance (extreme quantization + browser inference), High Integration Ease (WebGPU/browser-focused), High Reproducibility (HF model + kernels), Low Redundancy. Recommend: (1) Catalog as major extreme quantization / browser inference resource. (2) Strong candidate for testing on local hardware and browser environments. (3) Excellent reference for pushing the boundaries of what can run locally.
+- **Status**: Processed and cataloged (added as high-value extreme quantization and browser inference resource; priority for inference category)
 
 ## Future Entries Format
 
