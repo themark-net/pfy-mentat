@@ -1,13 +1,13 @@
-### Entry 033: Local Voice-Controlled Jarvis AI Assistant (Always-On Desktop Agent)
+### Entry 034: Understand-Anything — Interactive Codebase Knowledge Graph for Onboarding & Agent Context
 
-- **URL**: https://x.com/i/status/2076797326769701041
+- **URL**: https://x.com/i/status/2076562526507315534
 - **Date**: 2026-07-13
-- **Poster**: Stefan (@paradeevic)
-- **Summary / Key Claims**: Practical build of a local, always-on voice-controlled AI assistant ("Jarvis") running on a small desktop board. Replaces typing prompts with natural voice commands. The agent listens, understands, executes tasks (maps, tracking, opening apps, running commands), and responds verbally. No chat windows, no copy-paste, no subscriptions. Runs fully locally with no recurring costs. Described as feeling like "having someone on staff who never sleeps." Includes a full build guide in the linked article.
-- **Extracted Repos / Tools**: Local hardware + software setup for voice-controlled agent (specific repo not named in post; build guide in linked article). Strong emphasis on local, always-on, voice-first agent experience.
-- **TOOLS.md Link**: New row under Agent Frameworks & Orchestration / Voice & Always-On Agents or Local Hardware Setups (practical local agent build).
-- **Notes**: **Good relevance for local/self-hosted setups.** This is a concrete example of building an always-on, voice-driven local agent that handles real tasks without constant user intervention. Aligns with our interest in autonomous/background agents, local tooling, and reducing friction in agent interaction. The "never sleeps" always-on aspect is particularly relevant to proactive/time-based loops and desktop agent harnesses. While not a new major framework, the practical build + voice interface makes it useful for local agent experimentation. High fit for evaluation criteria: High Relevance (local always-on voice agent), High Integration Ease (buildable on standard hardware), High Reproducibility (full guide provided), Low Redundancy. Recommend: (1) Catalog as practical local agent build example. (2) Useful reference for anyone wanting to add voice interfaces or always-on desktop agents to the stack. (3) Synergistic with local hardware experiments and background agent patterns.
-- **Status**: Processed and cataloged (added as practical local always-on voice agent build; useful for local setups)
+- **Poster**: Zane Chen (@chenzeling4)
+- **Summary / Key Claims**: Understand-Anything turns any codebase (even 200K+ lines you didn't write) into an interactive knowledge graph. Features: search, click through dependencies, ask questions in plain English. Designed to make onboarding dramatically faster. Works with Claude Code, Codex, Cursor, Copilot, Gemini CLI. Described as "what onboarding should feel like."
+- **Extracted Repos / Tools**: Primary: Understand-Anything (repo linked in post, ~73.7K stars claimed). Codebase-to-knowledge-graph tool with natural language querying and dependency visualization. Strong agent integration (works with major coding agents).
+- **TOOLS.md Link**: New row under Agent Frameworks & Orchestration / Codebase Knowledge Graph & Memory (high-signal graph tool for agents).
+- **Notes**: **High relevance — strong complement to Graphify (Entry 017).** Both tools turn codebases into queryable knowledge graphs for agents. Understand-Anything emphasizes interactive exploration and plain-English questions, making it particularly strong for onboarding and rapid context building when joining new codebases. Excellent fit for agent context optimization and reducing the "staring at 200K lines" problem. High fit for evaluation criteria: Very High Relevance (codebase knowledge graph + agent integration), High Integration Ease (works with Claude Code/Cursor/etc.), High Reproducibility (open source with claimed high stars), Low-to-Medium Redundancy (complements Graphify with different interaction model). Recommend: (1) Catalog as major codebase graph tool. (2) Strong candidate for comparison/evaluation against Graphify and codebase-memory-mcp. (3) Useful for agent onboarding workflows and context layer in loop engineering.
+- **Status**: Processed and cataloged (added as high-value codebase knowledge graph tool; priority for context/graph category)
 
 ## Future Entries Format
 
