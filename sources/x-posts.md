@@ -1,13 +1,13 @@
-### Entry 037: Claude as a Full Company — 122 Skills Across 7 Departments (Org Chart Style Skill Stack)
+### Entry 038: MLX Studio — Local LLM & Image Model Runner for macOS (Apple Silicon)
 
-- **URL**: https://x.com/i/status/2076601521169387563
-- **Date**: 2026-07-13
-- **Poster**: Ronin (@DeRonin_)
-- **Summary / Key Claims**: Practical example of turning Claude into a full "company" using 122 installable skills across 7 departments (Engineering, Design, Marketing, Social Media, Finance, Operations, Legal). Includes specific high-signal repos like Superpowers (engineering planning), Context7 (live docs), UI UX Pro Max, large marketing/social skills packs, finance/operations/legal skills, etc. Core philosophy: "a company used to be people. now it's a folder of markdown files." Emphasizes starting with your bottleneck rather than installing everything. Strong real-world example of scaling agent capabilities through curated, role-based skills.
-- **Extracted Repos / Tools**: Multiple linked repos including https://github.com/obra/superpowers, Context7, UI UX Pro Max, large marketing skills pack, and various department-specific skill collections. Org-chart style organization of 122+ skills.
-- **TOOLS.md Link**: New row under Agent Frameworks & Orchestration / Skills & Prompt Engineering (high-signal large-scale skill stack example).
-- **Notes**: **High relevance.** This is an excellent real-world example of the "Claude Company Org Chart" pattern (Entry 016) taken to production scale ($40k MRR solo agency). Directly aligns with our skills development, loop engineering, and building robust multi-role agent systems. The org-chart structure + bottleneck-first approach is highly practical. Strong overlap with gstack-style role specialization and our own efforts to build composable skills. High fit for evaluation criteria: Very High Relevance (large curated skill org + real usage), High Integration Ease (installable skills), High Reproducibility (specific repos linked), Low Redundancy. Recommend: (1) Catalog as major large-scale skills/org example. (2) Strong candidate for studying curation patterns and adapting department/role structures into our own skill packs. (3) Excellent reference for scaling agent teams beyond single roles.
-- **Status**: Processed and cataloged (added as high-value large-scale skill org example; priority for skills category)
+- **URL**: https://x.com/i/status/2076950094620799371
+- **Date**: 2026-07-14
+- **Poster**: Tom Dörr (@tom_doerr)
+- **Summary / Key Claims**: MLX Studio is a tool for running large language and image models locally on macOS using Apple's MLX framework. Optimized for Apple Silicon, providing an easy way to run powerful local models without cloud dependencies.
+- **Extracted Repos / Tools**: Primary: https://github.com/jjang-ai/mlxstudio — Local model runner for macOS using MLX.
+- **TOOLS.md Link**: New row under Inference & Serving (local macOS inference tool).
+- **Notes**: **Good relevance for local macOS users.** Provides a convenient GUI/tooling layer on top of Apple's MLX framework for running LLMs and image models locally. Fits the local/self-hosted inference category, especially for users on Apple hardware. While not as general-purpose as some cross-platform options, it's a strong native macOS solution. High fit for evaluation criteria: High Relevance (local macOS inference), High Integration Ease (easy to use on Apple Silicon), High Reproducibility (open source), Low Redundancy. Recommend: (1) Catalog as local macOS inference tool. (2) Useful addition for users on Apple hardware looking for optimized local model running.
+- **Status**: Processed and cataloged (added as local macOS inference tool; useful for Apple Silicon users)
 
 ## Future Entries Format
 
