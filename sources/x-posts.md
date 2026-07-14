@@ -1,18 +1,13 @@
-### Entry 035: Penpot — Open-Source Figma Alternative with MCP Server for AI Agents
+### Entry 036: ordinary-claude-skills — Local Aggregator for Hundreds of Official & Community Claude Skills
 
-- **URL**: https://x.com/i/status/2076629090778726866
-- **Date**: 2026-07-13
-- **Poster**: Simplifying AI (@simplifyinAI)
-- **Summary / Key Claims**: Penpot is a free, open-source design tool that mirrors Figma's layout and workflow. Key features for agents:
-  - MCP server that lets AI agents edit designs directly
-  - Free Dev Mode with instant CSS, SVG, and HTML export
-  - Native design tokens for keeping design and code in sync
-  - Real-time collaboration built in
-  100% free and self-hostable. Strong positioning as the open-source Figma alternative with native AI/agent integration via MCP.
-- **Extracted Repos / Tools**: Primary: https://github.com/penpot/penpot (open source Figma alternative with MCP server for AI agents).
-- **TOOLS.md Link**: New row under MCP Servers & Tooling or Design & Dev Tools (high-signal MCP-enabled design tool).
-- **Notes**: **Good relevance for MCP ecosystem.** The standout feature is the MCP server that allows AI agents to directly edit designs. This aligns well with our heavy focus on MCP integration (AgenC, skills, agent tooling). While not a core agent framework, the MCP capability makes it a useful addition for design-to-code workflows and agent-driven design tasks. High fit for evaluation criteria: High Relevance (MCP server for design editing), High Integration Ease (MCP-native), High Reproducibility (open source, self-hostable), Low Redundancy. Recommend: (1) Catalog as MCP-enabled design tool. (2) Useful for anyone building agent workflows that involve design or UI generation. (3) Synergistic with MCP-focused parts of the catalog.
-- **Status**: Processed and cataloged (added as MCP-enabled design tool; useful for MCP ecosystem)
+- **URL**: https://x.com/i/status/2076941101802328117
+- **Date**: 2026-07-14
+- **Poster**: Tom Dörr (@tom_doerr)
+- **Summary / Key Claims**: Tool that aggregates hundreds of official and community-built Claude skills locally. Makes it easy to discover, manage, and use a large collection of SKILL.md-style skills without manual hunting across repos or marketplaces.
+- **Extracted Repos / Tools**: Primary: https://github.com/Microck/ordinary-claude-skills — Local aggregator for Claude skills.
+- **TOOLS.md Link**: New row under Skills & Prompt Engineering or Agent Frameworks & Orchestration (high-signal skills management tool).
+- **Notes**: **High relevance for skills ecosystem.** Directly supports our heavy focus on skills development, loop engineering, and building augmentation layers. Having a local aggregator for hundreds of skills makes it much easier to curate, test, and integrate useful patterns into our own skill packs or AgenC plugins. Strong complement to existing skills resources (Matt Pocock, marketing-council, gstack patterns, etc.). High fit for evaluation criteria: Very High Relevance (skills aggregation and discovery), High Integration Ease (local tool, easy to adopt), High Reproducibility (open source), Low Redundancy. Recommend: (1) Catalog as skills management/discovery tool. (2) Strong candidate for use in curating and expanding our loop-engineering and other skill packs. (3) Useful for anyone building large local skill libraries.
+- **Status**: Processed and cataloged (added as high-value local skills aggregator; priority for skills category)
 
 ## Future Entries Format
 
