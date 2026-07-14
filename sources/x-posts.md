@@ -1,13 +1,13 @@
-### Entry 036: ordinary-claude-skills — Local Aggregator for Hundreds of Official & Community Claude Skills
+### Entry 037: Claude as a Full Company — 122 Skills Across 7 Departments (Org Chart Style Skill Stack)
 
-- **URL**: https://x.com/i/status/2076941101802328117
-- **Date**: 2026-07-14
-- **Poster**: Tom Dörr (@tom_doerr)
-- **Summary / Key Claims**: Tool that aggregates hundreds of official and community-built Claude skills locally. Makes it easy to discover, manage, and use a large collection of SKILL.md-style skills without manual hunting across repos or marketplaces.
-- **Extracted Repos / Tools**: Primary: https://github.com/Microck/ordinary-claude-skills — Local aggregator for Claude skills.
-- **TOOLS.md Link**: New row under Skills & Prompt Engineering or Agent Frameworks & Orchestration (high-signal skills management tool).
-- **Notes**: **High relevance for skills ecosystem.** Directly supports our heavy focus on skills development, loop engineering, and building augmentation layers. Having a local aggregator for hundreds of skills makes it much easier to curate, test, and integrate useful patterns into our own skill packs or AgenC plugins. Strong complement to existing skills resources (Matt Pocock, marketing-council, gstack patterns, etc.). High fit for evaluation criteria: Very High Relevance (skills aggregation and discovery), High Integration Ease (local tool, easy to adopt), High Reproducibility (open source), Low Redundancy. Recommend: (1) Catalog as skills management/discovery tool. (2) Strong candidate for use in curating and expanding our loop-engineering and other skill packs. (3) Useful for anyone building large local skill libraries.
-- **Status**: Processed and cataloged (added as high-value local skills aggregator; priority for skills category)
+- **URL**: https://x.com/i/status/2076601521169387563
+- **Date**: 2026-07-13
+- **Poster**: Ronin (@DeRonin_)
+- **Summary / Key Claims**: Practical example of turning Claude into a full "company" using 122 installable skills across 7 departments (Engineering, Design, Marketing, Social Media, Finance, Operations, Legal). Includes specific high-signal repos like Superpowers (engineering planning), Context7 (live docs), UI UX Pro Max, large marketing/social skills packs, finance/operations/legal skills, etc. Core philosophy: "a company used to be people. now it's a folder of markdown files." Emphasizes starting with your bottleneck rather than installing everything. Strong real-world example of scaling agent capabilities through curated, role-based skills.
+- **Extracted Repos / Tools**: Multiple linked repos including https://github.com/obra/superpowers, Context7, UI UX Pro Max, large marketing skills pack, and various department-specific skill collections. Org-chart style organization of 122+ skills.
+- **TOOLS.md Link**: New row under Agent Frameworks & Orchestration / Skills & Prompt Engineering (high-signal large-scale skill stack example).
+- **Notes**: **High relevance.** This is an excellent real-world example of the "Claude Company Org Chart" pattern (Entry 016) taken to production scale ($40k MRR solo agency). Directly aligns with our skills development, loop engineering, and building robust multi-role agent systems. The org-chart structure + bottleneck-first approach is highly practical. Strong overlap with gstack-style role specialization and our own efforts to build composable skills. High fit for evaluation criteria: Very High Relevance (large curated skill org + real usage), High Integration Ease (installable skills), High Reproducibility (specific repos linked), Low Redundancy. Recommend: (1) Catalog as major large-scale skills/org example. (2) Strong candidate for studying curation patterns and adapting department/role structures into our own skill packs. (3) Excellent reference for scaling agent teams beyond single roles.
+- **Status**: Processed and cataloged (added as high-value large-scale skill org example; priority for skills category)
 
 ## Future Entries Format
 
