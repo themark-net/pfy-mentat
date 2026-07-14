@@ -1,19 +1,13 @@
-### Entry 032: Eval Loop — Rubric-Driven Verification to Eliminate AI Slop
+### Entry 033: Local Voice-Controlled Jarvis AI Assistant (Always-On Desktop Agent)
 
-- **URL**: https://x.com/i/status/2076669336853606446
+- **URL**: https://x.com/i/status/2076797326769701041
 - **Date**: 2026-07-13
-- **Poster**: Shann³ (@shannholmberg)
-- **Summary / Key Claims**: Excellent practical framework for an "eval loop" to prevent AI slop. Core idea: Better prompts and bigger models aren't enough — you need a structured evaluation layer that catches low-quality output before it reaches the user. The base loop is:
-  1. Write a specific rubric first (the quality bar)
-  2. Agent drafts as usual
-  3. Model scores the draft against the rubric (0-1 score)
-  4. Anything below the bar goes back for another pass
-  5. Every miss caught becomes a permanent new line in the rubric
-  Layers of increasing rigor: Self-check → Independent check → LLM council (multiple models) → Human as final gate. Match the layer to the stakes of the output. The rubric acts as a living quality net that improves over time.
-- **Extracted Repos / Tools**: No new standalone repo (framework/pattern). Strong conceptual and practical alignment with goal-based evaluation and self-healing loops.
-- **TOOLS.md Link**: New row under Agent Frameworks & Orchestration / Autonomous Loops & Agentic Workflows (high-signal eval/verification pattern).
-- **Notes**: **High relevance.** This is an outstanding practical reinforcement of our loop engineering work (especially goal-based evaluators, self-healing patterns, and adversarial verification from Entries 018/021/024/027/031). The rubric-driven scoring + iterative improvement of the rubric itself is a clean, implementable way to build reliable evaluation into agent loops. The layered approach (self-check to council to human) gives clear guidance on trading off cost vs. rigor. Strong overlap with fable-method style verification and the generate-test-update feedback loop. High fit for evaluation criteria: Very High Relevance (rubric-driven eval loops), High Integration Ease (patterns are directly portable to skills), High Reproducibility (clear step-by-step framework), Low Redundancy. Excellent for the repo's reproduction goals. Recommend: (1) Catalog as major eval loop resource. (2) Strong candidate for direct integration into our loop-engineering skill pack (e.g., as a rubric-driven evaluator skill or self-healing pattern). (3) Highly actionable for hardening AgenC-based autonomous workflows and reducing low-quality outputs.
-- **Status**: Processed and cataloged (added as high-value rubric-driven eval loop resource; priority for skills integration)
+- **Poster**: Stefan (@paradeevic)
+- **Summary / Key Claims**: Practical build of a local, always-on voice-controlled AI assistant ("Jarvis") running on a small desktop board. Replaces typing prompts with natural voice commands. The agent listens, understands, executes tasks (maps, tracking, opening apps, running commands), and responds verbally. No chat windows, no copy-paste, no subscriptions. Runs fully locally with no recurring costs. Described as feeling like "having someone on staff who never sleeps." Includes a full build guide in the linked article.
+- **Extracted Repos / Tools**: Local hardware + software setup for voice-controlled agent (specific repo not named in post; build guide in linked article). Strong emphasis on local, always-on, voice-first agent experience.
+- **TOOLS.md Link**: New row under Agent Frameworks & Orchestration / Voice & Always-On Agents or Local Hardware Setups (practical local agent build).
+- **Notes**: **Good relevance for local/self-hosted setups.** This is a concrete example of building an always-on, voice-driven local agent that handles real tasks without constant user intervention. Aligns with our interest in autonomous/background agents, local tooling, and reducing friction in agent interaction. The "never sleeps" always-on aspect is particularly relevant to proactive/time-based loops and desktop agent harnesses. While not a new major framework, the practical build + voice interface makes it useful for local agent experimentation. High fit for evaluation criteria: High Relevance (local always-on voice agent), High Integration Ease (buildable on standard hardware), High Reproducibility (full guide provided), Low Redundancy. Recommend: (1) Catalog as practical local agent build example. (2) Useful reference for anyone wanting to add voice interfaces or always-on desktop agents to the stack. (3) Synergistic with local hardware experiments and background agent patterns.
+- **Status**: Processed and cataloged (added as practical local always-on voice agent build; useful for local setups)
 
 ## Future Entries Format
 
