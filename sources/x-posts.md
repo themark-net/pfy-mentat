@@ -1,17 +1,13 @@
-### Entry 048: HERMES AGENT — Three Feedback Loops for Continuous Self-Improvement (Auto-Memory, Auto-Skill, Curator)
+### Entry 049: opencode-mem — Persistent Memory & Long-Term Context for OpenCode Agents (Local Vector DB)
 
-- **URL**: https://x.com/i/status/2077132507343134788
+- **URL**: https://x.com/i/status/2077134466267394303
 - **Date**: 2026-07-14
-- **Poster**: YanXbt (@IBuzovskyi)
-- **Summary / Key Claims**: Hermes Agent has three built-in feedback loops that make it smarter every week if enabled:
-  1. **AUTO-MEMORY**: After every response, saves learnings (timezone, stack, preferences, tools, mistakes, projects) to memory.md and user.md. Loaded automatically in future context.
-  2. **AUTO-SKILL CREATION**: After complex tasks (5+ tool calls), creates reusable SKILL.md files for procedures, tools used, and pitfalls. Next similar task uses the saved skill instead of re-deriving.
-  3. **CURATOR**: Background maintenance (every 7 days) that tracks skill usage and archives unused agent-created skills after 90 days (recoverable). Supports pinning critical skills and optional LLM-based consolidation of duplicates.
-  The post emphasizes that most users disable these (to save tokens) or ignore them, causing the agent to stop improving. With all three running, the agent compounds knowledge: facts are remembered, procedures are reused, and bloat is pruned.
-- **Extracted Repos / Tools**: Hermes Agent (framework with built-in auto-memory, auto-skill, and curator loops). Strong emphasis on self-improving agent architecture via feedback loops and skill/memory management.
-- **TOOLS.md Link**: New row under Agent Frameworks & Orchestration / Self-Improving Agents & Feedback Loops (high-signal self-improvement pattern).
-- **Notes**: **Extremely high relevance — direct reinforcement of loop engineering.** The three feedback loops (auto-memory, auto-skill creation, curator pruning) are a concrete, production-grade implementation of the self-improving / compounding agent patterns we've been building toward. Maps beautifully to our 4-tier autonomy, 14-step roadmap, goal-based evaluators, and skills work. The curator's git-like pruning + pinning is especially elegant for long-term maintainability. High fit for evaluation criteria: Very High Relevance (self-improving feedback loops + skill/memory management), High Integration Ease (patterns are portable), High Reproducibility (detailed implementation described), Low Redundancy. Recommend: (1) Catalog as major self-improving agent framework. (2) Strong candidate for direct adaptation into our loop-engineering skill pack (e.g., auto-memory patterns, auto-skill creation, curator-style maintenance). (3) Excellent reference for building compounding intelligence into AgenC-based agents.
-- **Status**: Processed and cataloged (added as high-value self-improving agent framework; priority for loop engineering and skills integration)
+- **Poster**: Tom Dörr (@tom_doerr)
+- **Summary / Key Claims**: opencode-mem adds persistent memory and long-term context retention for OpenCode coding agents using a local vector database. Enables agents to remember context across sessions, improving continuity in long-running or multi-session coding workflows.
+- **Extracted Repos / Tools**: Primary: https://github.com/tickernelz/opencode-mem — Local vector DB memory layer for OpenCode agents.
+- **TOOLS.md Link**: New row under Context & Memory / Long-Term Memory for Coding Agents (high-signal persistent memory tool).
+- **Notes**: **High relevance for long-term agent memory.** Directly addresses context retention across sessions — a critical gap in many agent setups. Complements Memvid (Entry 044), codebase-memory-mcp, and Graphify (Entry 017) by providing a simple local vector DB approach specifically for OpenCode. Strong fit for improving reliability in multi-session or long-running agent loops. High fit for evaluation criteria: Very High Relevance (persistent memory for coding agents), High Integration Ease (local vector DB, agent-specific), High Reproducibility (open source), Low Redundancy. Recommend: (1) Catalog as persistent memory tool for coding agents. (2) Useful for evaluation alongside other memory/context solutions. (3) Good reference for adding long-term memory capabilities to agent workflows.
+- **Status**: Processed and cataloged (added as high-value persistent memory tool for agents; useful for context retention)
 
 ## Future Entries Format
 
