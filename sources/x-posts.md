@@ -1,13 +1,13 @@
-### Entry 049: opencode-mem — Persistent Memory & Long-Term Context for OpenCode Agents (Local Vector DB)
+### Entry 050: paperclipai/companies — 16 Pre-Built AI Companies with Org Charts & Hundreds of Skills
 
-- **URL**: https://x.com/i/status/2077134466267394303
-- **Date**: 2026-07-14
+- **URL**: https://x.com/i/status/2077741674080395626
+- **Date**: 2026-07-16
 - **Poster**: Tom Dörr (@tom_doerr)
-- **Summary / Key Claims**: opencode-mem adds persistent memory and long-term context retention for OpenCode coding agents using a local vector database. Enables agents to remember context across sessions, improving continuity in long-running or multi-session coding workflows.
-- **Extracted Repos / Tools**: Primary: https://github.com/tickernelz/opencode-mem — Local vector DB memory layer for OpenCode agents.
-- **TOOLS.md Link**: New row under Context & Memory / Long-Term Memory for Coding Agents (high-signal persistent memory tool).
-- **Notes**: **High relevance for long-term agent memory.** Directly addresses context retention across sessions — a critical gap in many agent setups. Complements Memvid (Entry 044), codebase-memory-mcp, and Graphify (Entry 017) by providing a simple local vector DB approach specifically for OpenCode. Strong fit for improving reliability in multi-session or long-running agent loops. High fit for evaluation criteria: Very High Relevance (persistent memory for coding agents), High Integration Ease (local vector DB, agent-specific), High Reproducibility (open source), Low Redundancy. Recommend: (1) Catalog as persistent memory tool for coding agents. (2) Useful for evaluation alongside other memory/context solutions. (3) Good reference for adding long-term memory capabilities to agent workflows.
-- **Status**: Processed and cataloged (added as high-value persistent memory tool for agents; useful for context retention)
+- **Summary / Key Claims**: Imports 16 pre-built AI companies with complete org charts and hundreds of skills into the Paperclip platform. Provides ready-made company templates (org structure + skill libraries) for quickly setting up multi-role agent systems.
+- **Extracted Repos / Tools**: Primary: https://github.com/paperclipai/companies — Pre-built AI company templates with org charts and skills for Paperclip.
+- **TOOLS.md Link**: New row under Agent Frameworks & Orchestration / Skills & Prompt Engineering (high-signal pre-built company/skill templates).
+- **Notes**: **High relevance — direct extension of org-chart skill patterns.** Builds directly on our earlier entries about Claude Company Org Chart (Entry 016/037) and large-scale curated skill stacks. Provides concrete, ready-to-import company templates with full org structures and hundreds of skills. Excellent for rapid setup of multi-role agent teams and studying real-world org/skill curation patterns. High fit for evaluation criteria: Very High Relevance (pre-built company orgs + skill libraries), High Integration Ease (importable templates), High Reproducibility (open source), Low Redundancy. Recommend: (1) Catalog as major pre-built company/skill template resource. (2) Strong candidate for studying and adapting org-chart structures into our own skill packs. (3) Useful for quickly bootstrapping complex multi-agent setups.
+- **Status**: Processed and cataloged (added as high-value pre-built AI company templates; priority for skills/org category)
 
 ## Future Entries Format
 
