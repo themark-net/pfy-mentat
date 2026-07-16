@@ -1,13 +1,13 @@
-### Entry 051: N-gram Speculative Decoding (ngram-mod) in llama.cpp — Zero-VRAM Speed Boost for Repetitive Generation
+### Entry 052: LEANN — Extreme RAG Compression (201 GB → 6 GB, 97% Savings, No Accuracy Loss)
 
-- **URL**: https://x.com/i/status/2077718647905333549
-- **Date**: 2026-07-16
-- **Poster**: Alok (@analogalok)
-- **Summary / Key Claims**: Detailed technical breakdown of N-gram Speculative Decoding (`--spec-type ngram-mod`) in llama.cpp. Provides massive speedups on repetitive tasks (code, JSON, document editing) by using a lightweight rolling hash + O(1) lookup to detect and "fast forward" through sequences already present in the KV cache/context. Achieves ~2x+ generation speed (e.g., 46 t/s → 107 t/s on code editing) with **zero extra VRAM** and virtually zero compute overhead. No draft model required. Especially powerful for structured/repetitive output. Includes parameters (`--spec-ngram-simple-size-n`, `--spec-ngram-simple-size-m`) and a free Google Colab notebook for testing.
-- **Extracted Repos / Tools**: llama.cpp with ngram-mod support. Strong practical optimization for local inference engines.
-- **TOOLS.md Link**: New row under Inference & Serving / Speculative Decoding & Optimization (high-signal inference optimization technique).
-- **Notes**: **High relevance for local inference performance.** This is an excellent, practical optimization that delivers significant speed gains on exactly the kinds of tasks agents do most (code generation, structured output, editing) without any VRAM penalty. The rolling hash + speculative draft approach is pure computer science elegance. Directly useful for making local agent workflows faster and more responsive. High fit for evaluation criteria: Very High Relevance (zero-cost speculative decoding), High Integration Ease (simple llama.cpp flag), High Reproducibility (detailed explanation + Colab notebook), Low Redundancy. Recommend: (1) Catalog as major inference optimization technique. (2) Strong candidate for testing on local hardware (especially code-heavy agent tasks). (3) Excellent reference for squeezing maximum performance out of local LLM setups.
-- **Status**: Processed and cataloged (added as high-value inference optimization; priority for performance category)
+- **URL**: https://x.com/i/status/2077528059339817025
+- **Date**: 2026-07-15
+- **Poster**: Md Ismail Šojal (@0x0SojalSec)
+- **Summary / Key Claims**: LEANN compresses massive RAG datasets dramatically (e.g., 60 million chunks from 201 GB down to 6 GB — 97% storage reduction) with no loss in accuracy. Enables powerful local RAG on a laptop without needing server farms. Perfect for personal knowledge bases and local agent memory systems.
+- **Extracted Repos / Tools**: Primary: https://github.com/StarTrail-org/LEANN (with accompanying paper: https://arxiv.org/pdf/2506.08276). Extreme compression technique for RAG embeddings/indexes.
+- **TOOLS.md Link**: New row under Context & Memory / RAG Optimization & Compression (high-signal RAG compression tool).
+- **Notes**: **High relevance for local RAG/memory.** Directly solves the storage bloat problem that makes large-scale local RAG impractical. The 97% compression with zero accuracy loss is exceptional and makes sophisticated RAG feasible on consumer hardware. Complements Memvid (MP4 memory packaging) and other context tools by attacking the storage layer. High fit for evaluation criteria: Very High Relevance (extreme RAG compression), High Integration Ease (local-friendly), High Reproducibility (open source + paper), Low Redundancy. Recommend: (1) Catalog as major RAG optimization/compression tool. (2) Strong candidate for testing with large personal knowledge bases or agent memory systems. (3) Excellent reference for making local RAG practical at scale.
+- **Status**: Processed and cataloged (added as high-value RAG compression tool; priority for context/memory category)
 
 ## Future Entries Format
 
