@@ -1,7 +1,7 @@
 {
-  "version": "0.4.1",
-  "last_updated": "2026-07-13T00:30:00Z",
-  "description": "Structured catalog. v0.4.1: AgenC reference-only row (ADR-0010 demote); Multica + Phase 0 seeds retained.",
+  "version": "0.4.2",
+  "last_updated": "2026-07-19T23:59:05Z",
+  "description": "Structured catalog. v0.4.2 T-0042: S-tier clusters from scoring-summary (Hermes loops, LEANN/Memvid, ngram-mod, eval patterns) + Grok+cage operator path; sources/x-posts recovered 001\u2013055.",
   "schema_notes": {
     "required_for_all": [
       "name",
@@ -29,7 +29,7 @@
         "s1": 95,
         "s2": 90,
         "s3": 98,
-        "s4": 88,
+        "s4": 90,
         "overall": 94
       },
       "tier": "S",
@@ -41,7 +41,7 @@
         "local-first"
       ],
       "bootstrap_path": "bootstrap/grok-cli",
-      "notes": "First-party replayable install: skills (adr/docs/open-questions/karpathy-guidelines), ponytail skills.paths, codebase-memory MCP config, memory enabled. Run ./bootstrap/grok-cli/install.sh. Primary operator path (ADR-0002, ADR-0010)."
+      "notes": "Primary operator env (ADR-0002). install.sh + skills + optional codebase-memory. Cage: make cage-grok / cage-grok-run / cage-grok-resume. Checker: python3 bootstrap/setup-local-agent-env.py"
     },
     {
       "name": "project-process bootstrap",
@@ -84,18 +84,18 @@
         "watch"
       ],
       "bootstrap_path": "bootstrap/agenc",
-      "notes": "REFERENCE ONLY — not primary (ADR-0010). Host daemon agent; get.agenc.ag / @tetsuo-ai/agenc. Trial 2026-07-12: TUI approval UX rejected vs Grok Build/Claude/OpenCode. Watch web console + marketplace jobs for possible re-creation. Prefer Grok CLI + agent-cage. Optional re-eval scripts demoted under bootstrap/agenc/."
+      "notes": "REFERENCE ONLY \u2014 ADR-0010. Not primary. TUI trial demoted. T-0046 re-eval later. Prefer Grok CLI + agent-cage."
     },
     {
       "name": "agent-cage (PNNL)",
       "primary_category": "Pipeline & CI/CD Components",
       "github": "https://github.com/pnnl/agent-cage",
       "scores": {
-        "s1": 92,
-        "s2": 85,
-        "s3": 98,
-        "s4": 78,
-        "overall": 90
+        "s1": 94,
+        "s2": 86,
+        "s3": 99,
+        "s4": 85,
+        "overall": 92
       },
       "tier": "S",
       "tags": [
@@ -109,7 +109,7 @@
       ],
       "pinned_commit": "ea0cdb328683",
       "bootstrap_path": "harness/agent-cage",
-      "notes": "PRIMARY integration harness. Docker sandbox with MCP overlay, policy engine, versionable images. agentcage CLI + compose. First tool for containerized testing of catalog integrations. See harness/agent-cage/."
+      "notes": "PRIMARY container harness + Grok Build path (make cage-grok*). Filesystem MCP, session resume T-0047, net smoke for xAI allowlist. POLICY=coding-agent-grok required for CLI API."
     },
     {
       "name": "adr-tools",
@@ -471,6 +471,238 @@
       "pinned_commit": "2a48ffa2aa73",
       "x_post_id": "2075999281996312951",
       "notes": "Managed agents platform (board, issue assignment, human+AI timeline, Skills). X Entry 012. Complements gstack; Docker self-host. Evaluate daemon vs Grok CLI separately; not a replacement for agent-cage isolation."
+    },
+    {
+      "name": "eval-harness (pfy)",
+      "primary_category": "Evaluation & Benchmarking",
+      "github": "https://github.com/themark-net/pfy-mentat",
+      "scores": {
+        "s1": 88,
+        "s2": 90,
+        "s3": 95,
+        "s4": 80,
+        "overall": 89
+      },
+      "tier": "A",
+      "tags": [
+        "evaluation",
+        "pipeline",
+        "local-first",
+        "litellm-ready"
+      ],
+      "bootstrap_path": "examples/eval-harness",
+      "x_post_id": "entry-032",
+      "notes": "First-party scored ladder OQ-0002/T-0041. make eval-v02/matrix. Aligns Entry 032 eval-loop pattern."
+    },
+    {
+      "name": "write-guard-mcp",
+      "primary_category": "Tool Calling & Function Infrastructure",
+      "github": "https://github.com/themark-net/pfy-mentat",
+      "scores": {
+        "s1": 90,
+        "s2": 92,
+        "s3": 95,
+        "s4": 80,
+        "overall": 90
+      },
+      "tier": "S",
+      "tags": [
+        "mcp-compatible",
+        "security",
+        "filesystem",
+        "audit",
+        "local-first"
+      ],
+      "bootstrap_path": "harness/write-guard-mcp",
+      "notes": "First-party write mediation. Default audit. make smoke-write-guard. T-0043 optional mcp-host."
+    },
+    {
+      "name": "Hermes Agent (feedback loops)",
+      "primary_category": "Agent Frameworks & Orchestration",
+      "github": "https://github.com/NousResearch/hermes-agent",
+      "scores": {
+        "s1": 90,
+        "s2": 82,
+        "s3": 92,
+        "s4": 90,
+        "overall": 89
+      },
+      "tier": "A",
+      "tags": [
+        "agentic",
+        "self-healing",
+        "skills",
+        "memory",
+        "feedback-loop"
+      ],
+      "x_post_id": "2077132507343134788",
+      "notes": "Entry 048 S-cluster. Port patterns to Grok skills/docs; credential pools Entry 055. Not required runtime."
+    },
+    {
+      "name": "awesome-hermes-skills",
+      "primary_category": "Agent Frameworks & Orchestration",
+      "github": "https://github.com/ZeroPointRepo/awesome-hermes-skills",
+      "scores": {
+        "s1": 88,
+        "s2": 90,
+        "s3": 90,
+        "s4": 92,
+        "overall": 89
+      },
+      "tier": "A",
+      "tags": [
+        "skills",
+        "curated",
+        "prompt-pack"
+      ],
+      "x_post_id": "2077738909778542896",
+      "notes": "Entry 053. Large curated library; paths snapshot only if scored ADR-0009."
+    },
+    {
+      "name": "LEANN",
+      "primary_category": "Memory & RAG Systems",
+      "github": "https://github.com/StarTrail-org/LEANN",
+      "scores": {
+        "s1": 88,
+        "s2": 85,
+        "s3": 88,
+        "s4": 85,
+        "overall": 87
+      },
+      "tier": "A",
+      "tags": [
+        "rag",
+        "compression",
+        "local-first",
+        "embeddings"
+      ],
+      "x_post_id": "2077528059339817025",
+      "notes": "Entry 052 S-cluster. Extreme RAG compression. Next: pin + optional cage spike."
+    },
+    {
+      "name": "Memvid",
+      "primary_category": "Memory & RAG Systems",
+      "github": "https://github.com/memvid/memvid",
+      "scores": {
+        "s1": 88,
+        "s2": 82,
+        "s3": 85,
+        "s4": 88,
+        "overall": 86
+      },
+      "tier": "A",
+      "tags": [
+        "memory",
+        "versioning",
+        "local-first",
+        "rag"
+      ],
+      "x_post_id": "2077064295209443504",
+      "notes": "Entry 044 S-cluster. MP4 versioned memory. Evaluate vs codebase-memory-mcp."
+    },
+    {
+      "name": "opencode-mem",
+      "primary_category": "Memory & RAG Systems",
+      "github": "https://github.com/tickernelz/opencode-mem",
+      "scores": {
+        "s1": 82,
+        "s2": 85,
+        "s3": 85,
+        "s4": 80,
+        "overall": 83
+      },
+      "tier": "A",
+      "tags": [
+        "memory",
+        "vector",
+        "coding-agent",
+        "local-first"
+      ],
+      "x_post_id": "2077134466267394303",
+      "notes": "Entry 049. Persistent memory for OpenCode-class agents. Docs/spike until smoke DoD."
+    },
+    {
+      "name": "llama.cpp ngram-mod",
+      "primary_category": "Inference & Serving",
+      "github": "https://github.com/ggerganov/llama.cpp",
+      "scores": {
+        "s1": 85,
+        "s2": 95,
+        "s3": 88,
+        "s4": 90,
+        "overall": 89
+      },
+      "tier": "A",
+      "tags": [
+        "high-perf",
+        "speculative-decoding",
+        "local-first",
+        "gguf"
+      ],
+      "x_post_id": "2077718647905333549",
+      "notes": "Entry 051 S-cluster. Runtime speculative decoding flags. Optional host path."
+    },
+    {
+      "name": "Finn Loop / eval-loop patterns",
+      "primary_category": "Agent Frameworks & Orchestration",
+      "github": "https://github.com/themark-net/pfy-mentat",
+      "scores": {
+        "s1": 90,
+        "s2": 88,
+        "s3": 90,
+        "s4": 85,
+        "overall": 89
+      },
+      "tier": "A",
+      "tags": [
+        "agentic",
+        "loops",
+        "evaluation",
+        "human-in-loop"
+      ],
+      "x_post_id": "entries-024-027-031-032",
+      "notes": "Entries 024/027/031/032. Inform loop-engineering docs + eval-harness. Prefer skill ports.",
+      "bootstrap_path": "integration/agenc/skills/loop-engineering"
+    },
+    {
+      "name": "destructive_command_guard",
+      "primary_category": "Tool Calling & Function Infrastructure",
+      "github": "https://github.com/Dicklesworthstone/destructive_command_guard",
+      "scores": {
+        "s1": 80,
+        "s2": 90,
+        "s3": 85,
+        "s4": 82,
+        "overall": 84
+      },
+      "tier": "A",
+      "tags": [
+        "security",
+        "guardrail",
+        "coding-agent"
+      ],
+      "x_post_id": "2076855961189507099",
+      "notes": "Entry 041. Shell safety pattern. Complements write-guard + cage policy."
+    },
+    {
+      "name": "OpenClaude-Portable",
+      "primary_category": "Coding & Dev Agents",
+      "github": "https://github.com/techjarves/OpenClaude-Portable",
+      "scores": {
+        "s1": 82,
+        "s2": 88,
+        "s3": 85,
+        "s4": 85,
+        "overall": 85
+      },
+      "tier": "A",
+      "tags": [
+        "coding-agent",
+        "portable",
+        "folder-based"
+      ],
+      "x_post_id": "2077768643128009110",
+      "notes": "Entry 054. Portable agent packaging reference. Not Grok replacement."
     }
   ],
   "aggregates": [

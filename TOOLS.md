@@ -2,7 +2,7 @@
 
 This file contains the detailed, living table of evaluated local LLM development tools. Each entry includes scores per stage, overall tier, key attributes/tags, GitHub link, and integration notes especially relevant to Grok CLI, MCP code memory, DSPy/LiteLLM patterns, and continuous pipelines.
 
-**How to read scores**: See CATEGORIZATION.md for full rubric. Scores are initial estimates based on public docs, known usage in agentic coding workflows, and ecosystem signals as of 2026-07-11. They will be updated with empirical integration data. Paper-based entries include feasibility analysis.
+**How to read scores**: See CATEGORIZATION.md + [docs/evaluation-framework.md](docs/evaluation-framework.md). Mix of public docs and **lab receipts** (`pipelines/smoke/*`, `make eval-v02`). Cluster scores: [docs/scoring-summary.md](docs/scoring-summary.md). Operator default: **Grok CLI + agent-cage** (not AgenC — ADR-0010).
 
 **Legend**:
 - **S1**: Stage 1 Core LLM/Agent Compatibility (weight 35%)
@@ -15,10 +15,12 @@ This file contains the detailed, living table of evaluated local LLM development
 
 | Tool | Primary Cat | GitHub | S1 | S2 | S3 | S4 | Overall | Tier | Key Tags | Integration Notes / Grok CLI / MCP |
 |------|-------------|--------|----|----|----|----|---------|------|----------|-------------------------------------|
-| **Grok CLI bootstrap** | Pipeline & CI/CD Components | this repo (`bootstrap/grok-cli/`) | 95 | 90 | 98 | 88 | 94 | S | #grok-cli #mcp-compatible #code-memory #pipeline #local-first | **First-party integration.** Idempotent `install.sh` reinstalls portable skills (`adr`, `docs`, `open-questions`, `karpathy-guidelines`, `project-process`), wires `codebase-memory` MCP + memory config, registers ponytail via `skills.paths`. Replay on any new host after Grok binary install. See bootstrap/grok-cli/README.md. |
+| **Grok CLI bootstrap** | Pipeline & CI/CD Components | this repo (`bootstrap/grok-cli/`) | 95 | 90 | 98 | 90 | 94 | S | #grok-cli #mcp-compatible #code-memory #pipeline #local-first | **Primary operator env (ADR-0002).** `install.sh` + skills + optional codebase-memory MCP. **Cage path:** `make cage-grok` / `cage-grok-run` / `cage-grok-resume`. Env check: `python3 bootstrap/setup-local-agent-env.py`. |
+
 | **project-process bootstrap** | Pipeline & CI/CD Components | this repo (`bootstrap/project-process/`) | 92 | 95 | 96 | 80 | 92 | S | #grok-cli #pipeline #local-first #agentic | **First-party process kit.** Scaffolds DESIGN + multi-file ADR (rejected alternatives) + TODO + open questions + AGENTS into any repo via `init.sh` / `/project-process`. Evaluation (2026-07): light markdown framework **sufficient**; optional later `adr-tools`; do not replace with heavy SaaS by default. See bootstrap/project-process/README.md + evaluation.md. |
 | **AgenC** | Coding & Dev Agents | https://github.com/tetsuo-ai/agenc-core | 78 | 70 | 88 | 82 | 78 | B | #coding-agent #terminal #daemon #mcp-compatible #watch | **Reference only — not primary ([ADR-0010](docs/adr/0010-reject-agenc-as-primary-runtime.md)).** Daemon host agent; install `get.agenc.ag` / `@tetsuo-ai/agenc`. Trial 2026-07-12: TUI approval UX unfit vs Grok Build/Claude/OpenCode; default remote login ≠ Grok Build sub. **Watch:** web console, marketplace-style jobs — re-create gaps only if scored. Optional re-eval scripts under `bootstrap/agenc/` (demoted). Prefer **Grok CLI** + **agent-cage**. |
-| **agent-cage (PNNL)** | Pipeline & CI/CD Components | https://github.com/pnnl/agent-cage | 92 | 85 | 98 | 78 | 90 | S | #docker #sandbox #mcp-compatible #harness #pipeline #local-first | **PRIMARY container harness.** Docker sandbox (Ubuntu agent + mitmproxy policy + CoreDNS) with MCP overlay (`mcp-servers.yaml`, compose). Versionable images for reproducible integration tests. CLI `agentcage up [--mcp]`, shell, policy, audit. Harness-agnostic (Claude/Cline/LangGraph/custom; Grok via install-in-cage or host+workspace). **Implement first** for testing other catalog tools. Pin `ea0cdb3…`. Wrapper: `harness/agent-cage/`. Related: cleatdev/cleat (Claude-focused cage), chaserhkj/agent-cage (Podman/microVM). |
+| **agent-cage (PNNL)** | Pipeline & CI/CD Components | https://github.com/pnnl/agent-cage | 94 | 86 | 99 | 85 | 92 | S | #docker #sandbox #mcp-compatible #harness #pipeline #local-first | **PRIMARY container harness + Grok Build operator path.** Overlay: `make cage-grok` (image, auth import, workspace sync, filesystem MCP, session resume T-0047, net smoke). Policy `coding-agent-grok` must allow xAI CLI hosts. Pin `ea0cdb3…`. Wrapper: `harness/agent-cage/`. |
+
 | **adr-tools** (optional) | Pipeline & CI/CD Components | https://github.com/npryce/adr-tools | 70 | 90 | 75 | 85 | 78 | B | #pipeline #local-first | Classic CLI for ADR create/supersede numbering. Complements our skills; **not required** — skills + templates cover agent workflows. Pin if a team wants shell automation. |
 | **codebase-memory-mcp** | Memory & RAG Systems | https://github.com/DeusData/codebase-memory-mcp | 92 | 88 | 95 | 85 | 91 | S | #mcp-compatible #code-memory #local-first #rag | Persistent code-graph MCP server used by Grok for project index / ADR hooks. Binary via official install.sh; this catalog owns Grok `config.toml` wiring through bootstrap (`--with-codebase-memory`). Captured pin: `ee68144`. **In-cage smoke green:** `make smoke-codebase-memory`. |
 | **LiteLLM** | Proxy & Routing | https://github.com/BerriAI/litellm | 95 | 85 | 98 | 90 | 93 | S | #litellm-ready #openai-shim #grok-cli #multi-llm #proxy | Critical unification layer. Route Grok API + local Ollama/MLX + fallbacks in one client. Excellent for agent loops. Native MCP? Easy to wrap. Docker ready. Top priority for any hybrid pipeline. |
@@ -43,6 +45,30 @@ This file contains the detailed, living table of evaluated local LLM development
 | **Antigravity-Manager** | Proxy & Routing | https://github.com/lbjlaq/Antigravity-Manager | 85 | 80 | 90 | 90 | 86 | A | #proxy #account-pool #tauri #openai-shim | Local API relay + multi-account switcher. **X Entry 005.** Complements LiteLLM; optional Tauri eval. |
 | **Jamon Holmgren agentic setup** | Pipeline & CI/CD Components | https://x.com/i/status/2076001786700394610 | 70 | 85 | 92 | 80 | 81 | A | #workflow #harness #agents-md #process | Production agentic checklist (not a single repo). **X Entry 007.** Partially absorbed into AGENTS.md; continue into project-process templates. |
 | **Ruben Hassid context/token hacks** | Pipeline & CI/CD Components | https://x.com/i/status/2075807299638014212 | 65 | 92 | 80 | 75 | 77 | B | #token-efficiency #prompt #workflow | Practice list (Claude plan efficiency). **X Entry 009.** Principles → AGENTS / context-budget skill; complements repowise. |
+| **eval-harness (pfy)** | Evaluation & Benchmarking | this repo (`examples/eval-harness/`) | 88 | 90 | 95 | 80 | 89 | A | #evaluation #pipeline #local-first #litellm-ready | First-party scored ladder (OQ-0002 opt5 + T-0041): `make eval-tier0\|eval-v02\|eval-matrix`. Tasks 001-is-palindrome, 002-fix-sum-evens. **Empirical:** matrix 3×2 PASS. Aligns with eval-loop pattern (Entry 032). DSPy deferred. |
+| **write-guard-mcp** | Tool Calling & Function Infrastructure | this repo (`harness/write-guard-mcp/`) | 90 | 92 | 95 | 80 | 90 | S | #mcp-compatible #security #filesystem #audit #local-first | First-party write mediation (`off`/`audit`/`enforce`). Default **audit**. **Empirical:** `make smoke-write-guard` PASS. Optional mcp-host enable = T-0043. |
+| **Hermes Agent (feedback loops)** | Agent Frameworks & Orchestration | https://github.com/NousResearch/hermes-agent | 90 | 82 | 92 | 90 | 89 | A | #agentic #self-healing #skills #memory #feedback-loop | **X Entry 048 (S-cluster).** Three loops: auto-memory, auto-skill, curator. Port **patterns** into Grok skills/docs — not required runtime. Credential pools pattern: Entry 055 / PR #30179. |
+| **awesome-hermes-skills** | Agent Frameworks & Orchestration | https://github.com/ZeroPointRepo/awesome-hermes-skills | 88 | 90 | 90 | 92 | 89 | A | #skills #curated #prompt-pack | **X Entry 053.** Large curated skill library (270+). Reference for curation; paths snapshot only if scored (ADR-0009). |
+| **LEANN** | Memory & RAG Systems | https://github.com/StarTrail-org/LEANN | 88 | 85 | 88 | 85 | 87 | A | #rag #compression #local-first #embeddings | **X Entry 052 (S-cluster).** Extreme index compression claims. **Next:** pin + optional in-cage spike; do not embed weights in-repo. |
+| **Memvid** | Memory & RAG Systems | https://github.com/memvid/memvid | 88 | 82 | 85 | 88 | 86 | A | #memory #versioning #local-first #rag | **X Entry 044 (S-cluster).** MP4-based versioned memory. Evaluate as alternative/complement to vector MCP memory. |
+| **opencode-mem** | Memory & RAG Systems | https://github.com/tickernelz/opencode-mem | 82 | 85 | 85 | 80 | 83 | A | #memory #vector #coding-agent #local-first | **X Entry 049.** Persistent memory for OpenCode-class agents. Docs/spike only until smoke DoD. |
+| **llama.cpp ngram-mod** | Inference & Serving | https://github.com/ggerganov/llama.cpp | 85 | 95 | 88 | 90 | 89 | A | #high-perf #speculative-decoding #local-first #gguf | **X Entry 051 (S-cluster).** N-gram speculative decoding — runtime flags, zero extra VRAM. Optional host llama.cpp path; not required for Ollama cage smokes. |
+| **Finn Loop / eval-loop patterns** | Agent Frameworks & Orchestration | docs / X Entries 024 · 027 · 031 · 032 | 90 | 88 | 90 | 85 | 89 | A | #agentic #loops #evaluation #human-in-loop | Loop engineering pedagogy + production loops. Inform `integration/…/loop-engineering/` + our eval harness. Prefer skill/docs ports over new harness. |
+| **destructive_command_guard** | Tool Calling & Function Infrastructure | https://github.com/Dicklesworthstone/destructive_command_guard | 80 | 90 | 85 | 82 | 84 | A | #security #guardrail #coding-agent | **X Entry 041.** Safety pattern for shell tools. Complement write-guard + cage policy. |
+| **OpenClaude-Portable** | Coding & Dev Agents | https://github.com/techjarves/OpenClaude-Portable | 82 | 88 | 85 | 85 | 85 | A | #coding-agent #portable #folder-based | **X Entry 054.** Lightweight portable agent layout. Reference for harness packaging; not a Grok replacement. |
+
+## Recommended stack (2026-07)
+
+| Role | Tool | Lab proof |
+|------|------|-----------|
+| Operator CLI | Grok Build + bootstrap | host `grok` + `make cage-grok*` |
+| Isolation lab | agent-cage | `cage-test`, smokes, net smoke |
+| Local models | Ollama + LiteLLM | `smoke-litellm-ollama`, `eval-matrix` |
+| Code memory | codebase-memory-mcp (+ repowise) | `smoke-context-tools` |
+| Write policy | write-guard-mcp | `smoke-write-guard` |
+| Scored eval | eval-harness | `eval-v02` |
+
+*v0.4.2 — T-0042: recovered sources 001–055; added S-cluster tools; empirical operator path notes.*
 
 ## Paper Analysis Use Case (Recurring Workflow)
 

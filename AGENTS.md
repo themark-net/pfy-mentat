@@ -34,6 +34,10 @@ Also use as needed: `CATEGORIZATION.md`, `SUBTREES.md`, `TOOLS.md`, `bootstrap/g
 ```bash
 ./bootstrap/grok-cli/install.sh
 # optional: --with-codebase-memory
+# operator lab (Grok Build in agent-cage — primary path, ADR-0002/0010):
+#   make cage-grok && make cage-grok-net-smoke
+# env sanity (does not install AgenC):
+#   python3 bootstrap/setup-local-agent-env.py
 ```
 
 Portable skills: `adr`, `docs`, `open-questions`, `karpathy-guidelines`, `project-process`, `one-shot`, `marketing-council`, **`investigate`** (RCA); ponytail + mattpocock subset (via `skills.paths`).  

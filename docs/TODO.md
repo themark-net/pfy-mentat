@@ -24,12 +24,11 @@
 
 ## Active (sorted P0 → P3)
 
-**Session (2026-07-12):** AgenC demoted (ADR-0010). T-0045/T-0047 green. Launch: `make cage-grok` → shell/run/resume. Remote catalog entries 022–055 merged.
+**Session (2026-07-16):** Operator truth stabilized (Grok+cage). T-0042 catalog re-score + sources 001–055 recovery. Launch: `make cage-grok`.
 
 | ID | Priority | Status | Item | Open questions | Depends | Notes |
 |----|----------|--------|------|----------------|---------|-------|
-
-| T-0042 | P2 | todo | Catalog re-score pass using smokes + `make eval-v02` / matrix | — | T-0041 | Parked: fold empirical results into TOOLS.md / data/tools.json narrative |
+| T-0048 | P2 | todo | Port one S-tier pattern as Grok skill or eval task (Hermes feedback / eval-loop / LEANN spike) | — | T-0042 | Prefer first-party skill + optional smoke; no AgenC |
 | T-0043 | P2 | todo | Write-guard **mcp-host wiring** (enable server; optional disable stock FS writes) | — | T-0031 | Parked: **not** the stock filesystem MCP — that already works. Only if audit/enforce policy in real agent MCP sessions is needed |
 | T-0015 | P2 | blocked | Optional Antigravity-Manager eval | [OQ-0007](open-questions/OQ-0007-antigravity-need.md) | — | |
 | T-0016 | P2 | blocked | Optional colibri build+serve | [OQ-0008](open-questions/OQ-0008-colibri-weights-ok.md) | — | |
@@ -69,6 +68,7 @@
 | T-0044 | P1 | done | AgenC install experiment + smoke (then demoted) | Trial only; **ADR-0010** rejects as primary; host uninstalled; catalog B/watch |
 | T-0045 | P1 | done | Grok Build in agent-cage + filesystem MCP on catalog workspace | `make cage-workspace-sync` / `cage-grok-ready`; project `.grok` → mcp-host filesystem |
 | T-0047 | P1 | done | Cage Grok session resumption (persist + host→cage import) | `grok-state/sessions` mount; `cage-grok-sessions-import-host`; `cage-grok-resume` |
+| T-0042 | P2 | done | Catalog re-score + absorb S-tier clusters; recover sources 001–055 | TOOLS.md + tools.json v0.4.2; eval-framework Grok-first; setup-local-agent-env rewritten |
 
 
 ## How to use

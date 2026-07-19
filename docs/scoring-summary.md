@@ -93,9 +93,11 @@ High practical value for making local agents faster.
 4. **Finn Loop + Eval Loop patterns** (Entries 024 + 032) — Concrete implementation examples.
 5. **awesome-hermes-skills + Company org patterns** (Entries 053 + 037) — Skill scale and organization.
 
-These should drive the next iteration of `bootstrap/setup-local-agent-env.py` and the Loop Engineering / Memory skill packs.
+These should drive **Grok+cage** ports (skills, eval tasks, optional smokes)—not AgenC (ADR-0010).  
+Checker: `python3 bootstrap/setup-local-agent-env.py`. Catalog: T-0042 triple-write.
 
 ## Next Steps
-- Expand this document with full per-entry scoring tables as needed.
-- Begin implementing top S-Tier items into the centralized setup script.
-- Create overlap matrices for Loop Engineering and Memory clusters.
+- Keep `sources/x-posts.md` append-only (never replace whole file with a single entry).
+- Triple-write S-tier tools into TOOLS.md + data/tools.json (T-0042).
+- Implement one S-tier pattern as first-party Grok skill or eval harness extension.
+- Optional overlap matrices for Loop Engineering and Memory clusters.

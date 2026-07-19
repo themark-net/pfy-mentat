@@ -96,24 +96,24 @@ One-line purpose: **Track · Categorize · Rank · Integrate** tools for robust 
 
 ### Near-term (see TODO)
 
-**Operator jump-off (ADR-0002 + ADR-0010 + T-0045):**
+**Operator jump-off (ADR-0002 + ADR-0010 + T-0045 + T-0047):**
 
-- **Grok Build in agent-cage:** `make cage-grok` → `cage-grok-run` / `cage-grok-shell`  
-- Catalog tree at `/workspace/pfy-mentat` via `make cage-workspace-sync`  
-- **Filesystem MCP** (mcp-host) wired in project `.grok/config.toml`  
+- **Grok Build in agent-cage:** `make cage-grok` → `cage-grok-run` / `cage-grok-shell` / `cage-grok-resume`  
+- Catalog tree at `/workspace/pfy-mentat` · filesystem MCP · persisted sessions under `~/.agentcage/grok-state/sessions`  
+- Proxy gate: `make cage-grok-net-smoke`  
 - Not AgenC as primary ([ADR-0010](adr/0010-reject-agenc-as-primary-runtime.md))  
-- **Next:** repo-isolated **session resumption** in cage ([design](ops/cage-session-resumption-design.md), T-0047)
+- Env check helper: `python3 bootstrap/setup-local-agent-env.py` (Grok+cage oriented; does not install AgenC)
 
-**Also parked:**
+**Near-term next:**
 
-- **T-0042** Catalog re-score from `make eval-v02` / matrix + smokes  
-- **T-0043** Write-guard mcp-host enablement (optional)  
-- Unlock one blocked P2 (OQ-0003 / 0004 / 0007 / 0008) when operator decides  
-- **T-0040** OpenCode/Claude validation (P3)
+- **T-0042** Catalog re-score / absorb high-signal seeds (scoring-summary S-tier clusters)  
+- Port one S-tier **pattern** as Grok skill or eval task (Hermes feedback / eval loop / LEANN spike)  
+- **T-0043** write-guard mcp-host (optional)  
+- Blocked P2 OQs when operator decides  
 
-### Delivered recently (was near-term)
+### Delivered recently
 
-- Write-guard MCP v0.1 + cage smoke · in-cage tool smokes · LiteLLM profile recipes · skill ports (ADR-0009) · eval harness MVP + v0.2 suite/matrix (OQ-0002 / T-0041) · grok-in-image overlay (**OQ-0005 answered**) · AgenC **trial** install/smoke then **demoted** (T-0044 + **ADR-0010**; catalog reference only)
+- Write-guard MCP · cage smokes · LiteLLM profiles · skill ports · eval MVP/v0.2 · Grok-in-cage + MCP + session resume · AgenC demoted · proxy allowlist for Grok CLI · catalog eval framework v1.2 (Grok-first)
 
 ### Later / research
 
