@@ -4,7 +4,9 @@ This file contains the detailed, living table of evaluated local LLM development
 
 **How to read scores**: See CATEGORIZATION.md + [docs/evaluation-framework.md](docs/evaluation-framework.md). Mix of public docs and **lab receipts** (`pipelines/smoke/*`, `make eval-v02`). Cluster scores: [docs/scoring-summary.md](docs/scoring-summary.md). Operator default: **Grok CLI + agent-cage** (not AgenC — ADR-0010).
 
-**Legend**:
+**Company systems** use a separate rubric: [docs/evaluation/autonomous-ai-companies-rubric.md](docs/evaluation/autonomous-ai-companies-rubric.md) (C1–C6 dimensions).
+
+**Legend (standard tools)**:
 - **S1**: Stage 1 Core LLM/Agent Compatibility (weight 35%)
 - **S2**: Stage 2 Perf/Efficiency (25%)
 - **S3**: Stage 3 Pipeline/Extensibility (25%)
@@ -16,11 +18,9 @@ This file contains the detailed, living table of evaluated local LLM development
 | Tool | Primary Cat | GitHub | S1 | S2 | S3 | S4 | Overall | Tier | Key Tags | Integration Notes / Grok CLI / MCP |
 |------|-------------|--------|----|----|----|----|---------|------|----------|-------------------------------------|
 | **Grok CLI bootstrap** | Pipeline & CI/CD Components | this repo (`bootstrap/grok-cli/`) | 95 | 90 | 98 | 90 | 94 | S | #grok-cli #mcp-compatible #code-memory #pipeline #local-first | **Primary operator env (ADR-0002).** `install.sh` + skills + optional codebase-memory MCP. **Cage path:** `make cage-grok` / `cage-grok-run` / `cage-grok-resume`. Env check: `python3 bootstrap/setup-local-agent-env.py`. |
-
 | **project-process bootstrap** | Pipeline & CI/CD Components | this repo (`bootstrap/project-process/`) | 92 | 95 | 96 | 80 | 92 | S | #grok-cli #pipeline #local-first #agentic | **First-party process kit.** Scaffolds DESIGN + multi-file ADR (rejected alternatives) + TODO + open questions + AGENTS into any repo via `init.sh` / `/project-process`. Evaluation (2026-07): light markdown framework **sufficient**; optional later `adr-tools`; do not replace with heavy SaaS by default. See bootstrap/project-process/README.md + evaluation.md. |
 | **AgenC** | Coding & Dev Agents | https://github.com/tetsuo-ai/agenc-core | 78 | 70 | 88 | 82 | 78 | B | #coding-agent #terminal #daemon #mcp-compatible #watch | **Reference only — not primary ([ADR-0010](docs/adr/0010-reject-agenc-as-primary-runtime.md)).** Daemon host agent; install `get.agenc.ag` / `@tetsuo-ai/agenc`. Trial 2026-07-12: TUI approval UX unfit vs Grok Build/Claude/OpenCode; default remote login ≠ Grok Build sub. **Watch:** web console, marketplace-style jobs — re-create gaps only if scored. Optional re-eval scripts under `bootstrap/agenc/` (demoted). Prefer **Grok CLI** + **agent-cage**. |
 | **agent-cage (PNNL)** | Pipeline & CI/CD Components | https://github.com/pnnl/agent-cage | 94 | 86 | 99 | 85 | 92 | S | #docker #sandbox #mcp-compatible #harness #pipeline #local-first | **PRIMARY container harness + Grok Build operator path.** Overlay: `make cage-grok` (image, auth import, workspace sync, filesystem MCP, session resume T-0047, net smoke). Policy `coding-agent-grok` must allow xAI CLI hosts. Pin `ea0cdb3…`. Wrapper: `harness/agent-cage/`. |
-
 | **adr-tools** (optional) | Pipeline & CI/CD Components | https://github.com/npryce/adr-tools | 70 | 90 | 75 | 85 | 78 | B | #pipeline #local-first | Classic CLI for ADR create/supersede numbering. Complements our skills; **not required** — skills + templates cover agent workflows. Pin if a team wants shell automation. |
 | **codebase-memory-mcp** | Memory & RAG Systems | https://github.com/DeusData/codebase-memory-mcp | 92 | 88 | 95 | 85 | 91 | S | #mcp-compatible #code-memory #local-first #rag | Persistent code-graph MCP server used by Grok for project index / ADR hooks. Binary via official install.sh; this catalog owns Grok `config.toml` wiring through bootstrap (`--with-codebase-memory`). Captured pin: `ee68144`. **In-cage smoke green:** `make smoke-codebase-memory`. |
 | **LiteLLM** | Proxy & Routing | https://github.com/BerriAI/litellm | 95 | 85 | 98 | 90 | 93 | S | #litellm-ready #openai-shim #grok-cli #multi-llm #proxy | Critical unification layer. Route Grok API + local Ollama/MLX + fallbacks in one client. Excellent for agent loops. Native MCP? Easy to wrap. Docker ready. Top priority for any hybrid pipeline. |
@@ -34,28 +34,39 @@ This file contains the detailed, living table of evaluated local LLM development
 | **LangGraph** (LangChain) | Agent Frameworks & Orchestration | https://github.com/langchain-ai/langgraph | 82 | 70 | 88 | 88 | 82 | A | #agentic #graph #orchestration #tool-calling #rag | Stateful multi-actor agent graphs. Excellent for complex pipelines. Can use local Ollama via LangChain integration. Strong RAG/memory support (can integrate MCP). More boilerplate than DSPy for simple cases. |
 | **Open WebUI** | UI & Interfaces | https://github.com/open-webui/open-webui | 75 | 80 | 85 | 92 | 82 | A | #ui #chat #local-first #docker #multi-model | Polished ChatGPT-like UI for local models (Ollama, llama.cpp, etc.). Supports tools in recent versions. Great for human-in-loop debugging of agents before headless pipeline use. Docker one-liner. |
 | **Chroma** (or LanceDB) | Memory & RAG Systems | https://github.com/chroma-core/chroma | 70 | 85 | 80 | 85 | 78 | B | #rag #vector #code-memory #local-first #embeddings | Solid local vector DB. Easy Python SDK. Good for code RAG (embed functions/classes). Can serve as foundation for MCP-style persistent code memory. Lightweight. |
-| **Atomic Task Graph (ATG)** | Agent Frameworks & Orchestration | Prototype: https://github.com/themark-net/atg-framework (paper: https://arxiv.org/abs/2607.01942; no original code repo) | 88 | 75 | 90 | 60 | 82 | A | #agentic #graph #dag #planning #parallelism #failure-repair #paper-based #prototype | Research framework using explicit DAGs for task decomposition instead of linear chains. Enables parallelism, verified result reuse, and localized repair on failures. Strong conceptual alignment with MCP (explicit dependencies/memory) and DSPy/LangGraph orchestration. **New dedicated prototype repo created for implementation & testing**: https://github.com/themark-net/atg-framework (untested skeleton with built-in testing focus; active dev space). **Feasibility of re-implementation: 75/100**. Straightforward: DAG construction (NetworkX), recursive decomposition via LLM prompts, parallel execution (concurrent.futures or LangGraph). Challenging: Sophisticated failure localization using graph history and robust intermediate result caching/reuse. Distilled core method: 1) Recursively decompose task into atomic subtasks forming evolving DAG sequence with explicit I/O dependencies. 2) Execute ready independent branches in parallel. 3) On failure, use graph evolution history to localize and repair only affected subgraph, preserving validated parts. High value for robust, efficient agent pipelines on small local models. See new repo's docs/TODO.md for open questions and MVP roadmap. Watch original paper for any future code release. |
-| **ponytail** (skills pack) | Coding & Dev Agents | https://github.com/DietrichGebert/ponytail | 80 | 92 | 88 | 82 | 86 | A | #terminal #coding-agent #local-first #grok-cli | Minimalism / YAGNI skill pack for agents (`/ponytail`, audit, debt, review). Snapshot of `skills/` only vendored under `bootstrap/grok-cli/skills-external/ponytail` and registered via Grok `[skills].paths` (not copied into `~/.grok/skills`). Pin at capture: `8e69b4a`. |
-| **karpathy-guidelines** | Coding & Dev Agents | https://github.com/forrestchang/andrej-karpathy-skills | 78 | 95 | 85 | 80 | 84 | A | #coding-agent #grok-cli #local-first | Single MIT skill: think-before-coding, simplicity, surgical diffs, goal-driven verification. Vendored into bootstrap first-party skills (pin `2c60614`). Complements ponytail on anti-overengineering. |
-| **repowise** | Coding & Dev Agents | https://github.com/repowise-dev/repowise | 88 | 92 | 88 | 82 | 88 | A | #context #token-efficiency #coding-agent #local-first | Context optimization layer; published token/file-read efficiency gains. **X Entry 006.** Complement (not replace) codebase-memory-mcp — see `pipelines/smoke/context-tools-compare.md`. Pin `repowise==0.30.0`. **In-cage smoke green:** `make smoke-repowise` (`health`, zero LLM). |
-| **gstack** | Agent Frameworks & Orchestration | https://github.com/garrytan/gstack | 85 | 85 | 90 | 95 | 88 | A | #skills #multi-agent #roles #workflow | Multi-specialist role pipeline (Think→Ship). **X Entry 010.** Placement: **docs-only** (T-0014) + **raw-port-blocked** for paths snapshots (Claude harness). Deeper-port eval: [gstack-skill-port-comparison.md](docs/ops/gstack-skill-port-comparison.md) — recommend first-party **investigate** method rewrite if one skill (T-0017), not full tree. |
-| **Multica** | Agent Frameworks & Orchestration | https://github.com/multica-ai/multica | 88 | 78 | 92 | 95 | 88 | A | #multi-agent #orchestration #workflow #skills #self-host #docker | Open-source **managed agents** platform: board-style issue assignment to coding agents, timeline, reusable Skills, local daemon + Docker self-host. **X Entry 012.** Complements gstack (skills/roles) with PM/teammate UX. Supports many agents (Claude Code, Codex, OpenCode, Cursor, …). Pin `2a48ffa2aa73`. Eval self-host path before deep Grok wiring. |
-| **mattpocock/skills** | Agent Frameworks & Orchestration | https://github.com/mattpocock/skills | 82 | 90 | 90 | 90 | 87 | A | #skills #planning #tdd #review #composable | Composable engineering skills. **X Entry 008.** **paths snapshot** (T-0011): `skills-external/mattpocock/` = tdd, code-review, to-spec @ pin `391a2701dd94`. |
-| **marketing-skills (marketing-council)** | Agent Frameworks & Orchestration | https://github.com/coreyhaines31/marketingskills | 78 | 90 | 88 | 92 | 85 | A | #skills #multi-agent #council #prompt-pack | Council + dissenter multi-expert pattern. **X Entry 004.** **First-party port** (T-0011): `bootstrap/grok-cli/skills/marketing-council/` + advisors; MIT. |
-| **Antigravity-Manager** | Proxy & Routing | https://github.com/lbjlaq/Antigravity-Manager | 85 | 80 | 90 | 90 | 86 | A | #proxy #account-pool #tauri #openai-shim | Local API relay + multi-account switcher. **X Entry 005.** Complements LiteLLM; optional Tauri eval. |
-| **Jamon Holmgren agentic setup** | Pipeline & CI/CD Components | https://x.com/i/status/2076001786700394610 | 70 | 85 | 92 | 80 | 81 | A | #workflow #harness #agents-md #process | Production agentic checklist (not a single repo). **X Entry 007.** Partially absorbed into AGENTS.md; continue into project-process templates. |
-| **Ruben Hassid context/token hacks** | Pipeline & CI/CD Components | https://x.com/i/status/2075807299638014212 | 65 | 92 | 80 | 75 | 77 | B | #token-efficiency #prompt #workflow | Practice list (Claude plan efficiency). **X Entry 009.** Principles → AGENTS / context-budget skill; complements repowise. |
-| **eval-harness (pfy)** | Evaluation & Benchmarking | this repo (`examples/eval-harness/`) | 88 | 90 | 95 | 80 | 89 | A | #evaluation #pipeline #local-first #litellm-ready | First-party scored ladder (OQ-0002 opt5 + T-0041): `make eval-tier0\|eval-v02\|eval-matrix`. Tasks 001-is-palindrome, 002-fix-sum-evens. **Empirical:** matrix 3×2 PASS. Aligns with eval-loop pattern (Entry 032). DSPy deferred. |
-| **write-guard-mcp** | Tool Calling & Function Infrastructure | this repo (`harness/write-guard-mcp/`) | 90 | 92 | 95 | 80 | 90 | S | #mcp-compatible #security #filesystem #audit #local-first | First-party write mediation (`off`/`audit`/`enforce`). Default **audit**. **Empirical:** `make smoke-write-guard` PASS. Optional mcp-host enable = T-0043. |
-| **Hermes Agent (feedback loops)** | Agent Frameworks & Orchestration | https://github.com/NousResearch/hermes-agent | 90 | 82 | 92 | 90 | 89 | A | #agentic #self-healing #skills #memory #feedback-loop | **X Entry 048 (S-cluster).** Three loops: auto-memory, auto-skill, curator. Port **patterns** into Grok skills/docs — not required runtime. Credential pools pattern: Entry 055 / PR #30179. |
-| **awesome-hermes-skills** | Agent Frameworks & Orchestration | https://github.com/ZeroPointRepo/awesome-hermes-skills | 88 | 90 | 90 | 92 | 89 | A | #skills #curated #prompt-pack | **X Entry 053.** Large curated skill library (270+). Reference for curation; paths snapshot only if scored (ADR-0009). |
-| **LEANN** | Memory & RAG Systems | https://github.com/StarTrail-org/LEANN | 88 | 85 | 88 | 85 | 87 | A | #rag #compression #local-first #embeddings | **X Entry 052 (S-cluster).** Extreme index compression claims. **Next:** pin + optional in-cage spike; do not embed weights in-repo. |
-| **Memvid** | Memory & RAG Systems | https://github.com/memvid/memvid | 88 | 82 | 85 | 88 | 86 | A | #memory #versioning #local-first #rag | **X Entry 044 (S-cluster).** MP4-based versioned memory. Evaluate as alternative/complement to vector MCP memory. |
-| **opencode-mem** | Memory & RAG Systems | https://github.com/tickernelz/opencode-mem | 82 | 85 | 85 | 80 | 83 | A | #memory #vector #coding-agent #local-first | **X Entry 049.** Persistent memory for OpenCode-class agents. Docs/spike only until smoke DoD. |
-| **llama.cpp ngram-mod** | Inference & Serving | https://github.com/ggerganov/llama.cpp | 85 | 95 | 88 | 90 | 89 | A | #high-perf #speculative-decoding #local-first #gguf | **X Entry 051 (S-cluster).** N-gram speculative decoding — runtime flags, zero extra VRAM. Optional host llama.cpp path; not required for Ollama cage smokes. |
-| **Finn Loop / eval-loop patterns** | Agent Frameworks & Orchestration | docs / X Entries 024 · 027 · 031 · 032 | 90 | 88 | 90 | 85 | 89 | A | #agentic #loops #evaluation #human-in-loop | Loop engineering pedagogy + production loops. Inform `integration/…/loop-engineering/` + our eval harness. Prefer skill/docs ports over new harness. |
-| **destructive_command_guard** | Tool Calling & Function Infrastructure | https://github.com/Dicklesworthstone/destructive_command_guard | 80 | 90 | 85 | 82 | 84 | A | #security #guardrail #coding-agent | **X Entry 041.** Safety pattern for shell tools. Complement write-guard + cage policy. |
-| **OpenClaude-Portable** | Coding & Dev Agents | https://github.com/techjarves/OpenClaude-Portable | 82 | 88 | 85 | 85 | 85 | A | #coding-agent #portable #folder-based | **X Entry 054.** Lightweight portable agent layout. Reference for harness packaging; not a Grok replacement. |
+| **Atomic Task Graph (ATG)** | Agent Frameworks & Orchestration | Prototype: https://github.com/themark-net/atg-framework (paper: https://arxiv.org/abs/2607.01942; no original code repo) | 88 | 75 | 90 | 60 | 82 | A | #agentic #graph #dag #planning #parallelism #failure-repair #paper-based #prototype | Research framework using explicit DAGs for task decomposition instead of linear chains. See full notes in prior revisions / atg-framework repo. |
+| **ponytail** (skills pack) | Coding & Dev Agents | https://github.com/DietrichGebert/ponytail | 80 | 92 | 88 | 82 | 86 | A | #terminal #coding-agent #local-first #grok-cli | Minimalism / YAGNI skill pack. Pin `8e69b4a`. |
+| **karpathy-guidelines** | Coding & Dev Agents | https://github.com/forrestchang/andrej-karpathy-skills | 78 | 95 | 85 | 80 | 84 | A | #coding-agent #grok-cli #local-first | MIT single skill; pin `2c60614`. |
+| **repowise** | Coding & Dev Agents | https://github.com/repowise-dev/repowise | 88 | 92 | 88 | 82 | 88 | A | #context #token-efficiency #coding-agent #local-first | **X Entry 006.** Pin `repowise==0.30.0`. |
+| **gstack** | Agent Frameworks & Orchestration | https://github.com/garrytan/gstack | 85 | 85 | 90 | 95 | 88 | A | #skills #multi-agent #roles #workflow | **X Entry 010.** Docs-only / raw-port-blocked. Also comparison set under Autonomous AI Companies. |
+| **Multica** | Agent Frameworks & Orchestration | https://github.com/multica-ai/multica | 88 | 78 | 92 | 95 | 88 | A | #multi-agent #orchestration #workflow #skills #self-host #docker | **X Entry 012.** Board + teammates. Also scored under Autonomous AI Companies (A). |
+| **mattpocock/skills** | Agent Frameworks & Orchestration | https://github.com/mattpocock/skills | 82 | 90 | 90 | 90 | 87 | A | #skills #planning #tdd #review #composable | **X Entry 008.** |
+| **marketing-skills (marketing-council)** | Agent Frameworks & Orchestration | https://github.com/coreyhaines31/marketingskills | 78 | 90 | 88 | 92 | 85 | A | #skills #multi-agent #council #prompt-pack | **X Entry 004.** First-party port. |
+| **Antigravity-Manager** | Proxy & Routing | https://github.com/lbjlaq/Antigravity-Manager | 85 | 80 | 90 | 90 | 86 | A | #proxy #account-pool #tauri #openai-shim | **X Entry 005.** |
+| **Jamon Holmgren agentic setup** | Pipeline & CI/CD Components | https://x.com/i/status/2076001786700394610 | 70 | 85 | 92 | 80 | 81 | A | #workflow #harness #agents-md #process | **X Entry 007.** |
+| **Ruben Hassid context/token hacks** | Pipeline & CI/CD Components | https://x.com/i/status/2075807299638014212 | 65 | 92 | 80 | 75 | 77 | B | #token-efficiency #prompt #workflow | **X Entry 009.** |
+| **eval-harness (pfy)** | Evaluation & Benchmarking | this repo (`examples/eval-harness/`) | 88 | 90 | 95 | 80 | 89 | A | #evaluation #pipeline #local-first #litellm-ready | First-party scored ladder. |
+| **write-guard-mcp** | Tool Calling & Function Infrastructure | this repo (`harness/write-guard-mcp/`) | 90 | 92 | 95 | 80 | 90 | S | #mcp-compatible #security #filesystem #audit #local-first | First-party write mediation. Default audit. |
+| **Hermes Agent (feedback loops)** | Agent Frameworks & Orchestration | https://github.com/NousResearch/hermes-agent | 90 | 82 | 92 | 90 | 89 | A | #agentic #self-healing #skills #memory #feedback-loop | **X Entry 048.** Port patterns only. |
+| **awesome-hermes-skills** | Agent Frameworks & Orchestration | https://github.com/ZeroPointRepo/awesome-hermes-skills | 88 | 90 | 90 | 92 | 89 | A | #skills #curated #prompt-pack | **X Entry 053.** |
+| **LEANN** | Memory & RAG Systems | https://github.com/StarTrail-org/LEANN | 88 | 85 | 88 | 85 | 87 | A | #rag #compression #local-first #embeddings | **X Entry 052.** |
+| **Memvid** | Memory & RAG Systems | https://github.com/memvid/memvid | 88 | 82 | 85 | 88 | 86 | A | #memory #versioning #local-first #rag | **X Entry 044.** |
+| **opencode-mem** | Memory & RAG Systems | https://github.com/tickernelz/opencode-mem | 82 | 85 | 85 | 80 | 83 | A | #memory #vector #coding-agent #local-first | **X Entry 049.** |
+| **llama.cpp ngram-mod** | Inference & Serving | https://github.com/ggerganov/llama.cpp | 85 | 95 | 88 | 90 | 89 | A | #high-perf #speculative-decoding #local-first #gguf | **X Entry 051.** |
+| **Finn Loop / eval-loop patterns** | Agent Frameworks & Orchestration | docs / X Entries 024 · 027 · 031 · 032 | 90 | 88 | 90 | 85 | 89 | A | #agentic #loops #evaluation #human-in-loop | Loop engineering pedagogy. |
+| **destructive_command_guard** | Tool Calling & Function Infrastructure | https://github.com/Dicklesworthstone/destructive_command_guard | 80 | 90 | 85 | 82 | 84 | A | #security #guardrail #coding-agent | **X Entry 041.** |
+| **OpenClaude-Portable** | Coding & Dev Agents | https://github.com/techjarves/OpenClaude-Portable | 82 | 88 | 85 | 85 | 85 | A | #coding-agent #portable #folder-based | **X Entry 054.** |
+
+## Autonomous AI Companies
+
+Full multi-agent simulated companies. **Do not** score with S1–S4 alone. Use [docs/evaluation/autonomous-ai-companies-rubric.md](docs/evaluation/autonomous-ai-companies-rubric.md).
+
+| Tool | Primary Cat | GitHub | C1 Org | C2 Cycle | C3 Mem | C4 Safety | C5 Econ | C6 Local | Weighted | Tier | Key Tags | Integration Notes |
+|------|-------------|--------|--------|----------|--------|-----------|---------|----------|----------|------|----------|-------------------|
+| **Auto-Company** | Autonomous AI Companies | https://github.com/MaxMiksa/Auto-Company | 5 | 5 | 5 | 4 | 4 | 5 | **4.7** | **S** | #ai-company #multi-agent-org #consensus-memory #persona-roles #cycle-autonomy #local-first | **X Entry 066.** 14 expert personas (Bezos CEO, Vogels CTO, Munger critic, DHH eng…); shared `memories/consensus.md` baton (human-editable steer); cycle: brainstorm → pre-mortem GO/NO-GO → build/deploy; pure discussion forbidden; 30+ skills; daemon macOS/Win/Linux; Claude Code + Codex CLI; local dashboard. Honest: costs real money/cycle, early stability. **Posture:** extract patterns (personas, consensus baton, Munger gate, forbidden-action table, squad formation) into Grok skills/AGENTS.md — **not** primary runtime (no ADR to adopt company daemons). Compare Multica / gstack / paperclip templates. |
+| Multica (cross-ref) | Autonomous AI Companies (secondary) | https://github.com/multica-ai/multica | 3 | 4 | 4 | 3 | 3 | 4 | 3.5 | A | #ai-company #multi-agent-org #board | Primary row under Agent Frameworks; company-rubric A for teammate-board use. |
+| paperclipai/companies (cross-ref) | Autonomous AI Companies (secondary) | https://github.com/paperclipai/companies | 4 | 2 | 3 | 2 | 2 | 4 | 2.9 | B | #ai-company #templates | **X Entry 050.** Importable org templates; weak autonomy engine. |
+| Claude Company 122 skills (cross-ref) | Autonomous AI Companies (secondary) | multiple skill packs | 4 | 2 | 3 | 3 | 3 | 4 | 3.2 | B→A | #ai-company #skills | **X Entry 037.** Org chart + skills; cycles operator-built. |
 
 ## Recommended stack (2026-07)
 
@@ -67,37 +78,24 @@ This file contains the detailed, living table of evaluated local LLM development
 | Code memory | codebase-memory-mcp (+ repowise) | `smoke-context-tools` |
 | Write policy | write-guard-mcp | `smoke-write-guard` |
 | Scored eval | eval-harness | `eval-v02` |
+| Company patterns (docs) | Auto-Company patterns | scoring-summary Cluster 5 |
 
-*v0.4.2 — T-0042: recovered sources 001–055; added S-cluster tools; empirical operator path notes.*
+*v0.4.3 — Autonomous AI Companies category + Auto-Company Entry 066; company rubric C1–C6.*
 
 ## Paper Analysis Use Case (Recurring Workflow)
 
-'Read a paper' is now a supported method for discovering and evaluating new agentic tools/methodologies (e.g., from X posts). Process:
-1. Identify paper link (from X, search, etc.).
-2. Initial pass: Check for any GitHub/code/dataset links in post, abstract, or full text (none found for ATG).
-3. Deep read/summarize: Core architecture, planning/execution phases, key algorithms/innovations, benchmarks/results.
-4. Distill value: Key ideas in actionable form (e.g., DAG-based planning with localized repair).
-5. Feasibility scoring (0-100): Assess replicability in local stack (NetworkX + LangGraph/DSPy + Ollama/LiteLLM) — straightforward parts vs. challenges.
-6. Add to catalog: New row in table above with scores, tags (#paper-based), notes including distilled methods and implementation guidance. Link back to x-posts.md.
-7. Update sources/x-posts.md with analysis notes.
-8. (Optional) Propose prototype in examples/ or integration experiment. (Done for ATG: new dedicated repo created.)
+'Read a paper' is now a supported method for discovering and evaluating new agentic tools/methodologies (e.g., from X posts). Process: identify paper → check for code → distill methods → feasibility score → catalog → optional prototype.
 
-This extracts maximum value from research papers even without code, turning them into actionable insights or future implementation targets for the pipeline.
+## Evaluation Notes & Known Gaps (v0.4)
 
-## Evaluation Notes & Known Gaps (v0.3)
-
-- **Grok CLI Integration**: Most S/A tier tools above expose OpenAI-compatible endpoints or have LiteLLM support, making them immediately usable by setting `OPENAI_BASE_URL` or equivalent in CLI/agent config. LiteLLM + Ollama is the current recommended default stack for hybrid Grok + local. **Operator environment** is now replayable via `bootstrap/grok-cli/install.sh` (skills + MCP wiring).
-- **MCP Code Memory**: **codebase-memory-mcp** is the active MCP code-graph server in the Grok stack (indexed projects, structural navigation, optional ADR mirror). Still complementary: Chroma/LanceDB for custom RAG experiments. ATG's explicit graph aligns conceptually with MCP goals.
-
-- **DSPy + LiteLLM Synergy**: Strongly recommended starting point for new agent development. DSPy optimizers + LiteLLM router + Ollama backend gives reliable, tunable local agents with fallback to Grok when needed. ATG ideas can extend this.
-- **Missing High-Value Candidates** (to be added in next pass): Continue.dev plugins ecosystem, specific GGUF agentic models (e.g. recent Gemma/Qwen coding variants), more memory options (Mem0, Zep local), evaluation harnesses (e.g. custom SWE-bench lite runners), and code implementations from papers like ATG when released.
-- **Hardware Specificity**: Scores assume typical consumer setup (Apple M-series or NVIDIA RTX 30/40-series consumer). ARM/AMD or extreme low-RAM (<16GB) may shift S2 scores.
-- **Paper-Based Entries**: Feasibility scores are rough estimates; actual implementation effort depends on prototype testing. ATG example demonstrates the process (new prototype repo created).
+- **Grok CLI Integration**: Most S/A tier tools expose OpenAI-compatible endpoints or LiteLLM support.
+- **MCP Code Memory**: codebase-memory-mcp is the active MCP code-graph server.
+- **Company systems**: Use dedicated rubric; default integration is pattern extraction only.
+- **DSPy + LiteLLM Synergy**: Still recommended for new agent development.
 
 ## Update Process
 
-1. New X link, paper, or discovered tool → add to this table with initial scores + link to sources/x-posts.md entry. For papers: Follow 'Read a paper' workflow above. Create dedicated prototype repo when beneficial (as done for ATG).
-2. Integration experiment (in examples/ or external gom-jobbar-grok4) → append empirical results to Notes column and adjust scores.
-3. Major release of existing tool or paper code drop → re-score relevant stages.
-
-*Table maintained manually through v0.3; future versions may parse from data/tools.json for automated dashboard or pipeline scoring. 'Read a paper' formalized as recurring use case. ATG prototype repo created as active testing space. Grok CLI bootstrap is the first first-party integration package.*
+1. New X link / paper / tool → sources/x-posts.md append + TOOLS.md + data/tools.json when scoring.
+2. New **AI company** → company Stage 0 gate + C1–C6 rubric; Cluster 5 in scoring-summary.
+3. Integration experiment → empirical notes + score adjust.
+4. Major release → re-score.
