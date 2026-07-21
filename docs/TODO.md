@@ -29,6 +29,7 @@
 | ID | Priority | Status | Item | Open questions | Depends | Notes |
 |----|----------|--------|------|----------------|---------|-------|
 | T-0048 | P2 | todo | Port one S-tier pattern as Grok skill or eval task (Hermes feedback / eval-loop / LEANN spike) | — | T-0042 | Prefer first-party skill + optional smoke; no AgenC |
+| T-0049 | P2 | todo | MUE-X deeper eval: local backend (Ollama/LiteLLM) compatibility + mutation safety under weaker models; agent-cage smoke of `python -m mue evolve/status` | — | — | Entry 067. Extract AST mutator / immune / memory lattice patterns if stable. Pin SHA if adopted. |
 | T-0043 | P2 | todo | Write-guard **mcp-host wiring** (enable server; optional disable stock FS writes) | — | T-0031 | Parked: **not** the stock filesystem MCP — that already works. Only if audit/enforce policy in real agent MCP sessions is needed |
 | T-0015 | P2 | blocked | Optional Antigravity-Manager eval | [OQ-0007](open-questions/OQ-0007-antigravity-need.md) | — | |
 | T-0016 | P2 | blocked | Optional colibri build+serve | [OQ-0008](open-questions/OQ-0008-colibri-weights-ok.md) | — | |
