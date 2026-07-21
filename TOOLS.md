@@ -56,6 +56,7 @@ This file contains the detailed, living table of evaluated local LLM development
 | **Finn Loop / eval-loop patterns** | Agent Frameworks & Orchestration | docs / X Entries 024 · 027 · 031 · 032 | 90 | 88 | 90 | 85 | 89 | A | #agentic #loops #evaluation #human-in-loop | Loop engineering pedagogy. |
 | **destructive_command_guard** | Tool Calling & Function Infrastructure | https://github.com/Dicklesworthstone/destructive_command_guard | 80 | 90 | 85 | 82 | 84 | A | #security #guardrail #coding-agent | **X Entry 041.** |
 | **OpenClaude-Portable** | Coding & Dev Agents | https://github.com/techjarves/OpenClaude-Portable | 82 | 88 | 85 | 85 | 85 | A | #coding-agent #portable #folder-based | **X Entry 054.** |
+| **MUE-X** | Agent Frameworks & Orchestration | https://github.com/KorroAi/mue-x | 85 | 70 | 90 | 72 | 81 | A | #agentic #self-evolving #ast-mutation #autonomous #memory #mcp-compatible #self-modifying #local-first | **X Entry 067.** Self-rewriting Python agent via 6 AST strategies + 7 drives + PAD mood + 6-layer memory + GitHub absorption. Standalone `python -m mue`. Immune system + sealed kernel. Pin main if adopted. Deeper local-backend + mutation-safety eval queued. Pattern extract for loop/skills packs. |
 
 ## Autonomous AI Companies
 
@@ -80,7 +81,7 @@ Full multi-agent simulated companies. **Do not** score with S1–S4 alone. Use [
 | Scored eval | eval-harness | `eval-v02` |
 | Company patterns (docs) | Auto-Company patterns | scoring-summary Cluster 5 |
 
-*v0.4.3 — Autonomous AI Companies category + Auto-Company Entry 066; company rubric C1–C6.*
+*v0.4.4 — Added MUE-X Entry 067 (self-evolving AST agent).*
 
 ## Paper Analysis Use Case (Recurring Workflow)
 
