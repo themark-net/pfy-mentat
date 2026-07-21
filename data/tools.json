@@ -1,7 +1,7 @@
 {
-  "version": "0.4.3",
-  "last_updated": "2026-07-20T18:00:00Z",
-  "description": "Structured catalog. v0.4.3: Autonomous AI Companies category + Auto-Company (Entry 066) with C1-C6 company rubric scores; Cluster 5 in scoring-summary.",
+  "version": "0.4.4",
+  "last_updated": "2026-07-20T20:00:00Z",
+  "description": "Structured catalog. v0.4.4: Added MUE-X (Entry 067) self-evolving AST-mutation agent under Agent Frameworks.",
   "schema_notes": {
     "required_for_all": ["name", "primary_category", "github", "scores", "tier"],
     "optional_tracking": {
@@ -265,6 +265,16 @@
       "tags": ["memory", "vector", "coding-agent"],
       "x_post_id": "2077134466267394303",
       "notes": "Entry 049."
+    },
+    {
+      "name": "MUE-X",
+      "primary_category": "Agent Frameworks & Orchestration",
+      "github": "https://github.com/KorroAi/mue-x",
+      "scores": {"s1": 85, "s2": 70, "s3": 90, "s4": 72, "overall": 81},
+      "tier": "A",
+      "tags": ["agentic", "self-evolving", "ast-mutation", "autonomous", "memory", "mcp-compatible", "self-modifying", "local-first"],
+      "x_post_id": "2079155411471503656",
+      "notes": "Entry 067. Self-rewriting via 6 AST strategies + autonomic drives + PAD + memory lattice + GitHub absorption. Standalone CLI. Deeper local eval queued."
     }
   ],
   "aggregates": [],
@@ -277,6 +287,15 @@
       "status": "processed",
       "tools_extracted": ["Auto-Company"],
       "summary": "Auto-Company: 14 persona agents, consensus.md, cycle-based autonomous AI company by MaxMiksa (CMU)."
+    },
+    {
+      "id": "2079155411471503656",
+      "url": "https://x.com/i/status/2079155411471503656",
+      "author": "@tom_doerr",
+      "date": "2026-07-20",
+      "status": "processed",
+      "tools_extracted": ["MUE-X"],
+      "summary": "MUE-X: self-evolving agent that rewrites own Python source via 6 AST mutation strategies; continuous loop, memory, GitHub absorption."
     }
   ]
 }
