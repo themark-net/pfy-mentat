@@ -1,10 +1,12 @@
 # Scoring Summary — Major Clusters (July 2026)
 
-This document provides systematic scoring of high-signal entries using the rubric defined in `docs/evaluation-framework.md`.
+This document provides systematic scoring of high-signal entries using the rubric defined in `docs/evaluation-framework.md` and, for full multi-agent orgs, [evaluation/autonomous-ai-companies-rubric.md](evaluation/autonomous-ai-companies-rubric.md).
 
-**Scoring Scale**:
+**Scoring Scale (standard tools)**:
 - Relevance, Integration Ease, Reproducibility, Unique Value: 1–5
 - Overall Priority: S-Tier (must act now), A-Tier (plan soon), B-Tier (useful reference), C-Tier (awareness)
+
+**Scoring Scale (AI companies)**: C1–C6 dimensions 1–5 → weighted avg → S/A/B/C (see company rubric).
 
 ---
 
@@ -52,20 +54,21 @@ Strong convergence on practical, local-first memory solutions.
 
 ## Cluster 3: Skills & Org Structures
 
-**Overall Cluster Assessment**: **Strong (A-Tier cluster)**
-Good production validation of large-scale skill organization.
+**Overall Cluster Assessment**: **Strong (A-Tier cluster)** — *partially superseded for full-company eval by Cluster 5*
+Good production validation of large-scale skill organization. Pure skill packs stay here; full closed-loop companies move to Cluster 5.
 
 | Entry | Title | Relevance | Integration Ease | Reproducibility | Unique Value | Overall Priority | Key Notes |
 |-------|-------|-----------|------------------|-----------------|--------------|------------------|-----------|
 | 016 | Claude Company Org Chart (42+ skills) | 4 | 4 | 4 | 4 | A-Tier | Early strong signal for org-chart thinking. |
-| 037 | Claude as Full Company (122 skills, 7 departments) | 5 | 5 | 5 | 4 | **S-Tier** | Excellent real-world $40k MRR example. High production value. |
-| 050 | paperclipai/companies (16 pre-built AI companies) | 4 | 5 | 5 | 4 | A-Tier | Ready-made templates — useful for rapid bootstrapping. |
+| 037 | Claude as Full Company (122 skills, 7 departments) | 5 | 5 | 5 | 4 | **S-Tier** | Excellent real-world $40k MRR example. High production value. Also scored under Cluster 5 when treated as company. |
+| 050 | paperclipai/companies (16 pre-built AI companies) | 4 | 5 | 5 | 4 | A-Tier | Ready-made templates — useful for rapid bootstrapping. Cluster 5 primary. |
 | 053 | awesome-hermes-skills (271 curated skills) | 5 | 5 | 5 | 4 | **S-Tier** | Best current curated library. Direct complement to Hermes (Entry 048). |
 
 **Cluster Recommendations**:
 - Study curation patterns from awesome-hermes-skills and Entry 037.
 - Use pre-built company templates (Entry 050) for experimentation.
 - Expand our own skill pack using these as references.
+- Route full autonomous company runtimes to **Cluster 5**.
 
 ---
 
@@ -85,6 +88,32 @@ High practical value for making local agents faster.
 
 ---
 
+## Cluster 5: Autonomous AI Companies (NEW — 2026-07-20)
+
+**Overall Cluster Assessment**: **Strong / emerging (S/A mix)**  
+Dedicated category + rubric: [evaluation/autonomous-ai-companies-rubric.md](evaluation/autonomous-ai-companies-rubric.md).  
+These are full multi-agent orgs (personas, consensus, cycles), not skill packs alone.
+
+| Entry / Tool | C1 Org | C2 Cycle | C3 Memory | C4 Safety | C5 Econ | C6 Local | Weighted | Priority | Key Notes |
+|--------------|--------|----------|-----------|-----------|---------|----------|----------|----------|-----------|
+| **Auto-Company** (MaxMiksa) Entry 066 | 5 | 5 | 5 | 4 | 4 | 5 | **4.7** | **S** | 14 expert personas (Bezos/Vogels/Munger/DHH…); consensus.md baton; pre-mortem gates; daemon on macOS/Win/Linux; Claude Code + Codex; honest cost caveat. Pattern goldmine. |
+| Claude Company 122 skills (037) | 4 | 2 | 3 | 3 | 3 | 4 | 3.2 | B→A | Org chart + skills; weak closed-loop autonomy unless operator builds cycles. |
+| paperclipai/companies (050) | 4 | 2 | 3 | 2 | 2 | 4 | 2.9 | B | Templates/import; platform-coupled; good bootstrap reference. |
+| Multica (012) | 3 | 4 | 4 | 3 | 3 | 4 | 3.5 | A | Board + agent teammates + skills; closer to PM platform than full company loop. |
+| gstack (010) | 4 | 3 | 3 | 4 | 2 | 3 | 3.2 | B | Role skills + workflow; not a 24/7 company daemon. |
+
+**Company-dimension key (1–5):**  
+C1 Org Design & Role Fidelity · C2 Autonomy & Cycle Design · C3 Shared Memory & Consensus · C4 Safety & Blast Radius · C5 Economic Realism & Convergence · C6 Local / Operator Fit.
+
+**Cluster Recommendations**:
+1. **Extract from Auto-Company first:** consensus.md steer file, Munger pre-mortem gate, named expert personas, squad formation, forbidden-action table → first-party Grok skills / AGENTS.md sections.
+2. Do **not** make Auto-Company (or any company daemon) primary operator runtime without ADR.
+3. Compare Auto-Company vs Multica board vs gstack roles vs paperclip templates before any deep port.
+4. Optional later: pin Auto-Company + document external run; cage only if isolation story is clear.
+5. Re-score 037/050 under this rubric when they gain real cycle engines.
+
+---
+
 ## Summary of Top Priorities (S-Tier Items)
 
 1. **HERMES feedback loops** (Entry 048) — Core self-improvement architecture.
@@ -92,6 +121,7 @@ High practical value for making local agents faster.
 3. **Memvid + LEANN** (Entries 044 + 052) — Next-generation memory/context layer.
 4. **Finn Loop + Eval Loop patterns** (Entries 024 + 032) — Concrete implementation examples.
 5. **awesome-hermes-skills + Company org patterns** (Entries 053 + 037) — Skill scale and organization.
+6. **Auto-Company** (Entry 066) — Best full autonomous company blueprint; extract patterns, do not adopt as primary runtime.
 
 These should drive **Grok+cage** ports (skills, eval tasks, optional smokes)—not AgenC (ADR-0010).  
 Checker: `python3 bootstrap/setup-local-agent-env.py`. Catalog: T-0042 triple-write.
@@ -101,3 +131,4 @@ Checker: `python3 bootstrap/setup-local-agent-env.py`. Catalog: T-0042 triple-wr
 - Triple-write S-tier tools into TOOLS.md + data/tools.json (T-0042).
 - Implement one S-tier pattern as first-party Grok skill or eval harness extension.
 - Optional overlap matrices for Loop Engineering and Memory clusters.
+- **Company track:** flesh out Auto-Company pattern extraction ticket; keep Multica/gstack/paperclip as comparison set under Cluster 5.
