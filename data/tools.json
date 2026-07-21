@@ -1,7 +1,7 @@
 {
-  "version": "0.4.4",
-  "last_updated": "2026-07-20T20:00:00Z",
-  "description": "Structured catalog. v0.4.4: Added MUE-X (Entry 067) self-evolving AST-mutation agent under Agent Frameworks.",
+  "version": "0.4.5",
+  "last_updated": "2026-07-21T00:50:00Z",
+  "description": "Structured catalog. v0.4.5: Entry 068 (8 exits for agent loops) folded into Finn Loop / eval-loop patterns; scores raised.",
   "schema_notes": {
     "required_for_all": ["name", "primary_category", "github", "scores", "tier"],
     "optional_tracking": {
@@ -129,8 +129,7 @@
     {
       "name": "gstack",
       "primary_category": "Agent Frameworks & Orchestration",
-      "github": "https://github.com/garrytan/gstack",
-      "scores": {"s1": 85, "s2": 85, "s3": 90, "s4": 95, "overall": 88},
+      "github":{"s1": 85, "s2": 85, "s3": 90, "s4": 95, "overall": 88},
       "tier": "A",
       "tags": ["skills", "multi-agent", "roles", "workflow", "docs-only"],
       "x_post_id": "2075933298627383473",
@@ -154,7 +153,7 @@
         "c6_local": 5,
         "weighted": 4.7
       },
-      "notes": "X Entry 066. S-tier company. 14 expert personas; consensus.md baton; pre-mortem GO/NO-GO; daemon macOS/Win/Linux; Claude Code + Codex. Extract patterns only — not primary runtime. See docs/evaluation/autonomous-ai-companies-rubric.md and scoring-summary Cluster 5."
+      "notes": "X Entry 066. S-tier company. Extract patterns only."
     },
     {
       "name": "colibri",
@@ -217,14 +216,15 @@
       "notes": "First-party scored ladder."
     },
     {
-      "name": "Finn Loop / eval-loop patterns",
+      "name": "Finn Loop / eval-loop / 8-exits patterns",
       "primary_category": "Agent Frameworks & Orchestration",
       "github": "https://github.com/themark-net/pfy-mentat",
-      "scores": {"s1": 90, "s2": 88, "s3": 90, "s4": 85, "overall": 89},
+      "scores": {"s1": 92, "s2": 90, "s3": 92, "s4": 88, "overall": 91},
       "tier": "A",
-      "tags": ["agentic", "loops", "evaluation"],
+      "tags": ["agentic", "loops", "evaluation", "human-in-loop", "stop-conditions", "exits"],
       "bootstrap_path": "integration/agenc/skills/loop-engineering",
-      "notes": "Entries 024/027/031/032."
+      "x_post_id": "2079325855155707941",
+      "notes": "Entries 024/027/031/032/068. Entry 068 adds complete 8-exit taxonomy (goal, turn/budget/wallclock, no-progress, human, error threshold, external). Canonical exit checklist."
     },
     {
       "name": "awesome-hermes-skills",
@@ -296,6 +296,15 @@
       "status": "processed",
       "tools_extracted": ["MUE-X"],
       "summary": "MUE-X: self-evolving agent that rewrites own Python source via 6 AST mutation strategies; continuous loop, memory, GitHub absorption."
+    },
+    {
+      "id": "2079325855155707941",
+      "url": "https://x.com/i/status/2079325855155707941",
+      "author": "@hanakoxbt",
+      "date": "2026-07-20",
+      "status": "processed",
+      "tools_extracted": ["Finn Loop / eval-loop / 8-exits patterns"],
+      "summary": "8 mandatory exits for agent loops (goal met, turn/budget/wallclock caps, no-progress, human interrupt, error threshold, external event). Canonical stop-condition taxonomy."
     }
   ]
 }
