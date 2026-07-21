@@ -80,5 +80,6 @@ This prevents low-value daily noise while still capturing the good signal @tom_d
 |------|--------|----------------|----------------|----------------|-------|
 | (Start) | - | - | - | - | Procedure initialized |
 | 2026-07-20 | 2026-07-20 | 1 (MUE-X post) | 1 | 1 (Entry 067 MUE-X) | Self-evolving AST-mutation agent; high signal self-modifying + absorption. Stage 0 pass. |
+| 2026-07-21 | 2026-07-20/21 | 1 (hanakoxbt 8-exits) | 1 | 1 (Entry 068) | Pure high-value methodology: 8 mandatory agent-loop exits. Folded into Finn Loop / eval-loop patterns row; scores raised to 91 A. Canonical stop-condition checklist. |
 
 *Maintained to support the 7-day review and schedule tuning.*
