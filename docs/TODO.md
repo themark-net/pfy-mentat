@@ -32,7 +32,7 @@
 |----|----------|--------|------|----------------|---------|-------|
 | T-0085 | P0 | todo | **Worker/monitor split**: local Ollama worker (`LOCAL_CODER_MODEL`) + Grok monitor recipe; dual-session → automate | — | ADR-0011, T-0080 | Eval pass ≠ Grok uses local model |
 | T-0090 | P0 | todo | **Minimal product levers audit**: collapse end-user surface to onboard / stage / ship; cap public Make targets | — | — | [product-operator-surface.md](ops/product-operator-surface.md); platform targets stay advanced |
-| T-0080 | P1 | todo | **OpenCode + Ollama host smoke** (skills path + local completion) | — | ADR-0011 | Required for real offload of agent turns |
+
 | T-0070 | P1 | doing | Grow design/coding **skills + structural eval** (more text scorers) | — | T-0065 | Keep `eval-structural` green |
 | T-0074 | P1 | doing | Implement-lane via `make eval-auto` (fit-select + candidates) | — | — | deepseek-coder:6.7b lab-proven; StarCoder demoted |
 | T-0075 | P2 | todo | More structural scorers: ADR shape, open-question row shape | — | T-0070 | |
@@ -77,6 +77,7 @@
 | T-0060 | P2 | done | 8-exits eval task scaffold + deterministic scorer | `examples/eval-harness/tasks/003-exit-card-checklist/`; fixtures in structural lane |
 | T-0065 | P1 | done | Structural eval lane (no LLM) + design-coding rubric + decision inventory | `make eval-structural`; `data/eval-lanes.json`; human-decision-inventory |
 | T-0082 | P1 | done | ADR-0011 hybrid Grok/OpenCode/Ollama + local-cloud-split ops + opencode adapter | `docs/adr/0011-…`; `docs/ops/local-cloud-split.md`; `bootstrap/opencode/` |
+| T-0080 | P1 | done | OpenCode + Ollama host smoke (skills + config + completion) | `make smoke-opencode-ollama`; `examples/opencode-ollama/`; opencode CLI optional |
 | T-0071 | P2 | done | Bumblebee coding-safety assist docs | `docs/ops/bumblebee-coding-safety.md` |
 | T-0072 | P2 | done | MUE-X pattern extract (no evolve) | `docs/ops/mue-x-patterns.md` |
 | T-0073 | P2 | done | LEANN/Memvid memory assist patterns | `docs/ops/memory-assist-patterns.md` |

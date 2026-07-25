@@ -1,0 +1,22 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "ollama": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Ollama (local)",
+      "options": {
+        "baseURL": "${OLLAMA_OPENAI_BASE}",
+        "apiKey": "ollama"
+      },
+      "models": {
+        "${LOCAL_CODER_MODEL}": {
+          "name": "${LOCAL_CODER_MODEL}"
+        },
+        "${LITELLM_SMOKE_MODEL}": {
+          "name": "${LITELLM_SMOKE_MODEL}"
+        }
+      }
+    }
+  },
+  "model": "ollama/${LOCAL_CODER_MODEL}"
+}

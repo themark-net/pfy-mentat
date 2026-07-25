@@ -59,13 +59,22 @@ make env-check                # DEPLOY_PROFILE
 - Vendoring OpenCode or Hermes upstream into git  
 - Full parity of Grok TUI features inside OpenCode  
 
+## Smoke (T-0080)
+
+```bash
+export LOCAL_CODER_MODEL=deepseek-coder:6.7b
+make smoke-opencode-ollama
+# details: examples/opencode-ollama/README.md
+```
+
 ## Next implementation slices
 
 | ID | Item |
 |----|------|
-| T-0080 | Host OpenCode + Ollama smoke script (zero cage) |
-| T-0081 | Optional OpenCode-in-cage smoke (when needed) |
-| T-0074 | `eval-suite` green on gate model via Ollama |
+| T-0080 | ~~Host OpenCode + Ollama smoke~~ **done** (`make smoke-opencode-ollama`) |
+| T-0085 | Worker/monitor dual-session automation |
+| T-0081 | Optional OpenCode-in-cage smoke |
+| T-0074 | `eval-auto` / suite on selected gate |
 
 ## Related
 

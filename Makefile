@@ -16,7 +16,7 @@ LITELLM_EXAMPLE := examples/litellm-ollama
 	cage-workspace-sync cage-grok-mcp-preset \
 	local-ollama-overlay-install local-ollama-up smoke-litellm-ollama \
 	smoke-codebase-memory smoke-repowise smoke-context-tools \
-	smoke-write-guard smoke-grok-skills \
+	smoke-write-guard smoke-grok-skills smoke-opencode-ollama \
 	eval-tier0 eval-tier1 eval-mvp eval-suite eval-matrix eval-v02 eval-structural \
 	eval-select-models eval-auto \
 	cage-grok cage-grok-shell cage-grok-run cage-grok-sessions cage-grok-resume \
@@ -70,6 +70,7 @@ help:
 	@echo "  make smoke-write-guard      # T-0031 write-guard MCP policy smoke"
 	@echo "  make smoke-grok-skills      # first-party skill structure (manifest + SKILL.md)"
 	@echo "  make smoke-grok-skills INSTALLED=1  # also check ~/.grok/skills"
+	@echo "  make smoke-opencode-ollama  # T-0080 host: OpenCode adapter + Ollama worker (no cage)"
 	@echo "  make eval-structural           # design/coding gates, NO LLM (always run)"
 	@echo "  make eval-select-models        # pick gate/matrix models that FIT RAM/disk (may pull)"
 	@echo "  make eval-auto                 # select-models + pull-gate + eval-v02"
@@ -219,6 +220,14 @@ smoke-write-guard:
 # INSTALLED=1 also checks $GROK_HOME/skills (default ~/.grok/skills)
 smoke-grok-skills:
 	@python3 bootstrap/grok-cli/scripts/verify_skills.py $(if $(filter 1,$(INSTALLED)),--installed,)
+
+# T-0080: host OpenCode + Ollama worker path (skills SoT + completion; opencode CLI optional)
+smoke-opencode-ollama:
+	@chmod +x examples/opencode-ollama/smoke.sh
+	@LOCAL_CODER_MODEL=$${LOCAL_CODER_MODEL:-deepseek-coder:6.7b} \
+	  LITELLM_SMOKE_MODEL=$${LITELLM_SMOKE_MODEL:-deepseek-coder:latest} \
+	  OPENAI_BASE_URL=$${OPENAI_BASE_URL:-http://127.0.0.1:11434/v1} \
+	  ./examples/opencode-ollama/smoke.sh
 
 eval-tier0:
 	@$(MAKE) -C $(HARNESS) eval-tier0

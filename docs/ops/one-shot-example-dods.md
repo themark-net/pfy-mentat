@@ -40,6 +40,25 @@ Assumptions: DEPLOY_PROFILE=local-only or balanced; no cloud keys required for t
 
 ---
 
+## A1. OpenCode + Ollama host worker (T-0080)
+
+```text
+/one-shot Host smoke for OpenCode adapter + local Ollama worker.
+
+DoD:
+1. Ollama up: curl http://127.0.0.1:11434/api/tags
+2. LOCAL_CODER_MODEL present (default deepseek-coder:6.7b)
+3. make smoke-opencode-ollama exits 0
+4. Skills SoT linked under .opencode/skills/
+5. Optional: opencode binary on PATH for full CLI check
+
+Assumptions: host only (no cage); Grok remains monitor
+```
+
+**Green:** `make smoke-opencode-ollama`
+
+---
+
 ## A. LiteLLM → Ollama (T-0012 / T-0021)
 
 ```text
