@@ -1,0 +1,4 @@
+You are designing a goal-based agent loop for: "make smoke-grok-skills green on this machine."
+Write a LOOP EXIT CARD with all eight exits filled (goal met, turn cap, budget, wall clock,
+no-progress, human interrupt, error threshold, external event). Be concise. No tooling install.
+Do not require Hermes Agent or AgenC.

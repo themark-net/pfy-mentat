@@ -104,15 +104,15 @@ One-line purpose: **Track · Categorize · Rank · Integrate** tools for robust 
 - Not AgenC as primary ([ADR-0010](adr/0010-reject-agenc-as-primary-runtime.md))  
 - Env check helper: `python3 bootstrap/setup-local-agent-env.py` (Grok+cage oriented; does not install AgenC)
 
-**Near-term next:**
+**Near-term next (non-blocking queue — see TODO T-0060+):**
 
-- **T-0049** MUE-X deeper eval (optional)  
-- **T-0043** write-guard mcp-host (optional)  
-- Blocked P2 OQs when operator decides  
+- **T-0060** 8-exits eval-harness task · **T-0064** auth dir mount (EBUSY) · **T-0061** Bumblebee smoke design  
+- **T-0062** Laguna local eval DoD · **T-0063** LEANN/Memvid notes · **T-0049** MUE-X status eval  
+- **T-0043** write-guard mcp-host (optional) · Blocked P2 OQs when operator decides  
 
 ### Delivered recently
 
-- Write-guard MCP · cage smokes · LiteLLM profiles · skill ports · eval MVP/v0.2 · Grok-in-cage + MCP + session resume · AgenC demoted · proxy allowlist for Grok CLI · catalog eval framework v1.2 (Grok-first) · **`/agent-loops`** (T-0050) · **`/hermes-feedback`** (T-0048) · **`make smoke-grok-skills`** (T-0051)
+- Write-guard MCP · cage smokes · LiteLLM · skill ports · eval v0.2 · Grok-in-cage + MCP + sessions · AgenC demoted · **`/agent-loops`** · **`/hermes-feedback`** · **`smoke-grok-skills`** · cage **skills install** on `cage-grok` · CM-vs-Graphify decision · loop-engineering + Auto-Company pattern docs
 
 ### Later / research
 

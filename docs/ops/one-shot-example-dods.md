@@ -158,7 +158,67 @@ Assumptions:
 - Cage up; host Ollama + gateway; gate model present (default qwen2.5:14b)
 ```
 
-**Green:** `make eval-v02` (matrix optional: `make eval-matrix`)
+**Green:** `make eval-v02`
+
+---
+
+## H. First-party Grok skills structure (T-0051)
+
+```text
+/one-shot Structural smoke for first-party Grok skills.
+
+DoD:
+1. make smoke-grok-skills exits 0
+2. make smoke-grok-skills INSTALLED=1 exits 0 after ./bootstrap/grok-cli/install.sh --skills-only
+   (host) or make cage-grok-skills-install (cage)
+3. manifest.json lists agent-loops + hermes-feedback among first_party_skills
+4. docs/ops/skill-verification.md present
+
+Assumptions:
+- No LLM call required for structural pass
+```
+
+**Green:** `make smoke-grok-skills` · cage: `make cage-grok-skills-install`
+
+---
+
+## I. Cage auth refresh (OIDC import)
+
+```text
+/one-shot Cage Grok uses host OIDC (no login prompt wall).
+
+DoD:
+1. Host has ~/.grok/auth.json (grok login if needed)
+2. make cage-grok-auth-import exits 0 (or make cage-grok which re-imports)
+3. Cage: grok -p "Reply with exactly: AUTH_OK" prints AUTH_OK (or interactive chat works)
+4. Auth mode inside cage is OIDC-bearing session, not bare ApiKey 401
+
+Assumptions:
+- coding-agent-grok policy allows auth.x.ai + cli-chat-proxy
+- make cage-grok-net-smoke PASS
+```
+
+**Green:** `make cage-grok-auth-import` then short cage `grok -p`
+
+---
+
+## J. Loop engineering skills behavioral (T-0050 / T-0048)
+
+```text
+/one-shot Prove agent-loops + hermes-feedback load in a new Grok session.
+
+DoD:
+1. make smoke-grok-skills INSTALLED=1 (or cage skills install) green
+2. New grok session (host or cage-grok-shell): /skills shows agent-loops and hermes-feedback
+3. /agent-loops exits produces eight-exit checklist or exit card
+4. /hermes-feedback memory produces bullets without requiring Hermes Agent install
+5. Optional: /agent-loops audit docs/ops/one-shot-workflow.md lists covered vs missing exits
+
+Assumptions:
+- Structural smoke is free; steps 2–5 cost cloud tokens
+```
+
+**Green:** operator ticks Layer 2–3 in docs/ops/skill-verification.md (matrix optional: `make eval-matrix`)
 
 ---
 

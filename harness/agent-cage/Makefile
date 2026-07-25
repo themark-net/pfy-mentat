@@ -44,8 +44,8 @@ REPOWISE_PIP_SPEC ?= repowise==0.30.0
 	grok-overlay-install grok-overlay-uninstall grok-overlay-build grok-up grok-smoke \
 	grok-auth-import workspace-sync grok-mcp-preset grok-ready \
 	grok-ensure grok-shell grok-run grok-state-init fix-grok-state-perms \
-	grok-sessions-export grok-sessions-import-host grok-sessions grok-resume \
-	grok-net-smoke \
+	grok-skills-install grok-sessions-export grok-sessions-import-host \
+	grok-sessions grok-resume grok-net-smoke \
 	local-ollama-overlay-install local-ollama-up smoke-litellm-ollama \
 	smoke-codebase-memory smoke-repowise smoke-context-tools \
 	smoke-write-guard write-guard-overlay-install \
@@ -414,6 +414,23 @@ workspace-sync: ensure-project
 	  if [ $$rc -ne 0 ] && [ $$rc -ne 23 ] && [ $$rc -ne 24 ]; then exit $$rc; fi; \
 	  set -e
 	@$(MAKE) grok-mcp-preset
+	@# Keep project .grok/skills in sync with bootstrap first-party sources (cwd discovery).
+	@mkdir -p "$(WORKSPACE_REPO)/.grok/skills"
+	@if [ -d "$(WORKSPACE_REPO)/bootstrap/grok-cli/skills" ]; then \
+	  for d in "$(WORKSPACE_REPO)/bootstrap/grok-cli/skills"/*/; do \
+	    [ -d "$$d" ] || continue; \
+	    name=$$(basename "$$d"); \
+	    mkdir -p "$(WORKSPACE_REPO)/.grok/skills/$$name"; \
+	    if command -v rsync >/dev/null 2>&1; then \
+	      rsync -r --delete "$$d" "$(WORKSPACE_REPO)/.grok/skills/$$name/"; \
+	    else \
+	      rm -rf "$(WORKSPACE_REPO)/.grok/skills/$$name"; \
+	      mkdir -p "$(WORKSPACE_REPO)/.grok/skills/$$name"; \
+	      cp -a "$$d". "$(WORKSPACE_REPO)/.grok/skills/$$name/"; \
+	    fi; \
+	  done; \
+	  echo "workspace-sync: project .grok/skills ← bootstrap first-party"; \
+	fi
 	@docker exec -u root agent-cage-agent bash -lc \
 	  'chmod -R a+rX /workspace/$(WORKSPACE_REPO_NAME) 2>/dev/null; chown -R agent:agent /workspace/$(WORKSPACE_REPO_NAME) 2>/dev/null || true' \
 	  2>/dev/null || true
@@ -564,6 +581,22 @@ grok-resume: ensure-project
 	    agent-cage-agent bash -lc 'exec grok --continue'; \
 	fi
 
+# Install first-party Grok skills into the *container* GROK_HOME (not host ~/.grok).
+# Requires agent running + workspace-sync so /workspace/pfy-mentat has bootstrap/.
+grok-skills-install: ensure-project
+	@docker inspect agent-cage-agent --format '{{.State.Status}}' 2>/dev/null | grep -q running \
+	  || (echo "error: agent not running — make grok-up first"; exit 1)
+	@echo "==> first-party skills → cage /home/agent/.grok/skills"
+	@docker exec -u agent \
+	  -e HOME=/home/agent -e GROK_HOME=/home/agent/.grok \
+	  -e PATH=/usr/local/bin:/home/agent/.local/bin:/usr/bin:/bin \
+	  -w /workspace/$(WORKSPACE_REPO_NAME) \
+	  agent-cage-agent bash -lc \
+	  'test -x ./bootstrap/grok-cli/install.sh || { echo "missing install.sh — run workspace-sync"; exit 1; }; \
+	   ./bootstrap/grok-cli/install.sh --skills-only; \
+	   python3 bootstrap/grok-cli/scripts/verify_skills.py --installed --grok-home "$$GROK_HOME" || true'
+	@echo "grok-skills-install: done (restart grok session to reload slash menu if stale)"
+
 # Idempotent “get me to a launchable Grok in cage” ladder (safe to re-run).
 grok-ensure: ensure-project
 	@$(MAKE) grok-overlay-install
@@ -580,6 +613,7 @@ grok-ensure: ensure-project
 	fi
 	@$(MAKE) grok-sessions-import-host
 	@$(MAKE) workspace-sync
+	@$(MAKE) grok-skills-install
 	@$(MAKE) grok-ready
 	@echo ""
 	@echo "=== Launch Grok Build in cage ==="
@@ -588,6 +622,7 @@ grok-ensure: ensure-project
 	@echo "  make cage-grok-resume ID=uuid    # resume specific"
 	@echo "  make cage-grok-run PROMPT='…'    # new session with prompt"
 	@echo "  make cage-grok-shell             # bash then: grok / grok -c"
+	@echo "  make cage-grok-skills-install    # re-copy first-party skills into cage GROK_HOME"
 	@echo "Sessions host store: $(GROK_SESSIONS_HOST)"
 	@echo "MCP: project filesystem → mcp-host /workspace (includes pfy-mentat/)"
 

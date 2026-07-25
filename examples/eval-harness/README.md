@@ -18,6 +18,7 @@
 | ID | Type | What |
 |----|------|------|
 | `001-is-palindrome` | implement | `is_palindrome(s)` exact reverse, case-sensitive |
+| `003-exit-card-checklist` | text/checklist | Eight-exit card keywords (T-0060); `score.py` deterministic — **not** in default suite (no `test_task.py`) |
 | `002-fix-sum-evens` | fix | Correct bug: sum **even** numbers, not odds |
 
 Hidden tests score **pass/fail**. Path: LiteLLM → host Ollama (same as litellm smoke).

@@ -24,18 +24,23 @@
 
 ## Active (sorted P0 → P3)
 
-**Session (2026-07-25):** Skills `/agent-loops` + `/hermes-feedback` shipped; `make smoke-grok-skills`. Next: T-0049 MUE-X, Laguna, T-0043.
+**Session (2026-07-25):** Autonomous hygiene batch (skills-in-cage, loop/CM docs). Operator path green. Next non-blockers below; blocked OQs still need human.
 
 | ID | Priority | Status | Item | Open questions | Depends | Notes |
 |----|----------|--------|------|----------------|---------|-------|
-| T-0049 | P2 | todo | MUE-X deeper eval: local backend (Ollama/LiteLLM) compatibility + mutation safety under weaker models; agent-cage smoke of `python -m mue evolve/status` | — | — | Entry 067. Extract AST mutator / immune / memory lattice patterns if stable. Pin SHA if adopted. |
-| T-0043 | P2 | todo | Write-guard **mcp-host wiring** (enable server; optional disable stock FS writes) | — | T-0031 | Parked: **not** the stock filesystem MCP — that already works. Only if audit/enforce policy in real agent MCP sessions is needed |
+
+| T-0061 | P2 | todo | **Bumblebee** cage smoke design + optional install (MCP supply-chain scan before skill install) | — | — | Entry 069; pair write-guard docs |
+| T-0062 | P2 | todo | **Laguna S 2.1** local eval note + optional Ollama/llama.cpp smoke DoD (no weights in-repo) | — | — | Entry 073; hardware-gated |
+| T-0063 | P2 | todo | **LEANN / Memvid** spike notes → optional cage smoke (memory S-cluster) | — | T-0042 | Pattern first; pin if smoke green |
+| T-0064 | P2 | todo | Auth file-mount EBUSY: mount **grok-home dir** (not single auth.json file) | — | T-0045 | Hardens cage OIDC refresh |
+| T-0049 | P2 | todo | MUE-X deeper eval: local backend (Ollama/LiteLLM) + mutation safety; cage `python -m mue status` | — | — | Entry 067; extract patterns if stable; pin SHA if adopted |
+| T-0043 | P2 | todo | Write-guard **mcp-host wiring** (enable server; optional disable stock FS writes) | — | T-0031 | Parked: stock FS MCP already works |
 | T-0015 | P2 | blocked | Optional Antigravity-Manager eval | [OQ-0007](open-questions/OQ-0007-antigravity-need.md) | — | |
 | T-0016 | P2 | blocked | Optional colibri build+serve | [OQ-0008](open-questions/OQ-0008-colibri-weights-ok.md) | — | |
 | T-0004 | P2 | blocked | ATG prototype coupling | [OQ-0004](open-questions/OQ-0004-atg-prototype-relationship.md) | — | |
 | T-0005 | P2 | blocked | Optional first subtree | [OQ-0003](open-questions/OQ-0003-first-subtree-candidate.md) | — | |
-| T-0046 | P3 | todo | **Re-evaluate AgenC** when UX/auth matures (ADR-0010 gates); no make targets until then | [ADR-0010](adr/0010-reject-agenc-as-primary-runtime.md) | T-0044 | Watch: web console, marketplace jobs; scripts stay under `bootstrap/agenc/` demoted |
-| T-0040 | P3 | todo | **Nice-to-have:** validate integrated setup with OpenCode and Claude Code (same cage/profiles/env) | — | — | Universal harness goal; Grok-first for now |
+| T-0046 | P3 | todo | **Re-evaluate AgenC** when UX/auth matures (ADR-0010 gates) | [ADR-0010](adr/0010-reject-agenc-as-primary-runtime.md) | T-0044 | |
+| T-0040 | P3 | todo | Validate OpenCode / Claude Code same cage/profiles | — | — | Universal harness; Grok-first |
 | T-0007 | P3 | todo | adr-tools companion docs if requested | — | — | |
 | T-0002 | P3 | todo | Aggregate synthesis if needed | — | — | |
 
@@ -48,6 +53,11 @@
 | T-0050 | P2 | done | First-party `/agent-loops` skill (8 exits + 4 types + Finn + rubric) | `bootstrap/grok-cli/skills/agent-loops/`; Entries 024/027/031/032/068; pairs with `/one-shot` |
 | T-0048 | P2 | done | Hermes feedback loops as first-party Grok skill | `bootstrap/grok-cli/skills/hermes-feedback/`; Entry 048 pattern port; not Hermes runtime |
 | T-0051 | P2 | done | First-party skill structural smoke + verification docs | `make smoke-grok-skills`; `bootstrap/grok-cli/scripts/verify_skills.py`; `docs/ops/skill-verification.md` |
+| T-0052 | P2 | done | Cage first-party skills install on `cage-grok` + project `.grok/skills` sync | `grok-skills-install`; workspace-sync mirrors bootstrap skills |
+| T-0053 | P2 | done | codebase-memory vs Graphify decision + Graphify B-tier catalog row | `docs/evaluation/codebase-memory-vs-graphify.md`; tools.json v0.4.6 |
+| T-0054 | P2 | done | Loop engineering ops map + one-shot DoDs H/I/J | `docs/ops/loop-engineering.md`; one-shot-example-dods |
+| T-0055 | P2 | done | Auto-Company pattern extract (no runtime) | `docs/ops/auto-company-patterns.md` |
+| T-0060 | P2 | done | 8-exits eval task scaffold + deterministic scorer | `examples/eval-harness/tasks/003-exit-card-checklist/`; not in default suite until LLM wiring |
 | T-0030 | P0 | done | Env registry + profiles | merged main |
 | T-0022 | P1 | done | Grok-in-image overlay | feature/agent-cage-grok-image merged; OIDC auth import |
 | T-0000 | — | done | Process docs bootstrap | ADR-0001 |

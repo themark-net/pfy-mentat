@@ -30,6 +30,8 @@ This is currently one of the highest-value areas. Multiple entries reinforce sel
 - Adapt Finn Loop patterns (spec/build/review) as concrete examples.
 - Use rubric-driven eval loop (Entry 032) as a template for goal-based evaluators.
 - **Done (T-0050):** first-party `/agent-loops` skill — 4 types + 8 exits (068) + Finn phases + rubric layer.
+- **Done (T-0054):** operator map `docs/ops/loop-engineering.md` + one-shot DoDs for skills/auth.
+- **Queued (T-0060):** scored eval task that requires an exit card in agent output.
 
 ---
 
@@ -47,9 +49,10 @@ Strong convergence on practical, local-first memory solutions.
 | 052 | LEANN (extreme RAG compression 97% savings) | 5 | 4 | 4 | 5 | **S-Tier** | Game-changing for local RAG feasibility. Must evaluate. |
 
 **Cluster Recommendations**:
-- Deeply evaluate Memvid and LEANN for memory layer.
+- Deeply evaluate Memvid and LEANN for memory layer. **Queued (T-0063).**
 - Consider hybrid approaches (versioned MP4 + compressed indexes).
 - Integrate persistent memory patterns into Loop Engineering where relevant.
+- **Done (T-0053):** codebase-memory-mcp remains primary code graph; Graphify B-tier reference only — [codebase-memory-vs-graphify.md](evaluation/codebase-memory-vs-graphify.md).
 
 ---
 

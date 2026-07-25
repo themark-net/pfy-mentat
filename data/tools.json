@@ -1,7 +1,7 @@
 {
-  "version": "0.4.5",
-  "last_updated": "2026-07-21T00:50:00Z",
-  "description": "Structured catalog. v0.4.5: Entry 068 (8 exits for agent loops) folded into Finn Loop / eval-loop patterns; scores raised.",
+  "version": "0.4.6",
+  "last_updated": "2026-07-25T22:00:00Z",
+  "description": "Structured catalog. v0.4.6: Graphify B-tier reference + CM primary decision note; loop/ops hygiene.",
   "schema_notes": {
     "required_for_all": ["name", "primary_category", "github", "scores", "tier"],
     "optional_tracking": {
@@ -65,7 +65,17 @@
       "tier": "S",
       "tags": ["mcp-compatible", "code-memory", "local-first", "rag"],
       "pinned_commit": "ee68144af5453addda995a27cce8142999f318fb",
-      "notes": "Grok MCP code-graph server."
+      "notes": "Primary Grok MCP code-graph. Decision vs Graphify: docs/evaluation/codebase-memory-vs-graphify.md. Smoke: make smoke-codebase-memory."
+    },
+    {
+      "name": "Graphify",
+      "primary_category": "Memory & RAG Systems",
+      "github": "https://github.com/Graphify-Labs/graphify",
+      "scores": {"s1": 85, "s2": 72, "s3": 78, "s4": 88, "overall": 80},
+      "tier": "B",
+      "tags": ["code-memory", "graph", "tree-sitter", "mcp-compatible", "local-first"],
+      "x_post_id": "2076092909372453048",
+      "notes": "Entry 017. Not integrated; CM primary. Re-open with cage smoke + head-to-head. See docs/evaluation/codebase-memory-vs-graphify.md."
     },
     {
       "name": "LiteLLM",

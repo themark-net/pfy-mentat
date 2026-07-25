@@ -18,7 +18,7 @@ HARNESS := harness/agent-cage
 	smoke-write-guard smoke-grok-skills \
 	eval-tier0 eval-tier1 eval-mvp eval-suite eval-matrix eval-v02 \
 	cage-grok cage-grok-shell cage-grok-run cage-grok-sessions cage-grok-resume \
-	cage-grok-sessions-import-host cage-grok-net-smoke
+	cage-grok-sessions-import-host cage-grok-net-smoke cage-grok-skills-install
 
 help:
 	@echo "pfy-mentat"
@@ -52,6 +52,7 @@ help:
 	@echo "  Auth: host 'grok login' then make cage-grok-auth-import"
 	@echo "  Sessions persist: ~/.agentcage/grok-state/sessions (not host ~/.grok alone)"
 	@echo "  make cage-grok-net-smoke    # proxy must allow auth.x.ai + cli-chat-proxy"
+	@echo "  make cage-grok-skills-install  # first-party skills → cage GROK_HOME"
 	@echo "  TUI crash left mouse junk?  host shell:  reset"
 	@echo ""
 	@echo "LiteLLM + Ollama (in-cage smoke, local-only):"
@@ -153,6 +154,9 @@ cage-grok-sessions-import-host:
 
 cage-grok-net-smoke:
 	@$(MAKE) -C $(HARNESS) grok-net-smoke
+
+cage-grok-skills-install:
+	@$(MAKE) -C $(HARNESS) grok-skills-install
 
 cage-grok-uninstall:
 	@$(MAKE) -C $(HARNESS) grok-overlay-uninstall

@@ -38,6 +38,7 @@ Package README: [harness/agent-cage/README.md](../../harness/agent-cage/README.m
 | `OLLAMA_HOST` / `OPENAI_BASE_URL` | Host vs cage URLs — see [REGISTRY](../../bootstrap/env/REGISTRY.md) |
 | Cage Grok auth | `make cage-grok-auth-import` → `~/.agentcage/grok-home/auth.json` (agent-owned 0600; host cannot read after import — expected) |
 | Sessions store perms | `make -C harness/agent-cage fix-grok-state-perms` — dual host/agent write under `~/.agentcage/grok-state/sessions` (avoids import Permission denied) |
+| First-party skills in cage | `make cage-grok-skills-install` (also from `cage-grok`); project `.grok/skills` synced on workspace-sync |
 | Catalog in workspace | `make cage-workspace-sync` → `/workspace/pfy-mentat` |
 | Grok + filesystem MCP ready | `make cage-grok-ready` (T-0045) |
 | Launch Grok session | `make cage-grok` then `cage-grok-shell` or `cage-grok-run` |

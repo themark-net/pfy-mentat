@@ -47,14 +47,23 @@ python3 bootstrap/grok-cli/scripts/verify_skills.py --installed
 
 ## Layer 1 — Install
 
+**Host:**
+
 ```bash
 ./bootstrap/grok-cli/install.sh --skills-only
-./bootstrap/grok-cli/install.sh --verify   # includes hard-coded skill list + config
+./bootstrap/grok-cli/install.sh --verify
 ls ~/.grok/skills/agent-loops/SKILL.md
 ls ~/.grok/skills/hermes-feedback/SKILL.md
 ```
 
-Optional project mirror (this repo): `.grok/skills/<name>/` for teammates who load project skills.
+**Cage (also part of `make cage-grok`):**
+
+```bash
+make cage-grok-skills-install
+# or: docker exec … install.sh --skills-only under /workspace/pfy-mentat
+```
+
+Project mirror: `make cage-workspace-sync` copies `bootstrap/grok-cli/skills/*` → `.grok/skills/` for cwd discovery.
 
 ---
 
