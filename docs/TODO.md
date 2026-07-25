@@ -32,6 +32,7 @@
 |----|----------|--------|------|----------------|---------|-------|
 
 | T-0090 | P0 | todo | **Minimal product levers audit**: collapse end-user surface to onboard / stage / ship; cap public Make targets | — | — | [product-operator-surface.md](ops/product-operator-surface.md); platform targets stay advanced |
+| T-0091 | P1 | todo | **Voice → tool-capable agent** channel (STT edge first; not Grok-voice-stuck-in-chat) | [OQ-0010](open-questions/OQ-0010-voice-agent-channel.md) | T-0085 | [voice-agent-channel.md](ops/voice-agent-channel.md); prefer edge→worker/monitor over Hermes primary |
 
 | T-0070 | P1 | doing | Grow design/coding **skills + structural eval** (more text scorers) | — | T-0065 | Keep `eval-structural` green |
 | T-0074 | P1 | doing | Implement-lane via `make eval-auto` (fit-select + candidates) | — | — | deepseek-coder:6.7b lab-proven; StarCoder demoted |

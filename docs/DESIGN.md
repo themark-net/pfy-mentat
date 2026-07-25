@@ -106,9 +106,9 @@ One-line purpose: **Track · Categorize · Rank · Integrate** tools for robust 
 
 **Near-term next (design/coding + local/cloud — ADR-0011):**
 
-- **T-0085** local worker + Grok monitor (eval green ≠ Grok auto-offloads)  
+- **T-0085** worker/monitor dual-session (**done** recipe; deepen automation later)  
 - **T-0090** product surface: onboard / stage / ship only for end users  
-- **T-0080** OpenCode+Ollama smoke (real turn offload)  
+- **T-0091** voice → tool-capable agent (not Grok-mobile-voice stuck in chat) — [voice-agent-channel.md](ops/voice-agent-channel.md)  
 - Keep **`make eval-structural`** + local **`eval-suite`** green  
 - Platform Make complexity OK in MVP; product UX must stay ≤ ~3 levers
 

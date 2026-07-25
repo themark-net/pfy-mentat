@@ -91,13 +91,26 @@ Paste or open `examples/opencode-ollama/.generated/monitor-brief.md`, then:
 | `make monitor-brief` | Regenerate monitor brief from template + git status |
 | `make smoke-opencode-ollama` | T-0080 underlying smoke |
 
-## Automation boundary (not magic)
+## Automation boundary (honest handoff)
 
-This recipe is **two processes + shared DoD file**, not a single orchestrator daemon. Future automation (still T-0085+) may:
+This recipe is **two processes + shared DoD file**, not automatic task assignment.
 
-- append worker progress to the brief  
-- run `git diff --stat` into monitor context  
-- stop when `make` DoD targets exit 0  
+| Works today | Still missing for “hands-free” |
+|-------------|------------------------------|
+| Shared DoD / exit card file | Live shared context without paste |
+| Worker implements on Ollama | Reliable OpenCode **tools** on small models |
+| Monitor reviews + escalates (process) | Single orchestrator watching both |
+| Git as source of truth | Auto-update brief from worker CI |
+
+**Will it hand off tasks “in this shape”?**  
+**Partially:** yes for a disciplined human-in-the-loop (you or monitor Grok stating DoD, worker executing).  
+**Not yet:** voice-driven, phone-driven, or fully automatic ticket→worker→PR without a supervisor session.
+
+Future automation (post T-0085):
+
+- append worker progress / `git diff --stat` into monitor brief  
+- stop when DoD `make` targets exit 0  
+- **voice edge** → same text agents ([voice-agent-channel.md](voice-agent-channel.md), T-0091)  
 
 Do **not** wait for a multi-agent company runtime; this matches ADR-0005 light process.
 

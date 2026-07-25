@@ -31,12 +31,13 @@ Related work queue: [TODO.md](TODO.md)
 | [OQ-0008](open-questions/OQ-0008-colibri-weights-ok.md) | P2 | tbd | OK to download colibri model weights on this machine? | T-0016 | disk/RAM, colibri pin |
 | [OQ-0009](open-questions/OQ-0009-write-guard-default-mode.md) | P1 | answered | Default WRITE_GUARD_MODE for new envs (audit vs enforce) | T-0031 | ADR-0007; default **audit** |
 | [OQ-0001](open-questions/OQ-0001-seed-x-post-content.md) | P3 | answered | Seed X post content extraction | — | Superseded by Entries 001–010 processed |
+| [OQ-0010](open-questions/OQ-0010-voice-agent-channel.md) | P2 | open | Voice channel with tool-capable agent (not chat-stuck) | T-0091 | [voice-agent-channel.md](ops/voice-agent-channel.md); default path A |
 
 ---
 
 ## Needs operator input soon (P1)
 
-*No open P1 OQs.* Remaining active OQs are P2 (subtree, ATG, Antigravity, colibri weights).
+*No open P1 OQs.* Remaining active OQs are P2 (subtree, ATG, Antigravity, colibri, **voice channel** OQ-0010).
 
 Recently closed:
 
