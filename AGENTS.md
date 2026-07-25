@@ -49,6 +49,7 @@ Verify: `make eval-structural` (no LLM) · `make smoke-grok-skills` · [skill-ve
 Loop map: [loop-engineering.md](docs/ops/loop-engineering.md). Decisions: [human-decision-inventory.md](docs/ops/human-decision-inventory.md).  
 Code memory: CM primary ([vs Graphify](docs/evaluation/codebase-memory-vs-graphify.md)).  
 **Cage:** `make cage-grok` refreshes auth + installs first-party skills into container `GROK_HOME`.  
+**Code sync (host only):** `make cage-code-sync` / `PUSH=1` — import cage commits then rsync back ([cage-code-sync.md](docs/ops/cage-code-sync.md)). Never rely on one-way `workspace-sync` alone after agent commits.  
 **This repo:** `/catalog-docs` — document the catalog (README, triple-write, harness); source `.grok/skills/catalog-docs/`.
 
 ### Role router (gstack patterns, docs-first — T-0014)

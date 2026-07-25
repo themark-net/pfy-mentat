@@ -20,7 +20,8 @@ LITELLM_EXAMPLE := examples/litellm-ollama
 	eval-tier0 eval-tier1 eval-mvp eval-suite eval-matrix eval-v02 eval-structural \
 	eval-select-models eval-auto \
 	cage-grok cage-grok-shell cage-grok-run cage-grok-sessions cage-grok-resume \
-	cage-grok-sessions-import-host cage-grok-net-smoke cage-grok-skills-install
+	cage-grok-sessions-import-host cage-grok-net-smoke cage-grok-skills-install \
+	cage-code-sync cage-code-status cage-code-from-cage cage-code-to-cage
 
 help:
 	@echo "pfy-mentat"
@@ -50,7 +51,11 @@ help:
 	@echo "  make cage-grok-sessions-import-host  # map host project sessions → cage"
 	@echo "  First-time: cage-grok-install → auth-import → build → cage-grok"
 	@echo "  Daily:      make cage-grok   then resume | run | shell"
-	@echo "  make cage-workspace-sync    # re-sync catalog → /workspace/pfy-mentat"
+	@echo "  make cage-workspace-sync    # rsync catalog → cage workspace (content only)"
+	@echo "  make cage-code-status       # host vs cage HEADs (privileged host)"
+	@echo "  make cage-code-from-cage    # import agent commits → host git"
+	@echo "  make cage-code-to-cage      # rsync host → cage + align cage git"
+	@echo "  make cage-code-sync         # from-cage then to-cage (add PUSH=1 to push origin)"
 	@echo "  Auth: host 'grok login' then make cage-grok-auth-import"
 	@echo "  Sessions persist: ~/.agentcage/grok-state/sessions (not host ~/.grok alone)"
 	@echo "  make cage-grok-net-smoke    # proxy must allow auth.x.ai + cli-chat-proxy"
@@ -132,6 +137,29 @@ cage-grok-smoke:
 
 cage-workspace-sync:
 	@$(MAKE) -C $(HARNESS) workspace-sync
+
+# Host-privileged bidirectional code bridge (see harness/agent-cage/scripts/cage-code-sync.sh)
+# PUSH=1  → also git push origin after import
+# FORCE=1 → allow dirty / overwrite checks
+# SYNC_ARGS extra flags e.g. SYNC_ARGS=--dry-run
+cage-code-status:
+	@chmod +x harness/agent-cage/scripts/cage-code-sync.sh
+	@./harness/agent-cage/scripts/cage-code-sync.sh status $(SYNC_ARGS)
+
+cage-code-from-cage:
+	@chmod +x harness/agent-cage/scripts/cage-code-sync.sh
+	@./harness/agent-cage/scripts/cage-code-sync.sh from-cage $(if $(filter 1,$(FORCE)),--force,) $(SYNC_ARGS)
+
+cage-code-to-cage:
+	@chmod +x harness/agent-cage/scripts/cage-code-sync.sh
+	@./harness/agent-cage/scripts/cage-code-sync.sh to-cage $(if $(filter 1,$(FORCE)),--force,) $(SYNC_ARGS)
+
+cage-code-sync:
+	@chmod +x harness/agent-cage/scripts/cage-code-sync.sh
+	@./harness/agent-cage/scripts/cage-code-sync.sh sync \
+	  $(if $(filter 1,$(PUSH)),--push,) \
+	  $(if $(filter 1,$(FORCE)),--force,) \
+	  $(SYNC_ARGS)
 
 cage-grok-mcp-preset:
 	@$(MAKE) -C $(HARNESS) grok-mcp-preset

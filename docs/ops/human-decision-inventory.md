@@ -91,4 +91,5 @@ OQ-BATCH: 0003=no 0004=catalog 0007=no 0008=no
 1. **`make eval-structural`** in every design/coding PR (this repo).  
 2. **OQ-BATCH parser** — one message closes N OQs.  
 3. **Eval SKIP vs FAIL policy** — missing model = 2, not 1 (already for matrix cells).  
-4. **Night-shift TODO** — only pick rows with Open questions = `—`.
+4. **Night-shift TODO** — only pick rows with Open questions = `—`.  
+5. **`make cage-code-sync PUSH=1`** on host after any cage agent session (import commits + rsync).
