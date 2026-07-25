@@ -55,7 +55,8 @@ make local-ollama-up
 make smoke-litellm-ollama
 ```
 
-**Note:** After `make cage-grok`, re-run `make local-ollama-up` (or just `smoke-litellm-ollama`) so `host.docker.internal` extra_hosts are applied. Otherwise preflight returns mitm **502 HTML** → `JSONDecodeError`.
+**Note:** After `make cage-grok`, re-run `make smoke-litellm-ollama` (it re-applies local-ollama).  
+**Network:** agent-cage uses `172.30.0.0/24`; host Ollama gateway is reached as **`172.30.0.1:11435`**, not Docker’s `host-gateway` (`172.17.0.1`). The smoke target detects this automatically.
 
 ### Using profile configs (host proxy sketch)
 

@@ -14,29 +14,22 @@ echo "  VENV=$VENV_DIR"
 
 HOST_ROOT="${BASE%/v1}"
 echo "== preflight: GET ${HOST_ROOT}/api/tags =="
-# Prefer direct host path (NO_PROXY) so mitm does not need to resolve host.docker.internal.
-# If proxy is required, coding-agent-local must whitelist host.docker.internal and
-# compose must set extra_hosts: host.docker.internal:host-gateway (make local-ollama-up).
-if ! getent hosts host.docker.internal >/dev/null 2>&1; then
-  echo "error: host.docker.internal does not resolve in this container." >&2
-  echo "  fix: make local-ollama-up   # applies overlays/local-ollama extra_hosts" >&2
-  exit 1
-fi
+# Bypass mitm for host Ollama (NO_PROXY set by make smoke). Use IP or hostname as given.
+# Cage network is often 172.30.0.0/24 → host is .1; Docker host-gateway (172.17.0.1) is wrong.
 HTTP_CODE=$(curl -sS -m 15 -o /tmp/ollama-tags-cage.json -w "%{http_code}" \
-  --noproxy host.docker.internal,localhost,127.0.0.1 \
+  --noproxy '*' \
   "${HOST_ROOT}/api/tags" || true)
 if [[ ! -s /tmp/ollama-tags-cage.json ]]; then
   echo "error: empty response from ${HOST_ROOT}/api/tags (http=${HTTP_CODE})" >&2
   echo "  host: ./examples/litellm-ollama/host-ollama-gateway.sh status" >&2
   echo "  host: curl -sS http://127.0.0.1:11435/api/tags | head" >&2
+  echo "  note: from agent, host is usually 172.30.0.1 not host-gateway/172.17.0.1" >&2
   exit 1
 fi
 if ! python3 -c 'import json; json.load(open("/tmp/ollama-tags-cage.json"))' 2>/dev/null; then
-  echo "error: non-JSON from ${HOST_ROOT}/api/tags (http=${HTTP_CODE}) — often mitm 502 when DNS/policy fails" >&2
+  echo "error: non-JSON from ${HOST_ROOT}/api/tags (http=${HTTP_CODE})" >&2
   head -c 400 /tmp/ollama-tags-cage.json >&2 || true
   echo "" >&2
-  echo "  fix: make local-ollama-up && make smoke-litellm-ollama" >&2
-  echo "  ensure policy coding-agent-local allows host.docker.internal" >&2
   exit 1
 fi
 python3 - <<PY

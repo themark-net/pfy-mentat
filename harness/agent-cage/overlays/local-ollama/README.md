@@ -27,12 +27,13 @@ make smoke-litellm-ollama
 Policy name: `coding-agent-local`  
 URL from cage: `http://host.docker.internal:11435` (and `/v1` for OpenAI shim).
 
-## Failure: JSONDecodeError / mitm 502 on preflight
+## Failure modes
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| `JSONDecodeError` on `/api/tags` | Response is HTML 502 from mitmproxy | DNS/policy: host not resolved or not whitelisted |
-| `Could not resolve host: host.docker.internal` | Agent recreated by `cage-grok` **without** local-ollama `extra_hosts` | `make local-ollama-up` (smoke now does this automatically) |
-| Gateway “already running” but tags fail | Ollama down on host, or gateway stale | `host-ollama-gateway.sh restart`; `curl http://127.0.0.1:11434/api/tags` |
+| `JSONDecodeError` / mitm **502** | HTML from proxy; DNS/policy | `make local-ollama-up`; policy allows host |
+| `Could not resolve host.docker.internal` | No extra_hosts | smoke now applies local-ollama fragment |
+| DNS → **172.17.0.1** but **connection refused** | Docker `host-gateway` = docker0; cage is on **172.30.0.0/24** | smoke rewrites host to **bridge .1** (e.g. `172.30.0.1`) |
+| Gateway running; host `curl :11435` OK; cage fail | Wrong host IP from container | Use cage-bridge host IP, not 172.17.0.1 |
 
-`make smoke-litellm-ollama` now runs **overlay-install + local-ollama-up** first so `extra_hosts` and `coding-agent-local` are applied.
+`make smoke-litellm-ollama` now: overlay-install → local-ollama-up → detect cage-bridge host IP → patch `/etc/hosts` → smoke via that IP:11435 (NO_PROXY).

@@ -708,37 +708,60 @@ local-ollama-up: ensure-project
 	  || (echo "error: agent-cage-agent not running"; exit 1)
 	@echo "Policy should allow host.docker.internal. Next: make smoke-litellm-ollama"
 
+# Host IP as seen from agent-cage custom bridge (often 172.30.0.1).
+# Docker "host-gateway" maps to 172.17.0.1 (docker0) which is NOT reachable from 172.30/24.
+define CAGE_HOST_IP_CMD
+docker exec agent-cage-agent python3 -c "import re,subprocess,ipaddress;\
+ o=subprocess.check_output(['ip','-4','-o','addr','show','scope','global'],text=True);\
+ m=re.search(r'inet (\d+\.\d+\.\d+\.\d+)/(\d+)',o);\
+ assert m, 'no eth inet';\
+ net=ipaddress.ip_interface(m.group(1)+'/'+m.group(2)).network;\
+ print(net.network_address+1)"
+endef
+
 smoke-litellm-ollama: ensure-project
 	@test -f "$(LITELLM_EXAMPLE)/run-in-cage.sh" \
 	  || (echo "error: missing $(LITELLM_EXAMPLE)/run-in-cage.sh"; exit 1)
-	@# Always (re)apply local-ollama compose + policy: host.docker.internal extra_hosts
-	@# and coding-agent-local whitelist. cage-grok alone does not add these → 502 / JSON fail.
+	@# Always (re)apply local-ollama compose + policy (whitelist host.docker.internal).
 	@$(MAKE) local-ollama-overlay-install
 	@$(MAKE) local-ollama-up
-	@# Prove DNS from agent + proxy path before litellm
-	@docker exec -u agent agent-cage-agent bash -lc \
-	  'getent hosts host.docker.internal || { echo "error: host.docker.internal not in container hosts — local-ollama compose extra_hosts missing"; exit 1; }'
-	@# Stage recipe into cage workspace (may be owned by cage agent; use docker cp)
-	@docker exec -u root agent-cage-agent bash -lc \
-	  'mkdir -p /workspace/examples/litellm-ollama && chown agent:agent /workspace/examples /workspace/examples/litellm-ollama'
-	@docker cp "$(LITELLM_EXAMPLE)/." agent-cage-agent:/workspace/examples/litellm-ollama/
-	@docker exec -u root agent-cage-agent bash -lc \
-	  'chown -R agent:agent /workspace/examples/litellm-ollama && chmod +x /workspace/examples/litellm-ollama/*.sh /workspace/examples/litellm-ollama/smoke_completion.py'
-	@echo "==> in-cage LiteLLM → Ollama smoke (model=$(LITELLM_SMOKE_MODEL))"
-	@docker exec -u agent \
-	  -e HOME=/home/agent \
-	  -e PATH=/home/agent/.local/bin:/usr/local/bin:/usr/bin:/bin \
-	  -e OPENAI_BASE_URL=http://host.docker.internal:11435/v1 \
-	  -e OLLAMA_HOST=http://host.docker.internal:11435 \
-	  -e LITELLM_SMOKE_MODEL=$(LITELLM_SMOKE_MODEL) \
-	  -e DEPLOY_PROFILE=local-only \
-	  -e no_proxy=localhost,127.0.0.1,host.docker.internal,172.30.0.0/24 \
-	  -e NO_PROXY=localhost,127.0.0.1,host.docker.internal,172.30.0.0/24 \
-	  agent-cage-agent bash -lc \
-	  'cd /workspace/examples/litellm-ollama && bash ./run-in-cage.sh'
+	@# Resolve host on *cage* bridge (not docker0 host-gateway).
+	@ip=$$($(CAGE_HOST_IP_CMD)); \
+	  echo "cage→host Ollama via $$ip:11435 (not host-gateway/172.17.0.1)"; \
+	  docker exec -u root agent-cage-agent bash -lc \
+	    "grep -q 'host.docker.internal' /etc/hosts && sed -i '/host.docker.internal/d' /etc/hosts; \
+	     echo \"$$ip host.docker.internal\" >> /etc/hosts"; \
+	  docker exec -u root agent-cage-proxy bash -lc \
+	    "grep -q 'host.docker.internal' /etc/hosts 2>/dev/null && sed -i '/host.docker.internal/d' /etc/hosts; \
+	     echo \"$$ip host.docker.internal\" >> /etc/hosts" 2>/dev/null || true; \
+	  if ! docker exec -u agent agent-cage-agent bash -lc \
+	      "curl -sS -m 5 --noproxy '*' -o /dev/null -w '%{http_code}' http://$$ip:11435/api/tags" \
+	      | grep -qE '200|301|302'; then \
+	    echo "error: agent cannot reach http://$$ip:11435/api/tags"; \
+	    echo "  host: ./examples/litellm-ollama/host-ollama-gateway.sh status"; \
+	    echo "  host: curl -sS http://127.0.0.1:11435/api/tags | head"; \
+	    exit 1; \
+	  fi; \
+	  docker exec -u root agent-cage-agent bash -lc \
+	    'mkdir -p /workspace/examples/litellm-ollama && chown agent:agent /workspace/examples /workspace/examples/litellm-ollama'; \
+	  docker cp "$(LITELLM_EXAMPLE)/." agent-cage-agent:/workspace/examples/litellm-ollama/; \
+	  docker exec -u root agent-cage-agent bash -lc \
+	    'chown -R agent:agent /workspace/examples/litellm-ollama && chmod +x /workspace/examples/litellm-ollama/*.sh /workspace/examples/litellm-ollama/smoke_completion.py'; \
+	  echo "==> in-cage LiteLLM → Ollama smoke (model=$(LITELLM_SMOKE_MODEL) host=$$ip)"; \
+	  docker exec -u agent \
+	    -e HOME=/home/agent \
+	    -e PATH=/home/agent/.local/bin:/usr/local/bin:/usr/bin:/bin \
+	    -e OPENAI_BASE_URL=http://$$ip:11435/v1 \
+	    -e OLLAMA_HOST=http://$$ip:11435 \
+	    -e LITELLM_SMOKE_MODEL=$(LITELLM_SMOKE_MODEL) \
+	    -e DEPLOY_PROFILE=local-only \
+	    -e no_proxy=localhost,127.0.0.1,$$ip,host.docker.internal,172.30.0.0/24 \
+	    -e NO_PROXY=localhost,127.0.0.1,$$ip,host.docker.internal,172.30.0.0/24 \
+	    agent-cage-agent bash -lc \
+	    'cd /workspace/examples/litellm-ollama && bash ./run-in-cage.sh'
 	@echo "smoke-litellm-ollama: PASS"
 	@mkdir -p "$(CATALOG_ROOT)/pipelines/smoke/litellm-ollama"
-	@printf '| %s | PASS | %s | in-cage LiteLLM→Ollama via host.docker.internal:11435 |\n' \
+	@printf '| %s | PASS | %s | in-cage LiteLLM→Ollama via cage-bridge host IP:11435 |\n' \
 	  "$$(date -Iseconds)" "$(LITELLM_SMOKE_MODEL)" \
 	  >> "$(CATALOG_ROOT)/pipelines/smoke/litellm-ollama/results.latest.md"
 
