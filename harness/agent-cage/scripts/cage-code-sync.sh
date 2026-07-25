@@ -216,6 +216,8 @@ RSYNC_CONTENT=(
   --exclude '.env' --exclude '.env.*'
   --exclude 'pipelines/**/results.latest.md'
   --exclude 'pipelines/eval/structural.latest.md'
+  --exclude 'pipelines/catalog-item/'
+  --exclude 'pipelines/smoke/agenc/'
 )
 
 prepare_cage_writable() {

@@ -23,10 +23,16 @@ echo "== eval-harness mode=$MODE =="
 echo "  base=$BASE model=$MODEL models=$MODELS gate=$EVAL_GATE_MODEL"
 
 HOST_ROOT="${BASE%/v1}"
-curl -sS -m 15 "${HOST_ROOT}/api/tags" -o /tmp/ollama-tags-eval.json
+# Bypass cage HTTP_PROXY (mitm 403/empty for urllib/curl default proxy)
+curl -sS -m 15 --noproxy '*' "${HOST_ROOT}/api/tags" -o /tmp/ollama-tags-eval.json
 python3 - <<PY
 import json, os, sys
-d = json.load(open("/tmp/ollama-tags-eval.json"))
+raw = open("/tmp/ollama-tags-eval.json").read().strip()
+if not raw or raw[0] not in "{[":
+    print("error: non-JSON from Ollama tags; check OPENAI_BASE_URL and gateway", file=sys.stderr)
+    print(raw[:200], file=sys.stderr)
+    sys.exit(2)
+d = json.loads(raw)
 names = [m.get("name") for m in (d.get("models") or [])]
 mode = os.environ.get("EVAL_MODE", "single")
 if mode == "matrix":
@@ -37,12 +43,12 @@ if mode == "matrix":
     print(f"  ollama models: {len(names)}; matrix want={want_list}; missing={missing or 'none'}")
     gate = os.environ.get("EVAL_GATE_MODEL") or want_list[0]
     if gate not in names:
-        print(f"error: gate model {gate!r} not on Ollama", file=sys.stderr)
+        print(f"error: gate model {gate!r} not on Ollama — pull on host or re-run make eval-select-models", file=sys.stderr)
         sys.exit(2)
 else:
     want = os.environ.get("EVAL_MODEL") or os.environ.get("LITELLM_SMOKE_MODEL", "qwen2.5:14b")
     if want not in names:
-        print(f"error: model {want!r} not on Ollama", file=sys.stderr)
+        print(f"error: model {want!r} not on Ollama — pull on host or re-run make eval-select-models", file=sys.stderr)
         sys.exit(2)
     print(f"  ollama models: {len(names)}; {want}: yes")
 PY
