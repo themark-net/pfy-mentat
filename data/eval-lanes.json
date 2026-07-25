@@ -1,0 +1,50 @@
+{
+  "version": "1.0",
+  "last_updated": "2026-07-25",
+  "description": "Automated evaluation lanes for design/coding assist. Structural never requires LLM.",
+  "lanes": [
+    {
+      "id": "structural",
+      "requires_llm": false,
+      "command": "make eval-structural",
+      "artifacts": ["pipelines/eval/structural.latest.md"],
+      "purpose": "Skills, tools.json schema, text-scorer fixtures, design/coding SKILL.md presence"
+    },
+    {
+      "id": "connectivity",
+      "requires_llm": false,
+      "requires_backend": "ollama+litellm_gateway",
+      "command": "make eval-tier0",
+      "purpose": "LiteLLM → Ollama path alive"
+    },
+    {
+      "id": "implement",
+      "requires_llm": true,
+      "requires_backend": "ollama",
+      "command": "make eval-suite",
+      "gate_model_env": "EVAL_MODEL",
+      "default_gate_model": "qwen2.5:14b",
+      "purpose": "Model coding tasks with hidden tests (001, 002)"
+    },
+    {
+      "id": "matrix",
+      "requires_llm": true,
+      "requires_backend": "ollama",
+      "command": "make eval-matrix",
+      "purpose": "Multi-model observational table; missing models SKIP"
+    }
+  ],
+  "task_kinds": [
+    {
+      "kind": "implement",
+      "required_files": ["prompt.txt", "test_task.py"],
+      "in_default_suite": true
+    },
+    {
+      "kind": "text_scorer",
+      "required_files": ["score.py", "fixtures/pass*", "fixtures/fail*"],
+      "in_default_suite": false,
+      "in_structural": true
+    }
+  ]
+}

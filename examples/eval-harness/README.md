@@ -5,13 +5,16 @@
 
 | Tier / mode | Meaning | Command |
 |-------------|---------|---------|
+| **Structural** | Design/coding gates, **no LLM** | `make eval-structural` |
 | **0** | Connectivity smoke | `make eval-tier0` → `smoke-litellm-ollama` |
 | **1** | One scored coding task | `make eval-tier1` (`EVAL_TASK`) |
 | **MVP** | tier0 + tier1 | `make eval-mvp` |
-| **Suite (v0.2)** | All tasks, one gate model | `make eval-suite` |
+| **Suite (v0.2)** | All implement tasks, one gate model | `make eval-suite` |
 | **Matrix (v0.2)** | Tasks × models | `make eval-matrix` |
 | **v0.2 ladder** | tier0 + suite | `make eval-v02` |
 | **Later** | DSPy + MCP | Deferred |
+
+Lanes schema: [`data/eval-lanes.json`](../../data/eval-lanes.json) · [design-coding-assist-rubric.md](../../docs/evaluation/design-coding-assist-rubric.md)
 
 ## Tasks
 

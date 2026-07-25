@@ -1,0 +1,7 @@
+{
+  "task_id": "003-exit-card-checklist",
+  "lane": "structural",
+  "kind": "text_scorer",
+  "assist_domain": ["design", "coding", "loops"],
+  "notes": "Deterministic keyword scorer; fixtures under fixtures/"
+}

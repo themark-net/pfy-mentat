@@ -1,7 +1,8 @@
 # Evaluation Framework for Local LLM Dev Tools Catalog
 
-**Status:** v1.3 — 2026-07-20  
-**Purpose:** Consistent triage → score → optional implementation into the **Grok + agent-cage** operator stack.
+**Status:** v1.4 — 2026-07-25  
+**Purpose:** Consistent triage → score → optional implementation into the **Grok + agent-cage** operator stack.  
+**Extension:** Design/coding assist lanes (structural / implement) — [evaluation/design-coding-assist-rubric.md](evaluation/design-coding-assist-rubric.md) · `data/eval-lanes.json`
 
 **Operator defaults:** Grok Build CLI ([ADR-0002](adr/0002-grok-cli-primary-interface.md)), agent-cage lab, LiteLLM/Ollama as needed.  
 **Not default:** AgenC primary runtime ([ADR-0010](adr/0010-reject-agenc-as-primary-runtime.md)).
@@ -76,4 +77,7 @@ Do not collapse these into Stage 1–4 tool scores alone.
 - [scoring-summary.md](scoring-summary.md)  
 - [CATEGORIZATION.md](../CATEGORIZATION.md)  
 - [evaluation/autonomous-ai-companies-rubric.md](evaluation/autonomous-ai-companies-rubric.md)  
+- [evaluation/design-coding-assist-rubric.md](evaluation/design-coding-assist-rubric.md) — process skills + structural lane  
+- [ops/human-decision-inventory.md](ops/human-decision-inventory.md) — batch OQs; pending decision count  
 - [TODO.md](TODO.md) · T-0042 catalog re-score  
+- Automated: `make eval-structural` (no LLM) · `make eval-v02` (needs Ollama)

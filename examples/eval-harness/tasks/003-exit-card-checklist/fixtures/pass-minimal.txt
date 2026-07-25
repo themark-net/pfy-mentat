@@ -1,0 +1,10 @@
+LOOP EXIT CARD
+Goal (success criteria): make smoke-grok-skills exits 0
+1 Goal met: make smoke-grok-skills
+2 Turn cap: 8
+3 Budget cap: local-only tier max
+4 Wall clock: 30 minutes
+5 No progress: halt after 3 identical state hashes
+6 Human interrupt: user stop / approval denied
+7 Error threshold: 3 consecutive same failures
+8 External event: n/a

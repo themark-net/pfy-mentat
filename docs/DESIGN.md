@@ -104,11 +104,12 @@ One-line purpose: **Track · Categorize · Rank · Integrate** tools for robust 
 - Not AgenC as primary ([ADR-0010](adr/0010-reject-agenc-as-primary-runtime.md))  
 - Env check helper: `python3 bootstrap/setup-local-agent-env.py` (Grok+cage oriented; does not install AgenC)
 
-**Near-term next (non-blocking queue — see TODO T-0060+):**
+**Near-term next (design/coding assist — see TODO T-0070+):**
 
-- **T-0060** 8-exits eval-harness task · **T-0064** auth dir mount (EBUSY) · **T-0061** Bumblebee smoke design  
-- **T-0062** Laguna local eval DoD · **T-0063** LEANN/Memvid notes · **T-0049** MUE-X status eval  
-- **T-0043** write-guard mcp-host (optional) · Blocked P2 OQs when operator decides  
+- Keep **`make eval-structural`** green; grow skills + text scorers (T-0070)  
+- Pattern extracts: MUE-X / LEANN-Memvid / Bumblebee docs (T-0071–73)  
+- Implement-lane when Ollama present (T-0074); OQ-BATCH for 4 blocked OQs only  
+- Env polish (auth mount, write-guard mcp-host) deprioritized
 
 ### Delivered recently
 

@@ -16,7 +16,7 @@ HARNESS := harness/agent-cage
 	local-ollama-overlay-install local-ollama-up smoke-litellm-ollama \
 	smoke-codebase-memory smoke-repowise smoke-context-tools \
 	smoke-write-guard smoke-grok-skills \
-	eval-tier0 eval-tier1 eval-mvp eval-suite eval-matrix eval-v02 \
+	eval-tier0 eval-tier1 eval-mvp eval-suite eval-matrix eval-v02 eval-structural \
 	cage-grok cage-grok-shell cage-grok-run cage-grok-sessions cage-grok-resume \
 	cage-grok-sessions-import-host cage-grok-net-smoke cage-grok-skills-install
 
@@ -63,8 +63,9 @@ help:
 	@echo "  make smoke-write-guard      # T-0031 write-guard MCP policy smoke"
 	@echo "  make smoke-grok-skills      # first-party skill structure (manifest + SKILL.md)"
 	@echo "  make smoke-grok-skills INSTALLED=1  # also check ~/.grok/skills"
+	@echo "  make eval-structural           # design/coding gates, NO LLM (always run)"
 	@echo "  make eval-tier0|eval-tier1|eval-mvp  # OQ-0002 opt5 scored eval"
-	@echo "  make eval-suite|eval-matrix|eval-v02 # v0.2 multi-task / multi-model"
+	@echo "  make eval-suite|eval-matrix|eval-v02 # v0.2 multi-task / multi-model (needs Ollama)"
 	@echo ""
 	@echo "Or:  cd harness/agent-cage && make help"
 	@echo ""
@@ -204,6 +205,10 @@ eval-matrix:
 
 eval-v02:
 	@$(MAKE) -C $(HARNESS) eval-v02
+
+# Design/coding structural gates (skills, tools.json, text scorers) — no LLM/Ollama
+eval-structural:
+	@python3 examples/eval-harness/run_structural.py --write-md pipelines/eval/structural.latest.md
 
 env-init:
 	@if [ -f .env ]; then \

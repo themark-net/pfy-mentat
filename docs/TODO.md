@@ -24,25 +24,38 @@
 
 ## Active (sorted P0 → P3)
 
-**Session (2026-07-25):** Autonomous hygiene batch (skills-in-cage, loop/CM docs). Operator path green. Next non-blockers below; blocked OQs still need human.
+**Session (2026-07-25):** Focus = **design/coding assist** + automated evals. Cage env polish deprioritized. Human decisions: [human-decision-inventory.md](ops/human-decision-inventory.md) (**0 required**; **4** optional OQ-batch).
+
+### Active — design / coding assist (agent may pick freely)
 
 | ID | Priority | Status | Item | Open questions | Depends | Notes |
 |----|----------|--------|------|----------------|---------|-------|
+| T-0070 | P1 | todo | Grow design/coding **skills + structural eval** (more text scorers, skill quality) | — | T-0065 | `make eval-structural` must stay green |
+| T-0071 | P2 | todo | Bumblebee as **coding-safety assist**: docs + optional smoke when trivial | — | — | Default: docs only; no human |
+| T-0072 | P2 | todo | MUE-X **pattern extract** for self-mod safety (no evolve runtime) | — | — | Entry 067; docs/skill note |
+| T-0073 | P2 | todo | LEANN/Memvid **pattern notes** for memory assist (no embed) | — | — | Memory S-cluster docs |
+| T-0074 | P2 | todo | Implement-lane eval when Ollama available (eval-suite green or SKIP) | — | — | Not a human gate; exit 2 if no model |
 
-| T-0061 | P2 | todo | **Bumblebee** cage smoke design + optional install (MCP supply-chain scan before skill install) | — | — | Entry 069; pair write-guard docs |
-| T-0062 | P2 | todo | **Laguna S 2.1** local eval note + optional Ollama/llama.cpp smoke DoD (no weights in-repo) | — | — | Entry 073; hardware-gated |
-| T-0063 | P2 | todo | **LEANN / Memvid** spike notes → optional cage smoke (memory S-cluster) | — | T-0042 | Pattern first; pin if smoke green |
-| T-0064 | P2 | todo | Auth file-mount EBUSY: mount **grok-home dir** (not single auth.json file) | — | T-0045 | Hardens cage OIDC refresh |
-| T-0049 | P2 | todo | MUE-X deeper eval: local backend (Ollama/LiteLLM) + mutation safety; cage `python -m mue status` | — | — | Entry 067; extract patterns if stable; pin SHA if adopted |
-| T-0043 | P2 | todo | Write-guard **mcp-host wiring** (enable server; optional disable stock FS writes) | — | T-0031 | Parked: stock FS MCP already works |
-| T-0015 | P2 | blocked | Optional Antigravity-Manager eval | [OQ-0007](open-questions/OQ-0007-antigravity-need.md) | — | |
-| T-0016 | P2 | blocked | Optional colibri build+serve | [OQ-0008](open-questions/OQ-0008-colibri-weights-ok.md) | — | |
-| T-0004 | P2 | blocked | ATG prototype coupling | [OQ-0004](open-questions/OQ-0004-atg-prototype-relationship.md) | — | |
-| T-0005 | P2 | blocked | Optional first subtree | [OQ-0003](open-questions/OQ-0003-first-subtree-candidate.md) | — | |
-| T-0046 | P3 | todo | **Re-evaluate AgenC** when UX/auth matures (ADR-0010 gates) | [ADR-0010](adr/0010-reject-agenc-as-primary-runtime.md) | T-0044 | |
-| T-0040 | P3 | todo | Validate OpenCode / Claude Code same cage/profiles | — | — | Universal harness; Grok-first |
-| T-0007 | P3 | todo | adr-tools companion docs if requested | — | — | |
-| T-0002 | P3 | todo | Aggregate synthesis if needed | — | — | |
+### Active — parked (env / not this track)
+
+| ID | Priority | Status | Item | Open questions | Depends | Notes |
+|----|----------|--------|------|----------------|---------|-------|
+| T-0064 | P3 | todo | Auth file-mount EBUSY (grok-home dir) | — | T-0045 | Env polish; not design/coding |
+| T-0043 | P3 | todo | Write-guard mcp-host wiring | — | T-0031 | Parked |
+| T-0062 | P3 | todo | Laguna local model DoD | — | — | Hardware-gated; catalog only for now |
+| T-0046 | P3 | todo | Re-evaluate AgenC | [ADR-0010](adr/0010-reject-agenc-as-primary-runtime.md) | T-0044 | |
+| T-0040 | P3 | todo | OpenCode / Claude same cage | — | — | |
+| T-0007 | P3 | todo | adr-tools companion docs | — | — | |
+| T-0002 | P3 | todo | Aggregate synthesis | — | — | |
+
+### Active — blocked (batch OQs only — do not ask ad hoc)
+
+| ID | Priority | Status | Item | Open questions | Depends | Notes |
+|----|----------|--------|------|----------------|---------|-------|
+| T-0015 | P2 | blocked | Antigravity-Manager eval | [OQ-0007](open-questions/OQ-0007-antigravity-need.md) | — | OQ-BATCH |
+| T-0016 | P2 | blocked | colibri build+serve | [OQ-0008](open-questions/OQ-0008-colibri-weights-ok.md) | — | OQ-BATCH |
+| T-0004 | P2 | blocked | ATG prototype coupling | [OQ-0004](open-questions/OQ-0004-atg-prototype-relationship.md) | — | OQ-BATCH |
+| T-0005 | P2 | blocked | First subtree | [OQ-0003](open-questions/OQ-0003-first-subtree-candidate.md) | — | OQ-BATCH |
 
 ---
 
@@ -57,7 +70,8 @@
 | T-0053 | P2 | done | codebase-memory vs Graphify decision + Graphify B-tier catalog row | `docs/evaluation/codebase-memory-vs-graphify.md`; tools.json v0.4.6 |
 | T-0054 | P2 | done | Loop engineering ops map + one-shot DoDs H/I/J | `docs/ops/loop-engineering.md`; one-shot-example-dods |
 | T-0055 | P2 | done | Auto-Company pattern extract (no runtime) | `docs/ops/auto-company-patterns.md` |
-| T-0060 | P2 | done | 8-exits eval task scaffold + deterministic scorer | `examples/eval-harness/tasks/003-exit-card-checklist/`; not in default suite until LLM wiring |
+| T-0060 | P2 | done | 8-exits eval task scaffold + deterministic scorer | `examples/eval-harness/tasks/003-exit-card-checklist/`; fixtures in structural lane |
+| T-0065 | P1 | done | Structural eval lane (no LLM) + design-coding rubric + decision inventory | `make eval-structural`; `data/eval-lanes.json`; human-decision-inventory |
 | T-0030 | P0 | done | Env registry + profiles | merged main |
 | T-0022 | P1 | done | Grok-in-image overlay | feature/agent-cage-grok-image merged; OIDC auth import |
 | T-0000 | — | done | Process docs bootstrap | ADR-0001 |
