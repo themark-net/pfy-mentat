@@ -41,8 +41,9 @@ Also use as needed: `CATEGORIZATION.md`, `SUBTREES.md`, `TOOLS.md`, `bootstrap/g
 ```
 
 Portable skills: `adr`, `docs`, `open-questions`, `karpathy-guidelines`, `project-process`, `one-shot`, `marketing-council`, **`investigate`** (RCA), **`agent-loops`** (exits + loop types), **`hermes-feedback`** (memory/skill/curator); ponytail + mattpocock subset (via `skills.paths`).  
-Verify: `make smoke-grok-skills` · [docs/ops/skill-verification.md](docs/ops/skill-verification.md).  
-Loop map: [docs/ops/loop-engineering.md](docs/ops/loop-engineering.md). Code memory: CM primary ([vs Graphify](docs/evaluation/codebase-memory-vs-graphify.md)).  
+Verify: `make eval-structural` (no LLM) · `make smoke-grok-skills` · [skill-verification.md](docs/ops/skill-verification.md).  
+Loop map: [loop-engineering.md](docs/ops/loop-engineering.md). Decisions: [human-decision-inventory.md](docs/ops/human-decision-inventory.md).  
+Code memory: CM primary ([vs Graphify](docs/evaluation/codebase-memory-vs-graphify.md)).  
 **Cage:** `make cage-grok` refreshes auth + installs first-party skills into container `GROK_HOME`.  
 **This repo:** `/catalog-docs` — document the catalog (README, triple-write, harness); source `.grok/skills/catalog-docs/`.
 
