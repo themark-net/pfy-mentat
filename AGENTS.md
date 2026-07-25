@@ -40,7 +40,8 @@ Also use as needed: `CATEGORIZATION.md`, `SUBTREES.md`, `TOOLS.md`, `bootstrap/g
 #   python3 bootstrap/setup-local-agent-env.py
 ```
 
-Portable skills: `adr`, `docs`, `open-questions`, `karpathy-guidelines`, `project-process`, `one-shot`, `marketing-council`, **`investigate`** (RCA); ponytail + mattpocock subset (via `skills.paths`).  
+Portable skills: `adr`, `docs`, `open-questions`, `karpathy-guidelines`, `project-process`, `one-shot`, `marketing-council`, **`investigate`** (RCA), **`agent-loops`** (exits + loop types), **`hermes-feedback`** (memory/skill/curator); ponytail + mattpocock subset (via `skills.paths`).  
+Verify: `make smoke-grok-skills` · [docs/ops/skill-verification.md](docs/ops/skill-verification.md).  
 **This repo:** `/catalog-docs` — document the catalog (README, triple-write, harness); source `.grok/skills/catalog-docs/`.
 
 ### Role router (gstack patterns, docs-first — T-0014)
@@ -51,13 +52,13 @@ Map **Think → Plan → Build → Review → Test → Ship → Reflect** withou
 |--------------|--------|
 | Product rethink (CEO) | Scope challenge → `/adr` or `/open-questions` |
 | Plan / eng manager | mattpocock **`to-spec`** (paths) + DoD list |
-| Build | Coding agent + karpathy / ponytail; **`/one-shot`** if DoD + lab ready |
+| Build | Coding agent + karpathy / ponytail; **`/one-shot`** if DoD + lab ready; **`/agent-loops`** to set exits/type before long runs |
 | Debug / RCA | **`/investigate`** — Iron Law: no fix without root-cause hypothesis (T-0017) |
 | Review | mattpocock **`code-review`** (paths); optional second persona |
 | QA | `make cage-test`, `make smoke-*` (see [docs/modules/examples-smokes.md](docs/modules/examples-smokes.md)) |
 | Security | write-guard + cage policy; not full gstack `/cso` |
 | Ship | Feature branch → green checks → merge; [DEPLOY.md](docs/ops/DEPLOY.md) |
-| Reflect | Update TODO/OQ; `/docs` or `/catalog-docs` if modules changed |
+| Reflect | **`/hermes-feedback`** (memory + optional skill/curator); TODO/OQ; `/docs` or `/catalog-docs` if modules changed |
 | Marketing multi-view | **`/marketing-council`** |
 
 Full recipes and non-goals: **[docs/ops/gstack-role-recipes.md](docs/ops/gstack-role-recipes.md)**.  

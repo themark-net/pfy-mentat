@@ -64,6 +64,21 @@
         "pinned_commit_at_eval": "7c9df1c568a9",
         "license": "MIT (upstream inspiration); skill text first-party",
         "purpose": "RCA Iron Law debugging: hypothesis before fix (T-0017 / ADR-0009)"
+      },
+      {
+        "name": "agent-loops",
+        "origin": "first-party loop engineering (Entries 024/027/031/032/068)",
+        "catalog_seed": "TOOLS Finn Loop / eval-loop / 8-exits; Entry 068 primary",
+        "license": "skill text first-party; patterns from cataloged public methodology",
+        "purpose": "Loop types + eight exits + Finn phases + rubric eval (T-0050)"
+      },
+      {
+        "name": "hermes-feedback",
+        "origin": "pattern port of Hermes Agent three feedback loops (not runtime)",
+        "upstream": "https://github.com/NousResearch/hermes-agent",
+        "catalog_seed": "X Entry 048; TOOLS Hermes Agent (feedback loops)",
+        "license": "skill text first-party; upstream patterns public/cataloged",
+        "purpose": "Auto-memory, auto-skill, curator loops for compounding Grok sessions (T-0048)"
       }
     ]
   },

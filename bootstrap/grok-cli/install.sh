@@ -206,7 +206,20 @@ verify() {
   log "Verifying install"
   local ok=1
   local name
-  for name in adr docs open-questions karpathy-guidelines project-process catalog-docs one-shot marketing-council investigate; do
+  # Prefer dynamic list from manifest; fall back to known core set
+  local names=()
+  if command -v python3 >/dev/null 2>&1 && [[ -f "$SCRIPT_DIR/manifest.json" ]]; then
+    mapfile -t names < <(python3 -c '
+import json,sys
+m=json.load(open(sys.argv[1]))
+for s in m.get("first_party_skills",{}).get("skills",[]):
+    print(s["name"])
+' "$SCRIPT_DIR/manifest.json" 2>/dev/null || true)
+  fi
+  if [[ ${#names[@]} -eq 0 ]]; then
+    names=(adr docs open-questions karpathy-guidelines project-process catalog-docs one-shot marketing-council investigate agent-loops hermes-feedback)
+  fi
+  for name in "${names[@]}"; do
     if [[ -f "$GROK_SKILLS_DIR/$name/SKILL.md" ]]; then
       echo "  OK skill $name"
     else

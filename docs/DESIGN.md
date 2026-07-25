@@ -106,14 +106,13 @@ One-line purpose: **Track · Categorize · Rank · Integrate** tools for robust 
 
 **Near-term next:**
 
-- **T-0042** Catalog re-score / absorb high-signal seeds (scoring-summary S-tier clusters)  
-- Port one S-tier **pattern** as Grok skill or eval task (Hermes feedback / eval loop / LEANN spike)  
+- **T-0049** MUE-X deeper eval (optional)  
 - **T-0043** write-guard mcp-host (optional)  
 - Blocked P2 OQs when operator decides  
 
 ### Delivered recently
 
-- Write-guard MCP · cage smokes · LiteLLM profiles · skill ports · eval MVP/v0.2 · Grok-in-cage + MCP + session resume · AgenC demoted · proxy allowlist for Grok CLI · catalog eval framework v1.2 (Grok-first)
+- Write-guard MCP · cage smokes · LiteLLM profiles · skill ports · eval MVP/v0.2 · Grok-in-cage + MCP + session resume · AgenC demoted · proxy allowlist for Grok CLI · catalog eval framework v1.2 (Grok-first) · **`/agent-loops`** (T-0050) · **`/hermes-feedback`** (T-0048) · **`make smoke-grok-skills`** (T-0051)
 
 ### Later / research
 

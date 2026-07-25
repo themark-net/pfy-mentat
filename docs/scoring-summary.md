@@ -26,9 +26,10 @@ This is currently one of the highest-value areas. Multiple entries reinforce sel
 | 048 | HERMES AGENT — Three Feedback Loops (Auto-Memory, Auto-Skill, Curator) | 5 | 5 | 4 | 5 | **S-Tier** | Best real-world self-improving system found. Direct blueprint for our skills + memory layer. |
 
 **Cluster Recommendations**:
-- Prioritize integration of Hermes-style feedback loops into Loop Engineering pack.
+- Prioritize integration of Hermes-style feedback loops into Loop Engineering pack. **Done (T-0048):** `/hermes-feedback`.
 - Adapt Finn Loop patterns (spec/build/review) as concrete examples.
 - Use rubric-driven eval loop (Entry 032) as a template for goal-based evaluators.
+- **Done (T-0050):** first-party `/agent-loops` skill — 4 types + 8 exits (068) + Finn phases + rubric layer.
 
 ---
 

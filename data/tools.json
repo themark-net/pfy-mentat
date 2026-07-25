@@ -112,7 +112,7 @@
       "tier": "A",
       "tags": ["agentic", "self-healing", "skills", "memory", "feedback-loop"],
       "x_post_id": "2077132507343134788",
-      "notes": "Entry 048. Port patterns only."
+      "notes": "Entry 048. Ported as /hermes-feedback (T-0048, bootstrap/grok-cli/skills/hermes-feedback/). Pattern only; not Hermes runtime."
     },
     {
       "name": "Multica",
@@ -225,7 +225,7 @@
       "tags": ["agentic", "loops", "evaluation", "human-in-loop", "stop-conditions", "exits"],
       "bootstrap_path": "integration/agenc/skills/loop-engineering",
       "x_post_id": "2079325855155707941",
-      "notes": "Entries 024/027/031/032/068. Entry 068 adds complete 8-exit taxonomy (goal, turn/budget/wallclock, no-progress, human, error threshold, external). Canonical exit checklist."
+      "notes": "Entries 024/027/031/032/068. Ported as /agent-loops (T-0050, bootstrap/grok-cli/skills/agent-loops/). Exit card + 4 types + Finn + rubric; pairs with /one-shot."
     },
     {
       "name": "awesome-hermes-skills",

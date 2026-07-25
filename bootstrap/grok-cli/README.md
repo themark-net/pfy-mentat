@@ -29,6 +29,10 @@ This is the first concrete integration under `pfy-mentat` — not another third-
 | `project-process` | Scaffold DESIGN / ADR / TODO / OQ / AGENTS into any repo (`/project-process`) — from sibling [../project-process/](../project-process/) |
 | `catalog-docs` | **This catalog’s** documentation skill: README, triple-write TOOLS/json/x-posts, harness docs (`/catalog-docs`) |
 | `one-shot` | Min-question delivery loop with cost ladder + lab prerequisites (`/one-shot`) |
+| `investigate` | RCA Iron Law: hypothesis before fix (`/investigate`, T-0017) |
+| `marketing-council` | Multi-advisor marketing perspectives (`/marketing-council`, T-0011) |
+| `agent-loops` | Loop types + eight exits + Finn spec/build/review (`/agent-loops`, T-0050) |
+| `hermes-feedback` | Self-improvement: auto-memory, auto-skill, curator (`/hermes-feedback`, T-0048) |
 
 ### External skills path (not copied into `~/.grok/skills`)
 
@@ -36,7 +40,6 @@ This is the first concrete integration under `pfy-mentat` — not another third-
 |------|------|
 | `skills-external/ponytail/` | Snapshot of [ponytail](https://github.com/DietrichGebert/ponytail) skills; registered via `[skills].paths` so Grok scans them |
 | `skills-external/mattpocock/` | Curated [mattpocock/skills](https://github.com/mattpocock/skills) subset (tdd, code-review, to-spec); `[skills].paths` |
-| `skills/marketing-council/` | First-party port of marketing council + advisors (MIT) |
 
 ### Config (`~/.grok/config.toml`)
 
@@ -139,7 +142,10 @@ rsync -a --delete /path/to/ponytail/skills/ bootstrap/grok-cli/skills-external/p
 **Bulk upstream** packs use the **same methods as ponytail** (snapshot + paths + pin + opt-out), not full-tree embed into first-party skills.
 
 **T-0011 ports:** `marketing-council` (first-party) · `mattpocock` tdd/code-review/to-spec (`--no-mattpocock` to skip).  
-**T-0017:** `investigate` first-party RCA skill (gstack method rewrite, not raw snapshot).
+**T-0017:** `investigate` first-party RCA skill (gstack method rewrite, not raw snapshot).  
+**T-0050:** `agent-loops` first-party loop engineering (8 exits + 4 types + Finn + rubric; Entries 024/027/031/032/068).  
+**T-0048:** `hermes-feedback` first-party pattern port (Hermes three loops → Grok memory/skills/curator; not Hermes runtime).  
+**Verify skills:** `make smoke-grok-skills` · `make smoke-grok-skills INSTALLED=1` · [docs/ops/skill-verification.md](../../docs/ops/skill-verification.md)
 
 ## Relationship to catalog entries
 

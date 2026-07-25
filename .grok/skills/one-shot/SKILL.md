@@ -31,6 +31,9 @@ Full rules: `docs/ops/one-shot-workflow.md` · ADR-0008.
 7. **Ask the user only if:** hard blocker, missing secret, irreversible product fork, or budget exhausted.
 8. **Finish:** report green DoD checklist, paths changed, assumptions, remaining OQ/TODO if any.
 
+For non-default caps, multi-phase Finn structure, or explicit stop-condition design,
+use **`/agent-loops`** (exit card + 8 exits) then return here to execute.
+
 ## Catalog smoke shortcuts (pfy-mentat)
 
 | Target | Proves |

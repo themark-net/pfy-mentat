@@ -21,14 +21,14 @@ gstack implements that as many Claude Code slash skills (`/plan-ceo-review`, `/r
 | **CEO / product rethink** | `/plan-ceo-review`, `/office-hours` | Challenge scope in chat; record pivots with **`/adr`**; park product TBDs with **`/open-questions`** |
 | **Eng manager / architecture** | `/plan-eng-review`, `/autoplan` | **`/adr`** + DESIGN; plan via **mattpocock `to-spec`** (paths); one-shot DoD for scoped builds |
 | **Designer / UX smell** | `/plan-design-review`, `/design-consultation` | Human taste + checklist in PR; optional later paths skill if needed |
-| **Implementer** | implement after plan | Grok coding loop + **karpathy-guidelines** + **ponytail**; **`/one-shot`** when DoD is clear |
+| **Implementer** | implement after plan | Grok coding loop + **karpathy-guidelines** + **ponytail**; **`/agent-loops`** for exit card / type; **`/one-shot`** when DoD is clear |
 | **Debugger / RCA** | `/investigate` | **`/investigate`** first-party (T-0017) — Iron Law, phases, DEBUG REPORT |
 | **Reviewer** | `/review` | **mattpocock `code-review`** (paths); cross-persona review notes in AGENTS |
 | **QA** | `/qa`, `/qa-only`, `/browse` | **`make cage-test`**, **`make smoke-*`**, host tests; cage shell for repro |
 | **Security / CSO** | `/cso`, `/guard` | Policy: write-guard (`make smoke-write-guard`), cage network whitelist; threat notes in ADR if needed |
 | **Release engineer** | `/ship`, `/land-and-deploy` | Feature branch → review → merge; DEPLOY checklist; no force-push to main |
 | **Tech writer** | `/document-release` | **`/docs`**, **`/catalog-docs`**, module docs under `docs/modules/` |
-| **Memory / retro** | `/learn`, `/retro`, `/context-save` | Session worksheets; TODO/OQ updates; optional Multica later for board-style continuity |
+| **Memory / retro** | `/learn`, `/retro`, `/context-save` | **`/hermes-feedback`** (T-0048); session worksheets; TODO/OQ updates |
 | **Marketing multi-view** | (adjacent packs) | **`/marketing-council`** (first-party, T-0011) |
 
 ## Stage recipes (copy into a session prompt)

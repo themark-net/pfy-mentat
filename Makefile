@@ -15,7 +15,8 @@ HARNESS := harness/agent-cage
 	cage-workspace-sync cage-grok-mcp-preset \
 	local-ollama-overlay-install local-ollama-up smoke-litellm-ollama \
 	smoke-codebase-memory smoke-repowise smoke-context-tools \
-	smoke-write-guard eval-tier0 eval-tier1 eval-mvp eval-suite eval-matrix eval-v02 \
+	smoke-write-guard smoke-grok-skills \
+	eval-tier0 eval-tier1 eval-mvp eval-suite eval-matrix eval-v02 \
 	cage-grok cage-grok-shell cage-grok-run cage-grok-sessions cage-grok-resume \
 	cage-grok-sessions-import-host cage-grok-net-smoke
 
@@ -59,6 +60,8 @@ help:
 	@echo "  make smoke-litellm-ollama   # exit 0 required; runs inside agent-cage only"
 	@echo "  make smoke-codebase-memory / smoke-repowise / smoke-context-tools"
 	@echo "  make smoke-write-guard      # T-0031 write-guard MCP policy smoke"
+	@echo "  make smoke-grok-skills      # first-party skill structure (manifest + SKILL.md)"
+	@echo "  make smoke-grok-skills INSTALLED=1  # also check ~/.grok/skills"
 	@echo "  make eval-tier0|eval-tier1|eval-mvp  # OQ-0002 opt5 scored eval"
 	@echo "  make eval-suite|eval-matrix|eval-v02 # v0.2 multi-task / multi-model"
 	@echo ""
@@ -174,6 +177,11 @@ smoke-context-tools:
 
 smoke-write-guard:
 	@$(MAKE) -C $(HARNESS) smoke-write-guard
+
+# First-party Grok skills: manifest ↔ SKILL.md structure (no LLM). See docs/ops/skill-verification.md
+# INSTALLED=1 also checks $GROK_HOME/skills (default ~/.grok/skills)
+smoke-grok-skills:
+	@python3 bootstrap/grok-cli/scripts/verify_skills.py $(if $(filter 1,$(INSTALLED)),--installed,)
 
 eval-tier0:
 	@$(MAKE) -C $(HARNESS) eval-tier0

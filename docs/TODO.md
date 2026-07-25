@@ -24,11 +24,10 @@
 
 ## Active (sorted P0 → P3)
 
-**Session (2026-07-16):** Operator truth stabilized (Grok+cage). T-0042 catalog re-score + sources 001–055 recovery. Launch: `make cage-grok`.
+**Session (2026-07-25):** Skills `/agent-loops` + `/hermes-feedback` shipped; `make smoke-grok-skills`. Next: T-0049 MUE-X, Laguna, T-0043.
 
 | ID | Priority | Status | Item | Open questions | Depends | Notes |
 |----|----------|--------|------|----------------|---------|-------|
-| T-0048 | P2 | todo | Port one S-tier pattern as Grok skill or eval task (Hermes feedback / eval-loop / LEANN spike) | — | T-0042 | Prefer first-party skill + optional smoke; no AgenC |
 | T-0049 | P2 | todo | MUE-X deeper eval: local backend (Ollama/LiteLLM) compatibility + mutation safety under weaker models; agent-cage smoke of `python -m mue evolve/status` | — | — | Entry 067. Extract AST mutator / immune / memory lattice patterns if stable. Pin SHA if adopted. |
 | T-0043 | P2 | todo | Write-guard **mcp-host wiring** (enable server; optional disable stock FS writes) | — | T-0031 | Parked: **not** the stock filesystem MCP — that already works. Only if audit/enforce policy in real agent MCP sessions is needed |
 | T-0015 | P2 | blocked | Optional Antigravity-Manager eval | [OQ-0007](open-questions/OQ-0007-antigravity-need.md) | — | |
@@ -46,6 +45,9 @@
 
 | ID | Priority | Status | Item | Notes |
 |----|----------|--------|------|-------|
+| T-0050 | P2 | done | First-party `/agent-loops` skill (8 exits + 4 types + Finn + rubric) | `bootstrap/grok-cli/skills/agent-loops/`; Entries 024/027/031/032/068; pairs with `/one-shot` |
+| T-0048 | P2 | done | Hermes feedback loops as first-party Grok skill | `bootstrap/grok-cli/skills/hermes-feedback/`; Entry 048 pattern port; not Hermes runtime |
+| T-0051 | P2 | done | First-party skill structural smoke + verification docs | `make smoke-grok-skills`; `bootstrap/grok-cli/scripts/verify_skills.py`; `docs/ops/skill-verification.md` |
 | T-0030 | P0 | done | Env registry + profiles | merged main |
 | T-0022 | P1 | done | Grok-in-image overlay | feature/agent-cage-grok-image merged; OIDC auth import |
 | T-0000 | — | done | Process docs bootstrap | ADR-0001 |
