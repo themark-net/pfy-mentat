@@ -226,8 +226,9 @@ Status:          DONE | STOPPED_EXIT | BLOCKED | NEEDS_HUMAN
 | Compound learnings after loop | `/hermes-feedback` if installed; else TODO/memory |
 | Catalog smoke as goal | `docs/ops/one-shot-example-dods.md` + `make smoke-*` |
 | Structural design/coding gate | `make eval-structural` (no LLM) before claiming skill work green |
-| Cheap bulk / local model | OpenCode or LiteLLM→Ollama ([local-cloud-split.md](../../../../docs/ops/local-cloud-split.md), ADR-0011) |
-| Hard design / subscription quality | Grok Build (primary) |
+| Cheap bulk / local **worker** | OpenCode (or LiteLLM client) → Ollama `LOCAL_CODER_MODEL` (e.g. deepseek-coder:6.7b). Grok CLI does **not** auto-switch. |
+| Hard design / review / monitor | Grok Build subscription — set DoD, review worker, escalate after 3 fails |
+| Product end-user simplicity | Prefer 3 levers: onboard / stage / ship — [product-operator-surface.md](../../../../docs/ops/product-operator-surface.md) |
 | Operator batch (not ad hoc) | `docs/ops/human-decision-inventory.md` |
 | Review before merge | mattpocock `code-review` |
 | Night / recurring | time-based + exit card; prefer cage |

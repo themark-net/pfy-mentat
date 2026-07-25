@@ -87,6 +87,38 @@ make cage-grok          # skills + auth import + workspace
 
 Use Grok when the exit card’s **goal** needs high reasoning quality or cage integration debugging.
 
+## How offload works **today** (read this)
+
+Passing `eval-suite` with `deepseek-coder:6.7b` proves the **lab can drive that model**. It does **not** switch Grok Build’s brain to Ollama.
+
+| Mechanism | Offloads agent turns to local? |
+|-----------|--------------------------------|
+| Eval harness / LiteLLM smoke | Yes (test traffic only) |
+| OpenCode (or any client) with `OPENAI_BASE_URL` → Ollama | **Yes — this is the worker** |
+| Grok CLI session | No (subscription/cloud) — use as **monitor** |
+| Dual session: OpenCode implements, Grok reviews DoD | **Manual today** → automate in T-0085 |
+
+**Practical offload recipe (until T-0085):**
+
+```bash
+# Terminal A — local worker
+export OPENAI_BASE_URL=http://127.0.0.1:11434/v1
+export OPENAI_API_KEY=ollama
+# OpenCode (or compatible) model = deepseek-coder:6.7b  # from make eval-select-models
+# Load skills from bootstrap/grok-cli/skills
+
+# Terminal B — cloud monitor
+grok   # or make cage-grok-shell → grok
+# /agent-loops plan + /one-shot DoD; review worker diffs; escalate only when stuck
+```
+
+Persist the selected worker model:
+
+```bash
+make eval-select-models
+# copy EVAL_MODEL=… into .env as LOCAL_CODER_MODEL=
+```
+
 ## Routing heuristic (agents)
 
 Before a multi-step loop, set exit card **budget** and **model tier**:
@@ -94,11 +126,12 @@ Before a multi-step loop, set exit card **budget** and **model tier**:
 | Signal | Route |
 |--------|--------|
 | `make eval-structural` / json / skill text | No LLM |
-| Single-file fix, known pattern, eval implement task | Ollama / OpenCode local |
-| Multi-module design, ADR, unclear product | Grok |
+| Single-file fix, known pattern, eval implement task | **Local worker** (`LOCAL_CODER_MODEL` / OpenCode→Ollama) |
+| Multi-module design, ADR, unclear product, review | **Grok monitor** |
+| Worker failed 3× / no-progress | Escalate to Grok |
 | `DEPLOY_PROFILE=local-only` | Never auto-call cloud |
-| `balanced` | Local first; escalate to Grok after error threshold / quality miss |
-| `max-performance` | Grok/cloud first; local fallback |
+| `balanced` | Local worker first; Grok monitor |
+| `max-performance` | Grok first; local fallback |
 
 ## Hermes / plugins
 

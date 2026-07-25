@@ -106,11 +106,11 @@ One-line purpose: **Track · Categorize · Rank · Integrate** tools for robust 
 
 **Near-term next (design/coding + local/cloud — ADR-0011):**
 
-- Host **Ollama + gateway** green; `make smoke-litellm-ollama` / `eval-suite` when models present  
-- OpenCode secondary surface: skill path adapter (`bootstrap/opencode/`); host smoke T-0080  
-- Keep **`make eval-structural`** green; grow scorers (T-0070/75)  
-- Grok remains subscription primary; local absorbs bulk tokens  
-- OQ-BATCH for 4 blocked OQs only; env polish deprioritized
+- **T-0085** local worker + Grok monitor (eval green ≠ Grok auto-offloads)  
+- **T-0090** product surface: onboard / stage / ship only for end users  
+- **T-0080** OpenCode+Ollama smoke (real turn offload)  
+- Keep **`make eval-structural`** + local **`eval-suite`** green  
+- Platform Make complexity OK in MVP; product UX must stay ≤ ~3 levers
 
 ### Delivered recently
 

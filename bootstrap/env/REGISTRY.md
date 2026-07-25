@@ -33,6 +33,9 @@ When integrating a new tool, **add a row here in the same PR** as the integratio
 | `OLLAMA_HOST` | no | local-only, balanced | Host: `http://127.0.0.1:11434` · **Cage:** `http://host.docker.internal:11435` | Ollama clients | Same gateway split as `OPENAI_BASE_URL` |
 | `OLLAMA_GATEWAY_PORT` | no | local-only, balanced (cage smokes) | `11435` | `examples/litellm-ollama/host-ollama-gateway.sh` | Publishes `0.0.0.0:11435` → `127.0.0.1:11434` without sudo |
 | `LITELLM_SMOKE_MODEL` | no | smoke | `deepseek-coder:latest` | `make smoke-litellm-ollama` | Prefer smallest local coding model already pulled |
+| `LOCAL_CODER_MODEL` | no | local-only, balanced | `deepseek-coder:6.7b` | OpenCode/worker agents, eval defaults | Bulk implement model; set via `eval-select-models` |
+| `EVAL_MODEL` / `EVAL_GATE_MODEL` | no | eval | from select or profile | `make eval-suite` | Gate for scored tasks |
+| `EVAL_GATE_CANDIDATES` | no | eval-auto | set by select script | `make eval-auto` | Fallback list if gate fails chat tasks |
 | `LITELLM_MASTER_KEY` | **yes** | optional | — | LiteLLM proxy auth | If running shared LiteLLM |
 | `LITELLM_CONFIG` | no | all (when using LiteLLM) | `config/litellm/<profile>.yaml` | LiteLLM | `local-only.yaml` · `balanced.yaml` · `max-performance.yaml` — see `config/litellm/README.md` |
 | `OLLAMA_API_BASE` | no | local-only, balanced, max (fallback) | `http://127.0.0.1:11434` | LiteLLM `ollama/*` | No `/v1` suffix; cage: `http://host.docker.internal:11435` |

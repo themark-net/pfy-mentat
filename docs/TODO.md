@@ -30,9 +30,11 @@
 
 | ID | Priority | Status | Item | Open questions | Depends | Notes |
 |----|----------|--------|------|----------------|---------|-------|
-| T-0070 | P1 | doing | Grow design/coding **skills + structural eval** (more text scorers) | — | T-0065 | Scorers 003–005; keep `eval-structural` green |
-| T-0074 | P1 | todo | Implement-lane via `make eval-auto` (fit-select + pull + suite) | — | — | select_ollama_models.py; not limited to already-pulled |
-| T-0080 | P1 | todo | **OpenCode + Ollama host smoke** (skills path + local completion) | — | ADR-0011 | Zero cage; portable skills SoT |
+| T-0085 | P0 | todo | **Worker/monitor split**: local Ollama worker (`LOCAL_CODER_MODEL`) + Grok monitor recipe; dual-session → automate | — | ADR-0011, T-0080 | Eval pass ≠ Grok uses local model |
+| T-0090 | P0 | todo | **Minimal product levers audit**: collapse end-user surface to onboard / stage / ship; cap public Make targets | — | — | [product-operator-surface.md](ops/product-operator-surface.md); platform targets stay advanced |
+| T-0080 | P1 | todo | **OpenCode + Ollama host smoke** (skills path + local completion) | — | ADR-0011 | Required for real offload of agent turns |
+| T-0070 | P1 | doing | Grow design/coding **skills + structural eval** (more text scorers) | — | T-0065 | Keep `eval-structural` green |
+| T-0074 | P1 | doing | Implement-lane via `make eval-auto` (fit-select + candidates) | — | — | deepseek-coder:6.7b lab-proven; StarCoder demoted |
 | T-0075 | P2 | todo | More structural scorers: ADR shape, open-question row shape | — | T-0070 | |
 | T-0076 | P2 | todo | Wire mattpocock to-spec/tdd checklist into structural or skill cross-links | — | — | paths pack already installed |
 | T-0081 | P2 | todo | Optional OpenCode-in-cage smoke | — | T-0080 | After host smoke green |

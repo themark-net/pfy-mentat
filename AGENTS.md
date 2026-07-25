@@ -45,11 +45,13 @@ Also use as needed: `CATEGORIZATION.md`, `SUBTREES.md`, `TOOLS.md`, `bootstrap/g
 
 Portable skills (SoT `bootstrap/grok-cli/skills/` — also for OpenCode): `adr`, `docs`, `open-questions`, `karpathy-guidelines`, `project-process`, `one-shot`, `marketing-council`, **`investigate`**, **`agent-loops`**, **`hermes-feedback`**; ponytail + mattpocock via `skills.paths`.  
 Verify: `make eval-structural` (no LLM) · `make smoke-grok-skills` · [skill-verification.md](docs/ops/skill-verification.md).  
-**Surfaces:** Grok = primary/subscription · OpenCode+Ollama = local/cloud split — [local-cloud-split.md](docs/ops/local-cloud-split.md) · ADR-0011.  
+**Surfaces:** Grok = **monitor** / hard tasks (subscription) · OpenCode+Ollama = **worker** / bulk — [local-cloud-split.md](docs/ops/local-cloud-split.md) · ADR-0011.  
+**Local worker model:** `LOCAL_CODER_MODEL` (default `deepseek-coder:6.7b` after lab pass); set via `make eval-select-models`. Grok CLI does **not** auto-use it.  
+**Product UX target:** onboard / stage / ship only — [product-operator-surface.md](docs/ops/product-operator-surface.md) · T-0090.  
 Loop map: [loop-engineering.md](docs/ops/loop-engineering.md). Decisions: [human-decision-inventory.md](docs/ops/human-decision-inventory.md).  
 Code memory: CM primary ([vs Graphify](docs/evaluation/codebase-memory-vs-graphify.md)).  
 **Cage:** `make cage-grok` refreshes auth + installs first-party skills into container `GROK_HOME`.  
-**Code sync (host only):** `make cage-code-sync` / `PUSH=1` — import cage commits then rsync back ([cage-code-sync.md](docs/ops/cage-code-sync.md)). Never rely on one-way `workspace-sync` alone after agent commits.  
+**Code sync (host only):** `make cage-code-sync` / `PUSH=1` — [cage-code-sync.md](docs/ops/cage-code-sync.md).  
 **This repo:** `/catalog-docs` — document the catalog (README, triple-write, harness); source `.grok/skills/catalog-docs/`.
 
 ### Role router (gstack patterns, docs-first — T-0014)
