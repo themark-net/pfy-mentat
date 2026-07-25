@@ -17,6 +17,7 @@ LITELLM_EXAMPLE := examples/litellm-ollama
 	local-ollama-overlay-install local-ollama-up smoke-litellm-ollama \
 	smoke-codebase-memory smoke-repowise smoke-context-tools \
 	smoke-write-guard smoke-grok-skills smoke-opencode-ollama \
+	worker-stage worker-env monitor-brief \
 	eval-tier0 eval-tier1 eval-mvp eval-suite eval-matrix eval-v02 eval-structural \
 	eval-select-models eval-auto \
 	cage-grok cage-grok-shell cage-grok-run cage-grok-sessions cage-grok-resume \
@@ -71,6 +72,7 @@ help:
 	@echo "  make smoke-grok-skills      # first-party skill structure (manifest + SKILL.md)"
 	@echo "  make smoke-grok-skills INSTALLED=1  # also check ~/.grok/skills"
 	@echo "  make smoke-opencode-ollama  # T-0080 host: OpenCode adapter + Ollama worker (no cage)"
+	@echo "  make worker-stage           # T-0085: smoke worker + write monitor brief / worker.env"
 	@echo "  make eval-structural           # design/coding gates, NO LLM (always run)"
 	@echo "  make eval-select-models        # pick gate/matrix models that FIT RAM/disk (may pull)"
 	@echo "  make eval-auto                 # select-models + pull-gate + eval-v02"
@@ -228,6 +230,25 @@ smoke-opencode-ollama:
 	  LITELLM_SMOKE_MODEL=$${LITELLM_SMOKE_MODEL:-deepseek-coder:latest} \
 	  OPENAI_BASE_URL=$${OPENAI_BASE_URL:-http://127.0.0.1:11434/v1} \
 	  ./examples/opencode-ollama/smoke.sh
+
+# T-0085: stage local worker + Grok monitor brief
+worker-stage:
+	@chmod +x examples/opencode-ollama/worker-stage.sh
+	@LOCAL_CODER_MODEL=$${LOCAL_CODER_MODEL:-deepseek-coder:6.7b} \
+	  LITELLM_SMOKE_MODEL=$${LITELLM_SMOKE_MODEL:-deepseek-coder:latest} \
+	  OPENAI_BASE_URL=$${OPENAI_BASE_URL:-http://127.0.0.1:11434/v1} \
+	  ./examples/opencode-ollama/worker-stage.sh
+
+worker-env:
+	@test -f examples/opencode-ollama/.generated/worker.env \
+	  || $(MAKE) worker-stage
+	@cat examples/opencode-ollama/.generated/worker.env
+
+monitor-brief:
+	@test -f examples/opencode-ollama/.generated/monitor-brief.md \
+	  || $(MAKE) worker-stage
+	@echo "Monitor brief: examples/opencode-ollama/.generated/monitor-brief.md"
+	@head -40 examples/opencode-ollama/.generated/monitor-brief.md
 
 eval-tier0:
 	@$(MAKE) -C $(HARNESS) eval-tier0

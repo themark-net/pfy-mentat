@@ -43,7 +43,7 @@ Also use as needed: `CATEGORIZATION.md`, `SUBTREES.md`, `TOOLS.md`, `bootstrap/g
 #   python3 bootstrap/setup-local-agent-env.py
 ```
 
-Portable skills (SoT `bootstrap/grok-cli/skills/` — also for OpenCode): `adr`, `docs`, `open-questions`, `karpathy-guidelines`, `project-process`, `one-shot`, `marketing-council`, **`investigate`**, **`agent-loops`**, **`hermes-feedback`**; ponytail + mattpocock via `skills.paths`.  
+Portable skills (SoT `bootstrap/grok-cli/skills/` — also for OpenCode): `adr`, `docs`, `open-questions`, `karpathy-guidelines`, `project-process`, `one-shot`, `marketing-council`, **`investigate`**, **`agent-loops`**, **`hermes-feedback`**, **`worker-monitor`** (local worker + Grok monitor); ponytail + mattpocock via `skills.paths`.  
 Verify: `make eval-structural` (no LLM) · `make smoke-grok-skills` · [skill-verification.md](docs/ops/skill-verification.md).  
 **Surfaces:** Grok = **monitor** / hard tasks (subscription) · OpenCode+Ollama = **worker** / bulk — [local-cloud-split.md](docs/ops/local-cloud-split.md) · ADR-0011.  
 **Local worker model:** `LOCAL_CODER_MODEL` (default `deepseek-coder:6.7b` after lab pass); set via `make eval-select-models`. Grok CLI does **not** auto-use it.  

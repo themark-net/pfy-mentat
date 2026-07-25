@@ -47,7 +47,7 @@ Monitor (Grok subscription / strong cloud)
 | `make smoke-litellm-ollama` | Yes (smoke model, often `:latest`) |
 | Grok Build interactive agent | **No** — Grok cloud/subscription |
 | OpenCode pointed at Ollama | **Yes** if configured (T-0080) |
-| Automatic “Grok monitors OpenCode worker” | **Not built** — process skill + dual session (T-0085) |
+| Dual session worker/monitor | **`make worker-stage`** + `/worker-monitor` (T-0085) — not a single daemon |
 
 ## Redeployable workflow (unchanged north star)
 

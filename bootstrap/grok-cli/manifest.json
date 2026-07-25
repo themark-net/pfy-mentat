@@ -79,6 +79,11 @@
         "catalog_seed": "X Entry 048; TOOLS Hermes Agent (feedback loops)",
         "license": "skill text first-party; upstream patterns public/cataloged",
         "purpose": "Auto-memory, auto-skill, curator loops for compounding Grok sessions (T-0048)"
+      },
+      {
+        "name": "worker-monitor",
+        "origin": "first-party dual-session recipe (T-0085)",
+        "purpose": "Local Ollama OpenCode worker + Grok monitor protocol"
       }
     ]
   },
