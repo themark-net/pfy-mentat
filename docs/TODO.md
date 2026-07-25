@@ -30,11 +30,10 @@
 
 | ID | Priority | Status | Item | Open questions | Depends | Notes |
 |----|----------|--------|------|----------------|---------|-------|
-| T-0070 | P1 | todo | Grow design/coding **skills + structural eval** (more text scorers, skill quality) | — | T-0065 | `make eval-structural` must stay green |
-| T-0071 | P2 | todo | Bumblebee as **coding-safety assist**: docs + optional smoke when trivial | — | — | Default: docs only; no human |
-| T-0072 | P2 | todo | MUE-X **pattern extract** for self-mod safety (no evolve runtime) | — | — | Entry 067; docs/skill note |
-| T-0073 | P2 | todo | LEANN/Memvid **pattern notes** for memory assist (no embed) | — | — | Memory S-cluster docs |
+| T-0070 | P1 | doing | Grow design/coding **skills + structural eval** (more text scorers) | — | T-0065 | Scorers 003–005; keep `eval-structural` green |
 | T-0074 | P2 | todo | Implement-lane eval when Ollama available (eval-suite green or SKIP) | — | — | Not a human gate; exit 2 if no model |
+| T-0075 | P2 | todo | More structural scorers: ADR shape, open-question row shape | — | T-0070 | |
+| T-0076 | P2 | todo | Wire mattpocock to-spec/tdd checklist into structural or skill cross-links | — | — | paths pack already installed |
 
 ### Active — parked (env / not this track)
 
@@ -72,6 +71,9 @@
 | T-0055 | P2 | done | Auto-Company pattern extract (no runtime) | `docs/ops/auto-company-patterns.md` |
 | T-0060 | P2 | done | 8-exits eval task scaffold + deterministic scorer | `examples/eval-harness/tasks/003-exit-card-checklist/`; fixtures in structural lane |
 | T-0065 | P1 | done | Structural eval lane (no LLM) + design-coding rubric + decision inventory | `make eval-structural`; `data/eval-lanes.json`; human-decision-inventory |
+| T-0071 | P2 | done | Bumblebee coding-safety assist docs | `docs/ops/bumblebee-coding-safety.md` |
+| T-0072 | P2 | done | MUE-X pattern extract (no evolve) | `docs/ops/mue-x-patterns.md` |
+| T-0073 | P2 | done | LEANN/Memvid memory assist patterns | `docs/ops/memory-assist-patterns.md` |
 | T-0030 | P0 | done | Env registry + profiles | merged main |
 | T-0022 | P1 | done | Grok-in-image overlay | feature/agent-cage-grok-image merged; OIDC auth import |
 | T-0000 | — | done | Process docs bootstrap | ADR-0001 |

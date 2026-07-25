@@ -59,7 +59,8 @@ Rubric first → draft → score → miss becomes permanent rubric/test line. Pr
 
 | Target | Role |
 |--------|------|
+| `make eval-structural` | Design/coding gates (no LLM) — **always run** |
 | `make smoke-grok-skills` | Skills on disk + manifest |
 | `make cage-grok` | Full operator ladder (auth refresh + skills install) |
 | `make cage-grok-skills-install` | First-party skills → cage `GROK_HOME` only |
-| `make smoke-*` / `make eval-v02` | Goal exits for integration / model tasks |
+| `make smoke-*` / `make eval-v02` | Goal exits for integration / model tasks (Ollama) |

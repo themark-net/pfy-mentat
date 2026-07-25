@@ -1,0 +1,6 @@
+DEBUG REPORT
+Symptom: make smoke-write-guard fails with ImportError
+Root cause hypothesis: PYTHONPATH missing harness/write-guard-mcp/src — confirmed by import probe
+Fix: export PYTHONPATH in run-in-cage.sh
+Evidence: selftest PASS after path fix
+Status: DONE

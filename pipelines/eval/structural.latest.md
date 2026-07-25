@@ -1,4 +1,4 @@
-# Structural eval (design/coding) — 2026-07-25T21:06:44.079399+00:00
+# Structural eval (design/coding) — 2026-07-25T21:45:11.743340+00:00
 
 | Check | Result | Detail |
 |-------|--------|--------|

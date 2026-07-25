@@ -1,0 +1,6 @@
+## Definition of Done
+1. make eval-structural exits 0
+2. make smoke-grok-skills exits 0
+3. No secrets committed
+
+Assumptions: local-only profile; max 8 iterations

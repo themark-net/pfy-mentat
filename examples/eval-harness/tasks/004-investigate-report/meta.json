@@ -1,0 +1,6 @@
+{
+  "task_id": "004-investigate-report",
+  "lane": "structural",
+  "kind": "text_scorer",
+  "assist_domain": ["design", "coding", "rca"]
+}

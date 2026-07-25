@@ -1,0 +1,6 @@
+{
+  "task_id": "005-one-shot-dod",
+  "lane": "structural",
+  "kind": "text_scorer",
+  "assist_domain": ["design", "coding", "one-shot"]
+}
