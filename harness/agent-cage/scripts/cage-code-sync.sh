@@ -77,6 +77,47 @@ ensure_repos() {
   fi
 }
 
+# Paths that must not block sync (lab receipts, local MCP preset, editor noise).
+is_sync_noise_path() {
+  local p="$1"
+  case "$p" in
+    pipelines/*/results.latest.md|pipelines/*/*/results.latest.md) return 0 ;;
+    pipelines/eval/structural.latest.md|pipelines/eval/results.latest.md) return 0 ;;
+    .grok/config.toml|.grok/sessions/*) return 0 ;;
+    *.pyc|__pycache__/*|*/__pycache__/*) return 0 ;;
+  esac
+  [[ "$p" == *results.latest.md ]] && return 0
+  [[ "$p" == *structural.latest.md ]] && return 0
+  return 1
+}
+
+# Returns 0 if repo has *meaningful* uncommitted changes (not just receipts).
+repo_meaningfully_dirty() {
+  local repo="$1" line path
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    # porcelain v1: XY PATH or XY ORIG -> PATH
+    path="${line:3}"
+    path="${path#* -> }"
+    if ! is_sync_noise_path "$path"; then
+      return 0
+    fi
+  done < <(git -C "$repo" status --porcelain 2>/dev/null || true)
+  return 1
+}
+
+list_noise_dirty() {
+  local repo="$1" line path
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    path="${line:3}"
+    path="${path#* -> }"
+    if is_sync_noise_path "$path"; then
+      echo "  noise: $line"
+    fi
+  done < <(git -C "$repo" status --porcelain 2>/dev/null || true)
+}
+
 cmd_status() {
   ensure_repos
   log "catalog (host): $CATALOG_ROOT"
@@ -124,13 +165,20 @@ cmd_from_cage() {
   ensure_repos
   [[ -d "$CAGE_WS/.git" ]] || { warn "no cage .git — nothing to import"; return 0; }
 
-  # Uncommitted cage work: stash message only (do not destroy)
-  if [[ -n "$(git -C "$CAGE_WS" status --porcelain 2>/dev/null)" ]]; then
+  # Uncommitted cage work: ignore smoke/eval receipts; block on real edits
+  if repo_meaningfully_dirty "$CAGE_WS"; then
     if [[ "$FORCE" -eq 1 ]]; then
-      warn "cage workspace is dirty — continuing (--force); uncommitted files not imported"
+      warn "cage has meaningful uncommitted changes — continuing (--force); those files not imported"
+      git -C "$CAGE_WS" status --porcelain | sed 's/^/  /' | head -20
     else
-      die "cage workspace has uncommitted changes. Commit/stash in cage, or pass --force to import commits only"
+      echo "error: cage workspace has uncommitted changes (not just lab receipts):" >&2
+      git -C "$CAGE_WS" status --porcelain | sed 's/^/  /' | head -30
+      echo "  Commit/stash in cage, or: make cage-code-sync FORCE=1" >&2
+      echo "  (receipts like pipelines/**/results.latest.md are ignored automatically)" >&2
+      exit 1
     fi
+  else
+    list_noise_dirty "$CAGE_WS" | head -10 || true
   fi
 
   log "fetch cage workspace → host remotes/${REMOTE_NAME}/*"
