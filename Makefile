@@ -246,16 +246,20 @@ eval-structural:
 # EVAL_PULL_GATE=0 to only list; default pulls gate if missing and ollama CLI present.
 eval-select-models:
 	@python3 examples/eval-harness/select_ollama_models.py \
-	  $(if $(filter 0,$(EVAL_PULL_GATE)),,--pull-gate) \
-	  --exports | tee /tmp/pfy-eval-model-exports.sh
+	  $(if $(filter 0,$(EVAL_PULL_GATE)),,--pull-gate)
+	@python3 examples/eval-harness/select_ollama_models.py --exports 2>/dev/null \
+	  | grep -E '^(EVAL_|LITELLM_)' > /tmp/pfy-eval-model-exports.sh
+	@echo "==> shell exports → /tmp/pfy-eval-model-exports.sh"
+	@cat /tmp/pfy-eval-model-exports.sh
 	@echo "Re-run suite with:  set -a; . /tmp/pfy-eval-model-exports.sh; set +a; make eval-suite"
 
 # Select fit models (pull gate if needed) then full v0.2 ladder
 eval-auto: eval-structural
 	@$(LITELLM_EXAMPLE)/host-ollama-gateway.sh start 2>/dev/null \
 	  || ./examples/litellm-ollama/host-ollama-gateway.sh start
-	@python3 examples/eval-harness/select_ollama_models.py --pull-gate --exports \
-	  > /tmp/pfy-eval-model-exports.sh
+	@python3 examples/eval-harness/select_ollama_models.py --pull-gate
+	@python3 examples/eval-harness/select_ollama_models.py --exports 2>/dev/null \
+	  | grep -E '^(EVAL_|LITELLM_)' > /tmp/pfy-eval-model-exports.sh
 	@echo "==> using selected models:"; cat /tmp/pfy-eval-model-exports.sh
 	@set -a; . /tmp/pfy-eval-model-exports.sh; set +a; \
 	  $(MAKE) eval-v02 \
