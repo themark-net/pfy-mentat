@@ -44,15 +44,19 @@ MODEL_CATALOG: list[dict[str, Any]] = [
     {"name": "codestral:22b", "role": "matrix", "download_gb": 12.5, "ram_gb": 20.0, "quality": 7},
 ]
 
-# Name patterns → coding suitability (higher = better eval gate). Prefer *coder* names.
+# Name patterns → chat/instruct coding suitability for *completion API* eval tasks.
+# Base FIM models (raw starcoder2) score low: they fail chat-style "write a function" prompts.
 NAME_QUALITY: list[tuple[re.Pattern[str], int]] = [
-    (re.compile(r"codestral|devstral|qwen3-coder|coder-next|starcoder2?:?(1[4-9]|2[0-9])", re.I), 7),
-    (re.compile(r"qwen2\.5-coder:1[4-9]|deepseek-coder:(6|7|33)|codellama:1[3-9]|coder:1[4-9]", re.I), 6),
-    (re.compile(r"qwen2\.5-coder|qwen2\.5:1[4-9]|deepseek-coder|codellama|starcoder", re.I), 5),
-    (re.compile(r"(^|/)(coder|code)|instruct.*code|code.*instruct", re.I), 4),
-    # General chat — usable matrix fillers only if nothing better
+    (re.compile(r"codestral|devstral|qwen3-coder|coder-next", re.I), 7),
+    (re.compile(r"qwen2\.5-coder:1[4-9].*instruct|qwen2\.5-coder:14b|deepseek-coder:(6|7|33).*instruct", re.I), 6),
+    (re.compile(r"qwen2\.5-coder|deepseek-coder:6\.7b|codellama:.*instruct", re.I), 5),
+    (re.compile(r"instruct|chat", re.I), 4),  # any instruct/chat coder-ish
+    (re.compile(r"deepseek-coder:latest", re.I), 3),  # tiny but chat-usable (passed suite in lab)
+    (re.compile(r"(^|/)(coder|code)", re.I), 3),
+    # Base completion / FIM — poor chat eval gate
+    (re.compile(r"starcoder2?(?!:*instruct)|starcoder2:\d", re.I), 1),
     (re.compile(r"qwen|llama3|mistral|gemma|granite|phi", re.I), 2),
-    (re.compile(r"deepseek-coder:latest|tiny|1b|0\.5b|cloud", re.I), 1),
+    (re.compile(r"tiny|1b|0\.5b|cloud", re.I), 1),
 ]
 
 
@@ -129,6 +133,12 @@ def list_pulled(base: str) -> list[dict[str, Any]]:
 
 
 def quality_for_name(name: str) -> int:
+    # Explicit demotions first
+    low = name.lower()
+    if re.search(r"starcoder2:\d+b?$", low) and "instruct" not in low:
+        return 1  # base FIM — fails chat implement tasks
+    if "cloud" in low:
+        return 0
     for pat, q in NAME_QUALITY:
         if pat.search(name):
             return q
@@ -337,9 +347,22 @@ def main() -> int:
             return rc
 
     if args.exports:
+        # Ordered gate fallbacks: try chat/instruct coders before base models
+        fitters = sel.get("fitters") or []
+        gates = []
+        for c in sorted(fitters, key=lambda x: (x["pulled"], x["quality"]), reverse=True):
+            if c["quality"] < 3:
+                continue
+            if c["name"] not in gates:
+                gates.append(c["name"])
+            if len(gates) >= 5:
+                break
+        if sel["gate"] not in gates:
+            gates.insert(0, sel["gate"])
         print(f"EVAL_MODEL={sel['gate']}")
         print(f"EVAL_GATE_MODEL={sel['gate']}")
         print(f"EVAL_MODELS={','.join(sel['models'])}")
+        print(f"EVAL_GATE_CANDIDATES={','.join(gates)}")
         print(f"LITELLM_SMOKE_MODEL={sel.get('smoke', 'deepseek-coder:latest')}")
 
     return 0

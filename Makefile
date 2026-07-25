@@ -252,8 +252,10 @@ eval-select-models:
 	@echo "==> shell exports → /tmp/pfy-eval-model-exports.sh"
 	@cat /tmp/pfy-eval-model-exports.sh
 	@echo "Re-run suite with:  set -a; . /tmp/pfy-eval-model-exports.sh; set +a; make eval-suite"
+	@echo "(typo watch: set +a  not  set +1)"
 
-# Select fit models (pull gate if needed) then full v0.2 ladder
+# Select fit models (pull gate if needed) then full v0.2 ladder.
+# Tries EVAL_GATE_CANDIDATES in order until suite passes (chat/instruct before base FIM).
 eval-auto: eval-structural
 	@$(LITELLM_EXAMPLE)/host-ollama-gateway.sh start 2>/dev/null \
 	  || ./examples/litellm-ollama/host-ollama-gateway.sh start
@@ -262,11 +264,21 @@ eval-auto: eval-structural
 	  | grep -E '^(EVAL_|LITELLM_)' > /tmp/pfy-eval-model-exports.sh
 	@echo "==> using selected models:"; cat /tmp/pfy-eval-model-exports.sh
 	@set -a; . /tmp/pfy-eval-model-exports.sh; set +a; \
-	  $(MAKE) eval-v02 \
-	    EVAL_MODEL="$$EVAL_MODEL" \
-	    EVAL_GATE_MODEL="$$EVAL_GATE_MODEL" \
-	    EVAL_MODELS="$$EVAL_MODELS" \
-	    LITELLM_SMOKE_MODEL="$${LITELLM_SMOKE_MODEL:-deepseek-coder:latest}"
+	  cands="$${EVAL_GATE_CANDIDATES:-$$EVAL_GATE_MODEL}"; \
+	  ok=0; \
+	  IFS=','; for g in $$cands; do \
+	    g=$$(echo "$$g" | tr -d ' '); \
+	    [[ -z "$$g" ]] && continue; \
+	    echo "==> eval-v02 gate candidate: $$g"; \
+	    if $(MAKE) eval-v02 \
+	      EVAL_MODEL="$$g" EVAL_GATE_MODEL="$$g" \
+	      EVAL_MODELS="$${EVAL_MODELS}" \
+	      LITELLM_SMOKE_MODEL="$${LITELLM_SMOKE_MODEL:-deepseek-coder:latest}"; then \
+	      ok=1; echo "eval-auto: PASS with gate $$g"; break; \
+	    fi; \
+	    echo "eval-auto: gate $$g failed — try next candidate"; \
+	  done; \
+	  [[ $$ok -eq 1 ]] || { echo "eval-auto: all gate candidates failed"; exit 1; }
 
 env-init:
 	@if [ -f .env ]; then \
