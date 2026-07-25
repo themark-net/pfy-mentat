@@ -43,8 +43,9 @@ REPOWISE_PIP_SPEC ?= repowise==0.30.0
 	smoke-host smoke-integration doctor ensure-cli ensure-project \
 	grok-overlay-install grok-overlay-uninstall grok-overlay-build grok-up grok-smoke \
 	grok-auth-import workspace-sync grok-mcp-preset grok-ready \
-	grok-ensure grok-shell grok-run grok-state-init grok-sessions-export \
-	grok-sessions-import-host grok-sessions grok-resume grok-net-smoke \
+	grok-ensure grok-shell grok-run grok-state-init fix-grok-state-perms \
+	grok-sessions-export grok-sessions-import-host grok-sessions grok-resume \
+	grok-net-smoke \
 	local-ollama-overlay-install local-ollama-up smoke-litellm-ollama \
 	smoke-codebase-memory smoke-repowise smoke-context-tools \
 	smoke-write-guard write-guard-overlay-install \
@@ -212,16 +213,21 @@ smoke-integration: smoke-host ensure-cli
 GROK_STATE_DIR := $(AGENTCAGE_DIR)/grok-state
 GROK_SESSIONS_HOST := $(GROK_STATE_DIR)/sessions
 
+# Dual host/agent write for sessions bind-mount (see scripts/fix-grok-state-perms.sh).
+fix-grok-state-perms: ensure-project
+	@chmod +x "$(ROOT)/scripts/fix-grok-state-perms.sh"
+	@AGENTCAGE_DIR="$(AGENTCAGE_DIR)" "$(ROOT)/scripts/fix-grok-state-perms.sh" "$(AGENTCAGE_DIR)"
+
 # Host store for Grok sessions (T-0047). Idempotent.
 grok-state-init: ensure-project
 	@mkdir -p "$(GROK_SESSIONS_HOST)"
-	@chmod 700 "$(GROK_STATE_DIR)" 2>/dev/null || true
-	@chmod 700 "$(GROK_SESSIONS_HOST)" 2>/dev/null || true
+	@$(MAKE) fix-grok-state-perms
 	@# If container has sessions not yet on host, export them once before first mount.
 	@if docker inspect agent-cage-agent --format '{{.State.Status}}' 2>/dev/null | grep -q running; then \
 	  if [ -z "$$(find "$(GROK_SESSIONS_HOST)" -mindepth 1 -maxdepth 1 2>/dev/null | head -1)" ]; then \
 	    echo "==> exporting in-container sessions → $(GROK_SESSIONS_HOST)"; \
 	    docker cp agent-cage-agent:/home/agent/.grok/sessions/. "$(GROK_SESSIONS_HOST)/" 2>/dev/null || true; \
+	    $(MAKE) fix-grok-state-perms; \
 	  fi; \
 	fi
 	@echo "grok-state-init: $(GROK_SESSIONS_HOST)"
@@ -260,27 +266,33 @@ grok-auth-import: ensure-project
 	  || (echo "error: no host $(HOME)/.grok/auth.json — run 'grok login' on the host first"; exit 1)
 	@mkdir -p "$(AGENTCAGE_DIR)/grok-home"
 	@chmod 700 "$(AGENTCAGE_DIR)/grok-home"
-	@cp "$(HOME)/.grok/auth.json" "$(AGENTCAGE_DIR)/grok-home/auth.json" 2>/dev/null \
-	  || sudo cp "$(HOME)/.grok/auth.json" "$(AGENTCAGE_DIR)/grok-home/auth.json"
-	@chown $(CAGE_AGENT_UID):$(CAGE_AGENT_GID) "$(AGENTCAGE_DIR)/grok-home/auth.json" 2>/dev/null \
-	  || sudo chown $(CAGE_AGENT_UID):$(CAGE_AGENT_GID) "$(AGENTCAGE_DIR)/grok-home/auth.json" 2>/dev/null \
-	  || true
-	@if python3 -c "import os; st=os.stat('$(AGENTCAGE_DIR)/grok-home/auth.json'); raise SystemExit(0 if st.st_uid==$(CAGE_AGENT_UID) else 1)"; then \
-	  chmod 600 "$(AGENTCAGE_DIR)/grok-home/auth.json" 2>/dev/null || sudo chmod 600 "$(AGENTCAGE_DIR)/grok-home/auth.json"; \
-	else \
-	  chmod 666 "$(AGENTCAGE_DIR)/grok-home/auth.json" 2>/dev/null || sudo chmod 666 "$(AGENTCAGE_DIR)/grok-home/auth.json"; \
-	  echo "note: auth.json mode 666 (chown to $(CAGE_AGENT_UID) failed; dir remains 700)"; \
-	fi
+	@# Stage from host (always readable by mark), redacted-check, then install as agent uid.
+	@# Prior imports leave agent-owned 0600 auth.json that the host cannot overwrite without sudo.
+	@set -e; \
+	  tmp=$$(mktemp); \
+	  cp "$(HOME)/.grok/auth.json" "$$tmp"; \
+	  chmod 600 "$$tmp"; \
+	  echo "Importing host OIDC/browser session → $(AGENTCAGE_DIR)/grok-home/auth.json"; \
+	  echo "  auth_mode/email (redacted check):"; \
+	  python3 -c "import json; d=json.load(open('$$tmp')); \
+	    v=next(iter(d.values())) if isinstance(d, dict) else {}; \
+	    print('  mode=', v.get('auth_mode'), ' email=', v.get('email','?'), ' expires_at=', v.get('expires_at','?'))"; \
+	  if install -m 600 -o $(CAGE_AGENT_UID) -g $(CAGE_AGENT_GID) "$$tmp" "$(AGENTCAGE_DIR)/grok-home/auth.json" 2>/dev/null; then \
+	    :; \
+	  elif sudo install -m 600 -o $(CAGE_AGENT_UID) -g $(CAGE_AGENT_GID) "$$tmp" "$(AGENTCAGE_DIR)/grok-home/auth.json"; then \
+	    :; \
+	  else \
+	    echo "error: could not install auth.json as uid $(CAGE_AGENT_UID) (try: sudo make cage-grok-auth-import)"; \
+	    rm -f "$$tmp"; exit 1; \
+	  fi; \
+	  rm -f "$$tmp"
 	@docker exec -u root agent-cage-agent bash -lc \
-	  'chown agent:agent /home/agent/.grok/auth.json; chmod 600 /home/agent/.grok/auth.json' \
+	  'chown agent:agent /home/agent/.grok/auth.json 2>/dev/null; chmod 600 /home/agent/.grok/auth.json 2>/dev/null; true' \
 	  2>/dev/null || true
-	@echo "Imported host OIDC/browser session → $(AGENTCAGE_DIR)/grok-home/auth.json"
-	@echo "  auth_mode/email (redacted check):"
-	@python3 -c "import json,os; p='$(AGENTCAGE_DIR)/grok-home/auth.json'; d=json.load(open(p)); \
-	  v=next(iter(d.values())); st=os.stat(p); \
-	  print('  mode=', v.get('auth_mode'), ' email=', v.get('email','?'), ' expires_at=', v.get('expires_at','?')); \
-	  print('  file uid:gid=', st.st_uid, st.st_gid, ' perm=', oct(st.st_mode)[-3:])"
-	@echo "Re-run import after host 'grok login' if the cage session expires."
+	@python3 -c "import os; p='$(AGENTCAGE_DIR)/grok-home/auth.json'; st=os.stat(p); \
+	  print('  file uid:gid=', st.st_uid, st.st_gid, ' perm=', oct(st.st_mode)[-3:], \
+	        '(agent-owned; host cannot open — expected)')"
+	@echo "Done. Re-run import after host 'grok login' if the cage session expires."
 
 grok-overlay-uninstall:
 	@rm -f "$(AGENTCAGE_DIR)/docker/docker-compose.override.yaml"
@@ -332,11 +344,12 @@ grok-up: ensure-project
 	|| POLICY=coding-agent-grok $(COMPOSE_GROK) up -d --force-recreate proxy agent
 	@echo "Waiting for agent container..."
 	@sleep 4
-	@# Fix auth.json + sessions ownership inside container (bind mount may show host uid)
+	@# Auth: agent-only. Sessions: do NOT chown -R agent (breaks host import); open perms instead.
 	@docker exec -u root agent-cage-agent bash -lc \
 	  'if [ -f /home/agent/.grok/auth.json ]; then chown agent:agent /home/agent/.grok/auth.json; chmod 600 /home/agent/.grok/auth.json; fi; \
-	   if [ -d /home/agent/.grok/sessions ]; then chown -R agent:agent /home/agent/.grok/sessions; fi' \
+	   if [ -d /home/agent/.grok/sessions ]; then chmod -R a+rwX /home/agent/.grok/sessions; fi' \
 	  2>/dev/null || true
+	@$(MAKE) fix-grok-state-perms
 	@docker inspect agent-cage-agent --format 'image={{.Config.Image}}'
 	@docker exec -u agent agent-cage-agent bash -lc 'findmnt /home/agent/.grok/sessions 2>/dev/null || mount | grep sessions || ls -la /home/agent/.grok/sessions | head -5'
 	@$(MAKE) grok-net-smoke || (echo "warn: grok-net-smoke failed — API may still be blocked"; true)
@@ -491,19 +504,23 @@ grok-sessions-export: ensure-project
 	  || (echo "error: agent not running"; exit 1)
 	@echo "==> export container sessions → $(GROK_SESSIONS_HOST)"
 	@docker cp agent-cage-agent:/home/agent/.grok/sessions/. "$(GROK_SESSIONS_HOST)/"
+	@$(MAKE) fix-grok-state-perms
 	@echo "grok-sessions-export: OK"
 
 # Map host-cwd sessions for this catalog repo into cage cwd key (so old host chats appear).
 grok-sessions-import-host: ensure-project
 	@$(MAKE) grok-state-init
+	@$(MAKE) fix-grok-state-perms
 	@chmod +x "$(ROOT)/scripts/import-host-sessions-for-cage.sh"
 	@HOST_CWD="$(CATALOG_ROOT)" CAGE_CWD="/workspace/$(WORKSPACE_REPO_NAME)" \
 	  AGENTCAGE_DIR="$(AGENTCAGE_DIR)" \
 	  "$(ROOT)/scripts/import-host-sessions-for-cage.sh"
+	@# Keep dual-write; do not chown -R agent (that re-breaks host Make).
 	@docker inspect agent-cage-agent --format '{{.State.Status}}' 2>/dev/null | grep -q running \
 	  && docker exec -u root agent-cage-agent bash -lc \
-	    'chown -R agent:agent /home/agent/.grok/sessions 2>/dev/null || true' \
+	    'chmod -R a+rwX /home/agent/.grok/sessions 2>/dev/null || true' \
 	  || true
+	@$(MAKE) fix-grok-state-perms
 	@echo "grok-sessions-import-host: done (re-run grok-up if sessions mount was missing)"
 
 # List sessions Grok sees for /workspace/pfy-mentat

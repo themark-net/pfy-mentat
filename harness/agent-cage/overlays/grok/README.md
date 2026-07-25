@@ -108,9 +108,11 @@ make cage-grok-ready         # smoke
 
 1. **`agentcage up` ignores compose override** when it passes `-f docker-compose.yaml`. Always use **`make cage-grok-up`** (explicit third `-f` for override).
 2. **Do not bind-mount the whole `.grok` tree** — that hid `.grok/downloads/` and broke `grok`. Binary is at **`/usr/local/bin/grok`**; only **`auth.json`** is mounted.
-3. **auth.json ownership** — host file is often uid 1000; cage user `agent` is **1001**. If agent cannot read `auth.json`, Grok falls back to **ApiKey** and fails (`401 bad-credentials` or OIDC errors). `make grok-auth-import` and `grok-up`/`grok-smoke` chown the file to `agent`.
+3. **auth.json ownership** — host file is often uid 1000; cage user `agent` is **1001**. If agent cannot read `auth.json`, Grok falls back to **ApiKey** and fails (`401 bad-credentials` or OIDC errors). `make grok-auth-import` and `grok-up`/`grok-smoke` chown the file to `agent` (mode `600`). **Host user cannot open the cage copy after import** — that is expected; redacted mode/email is printed *before* chown. Do not `chmod` the cage file world-readable.
 
-Re-import after host re-login if the cage session expires.
+4. **sessions store dual-write** — `~/.agentcage/grok-state/sessions` is bind-mounted into the container. **Do not** `chown -R agent` exclusively on that tree: host `make grok-sessions-import-host` then fails with `Permission denied`. Use `make fix-grok-state-perms` (also run from `grok-state-init` / `grok-up` / import). Parent `grok-state/` stays `0700` host-only; `sessions/` is open `a+rwX` underneath.
+
+Re-import after host re-login if the cage session expires. If import fails mid-way with `Permission denied` on the redacted check, update to a tree that verifies pre-chown (or re-run after pull).
 
 ### 2) Device login inside cage (separate session)
 

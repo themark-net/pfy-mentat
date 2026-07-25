@@ -24,7 +24,16 @@ host_key = urllib.parse.quote(host_cwd, safe="")
 cage_key = urllib.parse.quote(cage_cwd, safe="")
 src_root = Path(grok_home) / "sessions" / host_key
 dst_root = Path(state_sessions) / cage_key
-dst_root.mkdir(parents=True, exist_ok=True)
+try:
+    dst_root.mkdir(parents=True, exist_ok=True)
+except PermissionError as e:
+    print(
+        f"import-host-sessions: cannot mkdir {dst_root}: {e}\n"
+        f"  Fix: make -C harness/agent-cage fix-grok-state-perms\n"
+        f"  Cause: sessions tree owned by cage agent (uid 1001) after docker chown/cp.",
+        file=sys.stderr,
+    )
+    sys.exit(1)
 
 if not src_root.is_dir():
     print(f"import-host-sessions: no host sessions at {src_root}", file=sys.stderr)
