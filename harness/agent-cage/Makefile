@@ -711,9 +711,13 @@ local-ollama-up: ensure-project
 smoke-litellm-ollama: ensure-project
 	@test -f "$(LITELLM_EXAMPLE)/run-in-cage.sh" \
 	  || (echo "error: missing $(LITELLM_EXAMPLE)/run-in-cage.sh"; exit 1)
-	@$(LITELLM_EXAMPLE)/host-ollama-gateway.sh start
-	@docker inspect agent-cage-agent --format '{{.State.Status}}' 2>/dev/null | grep -q running \
-	  || (echo "error: agent not running — make local-ollama-up first"; exit 1)
+	@# Always (re)apply local-ollama compose + policy: host.docker.internal extra_hosts
+	@# and coding-agent-local whitelist. cage-grok alone does not add these → 502 / JSON fail.
+	@$(MAKE) local-ollama-overlay-install
+	@$(MAKE) local-ollama-up
+	@# Prove DNS from agent + proxy path before litellm
+	@docker exec -u agent agent-cage-agent bash -lc \
+	  'getent hosts host.docker.internal || { echo "error: host.docker.internal not in container hosts — local-ollama compose extra_hosts missing"; exit 1; }'
 	@# Stage recipe into cage workspace (may be owned by cage agent; use docker cp)
 	@docker exec -u root agent-cage-agent bash -lc \
 	  'mkdir -p /workspace/examples/litellm-ollama && chown agent:agent /workspace/examples /workspace/examples/litellm-ollama'
@@ -728,9 +732,12 @@ smoke-litellm-ollama: ensure-project
 	  -e OLLAMA_HOST=http://host.docker.internal:11435 \
 	  -e LITELLM_SMOKE_MODEL=$(LITELLM_SMOKE_MODEL) \
 	  -e DEPLOY_PROFILE=local-only \
+	  -e no_proxy=localhost,127.0.0.1,host.docker.internal,172.30.0.0/24 \
+	  -e NO_PROXY=localhost,127.0.0.1,host.docker.internal,172.30.0.0/24 \
 	  agent-cage-agent bash -lc \
 	  'cd /workspace/examples/litellm-ollama && bash ./run-in-cage.sh'
 	@echo "smoke-litellm-ollama: PASS"
+	@mkdir -p "$(CATALOG_ROOT)/pipelines/smoke/litellm-ollama"
 	@printf '| %s | PASS | %s | in-cage LiteLLM→Ollama via host.docker.internal:11435 |\n' \
 	  "$$(date -Iseconds)" "$(LITELLM_SMOKE_MODEL)" \
 	  >> "$(CATALOG_ROOT)/pipelines/smoke/litellm-ollama/results.latest.md"

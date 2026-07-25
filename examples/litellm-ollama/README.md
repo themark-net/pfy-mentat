@@ -41,13 +41,21 @@ This smoke always uses the **local OpenAI-compat path** (no cloud key required),
 export PATH="$HOME/.local/bin:$PATH"
 export DEPLOY_PROFILE=local-only   # or balanced / max-performance
 export LITELLM_SMOKE_MODEL=deepseek-coder:latest
-export OLLAMA_API_BASE=http://host.docker.internal:11435   # for cage LiteLLM proxy use
 
+# Host: Ollama must answer on :11434
+curl -sS http://127.0.0.1:11434/api/tags | head
+
+# One shot (installs overlay, recreates cage with host.docker.internal, runs smoke):
+make smoke-litellm-ollama     # exit 0; in-cage only
+
+# Or step-by-step:
 ./examples/litellm-ollama/host-ollama-gateway.sh start
 make local-ollama-overlay-install
 make local-ollama-up
-make smoke-litellm-ollama     # exit 0; in-cage only
+make smoke-litellm-ollama
 ```
+
+**Note:** After `make cage-grok`, re-run `make local-ollama-up` (or just `smoke-litellm-ollama`) so `host.docker.internal` extra_hosts are applied. Otherwise preflight returns mitm **502 HTML** → `JSONDecodeError`.
 
 ### Using profile configs (host proxy sketch)
 

@@ -26,3 +26,13 @@ make smoke-litellm-ollama
 
 Policy name: `coding-agent-local`  
 URL from cage: `http://host.docker.internal:11435` (and `/v1` for OpenAI shim).
+
+## Failure: JSONDecodeError / mitm 502 on preflight
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| `JSONDecodeError` on `/api/tags` | Response is HTML 502 from mitmproxy | DNS/policy: host not resolved or not whitelisted |
+| `Could not resolve host: host.docker.internal` | Agent recreated by `cage-grok` **without** local-ollama `extra_hosts` | `make local-ollama-up` (smoke now does this automatically) |
+| Gateway “already running” but tags fail | Ollama down on host, or gateway stale | `host-ollama-gateway.sh restart`; `curl http://127.0.0.1:11434/api/tags` |
+
+`make smoke-litellm-ollama` now runs **overlay-install + local-ollama-up** first so `extra_hosts` and `coding-agent-local` are applied.

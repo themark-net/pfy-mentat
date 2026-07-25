@@ -5,6 +5,10 @@
 # Sessions: ~/.agentcage/grok-state/sessions → /home/agent/.grok/sessions (T-0047)
 
 services:
+  # Hybrid path (ADR-0011): resolve host Ollama gateway from proxy + agent
+  proxy:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
   agent:
     image: pfy-mentat/agent-cage-grok:0.1.0
     build:
@@ -12,6 +16,8 @@ services:
       dockerfile: Dockerfile
       args:
         BASE_IMAGE: agent-cage-agent:latest
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       - HOME=/home/agent
       - GROK_HOME=/home/agent/.grok

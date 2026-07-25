@@ -19,6 +19,10 @@ policy:
     log_bodies: false
 
   domains:
+    # --- Host Ollama (local/cloud split, ADR-0011; via host-gateway + :11435) ---
+    - pattern: "host.docker.internal"
+      methods: ["GET", "HEAD", "POST", "OPTIONS"]
+
     # --- xAI / Grok Build CLI (required for chat API + auth refresh) ---
     - pattern: "x.ai"
       methods: ["GET", "HEAD", "POST", "PUT", "OPTIONS"]
