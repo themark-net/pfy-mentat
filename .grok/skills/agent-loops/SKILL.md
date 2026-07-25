@@ -225,6 +225,8 @@ Status:          DONE | STOPPED_EXIT | BLOCKED | NEEDS_HUMAN
 | Unsettled choice | `/open-questions` |
 | Compound learnings after loop | `/hermes-feedback` if installed; else TODO/memory |
 | Catalog smoke as goal | `docs/ops/one-shot-example-dods.md` + `make smoke-*` |
+| Structural design/coding gate | `make eval-structural` (no LLM) before claiming skill work green |
+| Operator batch (not ad hoc) | `docs/ops/human-decision-inventory.md` |
 | Review before merge | mattpocock `code-review` |
 | Night / recurring | time-based + exit card; prefer cage |
 
