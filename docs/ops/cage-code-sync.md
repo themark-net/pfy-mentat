@@ -43,6 +43,16 @@ Same via script:
 
 `make cage-code-to-cage` **refuses** if cage has commits not in host (unless `FORCE=1`).
 
+### Bind-mount permissions
+
+Cage files are often owned by **uid 1001 (agent)**. Host rsync therefore:
+
+- uses **content-only** flags (`--no-owner --no-group --no-perms`)
+- treats rsync **code 23** as success (attr failures)
+- tries `docker exec -u root … chmod a+rwX` when the agent container is up
+
+`chgrp` / `Permission denied` noise on to-cage is expected and non-fatal after this fix.
+
 ## What is not synced / does not block sync
 
 - `.git` via rsync (history is git fetch/reset only)  

@@ -203,29 +203,49 @@ cmd_from_cage() {
   log "from-cage OK host HEAD=$(git_short "$CATALOG_ROOT")"
 }
 
+# Content-only rsync: never -a (chown/chgrp fail on agent-owned bind mounts).
+# Matches workspace-sync policy: transfer data, tolerate attr errors.
+RSYNC_CONTENT=(
+  -r --delete
+  --no-owner --no-group --no-perms --omit-dir-times
+  --exclude '.git/'
+  --exclude '.venv/' --exclude '**/.venv/'
+  --exclude 'node_modules/' --exclude '**/node_modules/'
+  --exclude '.agentcage/' --exclude '__pycache__/'
+  --exclude '.grok/sessions/' --exclude '.grok/config.toml'
+  --exclude '.env' --exclude '.env.*'
+  --exclude 'pipelines/**/results.latest.md'
+  --exclude 'pipelines/eval/structural.latest.md'
+)
+
+prepare_cage_writable() {
+  # Prefer docker root when available (host privileged)
+  if command -v docker >/dev/null 2>&1 \
+    && docker inspect agent-cage-agent --format '{{.State.Status}}' 2>/dev/null | grep -q running; then
+    docker exec -u root agent-cage-agent bash -lc \
+      'chmod -R a+rwX /workspace/pfy-mentat 2>/dev/null; true' 2>/dev/null || true
+  fi
+  chmod -R a+rwX "$CAGE_WS" 2>/dev/null || true
+}
+
 rsync_to_cage() {
   ensure_repos
   mkdir -p "$CAGE_WS"
-  log "rsync host → cage (exclude .git and secrets)"
-  local flags=(-a --delete)
+  prepare_cage_writable
+  log "rsync host → cage (content only; no owner/group)"
+  local flags=("${RSYNC_CONTENT[@]}")
   [[ "$DRY" -eq 1 ]] && flags+=(--dry-run -v)
-  # Content only — history is handled by git fetch/reset separately
-  rsync "${flags[@]}" \
-    --exclude '.git/' \
-    --exclude '.venv/' --exclude '**/.venv/' \
-    --exclude 'node_modules/' --exclude '**/node_modules/' \
-    --exclude '.agentcage/' --exclude '__pycache__/' \
-    --exclude '.grok/sessions/' --exclude '.grok/config.toml' \
-    --exclude '.env' --exclude '.env.*' \
-    --exclude 'pipelines/smoke/**/results.latest.md' \
-    "$CATALOG_ROOT/" "$CAGE_WS/" || {
-      local rc=$?
-      # 23/24 partial transfer often OK on bind mounts
-      if [[ $rc -ne 0 && $rc -ne 23 && $rc -ne 24 ]]; then
-        die "rsync failed rc=$rc"
-      fi
-      warn "rsync rc=$rc (partial; often bind-mount metadata)"
-    }
+  set +e
+  rsync "${flags[@]}" "$CATALOG_ROOT/" "$CAGE_WS/" 2> >(grep -v 'chgrp\|chown\|preserving times' >&2 || true)
+  local rc=$?
+  set -e
+  # 0 ok; 23/24 partial (attrs / vanished) — content usually landed
+  if [[ $rc -ne 0 && $rc -ne 23 && $rc -ne 24 ]]; then
+    die "rsync failed rc=$rc"
+  fi
+  if [[ $rc -ne 0 ]]; then
+    warn "rsync rc=$rc (partial attrs OK on cage bind-mount)"
+  fi
 }
 
 align_cage_git() {
@@ -235,20 +255,42 @@ align_cage_git() {
     echo "dry-run: git -C cage fetch host + reset --hard"
     return 0
   fi
-  if [[ -n "$(git -C "$CAGE_WS" status --porcelain 2>/dev/null)" && "$FORCE" -ne 1 ]]; then
-    die "cage dirty before git align — commit in cage, from-cage first, or --force"
+  if repo_meaningfully_dirty "$CAGE_WS" && [[ "$FORCE" -ne 1 ]]; then
+    die "cage has meaningful uncommitted changes before git align — commit, from-cage, or --force"
   fi
+  # Drop noise-only dirt so reset --hard is clean for receipts
+  git -C "$CAGE_WS" checkout -- pipelines 2>/dev/null || true
+  git -C "$CAGE_WS" clean -fd pipelines 2>/dev/null || true
   git -C "$CAGE_WS" fetch "$CATALOG_ROOT" "+refs/heads/${BRANCH}:refs/remotes/host/${BRANCH}" 2>/dev/null \
     || git -C "$CAGE_WS" fetch "$CATALOG_ROOT" "+HEAD:refs/remotes/host/${BRANCH}"
   if git -C "$CAGE_WS" rev-parse --verify "refs/remotes/host/${BRANCH}" >/dev/null 2>&1; then
-    git -C "$CAGE_WS" checkout -B "$BRANCH" "refs/remotes/host/${BRANCH}" 2>/dev/null \
-      || git -C "$CAGE_WS" reset --hard "refs/remotes/host/${BRANCH}"
+    if [[ "$FORCE" -eq 1 ]] || ! repo_meaningfully_dirty "$CAGE_WS"; then
+      git -C "$CAGE_WS" reset --hard "refs/remotes/host/${BRANCH}" 2>/dev/null \
+        || git -C "$CAGE_WS" checkout -B "$BRANCH" "refs/remotes/host/${BRANCH}"
+    else
+      git -C "$CAGE_WS" checkout -B "$BRANCH" "refs/remotes/host/${BRANCH}" 2>/dev/null \
+        || git -C "$CAGE_WS" reset --hard "refs/remotes/host/${BRANCH}"
+    fi
   else
     warn "could not create host/${BRANCH} on cage — skip git align"
   fi
-  # Remount-friendly: ensure agent can write
-  chmod -R a+rwX "$CAGE_WS" 2>/dev/null || true
+  prepare_cage_writable
   log "to-cage git HEAD=$(git_short "$CAGE_WS")"
+}
+
+mirror_skills() {
+  [[ -d "$CAGE_WS/bootstrap/grok-cli/skills" ]] || return 0
+  mkdir -p "$CAGE_WS/.grok/skills"
+  for d in "$CAGE_WS/bootstrap/grok-cli/skills"/*/; do
+    [[ -d "$d" ]] || continue
+    name=$(basename "$d")
+    mkdir -p "$CAGE_WS/.grok/skills/$name"
+    set +e
+    rsync -r --delete --no-owner --no-group --no-perms --omit-dir-times \
+      "$d" "$CAGE_WS/.grok/skills/$name/" 2>/dev/null
+    set -e
+  done
+  log "project .grok/skills ← bootstrap first-party"
 }
 
 cmd_to_cage() {
@@ -264,18 +306,7 @@ cmd_to_cage() {
   fi
   rsync_to_cage
   align_cage_git
-  # skills mirror (same as workspace-sync tail)
-  if [[ -d "$CAGE_WS/bootstrap/grok-cli/skills" ]]; then
-    mkdir -p "$CAGE_WS/.grok/skills"
-    for d in "$CAGE_WS/bootstrap/grok-cli/skills"/*/; do
-      [[ -d "$d" ]] || continue
-      name=$(basename "$d")
-      mkdir -p "$CAGE_WS/.grok/skills/$name"
-      rsync -a --delete "$d" "$CAGE_WS/.grok/skills/$name/" 2>/dev/null \
-        || cp -a "$d". "$CAGE_WS/.grok/skills/$name/"
-    done
-    log "project .grok/skills ← bootstrap first-party"
-  fi
+  mirror_skills || warn "skills mirror had issues (non-fatal)"
   log "to-cage OK"
 }
 
