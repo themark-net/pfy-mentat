@@ -34,14 +34,18 @@ Also use as needed: `CATEGORIZATION.md`, `SUBTREES.md`, `TOOLS.md`, `bootstrap/g
 ```bash
 ./bootstrap/grok-cli/install.sh
 # optional: --with-codebase-memory
-# operator lab (Grok Build in agent-cage — primary path, ADR-0002/0010):
+# operator lab (Grok Build in agent-cage — primary path, ADR-0002/0010/0011):
 #   make cage-grok && make cage-grok-net-smoke
+# local Ollama path (cost-aware; ADR-0011):
+#   ./examples/litellm-ollama/host-ollama-gateway.sh start && make smoke-litellm-ollama
+# OpenCode (secondary surface; same skills SoT): bootstrap/opencode/README.md
 # env sanity (does not install AgenC):
 #   python3 bootstrap/setup-local-agent-env.py
 ```
 
-Portable skills: `adr`, `docs`, `open-questions`, `karpathy-guidelines`, `project-process`, `one-shot`, `marketing-council`, **`investigate`** (RCA), **`agent-loops`** (exits + loop types), **`hermes-feedback`** (memory/skill/curator); ponytail + mattpocock subset (via `skills.paths`).  
+Portable skills (SoT `bootstrap/grok-cli/skills/` — also for OpenCode): `adr`, `docs`, `open-questions`, `karpathy-guidelines`, `project-process`, `one-shot`, `marketing-council`, **`investigate`**, **`agent-loops`**, **`hermes-feedback`**; ponytail + mattpocock via `skills.paths`.  
 Verify: `make eval-structural` (no LLM) · `make smoke-grok-skills` · [skill-verification.md](docs/ops/skill-verification.md).  
+**Surfaces:** Grok = primary/subscription · OpenCode+Ollama = local/cloud split — [local-cloud-split.md](docs/ops/local-cloud-split.md) · ADR-0011.  
 Loop map: [loop-engineering.md](docs/ops/loop-engineering.md). Decisions: [human-decision-inventory.md](docs/ops/human-decision-inventory.md).  
 Code memory: CM primary ([vs Graphify](docs/evaluation/codebase-memory-vs-graphify.md)).  
 **Cage:** `make cage-grok` refreshes auth + installs first-party skills into container `GROK_HOME`.  

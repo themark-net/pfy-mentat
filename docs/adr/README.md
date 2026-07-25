@@ -17,6 +17,7 @@
 | [0008](0008-one-shot-workflow.md) | One-shot workflow: min questions, cheap iteration, lab prerequisites | Accepted | 2026-07-12 |
 | [0009](0009-skill-port-hybrid-strategy.md) | Hybrid skill ports: first-party core + skills.paths snapshots | Accepted | 2026-07-12 |
 | [0010](0010-reject-agenc-as-primary-runtime.md) | Reject AgenC as primary; Grok CLI + agent-cage; revisit if UX matures | Accepted | 2026-07-12 |
+| [0011](0011-hybrid-operator-surfaces-grok-opencode-ollama.md) | Hybrid surfaces: Grok primary + OpenCode/Ollama local-cloud split | Accepted | 2026-07-25 |
 
 ## How to add
 

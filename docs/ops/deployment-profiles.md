@@ -38,16 +38,19 @@ make env-init                 # .env from example if missing
 make env-check                # validate required vars for profile
 ```
 
-## Routing sketch (LiteLLM later)
+## Routing sketch (LiteLLM + CLI surfaces)
 
-| Profile | Default completion | Fallback |
-|---------|-------------------|----------|
-| local-only | `ollama/*` | fail closed if local down |
-| balanced | local for “small” tasks; `xai/*` or grok for “large” | operator-defined |
-| max-performance | `xai/*` / strong cloud | local if cloud rate-limited |
+| Profile | Default completion | Operator surface | Fallback |
+|---------|-------------------|------------------|----------|
+| local-only | `ollama/*` | OpenCode and/or LiteLLM; Grok optional offline | fail closed if local down |
+| balanced | local for bulk; Grok/xAI for hard | **OpenCode+Ollama** bulk · **Grok** hard | escalate after error threshold |
+| max-performance | Grok / strong cloud | Grok primary | local if rate-limited |
+
+**CLI policy:** [ADR-0011](../adr/0011-hybrid-operator-surfaces-grok-opencode-ollama.md) · [local-cloud-split.md](local-cloud-split.md).
 
 Exact model IDs and cage URLs: **[config/litellm/](../../config/litellm/README.md)** — `local-only.yaml`, `balanced.yaml`, `max-performance.yaml` (T-0012 complete).  
 In-cage local smoke: `make smoke-litellm-ollama` (host gateway port **11435** when Ollama is localhost-only).  
+Host OpenCode adapter: [bootstrap/opencode/README.md](../../bootstrap/opencode/README.md).
 Cloud aliases need `XAI_API_KEY` + `LITELLM_CLOUD_MODEL` in the environment (never commit keys).
 
 ### Grok Build auth (not just an API key)

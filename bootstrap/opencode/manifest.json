@@ -1,0 +1,20 @@
+{
+  "name": "opencode-adapter",
+  "version": "0.1.0",
+  "description": "Thin adapter: reuse first-party SKILL.md packs with OpenCode + Ollama; Grok remains primary bootstrap (ADR-0011).",
+  "primary_cli": "grok",
+  "secondary_cli": "opencode",
+  "skills_source_of_truth": "bootstrap/grok-cli/skills/",
+  "skills_external": "bootstrap/grok-cli/skills-external/",
+  "inference": {
+    "local": "ollama",
+    "router": "config/litellm/",
+    "profiles": ["local-only", "balanced", "max-performance"]
+  },
+  "not_included": [
+    "OpenCode binary",
+    "Hermes Agent runtime",
+    "Cloud API keys",
+    "Forked skill trees"
+  ]
+}

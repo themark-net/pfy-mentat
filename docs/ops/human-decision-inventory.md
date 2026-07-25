@@ -11,6 +11,7 @@
 | **Optional tool adopt** (MUE-X, LEANN, Memvid, Laguna weights, Bumblebee install) | **0 now** — defaults below | Default = **pattern/docs + structural eval only**; promote only if structural green + smoke exists |
 | **Cage/env polish** (auth dir mount, write-guard mcp-host) | **0 for this track** | Parked; not design/coding assist focus |
 | **Product forks needing ADR** | **0 open P1** | None until architecture pivot |
+| **Hybrid surfaces (ADR-0011)** | **0** | Defaults: Grok primary hard tasks; OpenCode+Ollama bulk; no Hermes runtime |
 | **Total decisions needed from you this week (design/coding track)** | **0 required** | Optional: fill OQ batch when ready (**4 checkboxes**) |
 
 **Bottom line:** You can ignore human input for the design/coding assist track; agents should keep shipping skills, structural evals, and pattern docs. **4 deferred P2 OQs** remain when you want a single batch review.

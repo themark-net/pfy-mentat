@@ -21,6 +21,25 @@ Unless the operator overrides:
 
 ---
 
+## A0. Hybrid local path readiness (ADR-0011)
+
+```text
+/one-shot Prove local Ollama path for cost-aware coding (host).
+
+DoD:
+1. curl http://127.0.0.1:11434/api/tags succeeds (Ollama up)
+2. ./examples/litellm-ollama/host-ollama-gateway.sh start
+3. make smoke-litellm-ollama exits 0 (cage → gateway → Ollama)
+4. make eval-structural exits 0
+5. docs/ops/local-cloud-split.md + ADR-0011 present
+
+Assumptions: DEPLOY_PROFILE=local-only or balanced; no cloud keys required for this DoD
+```
+
+**Green:** `make smoke-litellm-ollama` + `make eval-structural`
+
+---
+
 ## A. LiteLLM → Ollama (T-0012 / T-0021)
 
 ```text

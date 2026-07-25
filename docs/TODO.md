@@ -24,16 +24,19 @@
 
 ## Active (sorted P0 → P3)
 
-**Session (2026-07-25):** Focus = **design/coding assist** + automated evals. Cage env polish deprioritized. Human decisions: [human-decision-inventory.md](ops/human-decision-inventory.md) (**0 required**; **4** optional OQ-batch).
+**Session (2026-07-25):** **ADR-0011** hybrid surfaces (Grok + OpenCode + Ollama). Design/coding + local/cloud split. Human: [human-decision-inventory.md](ops/human-decision-inventory.md) (**0 required**).
 
-### Active — design / coding assist (agent may pick freely)
+### Active — design / coding + local path (agent may pick freely)
 
 | ID | Priority | Status | Item | Open questions | Depends | Notes |
 |----|----------|--------|------|----------------|---------|-------|
 | T-0070 | P1 | doing | Grow design/coding **skills + structural eval** (more text scorers) | — | T-0065 | Scorers 003–005; keep `eval-structural` green |
-| T-0074 | P2 | todo | Implement-lane eval when Ollama available (eval-suite green or SKIP) | — | — | Not a human gate; exit 2 if no model |
+| T-0074 | P1 | todo | Implement-lane eval when Ollama available (`eval-suite` green or SKIP) | — | — | Host: ollama + gateway; exit 2 if no model |
+| T-0080 | P1 | todo | **OpenCode + Ollama host smoke** (skills path + local completion) | — | ADR-0011 | Zero cage; portable skills SoT |
 | T-0075 | P2 | todo | More structural scorers: ADR shape, open-question row shape | — | T-0070 | |
 | T-0076 | P2 | todo | Wire mattpocock to-spec/tdd checklist into structural or skill cross-links | — | — | paths pack already installed |
+| T-0081 | P2 | todo | Optional OpenCode-in-cage smoke | — | T-0080 | After host smoke green |
+| T-0040 | P2 | todo | Broader multi-CLI parity notes (Claude Code) | — | T-0080 | OpenCode first |
 
 ### Active — parked (env / not this track)
 
@@ -43,7 +46,7 @@
 | T-0043 | P3 | todo | Write-guard mcp-host wiring | — | T-0031 | Parked |
 | T-0062 | P3 | todo | Laguna local model DoD | — | — | Hardware-gated; catalog only for now |
 | T-0046 | P3 | todo | Re-evaluate AgenC | [ADR-0010](adr/0010-reject-agenc-as-primary-runtime.md) | T-0044 | |
-| T-0040 | P3 | todo | OpenCode / Claude same cage | — | — | |
+
 | T-0007 | P3 | todo | adr-tools companion docs | — | — | |
 | T-0002 | P3 | todo | Aggregate synthesis | — | — | |
 
@@ -71,6 +74,7 @@
 | T-0055 | P2 | done | Auto-Company pattern extract (no runtime) | `docs/ops/auto-company-patterns.md` |
 | T-0060 | P2 | done | 8-exits eval task scaffold + deterministic scorer | `examples/eval-harness/tasks/003-exit-card-checklist/`; fixtures in structural lane |
 | T-0065 | P1 | done | Structural eval lane (no LLM) + design-coding rubric + decision inventory | `make eval-structural`; `data/eval-lanes.json`; human-decision-inventory |
+| T-0082 | P1 | done | ADR-0011 hybrid Grok/OpenCode/Ollama + local-cloud-split ops + opencode adapter | `docs/adr/0011-…`; `docs/ops/local-cloud-split.md`; `bootstrap/opencode/` |
 | T-0071 | P2 | done | Bumblebee coding-safety assist docs | `docs/ops/bumblebee-coding-safety.md` |
 | T-0072 | P2 | done | MUE-X pattern extract (no evolve) | `docs/ops/mue-x-patterns.md` |
 | T-0073 | P2 | done | LEANN/Memvid memory assist patterns | `docs/ops/memory-assist-patterns.md` |

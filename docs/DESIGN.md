@@ -104,12 +104,13 @@ One-line purpose: **Track · Categorize · Rank · Integrate** tools for robust 
 - Not AgenC as primary ([ADR-0010](adr/0010-reject-agenc-as-primary-runtime.md))  
 - Env check helper: `python3 bootstrap/setup-local-agent-env.py` (Grok+cage oriented; does not install AgenC)
 
-**Near-term next (design/coding assist — see TODO T-0070+):**
+**Near-term next (design/coding + local/cloud — ADR-0011):**
 
-- Keep **`make eval-structural`** green; grow skills + text scorers (T-0070)  
-- Pattern extracts: MUE-X / LEANN-Memvid / Bumblebee docs (T-0071–73)  
-- Implement-lane when Ollama present (T-0074); OQ-BATCH for 4 blocked OQs only  
-- Env polish (auth mount, write-guard mcp-host) deprioritized
+- Host **Ollama + gateway** green; `make smoke-litellm-ollama` / `eval-suite` when models present  
+- OpenCode secondary surface: skill path adapter (`bootstrap/opencode/`); host smoke T-0080  
+- Keep **`make eval-structural`** green; grow scorers (T-0070/75)  
+- Grok remains subscription primary; local absorbs bulk tokens  
+- OQ-BATCH for 4 blocked OQs only; env polish deprioritized
 
 ### Delivered recently
 
