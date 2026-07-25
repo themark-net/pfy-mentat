@@ -31,26 +31,35 @@ Hidden tests score **pass/fail**. Path: LiteLLM → host Ollama (same as litellm
 | Knob | Default | Role |
 |------|---------|------|
 | `LITELLM_SMOKE_MODEL` | `deepseek-coder:latest` | Tier-0 connectivity only (tiny OK) |
-| `EVAL_MODEL` / `EVAL_GATE_MODEL` | `qwen2.5:14b` | Must pass for suite/matrix exit 0 |
-| `EVAL_MODELS` | `qwen2.5:14b,codestral:22b,deepseek-coder:6.7b-instruct` | Matrix columns; missing → **SKIP** cell |
+| `EVAL_MODEL` / `EVAL_GATE_MODEL` | from **fit selection** or `qwen2.5:14b` | Must pass for suite/matrix exit 0 |
+| `EVAL_MODELS` | fit selection or pins.env list | Matrix columns; missing → **SKIP** cell |
 
-Tiny `deepseek-coder:latest` (~1B) is unreliable for scored tasks.
+**Fit selection (preferred):** does **not** limit to already-pulled models. Ranks a curated coding catalog by quality subject to **RAM + disk budgets**, then optionally `ollama pull`s the gate.
+
+```bash
+make eval-select-models          # report + exports; pulls gate if needed
+make eval-auto                   # structural + select + pull-gate + eval-v02
+# dry list only:
+EVAL_PULL_GATE=0 make eval-select-models
+```
+
+Script: `select_ollama_models.py` · env `EVAL_RAM_BUDGET_GB`, `EVAL_DISK_BUDGET_GB`, `EVAL_ALLOW_PULL=0`.
+
+Tiny `deepseek-coder:latest` is smoke-only (weak for suite gate).
 
 ## Run
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
 ./examples/litellm-ollama/host-ollama-gateway.sh start
-make local-ollama-up          # if needed
 
-make eval-mvp                 # tier0 + one task
-make eval-v02                 # tier0 + all tasks (gate model)
-make eval-matrix              # multi-model table → pipelines/eval/results.latest.md
+make eval-structural          # no LLM
+make smoke-litellm-ollama     # tier0 path
+make eval-auto                # fit models + pull gate + eval-v02
 
-# overrides
-make eval-tier1 EVAL_TASK=002-fix-sum-evens
-make eval-suite EVAL_MODEL=codestral:22b
-make eval-matrix EVAL_MODELS=qwen2.5:14b,qwen2.5-coder:7b-instruct EVAL_GATE_MODEL=qwen2.5:14b
+# manual overrides still work
+make eval-suite EVAL_MODEL=qwen2.5-coder:7b-instruct
+make eval-matrix EVAL_MODELS=qwen2.5:14b,deepseek-coder:6.7b-instruct
 ```
 
 ## Layout

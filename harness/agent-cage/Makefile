@@ -728,12 +728,7 @@ smoke-litellm-ollama: ensure-project
 	@# Resolve host on *cage* bridge (not docker0 host-gateway).
 	@ip=$$($(CAGE_HOST_IP_CMD)); \
 	  echo "cage→host Ollama via $$ip:11435 (not host-gateway/172.17.0.1)"; \
-	  docker exec -u root agent-cage-agent bash -lc \
-	    "grep -q 'host.docker.internal' /etc/hosts && sed -i '/host.docker.internal/d' /etc/hosts; \
-	     echo \"$$ip host.docker.internal\" >> /etc/hosts"; \
-	  docker exec -u root agent-cage-proxy bash -lc \
-	    "grep -q 'host.docker.internal' /etc/hosts 2>/dev/null && sed -i '/host.docker.internal/d' /etc/hosts; \
-	     echo \"$$ip host.docker.internal\" >> /etc/hosts" 2>/dev/null || true; \
+	  echo "  (skip /etc/hosts rewrite — bind-mount often EBUSY; URL uses IP)"; \
 	  if ! docker exec -u agent agent-cage-agent bash -lc \
 	      "curl -sS -m 5 --noproxy '*' -o /dev/null -w '%{http_code}' http://$$ip:11435/api/tags" \
 	      | grep -qE '200|301|302'; then \
@@ -836,39 +831,45 @@ write-guard-overlay-install: ensure-project
 
 EVAL_EXAMPLE := $(CATALOG_ROOT)/examples/eval-harness
 EVAL_TASK ?= 001-is-palindrome
-# Capable local coder for scored tasks (tiny deepseek-coder fails often).
+# Defaults overridden by eval-select-models / eval-auto when fit selection runs.
 EVAL_MODEL ?= qwen2.5:14b
-# Multi-model matrix (missing models → SKIP cell; gate still must pass).
 EVAL_MODELS ?= qwen2.5:14b,codestral:22b,deepseek-coder:6.7b-instruct
 EVAL_GATE_MODEL ?= $(EVAL_MODEL)
 EVAL_MODE ?= single
+# Auto-pull gate if it fits but is not local yet (host needs `ollama` on PATH).
+EVAL_PULL_GATE ?= 1
 
 # Shared: copy harness into cage and run run-in-cage.sh with EVAL_MODE.
+# Uses cage-bridge host IP (same as smoke-litellm-ollama), not host-gateway.
 define eval-in-cage
 	@test -f "$(EVAL_EXAMPLE)/run-in-cage.sh"
 	@$(LITELLM_EXAMPLE)/host-ollama-gateway.sh start
 	@docker inspect agent-cage-agent --format '{{.State.Status}}' 2>/dev/null | grep -q running \
-	  || (echo "error: agent not running — make local-ollama-up first"; exit 1)
+	  || (echo "error: agent not running — make local-ollama-up or smoke-litellm-ollama first"; exit 1)
 	@docker exec -u root agent-cage-agent bash -lc \
 	  'mkdir -p /workspace/examples/eval-harness && chown -R agent:agent /workspace/examples'
 	@docker cp "$(EVAL_EXAMPLE)/." agent-cage-agent:/workspace/examples/eval-harness/
 	@docker exec -u root agent-cage-agent bash -lc \
 	  'chown -R agent:agent /workspace/examples/eval-harness && chmod +x /workspace/examples/eval-harness/*.sh /workspace/examples/eval-harness/*.py'
-	@echo "==> eval $(1) task=$(EVAL_TASK) model=$(EVAL_MODEL) models=$(EVAL_MODELS)"
-	@docker exec -u agent \
-	  -e HOME=/home/agent \
-	  -e PATH=/home/agent/.local/bin:/usr/local/bin:/usr/bin:/bin \
-	  -e OPENAI_BASE_URL=http://host.docker.internal:11435/v1 \
-	  -e EVAL_MODEL=$(EVAL_MODEL) \
-	  -e EVAL_MODELS=$(EVAL_MODELS) \
-	  -e EVAL_GATE_MODEL=$(EVAL_GATE_MODEL) \
-	  -e EVAL_MODE=$(1) \
-	  -e LITELLM_SMOKE_MODEL=$(EVAL_MODEL) \
-	  -e EVAL_TASK=$(EVAL_TASK) \
-	  -e EVAL_MATRIX_MD=/tmp/eval-matrix-out.md \
-	  -e EVAL_RESULT_JSON=/tmp/eval-result.json \
-	  agent-cage-agent bash -lc \
-	  'cd /workspace/examples/eval-harness && bash ./run-in-cage.sh'
+	@ip=$$($(CAGE_HOST_IP_CMD)); \
+	  echo "==> eval $(1) task=$(EVAL_TASK) model=$(EVAL_MODEL) models=$(EVAL_MODELS) host=$$ip"; \
+	  docker exec -u agent \
+	    -e HOME=/home/agent \
+	    -e PATH=/home/agent/.local/bin:/usr/local/bin:/usr/bin:/bin \
+	    -e OPENAI_BASE_URL=http://$$ip:11435/v1 \
+	    -e OLLAMA_HOST=http://$$ip:11435 \
+	    -e EVAL_MODEL=$(EVAL_MODEL) \
+	    -e EVAL_MODELS=$(EVAL_MODELS) \
+	    -e EVAL_GATE_MODEL=$(EVAL_GATE_MODEL) \
+	    -e EVAL_MODE=$(1) \
+	    -e LITELLM_SMOKE_MODEL=$(LITELLM_SMOKE_MODEL) \
+	    -e EVAL_TASK=$(EVAL_TASK) \
+	    -e EVAL_MATRIX_MD=/tmp/eval-matrix-out.md \
+	    -e EVAL_RESULT_JSON=/tmp/eval-result.json \
+	    -e no_proxy=localhost,127.0.0.1,$$ip,host.docker.internal,172.30.0.0/24 \
+	    -e NO_PROXY=localhost,127.0.0.1,$$ip,host.docker.internal,172.30.0.0/24 \
+	    agent-cage-agent bash -lc \
+	    'cd /workspace/examples/eval-harness && bash ./run-in-cage.sh'
 	@mkdir -p "$(CATALOG_ROOT)/pipelines/eval"
 endef
 
@@ -882,7 +883,7 @@ eval-tier1: ensure-project
 	  "$$(date -Iseconds)" "$(EVAL_TASK)" "$(EVAL_MODEL)" \
 	  >> "$(CATALOG_ROOT)/pipelines/eval/results.latest.md"
 
-# v0.2: all tasks under examples/eval-harness/tasks/ with gate model
+# v0.2: all implement tasks with gate model
 eval-suite: ensure-project
 	$(call eval-in-cage,suite)
 	@echo "eval-suite: PASS"

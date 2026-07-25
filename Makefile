@@ -7,6 +7,7 @@
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
 HARNESS := harness/agent-cage
+LITELLM_EXAMPLE := examples/litellm-ollama
 
 .PHONY: help cage-doctor cage-setup cage-init cage-up cage-up-mcp cage-down \
 	cage-shell cage-status cage-test cage-logs cage-smoke-host catalog-json \
@@ -17,6 +18,7 @@ HARNESS := harness/agent-cage
 	smoke-codebase-memory smoke-repowise smoke-context-tools \
 	smoke-write-guard smoke-grok-skills \
 	eval-tier0 eval-tier1 eval-mvp eval-suite eval-matrix eval-v02 eval-structural \
+	eval-select-models eval-auto \
 	cage-grok cage-grok-shell cage-grok-run cage-grok-sessions cage-grok-resume \
 	cage-grok-sessions-import-host cage-grok-net-smoke cage-grok-skills-install
 
@@ -64,6 +66,8 @@ help:
 	@echo "  make smoke-grok-skills      # first-party skill structure (manifest + SKILL.md)"
 	@echo "  make smoke-grok-skills INSTALLED=1  # also check ~/.grok/skills"
 	@echo "  make eval-structural           # design/coding gates, NO LLM (always run)"
+	@echo "  make eval-select-models        # pick gate/matrix models that FIT RAM/disk (may pull)"
+	@echo "  make eval-auto                 # select-models + pull-gate + eval-v02"
 	@echo "  make eval-tier0|eval-tier1|eval-mvp  # OQ-0002 opt5 scored eval"
 	@echo "  make eval-suite|eval-matrix|eval-v02 # v0.2 multi-task / multi-model (needs Ollama)"
 	@echo ""
@@ -209,6 +213,28 @@ eval-v02:
 # Design/coding structural gates (skills, tools.json, text scorers) — no LLM/Ollama
 eval-structural:
 	@python3 examples/eval-harness/run_structural.py --write-md pipelines/eval/structural.latest.md
+
+# Hardware-fit model pick (not limited to already-pulled). Host: ollama tags on :11434.
+# EVAL_PULL_GATE=0 to only list; default pulls gate if missing and ollama CLI present.
+eval-select-models:
+	@python3 examples/eval-harness/select_ollama_models.py \
+	  $(if $(filter 0,$(EVAL_PULL_GATE)),,--pull-gate) \
+	  --exports | tee /tmp/pfy-eval-model-exports.sh
+	@echo "Re-run suite with:  set -a; . /tmp/pfy-eval-model-exports.sh; set +a; make eval-suite"
+
+# Select fit models (pull gate if needed) then full v0.2 ladder
+eval-auto: eval-structural
+	@$(LITELLM_EXAMPLE)/host-ollama-gateway.sh start 2>/dev/null \
+	  || ./examples/litellm-ollama/host-ollama-gateway.sh start
+	@python3 examples/eval-harness/select_ollama_models.py --pull-gate --exports \
+	  > /tmp/pfy-eval-model-exports.sh
+	@echo "==> using selected models:"; cat /tmp/pfy-eval-model-exports.sh
+	@set -a; . /tmp/pfy-eval-model-exports.sh; set +a; \
+	  $(MAKE) eval-v02 \
+	    EVAL_MODEL="$$EVAL_MODEL" \
+	    EVAL_GATE_MODEL="$$EVAL_GATE_MODEL" \
+	    EVAL_MODELS="$$EVAL_MODELS" \
+	    LITELLM_SMOKE_MODEL="$${LITELLM_SMOKE_MODEL:-deepseek-coder:latest}"
 
 env-init:
 	@if [ -f .env ]; then \

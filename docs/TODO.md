@@ -31,7 +31,7 @@
 | ID | Priority | Status | Item | Open questions | Depends | Notes |
 |----|----------|--------|------|----------------|---------|-------|
 | T-0070 | P1 | doing | Grow design/coding **skills + structural eval** (more text scorers) | — | T-0065 | Scorers 003–005; keep `eval-structural` green |
-| T-0074 | P1 | todo | Implement-lane eval when Ollama available (`eval-suite` green or SKIP) | — | — | Host: ollama + gateway; exit 2 if no model |
+| T-0074 | P1 | todo | Implement-lane via `make eval-auto` (fit-select + pull + suite) | — | — | select_ollama_models.py; not limited to already-pulled |
 | T-0080 | P1 | todo | **OpenCode + Ollama host smoke** (skills path + local completion) | — | ADR-0011 | Zero cage; portable skills SoT |
 | T-0075 | P2 | todo | More structural scorers: ADR shape, open-question row shape | — | T-0070 | |
 | T-0076 | P2 | todo | Wire mattpocock to-spec/tdd checklist into structural or skill cross-links | — | — | paths pack already installed |
