@@ -22,7 +22,9 @@ Tokens refresh automatically via `refresh_token` until refresh fails (then re-lo
 
 ### 1) Import host session (recommended)
 
-Copies host `auth.json` into the cage’s isolated Grok home (not a live bind of your whole `~/.grok`):
+Copies host `auth.json` into the cage’s isolated Grok home (not a live bind of your whole `~/.grok`).
+**`make cage-grok` always re-imports** after `grok-up` so cage tokens match a fresh host session
+(stale import → interactive login prompt / `Auth: ApiKey` 401).
 
 ### Network / “Grok cannot connect to CLI API”
 

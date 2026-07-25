@@ -266,8 +266,8 @@ grok-auth-import: ensure-project
 	  || (echo "error: no host $(HOME)/.grok/auth.json — run 'grok login' on the host first"; exit 1)
 	@mkdir -p "$(AGENTCAGE_DIR)/grok-home"
 	@chmod 700 "$(AGENTCAGE_DIR)/grok-home"
-	@# Stage from host (always readable by mark), redacted-check, then install as agent uid.
-	@# Prior imports leave agent-owned 0600 auth.json that the host cannot overwrite without sudo.
+	@# Always refresh from host OIDC (stale cage auth → login prompt / Auth: ApiKey 401).
+	@# Prefer docker root write into the bind mount (no host sudo; avoids agent-owned 0600 trap).
 	@set -e; \
 	  tmp=$$(mktemp); \
 	  cp "$(HOME)/.grok/auth.json" "$$tmp"; \
@@ -277,22 +277,31 @@ grok-auth-import: ensure-project
 	  python3 -c "import json; d=json.load(open('$$tmp')); \
 	    v=next(iter(d.values())) if isinstance(d, dict) else {}; \
 	    print('  mode=', v.get('auth_mode'), ' email=', v.get('email','?'), ' expires_at=', v.get('expires_at','?'))"; \
-	  if install -m 600 -o $(CAGE_AGENT_UID) -g $(CAGE_AGENT_GID) "$$tmp" "$(AGENTCAGE_DIR)/grok-home/auth.json" 2>/dev/null; then \
-	    :; \
-	  elif sudo install -m 600 -o $(CAGE_AGENT_UID) -g $(CAGE_AGENT_GID) "$$tmp" "$(AGENTCAGE_DIR)/grok-home/auth.json"; then \
-	    :; \
-	  else \
-	    echo "error: could not install auth.json as uid $(CAGE_AGENT_UID) (try: sudo make cage-grok-auth-import)"; \
-	    rm -f "$$tmp"; exit 1; \
+	  written=0; \
+	  if docker inspect agent-cage-agent --format '{{.State.Status}}' 2>/dev/null | grep -q running; then \
+	    if docker exec -i -u root agent-cage-agent bash -lc \
+	        'cat > /home/agent/.grok/auth.json && chown agent:agent /home/agent/.grok/auth.json && chmod 600 /home/agent/.grok/auth.json' \
+	        < "$$tmp"; then \
+	      written=1; \
+	      echo "  wrote via docker bind mount (agent-owned 0600)"; \
+	    fi; \
 	  fi; \
-	  rm -f "$$tmp"
-	@docker exec -u root agent-cage-agent bash -lc \
-	  'chown agent:agent /home/agent/.grok/auth.json 2>/dev/null; chmod 600 /home/agent/.grok/auth.json 2>/dev/null; true' \
-	  2>/dev/null || true
+	  if [ "$$written" -eq 0 ]; then \
+	    if install -m 600 -o $(CAGE_AGENT_UID) -g $(CAGE_AGENT_GID) "$$tmp" "$(AGENTCAGE_DIR)/grok-home/auth.json" 2>/dev/null; then \
+	      written=1; echo "  wrote via install uid $(CAGE_AGENT_UID)"; \
+	    elif sudo install -m 600 -o $(CAGE_AGENT_UID) -g $(CAGE_AGENT_GID) "$$tmp" "$(AGENTCAGE_DIR)/grok-home/auth.json"; then \
+	      written=1; echo "  wrote via sudo install uid $(CAGE_AGENT_UID)"; \
+	    fi; \
+	  fi; \
+	  rm -f "$$tmp"; \
+	  if [ "$$written" -eq 0 ]; then \
+	    echo "error: could not write cage auth.json (start agent or: sudo make cage-grok-auth-import)"; \
+	    exit 1; \
+	  fi
 	@python3 -c "import os; p='$(AGENTCAGE_DIR)/grok-home/auth.json'; st=os.stat(p); \
 	  print('  file uid:gid=', st.st_uid, st.st_gid, ' perm=', oct(st.st_mode)[-3:], \
-	        '(agent-owned; host cannot open — expected)')"
-	@echo "Done. Re-run import after host 'grok login' if the cage session expires."
+	        '(agent-owned; host cannot open — expected)')" 2>/dev/null || true
+	@echo "Done. Host 'grok login' then re-run this target whenever cage prompts for login."
 
 grok-overlay-uninstall:
 	@rm -f "$(AGENTCAGE_DIR)/docker/docker-compose.override.yaml"
@@ -558,16 +567,17 @@ grok-resume: ensure-project
 # Idempotent “get me to a launchable Grok in cage” ladder (safe to re-run).
 grok-ensure: ensure-project
 	@$(MAKE) grok-overlay-install
-	@if [ ! -f "$(AGENTCAGE_DIR)/grok-home/auth.json" ]; then \
-	  echo "==> no cage auth.json — importing host session"; \
-	  $(MAKE) grok-auth-import; \
-	else \
-	  echo "auth: $(AGENTCAGE_DIR)/grok-home/auth.json present (re-import: make grok-auth-import)"; \
-	fi
 	@docker image inspect $(GROK_IMAGE) >/dev/null 2>&1 \
 	  || $(MAKE) grok-overlay-build
 	@# Always re-apply compose override + up so sessions volume is attached
 	@$(MAKE) grok-up
+	@# Always refresh OIDC from host (stale cage auth → login prompt / ApiKey 401).
+	@# Needs host ~/.grok/auth.json from a recent 'grok login' / host grok session.
+	@if [ -f "$(HOME)/.grok/auth.json" ]; then \
+	  $(MAKE) grok-auth-import; \
+	else \
+	  echo "warn: no host $(HOME)/.grok/auth.json — cage will prompt login (host: grok login)"; \
+	fi
 	@$(MAKE) grok-sessions-import-host
 	@$(MAKE) workspace-sync
 	@$(MAKE) grok-ready
