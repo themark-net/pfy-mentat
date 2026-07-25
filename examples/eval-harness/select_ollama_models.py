@@ -177,10 +177,14 @@ def select(pulled: set[str] | None, b: HostBudget, allow_pull: bool) -> dict:
     pulled_near = [c for c in candidates if c["pulled"] and c["quality"] >= best["quality"] - 1]
     gate = max(pulled_near, key=lambda c: c["quality"]) if pulled_near else best
 
-    # Matrix: gate + up to 2 smaller distinct models (pulled preferred)
+    # Matrix: gate + up to 2 smaller coders (skip smoke-only unless nothing else)
     matrix = [gate["name"]]
     for c in sorted(candidates, key=lambda x: x["quality"]):
         if c["name"] in matrix:
+            continue
+        if c.get("role") == "smoke" and any(
+            x.get("role") != "smoke" and x["name"] not in matrix for x in candidates
+        ):
             continue
         if c["quality"] < gate["quality"]:
             matrix.append(c["name"])
