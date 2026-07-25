@@ -83,5 +83,6 @@ This prevents low-value daily noise while still capturing the good signal @tom_d
 | 2026-07-21 | 2026-07-20/21 | 1 (hanakoxbt 8-exits) | 1 | 1 (Entry 068) | Pure high-value methodology: 8 mandatory agent-loop exits. Folded into Finn Loop / eval-loop patterns row; scores raised to 91 A. Canonical stop-condition checklist. |
 | 2026-07-22 | 2026-07-22 | 1 (5-repos list) | 3 strong + 2 noted | 3 cataloged (069–071) + 1 note (072) | Bumblebee (MCP/supply-chain scanner), Hyperframes (agent HTML→video, S), Camofox Browser (stealth agent browser). OpenMythos + map-anything lower priority (research/CV). |
 | 2026-07-22 | 2026-07-21/22 | 1 (Poolside Laguna S 2.1) | 1 | 1 (Entry 073) | Major open MoE: 118B/8B active, 1M ctx, agentic coding, OpenMDW-1.1, GGUF/MLX/Ollama/llama.cpp day-one. S-tier. High priority local eval. |
+| 2026-07-25 | 2026-07-25 | 1 (Ruben 3 Claude Skills) | 0 (methodology) | 1 examined/reject (Entry 074) | Claude Skills triad (/how-to, /about-me, /skill-creator) + free library. High-signal process advice; Stage 0 fail (Claude-proprietary, no self-hosted tool). Pattern-transferrable only. |
 
 *Maintained to support the 7-day review and schedule tuning.*
