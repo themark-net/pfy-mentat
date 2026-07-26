@@ -415,7 +415,7 @@ def make_handler(state: VoiceRemoteState):
                 try:
                     body = (
                         b"ERROR: HTTP/2 prior knowledge sent to HTTP/1 voice-remote.\n"
-                        b"Use HTTP/1.1 or access via tailscale serve https://…/\n"
+                        b"Use HTTP/1.1 or access via tailscale serve https://.../\n"
                     )
                     self.connection.sendall(
                         b"HTTP/1.0 400 Bad Request\r\n"
