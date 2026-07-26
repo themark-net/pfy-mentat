@@ -154,8 +154,10 @@ So: **useful scaffold**, not yet “hands-free agentic coding.” Gaps: shared s
 | **2** | TTS replies + optional wake word | Hands-free loop at desk | open |
 | **3** | Shared worksheet auto-update (worker progress → monitor brief) | Less paste between terminals | open |
 | **4a** | Remote HTTP + Android UI over Tailscale | Phone STT → same handoff as desk | **done** (`make voice-remote`) |
-| **4b** | Auto agent runner (Grok headless + tools) | No manual handoff.sh | **done** (`agent_runner.py`, `VOICE_AUTO_AGENT=1`) |
-| **4c–d** | TTS back · VoIP/Twilio | Hands-free / phone call | open |
+| **4b** | Auto agent runner (tools; Grok opt-in) | No manual handoff.sh | **done** (`agent_runner.py`) |
+| **4b-L** | **OpenCode default** for voice auto-agent (local $) | Sustainable under Grok price rise | **next** (ADR-0012) |
+| **4c** | Short local TTS status (not duplex) | Hear “done/fail” | open |
+| **4d** | Optional local Pipecat duplex (no cloud S2S) | Only if free enough | deferred |
 | **5** | Product lever: voice as input to `stage`/`ship` | Aligns T-0090 simplicity | open |
 
 ## Security / non-goals

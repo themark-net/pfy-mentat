@@ -37,7 +37,7 @@ Related work queue: [TODO.md](TODO.md)
 
 ## Needs operator input soon (P1)
 
-*No open P1 OQs.* Remaining active OQs are P2 (subtree, ATG, Antigravity, colibri, **voice channel** OQ-0010).
+*No open P1 OQs.* Remaining active OQs are P2 (subtree, ATG, Antigravity, colibri). **OQ-0010 voice resolved** → ADR-0012.
 
 Recently closed:
 
