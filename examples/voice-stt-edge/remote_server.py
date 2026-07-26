@@ -68,6 +68,13 @@ MOBILE_HTML = """<!DOCTYPE html>
     #banner.show { display: block; }
     #status { white-space: pre-wrap; font-size: .85rem; margin-top: 1rem;
       padding: .75rem; border-radius: .5rem; background: #8881; min-height: 3rem; }
+    #result {
+      display: none; margin-top: 1rem; padding: 1rem; border-radius: .5rem;
+      background: #1b5e2033; border: 2px solid #2e7d32; white-space: pre-wrap;
+      font-size: 1.05rem; font-weight: 600;
+    }
+    #result.show { display: block; }
+    #result .meta { font-weight: 400; font-size: .8rem; opacity: .8; margin-top: .75rem; }
     @keyframes pulse { 50% { opacity: .7; } }
     .row { display: flex; gap: .5rem; }
     .row > * { flex: 1; }
@@ -106,7 +113,9 @@ MOBILE_HTML = """<!DOCTYPE html>
   <label>Or type text (always works)</label>
   <textarea id="text" rows="3" placeholder="Run make smoke-opencode-ollama and report"></textarea>
   <button class="go" id="sendText" type="button">Send text</button>
+  <button class="secondary" id="fetchLast" type="button">Refresh last transcript from host</button>
 
+  <div id="result" aria-live="polite"></div>
   <div id="status">Ready. Set token first.</div>
 
   <script>
@@ -116,6 +125,38 @@ MOBILE_HTML = """<!DOCTYPE html>
     let chunks = [];
     let lastBlob = null;
     let lastName = 'phone-capture.webm';
+
+    function showResult(data) {
+      const tr = (data && (data.transcript || data.text)) || '';
+      const box = $('result');
+      if (!tr) {
+        box.classList.add('show');
+        box.textContent = 'Server returned OK but transcript was empty. On host: cat examples/voice-stt-edge/.generated/last-transcript.txt';
+        status('Empty transcript in response: ' + JSON.stringify(data).slice(0, 300));
+        return;
+      }
+      box.innerHTML = '';
+      const title = document.createElement('div');
+      title.textContent = 'Transcript';
+      title.style.fontSize = '.75rem';
+      title.style.fontWeight = '400';
+      title.style.opacity = '.75';
+      const body = document.createElement('div');
+      body.textContent = tr;
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      meta.textContent = 'backend=' + (data.backend || '?') +
+        '  target=' + (data.target || '?') +
+        '\\nOn host: examples/voice-stt-edge/.generated/handoff.sh' +
+        (data.handoff_path ? ('\\n' + data.handoff_path) : '');
+      box.appendChild(title);
+      box.appendChild(body);
+      box.appendChild(meta);
+      box.classList.add('show');
+      try { $('text').value = tr; } catch (_) {}
+      status('OK — transcript shown above (' + tr.length + ' chars). On host run handoff.sh for tools.');
+      try { console.log('voice-remote result', data); } catch (_) {}
+    }
 
     const secure = window.isSecureContext === true;
     const hasMD = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
@@ -173,6 +214,7 @@ MOBILE_HTML = """<!DOCTYPE html>
     }
 
     async function postJson(path, body) {
+      status('Request ' + path + ' …');
       const r = await fetch(path, {
         method: 'POST',
         headers: authHeaders(true),
@@ -180,33 +222,50 @@ MOBILE_HTML = """<!DOCTYPE html>
       });
       const text = await r.text();
       let data;
-      try { data = JSON.parse(text); } catch { data = { raw: text }; }
-      if (!r.ok) throw new Error((data && data.error) || text || r.status);
+      try { data = JSON.parse(text); } catch (e) {
+        throw new Error('non-JSON response HTTP ' + r.status + ': ' + text.slice(0, 200));
+      }
+      if (!r.ok) throw new Error((data && data.error) || text || ('HTTP ' + r.status));
+      return data;
+    }
+
+    async function getJson(path) {
+      const r = await fetch(path, { headers: authHeaders(false) });
+      const text = await r.text();
+      let data;
+      try { data = JSON.parse(text); } catch (e) {
+        throw new Error('non-JSON GET ' + r.status + ': ' + text.slice(0, 200));
+      }
+      if (!r.ok) throw new Error((data && data.error) || text || ('HTTP ' + r.status));
       return data;
     }
 
     async function blobToB64(blob) {
-      const buf = await blob.arrayBuffer();
-      let binary = '';
-      const bytes = new Uint8Array(buf);
-      const chunk = 0x8000;
-      for (let i = 0; i < bytes.length; i += chunk) {
-        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
-      }
-      return btoa(binary);
+      // FileReader is more reliable than chunked btoa on mobile
+      return await new Promise((resolve, reject) => {
+        const fr = new FileReader();
+        fr.onload = () => {
+          const s = String(fr.result || '');
+          const i = s.indexOf(',');
+          resolve(i >= 0 ? s.slice(i + 1) : s);
+        };
+        fr.onerror = () => reject(fr.error || new Error('FileReader failed'));
+        fr.readAsDataURL(blob);
+      });
     }
 
     async function sendBlob(blob, filename) {
-      status('Uploading + STT on host…');
+      $('result').classList.remove('show');
+      status('Encoding audio (' + blob.size + ' bytes)…');
       const b64 = await blobToB64(blob);
+      status('Uploading + STT on host (' + b64.length + ' b64 chars)…');
       const data = await postJson('/api/audio', {
         audio_b64: b64,
         mime: blob.type || 'audio/webm',
         filename: filename || 'phone-capture.webm',
         target: $('target').value,
       });
-      status('OK transcript:\\n' + data.transcript + '\\n\\nHost handoff:\\n' + data.handoff_path +
-        '\\n\\nOn host: run handoff.sh');
+      showResult(data);
     }
 
     $('recBtn').onclick = async () => {
@@ -281,12 +340,26 @@ MOBILE_HTML = """<!DOCTYPE html>
       try {
         const text = $('text').value.trim();
         if (!text) throw new Error('text empty');
-        status('Sending text…');
+        $('result').classList.remove('show');
         const data = await postJson('/api/text', {
           text,
           target: $('target').value,
         });
-        status('OK transcript:\\n' + data.transcript + '\\n\\nHost handoff:\\n' + data.handoff_path);
+        showResult(data);
+      } catch (e) {
+        status('Error: ' + e.message);
+      }
+    };
+
+    $('fetchLast').onclick = async () => {
+      try {
+        const data = await getJson('/api/last');
+        showResult({
+          transcript: data.transcript,
+          backend: (data.meta && data.meta.backend) || '?',
+          target: (data.meta && data.meta.target) || '?',
+          handoff_path: data.handoff_path,
+        });
       } catch (e) {
         status('Error: ' + e.message);
       }
@@ -322,33 +395,38 @@ def _ext_for_mime(mime: str, filename: str) -> str:
 
 
 def maybe_to_wav(src: Path) -> Path:
-    """Convert non-wav to 16k mono wav via ffmpeg when available (phone webm)."""
+    """Convert non-wav to 16k mono PCM wav via ffmpeg (phone webm/opus)."""
     if src.suffix.lower() == ".wav":
         return src
     import shutil
+    import subprocess
 
     ffmpeg = shutil.which("ffmpeg")
     if not ffmpeg:
         return src  # hope faster-whisper/av can decode
     dst = src.with_suffix(".wav")
+    # Explicit PCM; ignore opus header warnings when possible
     cmd = [
         ffmpeg,
         "-y",
         "-hide_banner",
         "-loglevel",
-        "error",
+        "warning",
         "-i",
         str(src),
+        "-vn",
         "-ac",
         "1",
         "-ar",
         "16000",
+        "-c:a",
+        "pcm_s16le",
         str(dst),
     ]
-    import subprocess
-
     subprocess.run(cmd, check=True)
-    return dst
+    if dst.is_file() and dst.stat().st_size > 100:
+        return dst
+    return src
 
 
 class VoiceRemoteState:
@@ -512,16 +590,23 @@ def make_handler(state: VoiceRemoteState):
             )
 
         def _ok_result(self, result: dict, target: str) -> None:
+            tr = result.get("transcript") or ""
+            sys.stderr.write(f"==> TRANSCRIPT: {tr!r}\n")
+            sys.stderr.write(
+                f"==> wrote {result.get('transcript_path')} · handoff {result.get('handoff_path')}\n"
+            )
             return self._json(
                 200,
                 {
                     "ok": True,
-                    "transcript": result["transcript"],
+                    "transcript": tr,
+                    "text": tr,  # alias for picky clients
                     "target": target,
                     "backend": result["backend"],
                     "handoff_path": result["handoff_path"],
                     "prompt_path": result["prompt_path"],
                     "inbox_path": result["inbox_path"],
+                    "transcript_path": result.get("transcript_path"),
                     "hint": "On host: run handoff.sh or: grok \"$(cat agent-prompt.md)\"",
                 },
             )
