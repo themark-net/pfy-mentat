@@ -46,7 +46,10 @@ When integrating a new tool, **add a row here in the same PR** as the integratio
 | `WRITE_GUARD_ROOTS` | no | cage | `/workspace` | write-guard MCP | Allowed write roots |
 | `HF_TOKEN` | **yes** | optional | — | colibri/HF weights | Only if OQ-0008 allows downloads |
 | `GITHUB_TOKEN` | **yes** | optional | — | gh, private clones | Prefer fine-scoped PAT |
-| `VOICE_STT_WHISPER_MODEL` | no | optional | `base` | `examples/voice-stt-edge` local Whisper | T-0091 p1; openai-whisper / faster-whisper model id |
+| `VOICE_STT_WHISPER_MODEL` | no | optional | `base.en` | `examples/voice-stt-edge` local Whisper | Prefer `tiny.en`/`base.en`/`small.en` for English commands |
+| `VOICE_STT_LANGUAGE` | no | optional | `en` | local STT | ISO language code for Whisper |
+| `VOICE_ARECORD_DEVICE` | no | optional | system default | `arecord -D` | e.g. `default`, `pulse`, or `plughw:0,0` from `arecord -l` |
+| `VOICE_STT_TRY_OLLAMA` | no | optional | unset | auto backend | Set `1` to try Ollama audio API (usually 404 without a whisper model) |
 | `VOICE_STT_OLLAMA_MODEL` | no | optional | `whisper` | voice-stt-edge ollama backend | Experimental; only if Ollama exposes audio transcription |
 | `VOICE_STT_OUT` | no | smoke | `examples/voice-stt-edge/.generated` | `make smoke-voice-stt` | Override artifact dir |
 | `VOICE_LISTEN_SECONDS` | no | optional | `5` | `make voice-listen` | Mic duration |

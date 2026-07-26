@@ -32,6 +32,29 @@ fails: `sudo apt install python3-venv python3-full`.
 Always run STT via `make voice-listen` or `examples/voice-stt-edge/python.sh`
 (not bare `python3`, which will not see the venv packages).
 
+### Empty transcript / near-silent capture
+
+If probe is ready but STT says **empty** or **near-silent**:
+
+1. Speak a **full English phrase** for the whole window (not a single word at the end).
+2. Lengthen: `VOICE_LISTEN_SECONDS=8 make voice-listen`
+3. Check mic device:
+   ```bash
+   arecord -l
+   pactl list short sources
+   VOICE_ARECORD_DEVICE=default make voice-listen
+   # or: VOICE_ARECORD_DEVICE=pulse
+   ```
+4. Stronger model: `VOICE_STT_WHISPER_MODEL=small.en make voice-listen`
+5. Re-decode last wav (no re-record):
+   ```bash
+   examples/voice-stt-edge/python.sh examples/voice-stt-edge/stt_edge.py \
+     --audio examples/voice-stt-edge/.generated/last-capture.wav \
+     --backend local --target monitor
+   ```
+
+Look at the `peak=` / `rms=` line after capture — if `NEAR-SILENT`, Whisper cannot invent speech.
+
 ### Re-transcribe a capture you already made
 
 Your earlier run **did record** (`last-capture.wav`) but failed STT because Whisper was not installed:

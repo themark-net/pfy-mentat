@@ -13,13 +13,16 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import shutil
+import struct
 import subprocess
 import sys
 import tempfile
 import urllib.error
 import urllib.request
+import wave
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -72,10 +75,75 @@ def install_hint() -> str:
 # --- capture -----------------------------------------------------------------
 
 
+def wav_stats(path: Path) -> dict:
+    """Peak/RMS diagnostics for PCM WAV (silence detection)."""
+    stats: dict = {
+        "path": str(path),
+        "bytes": path.stat().st_size if path.is_file() else 0,
+        "ok": False,
+        "near_silent": True,
+        "peak": 0,
+        "rms": 0.0,
+        "duration_s": 0.0,
+        "rate": 0,
+        "channels": 0,
+        "sampwidth": 0,
+    }
+    try:
+        with wave.open(str(path), "rb") as w:
+            nch, sw, rate, nframes = (
+                w.getnchannels(),
+                w.getsampwidth(),
+                w.getframerate(),
+                w.getnframes(),
+            )
+            raw = w.readframes(nframes)
+            stats.update(
+                {
+                    "rate": rate,
+                    "channels": nch,
+                    "sampwidth": sw,
+                    "duration_s": (nframes / rate) if rate else 0.0,
+                    "nframes": nframes,
+                }
+            )
+            if sw == 2 and raw:
+                n = len(raw) // 2
+                samples = struct.unpack("<" + "h" * n, raw)
+                peak = max(abs(s) for s in samples) if samples else 0
+                mean_sq = sum(s * s for s in samples) / max(1, len(samples))
+                rms = math.sqrt(mean_sq)
+                # int16 full scale 32767; speech often peak >> 1000
+                stats["peak"] = peak
+                stats["rms"] = round(rms, 1)
+                stats["near_silent"] = peak < 800 and rms < 200
+                stats["ok"] = True
+            elif sw == 1 and raw:
+                samples = list(raw)
+                peak = max(abs(s - 128) for s in samples) if samples else 0
+                stats["peak"] = peak
+                stats["near_silent"] = peak < 8
+                stats["ok"] = True
+    except Exception as e:
+        stats["error"] = str(e)
+    return stats
+
+
+def print_wav_stats(stats: dict) -> None:
+    print(
+        f"==> audio: {stats.get('duration_s', 0):.1f}s "
+        f"{stats.get('rate')}Hz ch={stats.get('channels')} "
+        f"peak={stats.get('peak')} rms={stats.get('rms')} "
+        f"{'NEAR-SILENT' if stats.get('near_silent') else 'has-energy'}",
+        file=sys.stderr,
+    )
+
+
 def record_mic(seconds: float, out_wav: Path) -> Path:
     """Record mono 16 kHz WAV via arecord or ffmpeg. Fail closed if neither."""
     seconds = max(0.5, float(seconds))
     out_wav.parent.mkdir(parents=True, exist_ok=True)
+    device = os.environ.get("VOICE_ARECORD_DEVICE", "").strip()
 
     arecord = shutil.which("arecord")
     if arecord:
@@ -90,9 +158,13 @@ def record_mic(seconds: float, out_wav: Path) -> Path:
             "1",
             "-d",
             str(int(round(seconds))),
-            str(out_wav),
         ]
+        if device:
+            cmd.extend(["-D", device])
+            print(f"==> arecord device={device}", file=sys.stderr)
+        cmd.append(str(out_wav))
         print(f"==> recording {seconds:.1f}s via arecord → {out_wav}", file=sys.stderr)
+        print("    Speak now (clear, close to mic)…", file=sys.stderr)
         try:
             subprocess.run(cmd, check=True)
         except subprocess.CalledProcessError as e:
@@ -104,6 +176,15 @@ def record_mic(seconds: float, out_wav: Path) -> Path:
             f"(STT still required — not transcribed yet)",
             file=sys.stderr,
         )
+        st = wav_stats(out_wav)
+        print_wav_stats(st)
+        if st.get("near_silent"):
+            print(
+                "==> warning: capture looks near-silent. "
+                "Try: longer VOICE_LISTEN_SECONDS, closer mic, "
+                "or VOICE_ARECORD_DEVICE=… (see arecord -l / pactl list short sources)",
+                file=sys.stderr,
+            )
         return out_wav
 
     ffmpeg = shutil.which("ffmpeg")
@@ -257,29 +338,131 @@ def backend_openai_whisper(audio: Path, model: str = "whisper-1") -> str:
     return text
 
 
-def backend_local_whisper(audio: Path, model: str = "base") -> str:
+def _empty_transcript_error(audio: Path, detail: str) -> SttError:
+    st = wav_stats(audio)
+    print_wav_stats(st)
+    if st.get("near_silent"):
+        return SttError(
+            f"{detail}: audio is near-silent (peak={st.get('peak')} rms={st.get('rms')}). "
+            "Mic likely wrong device or muted. Try:\n"
+            "  arecord -l\n"
+            "  pactl list short sources\n"
+            "  VOICE_ARECORD_DEVICE=default make voice-listen\n"
+            "  VOICE_LISTEN_SECONDS=8 make voice-listen   # speak louder, whole window\n"
+            f"  Re-check file: {audio}"
+        )
+    return SttError(
+        f"{detail}: non-silent audio but no text decoded. "
+        "Retry with: VOICE_STT_WHISPER_MODEL=small.en make voice-listen\n"
+        f"  or: examples/voice-stt-edge/python.sh …/stt_edge.py --audio {audio} "
+        "--backend local --target monitor\n"
+        "  Speak a full English phrase during the whole recording window."
+    )
+
+
+def _faster_whisper_once(
+    audio: Path,
+    model: str,
+    *,
+    language: str,
+    vad_filter: bool,
+    no_speech_threshold: float,
+    compute_type: str,
+) -> tuple[str, object]:
+    from faster_whisper import WhisperModel  # type: ignore
+
+    print(
+        f"==> faster-whisper model={model} compute={compute_type} "
+        f"lang={language} vad={vad_filter} no_speech_th={no_speech_threshold}",
+        file=sys.stderr,
+    )
+    wm = WhisperModel(model, device="cpu", compute_type=compute_type)
+    segments, info = wm.transcribe(
+        str(audio),
+        language=language or None,
+        task="transcribe",
+        beam_size=5,
+        best_of=5,
+        temperature=0.0,
+        vad_filter=vad_filter,
+        condition_on_previous_text=False,
+        no_speech_threshold=no_speech_threshold,
+        log_prob_threshold=-1.0,
+        compression_ratio_threshold=2.4,
+        word_timestamps=False,
+    )
+    segs = list(segments)
+    text = " ".join(s.text.strip() for s in segs if s.text).strip()
+    # helpful diagnostics
+    dur = getattr(info, "duration", None)
+    lang = getattr(info, "language", None)
+    prob = getattr(info, "language_probability", None)
+    print(
+        f"==> decode: segments={len(segs)} duration={dur} lang={lang} lang_p={prob} "
+        f"chars={len(text)}",
+        file=sys.stderr,
+    )
+    return text, info
+
+
+def backend_local_whisper(audio: Path, model: str = "base.en") -> str:
     """openai-whisper or faster-whisper if installed."""
+    lang = os.environ.get("VOICE_STT_LANGUAGE", "en").strip() or "en"
+    st = wav_stats(audio)
+    if st.get("ok"):
+        print_wav_stats(st)
+
     if has_openai_whisper_pkg():
         import whisper  # type: ignore
 
         print(f"==> local openai-whisper model={model}", file=sys.stderr)
         w = whisper.load_model(model)
-        result = w.transcribe(str(audio))
+        result = w.transcribe(str(audio), language=lang, fp16=False)
         text = (result.get("text") or "").strip()
         if not text:
-            raise SttError("local whisper empty transcript")
+            raise _empty_transcript_error(audio, "openai-whisper empty transcript")
         return text
 
     if has_faster_whisper():
-        from faster_whisper import WhisperModel  # type: ignore
+        # Prefer English-tuned small models for short operator commands
+        models_to_try = [model]
+        for alt in ("base.en", "tiny.en", "base", "tiny"):
+            if alt not in models_to_try:
+                models_to_try.append(alt)
 
-        print(f"==> faster-whisper model={model}", file=sys.stderr)
-        wm = WhisperModel(model, device="cpu", compute_type="int8")
-        segments, _info = wm.transcribe(str(audio))
-        text = " ".join(s.text.strip() for s in segments).strip()
-        if not text:
-            raise SttError("faster-whisper empty transcript")
-        return text
+        attempts: list[tuple[str, bool, float, str]] = []
+        # (model, vad_filter, no_speech_threshold, compute_type)
+        for m in models_to_try[:3]:
+            attempts.append((m, False, 0.6, "int8"))
+            attempts.append((m, False, 0.3, "int8"))  # more willing to decode speech
+            attempts.append((m, True, 0.5, "int8"))  # VAD can help noisy rooms
+            attempts.append((m, False, 0.3, "float32"))  # if int8 misbehaves
+
+        last_err = "faster-whisper empty transcript"
+        seen: set[tuple] = set()
+        for m, vad, nst, ctype in attempts:
+            key = (m, vad, nst, ctype)
+            if key in seen:
+                continue
+            seen.add(key)
+            try:
+                text, _info = _faster_whisper_once(
+                    audio,
+                    m,
+                    language=lang,
+                    vad_filter=vad,
+                    no_speech_threshold=nst,
+                    compute_type=ctype,
+                )
+            except Exception as e:
+                last_err = f"faster-whisper error ({m}/{ctype}): {e}"
+                print(f"==> {last_err}", file=sys.stderr)
+                continue
+            if text:
+                print(f"==> transcript ok via model={m} vad={vad}", file=sys.stderr)
+                return text
+
+        raise _empty_transcript_error(audio, last_err)
 
     whisper_bin = shutil.which("whisper")
     if whisper_bin:
@@ -289,6 +472,8 @@ def backend_local_whisper(audio: Path, model: str = "base") -> str:
                 str(audio),
                 "--model",
                 model,
+                "--language",
+                lang,
                 "--output_dir",
                 td,
                 "--output_format",
@@ -301,7 +486,10 @@ def backend_local_whisper(audio: Path, model: str = "base") -> str:
             txts = list(Path(td).glob("*.txt"))
             if not txts:
                 raise SttError("whisper CLI produced no txt")
-            return read_text_file(txts[0])
+            text = read_text_file(txts[0])
+            if not text:
+                raise _empty_transcript_error(audio, "whisper CLI empty transcript")
+            return text
 
     raise SttError(
         "no local Whisper in this Python. Run: make voice-stt-install  "
@@ -373,7 +561,8 @@ def resolve_backend(name: str, audio: Path | None, text: str | None) -> tuple[st
     if name in ("local", "whisper", "local_whisper"):
         if not audio:
             raise SttError("--audio or --mic required for local whisper")
-        model = os.environ.get("VOICE_STT_WHISPER_MODEL", "base")
+        # base.en is better default for short English operator commands
+        model = os.environ.get("VOICE_STT_WHISPER_MODEL", "base.en")
         return "local", backend_local_whisper(audio, model=model)
     if name == "ollama":
         if not audio:
@@ -384,21 +573,18 @@ def resolve_backend(name: str, audio: Path | None, text: str | None) -> tuple[st
             return "text", backend_text(text)
         if not audio:
             raise SttError("auto backend needs --text, --audio, or --mic")
-        # Probe first — avoid error spam
+        # Probe first — avoid error spam. Ollama only if explicitly opted in
+        # (default Ollama installs have no whisper model → noisy 404s).
         attempts: list[tuple[str, str]] = []
         if has_local_stt():
             attempts.append(("local", "local Whisper (faster-whisper / openai-whisper)"))
         if has_openai_key():
             attempts.append(("openai", "OpenAI Whisper API"))
-        # ollama only if explicitly likely — still try last with quiet fail
-        attempts.append(("ollama", "Ollama audio API (often unavailable)"))
+        if os.environ.get("VOICE_STT_TRY_OLLAMA", "").strip() in ("1", "true", "yes"):
+            attempts.append(("ollama", "Ollama audio API"))
 
         errors: list[str] = []
         for bname, label in attempts:
-            if bname == "local" and not has_local_stt():
-                continue
-            if bname == "openai" and not has_openai_key():
-                continue
             try:
                 used, tr = resolve_backend(bname, audio, None)
                 print(f"==> STT backend: {used} ({label})", file=sys.stderr)
@@ -407,7 +593,20 @@ def resolve_backend(name: str, audio: Path | None, text: str | None) -> tuple[st
                 errors.append(f"{bname}: {e}")
                 continue
 
-        detail = "\n".join(f"  - {e}" for e in errors) or "  - no backends attempted"
+        if not attempts:
+            raise SttError(
+                "no STT backend available.\n"
+                + "\n".join(probe_report())
+                + "\n"
+                + install_hint()
+            )
+
+        # Prefer the local empty-transcript diagnosis over generic install hint
+        detail = "\n".join(f"  - {e}" for e in errors)
+        primary = errors[0] if errors else "unknown"
+        # If local already explained silence / decode, surface that first
+        if "near-silent" in primary or "non-silent" in primary or "empty" in primary:
+            raise SttError(primary)
         raise SttError(
             "no working STT backend for this audio.\n"
             f"Probes:\n" + "\n".join(probe_report()) + "\n"

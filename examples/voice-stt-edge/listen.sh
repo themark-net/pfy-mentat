@@ -15,7 +15,9 @@ HANDOFF="${VOICE_HANDOFF:-0}"
 echo "== voice-listen (real STT; not smoke) =="
 echo "  python=$VOICE_PY"
 echo "  seconds=$LISTEN_SECS target=$TARGET backend=$BACKEND"
+echo "  model=${VOICE_STT_WHISPER_MODEL:-base.en} lang=${VOICE_STT_LANGUAGE:-en}"
 echo "  NOTE: make smoke-voice-stt only tests mock/text wiring — no mic."
+echo "  Speak a full English phrase for the whole ${LISTEN_SECS}s window."
 
 if [[ ! -x "$EDGE/.venv/bin/python" ]] && ! "$VOICE_PY" -c "import faster_whisper" 2>/dev/null; then
   echo "" >&2
