@@ -1,125 +1,123 @@
 # Remote Android → host STT → tool-capable agent (T-0091 p4a)
 
-**Status:** Implemented edge · not full VoIP  
+**Status:** Live · browser optional  
 **Depends:** Phase 1 local STT (`make voice-stt-install`) · OQ-0010 path A  
 **Not:** Grok mobile voice (no tools) · Hermes primary · open internet agent phone
 
+## Prefer an app client if the browser hangs
+
+There is no special Play Store “voice agent” required. The host exposes a small
+HTTP API over Tailscale; **any** client that can POST works.
+
+| Client | When |
+|--------|------|
+| **Termux + termux-voice-send.sh** | **Recommended** — record + curl, clear errors |
+| **HTTP Shortcuts** | GUI POSTs without Terminal |
+| Chrome to `http://100.x:8787/` | Optional; hangs usually mean bind/URL wrong |
+
+Full client recipes: [examples/voice-stt-edge/clients/README.md](../../examples/voice-stt-edge/clients/README.md)
+
 ## Goal
 
-Speak on **Android**, process STT on **lab host**, land a **Grok/OpenCode prompt with tools** — same handoff as desk `make voice-listen`.
-
 ```text
-  Android Chrome
-       │  MediaRecorder (webm)
-       │  HTTPS/HTTP over Tailscale (preferred)
+  Android (Termux or browser)
+       │  Tailscale → host:8787
        ▼
-  host remote_server.py :8787
-       │  faster-whisper (.venv)
+  host remote_server.py
+       │  faster-whisper
        ▼
-  .generated/agent-prompt.md + handoff.sh + inbox/
-       │
-       ▼
-  host: handoff.sh → grok (tools)  or  opencode worker
+  .generated/handoff.sh → grok (tools) / opencode
 ```
 
-## One-time host setup
+## Host setup
 
 ```bash
-make voice-stt-install          # if not already
-# Tailscale on host + phone (recommended) — same tailnet
-```
+make voice-stt-install
 
-## Run the remote edge
-
-```bash
-# Localhost only (test from same machine browser)
+# If Tailscale is up, remote.sh defaults to 0.0.0.0
 make voice-remote
 
-# Reachable from Android on tailnet / LAN (still require token)
+# Force phone-reachable bind:
 VOICE_REMOTE_HOST=0.0.0.0 make voice-remote
 ```
 
-Token is auto-created at:
+Note host Tailscale IP:
 
-`examples/voice-stt-edge/.generated/remote.token` (gitignored, mode 600)
+```bash
+tailscale ip -4
+cat examples/voice-stt-edge/.generated/remote.token
+```
 
-Print/copy into the phone UI.
+**From phone**, connectivity must work first:
 
-### Android steps
+```bash
+curl -m 5 http://100.x.y.z:8787/ping
+# → pong
+```
 
-1. Join **Tailscale** (or same LAN; Tailscale preferred).
-2. Open `http://<host-tailscale-name-or-100.x-ip>:8787/` in Chrome.
-3. Paste **token**.
-4. Target: **monitor** (Grok tools) or **worker**.
-5. Record → **Stop** → **Send audio → STT**.
-6. On the **host**, when you want the agent to run with tools:
+If `/ping` hangs, the browser will hang too — fix Tailscale/bind/firewall, not STT.
+
+## Termux (recommended)
+
+On phone:
+
+```bash
+pkg install termux-api curl jq coreutils
+# + install Termux:API app
+```
+
+`~/.voice-remote.env`:
+
+```bash
+export VOICE_REMOTE_URL='http://100.x.y.z:8787'
+export VOICE_REMOTE_TOKEN='…from host remote.token…'
+```
+
+```bash
+bash termux-voice-send.sh
+bash termux-voice-send.sh --text 'run make eval-structural'
+```
+
+Copy script from repo: `examples/voice-stt-edge/clients/termux-voice-send.sh`
+
+Then on host:
 
 ```bash
 examples/voice-stt-edge/.generated/handoff.sh
-# or
-grok "$(cat examples/voice-stt-edge/.generated/agent-prompt.md)"
 ```
 
-Typed text also works in the phone page (no mic).
+## Browser UI (optional)
 
-## API (token required)
+Only after `/ping` returns `pong`:
 
-| Method | Path | Body |
-|--------|------|------|
-| GET | `/` | Mobile UI |
-| GET | `/health` | No auth |
-| POST | `/api/text` | `{"text":"…","target":"monitor"}` |
-| POST | `/api/audio` | `{"audio_b64":"…","mime":"audio/webm","target":"monitor"}` |
-| GET | `/api/last` | Last transcript (auth) |
+`http://<tailscale-ip>:8787/`
 
-Header: `Authorization: Bearer <token>` or `X-Voice-Token: <token>`.
+## API
 
-```bash
-export VOICE_REMOTE_TOKEN=$(cat examples/voice-stt-edge/.generated/remote.token)
-curl -sS http://127.0.0.1:8787/health
-curl -sS -H "Authorization: Bearer $VOICE_REMOTE_TOKEN" \
-  -H 'Content-Type: application/json' \
-  -d '{"text":"Run make eval-structural","target":"monitor"}' \
-  http://127.0.0.1:8787/api/text
-```
+| Method | Path | Auth | Notes |
+|--------|------|------|-------|
+| GET | `/ping` | no | plain `pong` — use this to debug hangs |
+| GET | `/health` | no | JSON |
+| GET | `/` | no | mobile HTML UI |
+| POST | `/api/text` | Bearer | JSON `{"text","target"}` |
+| POST | `/api/audio` | Bearer | JSON base64 (browser) |
+| POST | `/api/audio-raw` | Bearer | raw body (Termux/curl); headers `X-Voice-Target`, `Content-Type` |
+| GET | `/api/last` | Bearer | last transcript |
 
-## Security rules
+## Security
 
 | Do | Do not |
 |----|--------|
-| Prefer **Tailscale** only reachability | Port-forward 8787 to the public internet |
-| Keep **token** secret (phone + host) | Commit `remote.token` |
-| Bind `127.0.0.1` for desk tests | Assume HTTPS without Tailscale/TLS |
-| Run handoff yourself on host | Expect Grok mobile voice to get tools |
-
-**Not in p4a:** auto-running `grok` on every upload (headless agent loop is a later, higher-risk step). Inbox files under `.generated/inbox/` accumulate prompts for you or a watcher.
-
-## Env
-
-| Variable | Default | Meaning |
-|----------|---------|---------|
-| `VOICE_REMOTE_HOST` | `127.0.0.1` | Bind address; use `0.0.0.0` on tailnet |
-| `VOICE_REMOTE_PORT` | `8787` | Port |
-| `VOICE_REMOTE_TOKEN` | auto file | Shared secret |
-| `VOICE_STT_BACKEND` | `auto` | STT for `/api/audio` |
+| Tailscale only | Port-forward 8787 to the public internet |
+| Keep `remote.token` secret | Commit the token |
+| Allow 8787 from tailnet if firewalling | Assume browser HTTPS without Tailscale Serve |
 
 ## Smoke
 
 ```bash
-make smoke-voice-remote   # starts server briefly, /health + /api/text with mock path
+make smoke-voice-remote
 ```
 
-## Later (not this slice)
+## Later
 
-| Step | Notes |
-|------|-------|
-| p4b | Optional host watcher: new inbox → `grok` headless with budget/exits |
-| p4c | TTS reply audio back to phone |
-| p4d | True VoIP / Twilio (OQ-0010 C) |
-| TLS | `tailscale serve` or Caddy on tailnet |
-
-## Related
-
-- [voice-agent-channel.md](voice-agent-channel.md)  
-- Local desk path: `make voice-listen`  
-- Worker/monitor: [worker-monitor.md](worker-monitor.md)  
+Auto-run Grok on upload, TTS back to phone, true VoIP — not this slice.

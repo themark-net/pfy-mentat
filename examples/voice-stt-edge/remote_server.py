@@ -302,6 +302,7 @@ def make_handler(state: VoiceRemoteState):
             self.send_response(code)
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(raw)))
+            self.send_header("Connection", "close")
             self.send_header("Cache-Control", "no-store")
             self.end_headers()
             self.wfile.write(raw)
@@ -311,11 +312,60 @@ def make_handler(state: VoiceRemoteState):
             self.send_response(code)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(raw)))
+            self.send_header("Connection", "close")
             self.end_headers()
             self.wfile.write(raw)
 
+        def _text(self, code: int, text: str, content_type: str = "text/plain; charset=utf-8") -> None:
+            raw = text.encode("utf-8")
+            self.send_response(code)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", str(len(raw)))
+            self.send_header("Connection", "close")
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(raw)
+
+        def _process_audio_bytes(
+            self, raw: bytes, mime: str, fname: str, target: str
+        ) -> dict:
+            se.ensure_out(state.out_dir)
+            audio_path = state.out_dir / f"remote-capture{_ext_for_mime(mime, fname)}"
+            audio_path.write_bytes(raw)
+            try:
+                audio_path = maybe_to_wav(audio_path)
+            except Exception as e:
+                sys.stderr.write(f"ffmpeg convert skipped/failed: {e}\n")
+            used, transcript = se.resolve_backend(state.backend, audio_path, None)
+            return se.persist_success(
+                state.out_dir,
+                transcript=transcript,
+                target=target,
+                backend=used,
+                audio=audio_path,
+                source="remote",
+            )
+
+        def _ok_result(self, result: dict, target: str) -> None:
+            return self._json(
+                200,
+                {
+                    "ok": True,
+                    "transcript": result["transcript"],
+                    "target": target,
+                    "backend": result["backend"],
+                    "handoff_path": result["handoff_path"],
+                    "prompt_path": result["prompt_path"],
+                    "inbox_path": result["inbox_path"],
+                    "hint": "On host: run handoff.sh or: grok \"$(cat agent-prompt.md)\"",
+                },
+            )
+
         def do_GET(self) -> None:  # noqa: N802
             path = urlparse(self.path).path
+            # Fast path for connectivity — no JSON, no auth (Termux/browser diagnose)
+            if path in ("/ping", "/ping/"):
+                return self._text(200, "pong\n")
             if path in ("/", "/index.html", "/m", "/mobile"):
                 return self._html(200, MOBILE_HTML)
             if path == "/health":
@@ -327,6 +377,7 @@ def make_handler(state: VoiceRemoteState):
                         "phase": "T-0091-p4a",
                         "backend": state.backend,
                         "bind": f"{state.host}:{state.port}",
+                        "clients": "prefer Termux termux-voice-send.sh if browser hangs",
                     },
                 )
             if path == "/api/last":
@@ -349,13 +400,43 @@ def make_handler(state: VoiceRemoteState):
 
         def do_POST(self) -> None:  # noqa: N802
             path = urlparse(self.path).path
-            if path not in ("/api/text", "/api/audio", "/api/transcribe"):
+            if path not in (
+                "/api/text",
+                "/api/audio",
+                "/api/transcribe",
+                "/api/audio-raw",
+            ):
                 return self._json(404, {"error": "not found"})
             if not self._check_token():
                 return self._json(401, {"error": "unauthorized — set Bearer token"})
 
             try:
                 body = self._read_body()
+            except Exception as e:
+                return self._json(400, {"error": f"bad body: {e}"})
+
+            # Termux/curl: raw audio bytes (no JSON base64)
+            if path == "/api/audio-raw":
+                target = (self.headers.get("X-Voice-Target") or "monitor").strip().lower()
+                if target not in ("monitor", "worker", "raw"):
+                    return self._json(400, {"error": "X-Voice-Target must be monitor|worker|raw"})
+                if not body:
+                    return self._json(400, {"error": "empty audio body"})
+                mime = self.headers.get("Content-Type") or "audio/wav"
+                # strip "; charset=..." if any
+                mime = mime.split(";")[0].strip()
+                fname = self.headers.get("X-Voice-Filename") or "phone.wav"
+                try:
+                    with state.lock:
+                        result = self._process_audio_bytes(body, mime, fname, target)
+                except se.SttError as e:
+                    return self._json(422, {"error": str(e)})
+                except Exception as e:
+                    traceback.print_exc()
+                    return self._json(500, {"error": str(e)})
+                return self._ok_result(result, target)
+
+            try:
                 data = json.loads(body.decode("utf-8") or "{}")
             except Exception as e:
                 return self._json(400, {"error": f"bad json body: {e}"})
@@ -371,55 +452,31 @@ def make_handler(state: VoiceRemoteState):
                         if not text:
                             return self._json(400, {"error": "text required"})
                         used, transcript = se.resolve_backend("text", None, text)
-                        audio_path = None
+                        result = se.persist_success(
+                            state.out_dir,
+                            transcript=transcript,
+                            target=target,
+                            backend=used,
+                            audio=None,
+                            source="remote",
+                        )
                     else:
                         b64 = data.get("audio_b64") or data.get("audio") or ""
                         if not b64:
                             return self._json(400, {"error": "audio_b64 required"})
-                        # allow data-url prefix
                         if "," in b64 and b64.strip().startswith("data:"):
                             b64 = b64.split(",", 1)[1]
                         raw = base64.b64decode(b64)
                         mime = data.get("mime") or "audio/webm"
                         fname = data.get("filename") or "phone-capture.webm"
-                        se.ensure_out(state.out_dir)
-                        audio_path = state.out_dir / f"remote-capture{_ext_for_mime(mime, fname)}"
-                        audio_path.write_bytes(raw)
-                        try:
-                            audio_path = maybe_to_wav(audio_path)
-                        except Exception as e:
-                            sys.stderr.write(f"ffmpeg convert skipped/failed: {e}\n")
-                        used, transcript = se.resolve_backend(
-                            state.backend, audio_path, None
-                        )
-
-                    result = se.persist_success(
-                        state.out_dir,
-                        transcript=transcript,
-                        target=target,
-                        backend=used,
-                        audio=audio_path,
-                        source="remote",
-                    )
+                        result = self._process_audio_bytes(raw, mime, fname, target)
             except se.SttError as e:
                 return self._json(422, {"error": str(e)})
             except Exception as e:
                 traceback.print_exc()
                 return self._json(500, {"error": str(e)})
 
-            return self._json(
-                200,
-                {
-                    "ok": True,
-                    "transcript": result["transcript"],
-                    "target": target,
-                    "backend": result["backend"],
-                    "handoff_path": result["handoff_path"],
-                    "prompt_path": result["prompt_path"],
-                    "inbox_path": result["inbox_path"],
-                    "hint": "On host: run handoff.sh or: grok \"$(cat agent-prompt.md)\"",
-                },
-            )
+            return self._ok_result(result, target)
 
     return Handler
 

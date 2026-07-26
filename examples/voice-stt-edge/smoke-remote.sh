@@ -35,12 +35,26 @@ for i in 1 2 3 4 5 6 7 8 9 10; do
   sleep 0.3
 done
 
+log "ping"
+PING=$(curl -sS -m 2 "http://$HOST:$PORT/ping" || true)
+if [[ "$PING" == "pong" || "$PING" == $'pong\n' ]]; then
+  ok "ping → pong"
+else
+  bad "ping: '$PING'"
+fi
+
 log "health"
 if grep -q '"ok": true' /tmp/vr-health.json 2>/dev/null || grep -q '"ok":true' /tmp/vr-health.json 2>/dev/null; then
   ok "health"
 else
-  bad "health: $(cat /tmp/vr-health.json 2>/dev/null || echo none)"
-  cat /tmp/voice-remote-smoke.log 2>/dev/null | tail -20 || true
+  # health may not have been fetched if loop failed — try once
+  curl -sS -m 2 "http://$HOST:$PORT/health" >/tmp/vr-health.json 2>/dev/null || true
+  if grep -q 'pfy-voice-remote' /tmp/vr-health.json 2>/dev/null; then
+    ok "health"
+  else
+    bad "health: $(cat /tmp/vr-health.json 2>/dev/null || echo none)"
+    cat /tmp/voice-remote-smoke.log 2>/dev/null | tail -20 || true
+  fi
 fi
 
 log "unauthorized blocked"
@@ -78,10 +92,32 @@ else
   bad "handoff incomplete"
 fi
 
+log "audio-raw (tiny silent wav → may 422; endpoint must exist)"
+# minimal valid-ish wav header + silence (not for STT quality — just HTTP path)
+python3 - <<'PY' >/tmp/vr-tiny.wav
+import wave, struct
+with wave.open("/tmp/vr-tiny.wav","w") as w:
+    w.setnchannels(1); w.setsampwidth(2); w.setframerate(16000)
+    w.writeframes(struct.pack("<"+"h"*800, *([0]*800)))
+PY
+CODE=$(curl -sS -o /tmp/vr-raw.json -w '%{http_code}' -X POST \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: audio/wav" \
+  -H "X-Voice-Target: monitor" \
+  --data-binary @/tmp/vr-tiny.wav \
+  "http://$HOST:$PORT/api/audio-raw" || echo 000)
+# 200 if STT invents text, 422 if empty/silent — both prove route works
+if [[ "$CODE" == "200" || "$CODE" == "422" ]]; then
+  ok "audio-raw HTTP $CODE (route live)"
+else
+  bad "audio-raw unexpected code=$CODE $(head -c 120 /tmp/vr-raw.json 2>/dev/null)"
+fi
+
 if [[ "$FAIL" -ne 0 ]]; then
   echo "voice-remote smoke: FAIL" >&2
   exit 1
 fi
 echo "voice-remote smoke: PASS"
-echo "Android path: docs/ops/voice-remote-android.md · make voice-remote"
+echo "Phone: prefer Termux client if browser hangs — examples/voice-stt-edge/clients/"
+echo "Docs: docs/ops/voice-remote-android.md · make voice-remote"
 exit 0
