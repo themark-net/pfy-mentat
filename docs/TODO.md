@@ -24,7 +24,7 @@
 
 ## Active (sorted P0 → P3)
 
-**Session (2026-07-26):** T-0091 **4b auto agent runner** (`VOICE_AUTO_AGENT=1`, `make smoke-voice-agent`). Human: opt-in only (quota).
+**Session (2026-07-26):** **ADR-0012** voice half-duplex local-first; next = OpenCode-default auto-agent (not Grok). OQ-0010 resolved.
 
 ### Active — design / coding + local path (agent may pick freely)
 
@@ -32,7 +32,11 @@
 |----|----------|--------|------|----------------|---------|-------|
 
 | T-0090 | P0 | todo | **Minimal product levers audit**: collapse end-user surface to onboard / stage / ship; cap public Make targets | — | — | [product-operator-surface.md](ops/product-operator-surface.md); platform targets stay advanced |
-| T-0091 | P1 | doing | **Voice → tool-capable agent** (p1+p4a+**4b done**; TTS / session-resume / VoIP open) | [OQ-0010](open-questions/OQ-0010-voice-agent-channel.md) | T-0085 | `VOICE_AUTO_AGENT=1`; [voice-agent-runner.md](ops/voice-agent-runner.md) |
+| T-0091 | P1 | doing | **Voice local path** (half-duplex): OpenCode-default auto-agent + tools-capable local model | — | T-0085, ADR-0012 | Do **not** prioritize full duplex; Grok voice auto opt-in only |
+| T-0092 | P1 | todo | **Voice auto-agent default → opencode** (`VOICE_AUTO_AGENT=opencode`); smoke without cloud | — | T-0091 4b | [ADR-0012](adr/0012-voice-half-duplex-local-first.md); keep `=grok` escalate |
+| T-0093 | P2 | todo | Tools-capable Ollama model for OpenCode worker (or explicit tool-split docs) | — | T-0080 | deepseek 6.7b no tools; find/fit model |
+| T-0094 | P3 | todo | Optional short **local TTS** status (not duplex) | — | T-0092 | Kokoro/piper after local agent path green |
+| T-0095 | P3 | todo | Catalog Stage 0: Pipecat / LiveKit / freeapp (ref only) | — | ADR-0012 | No primary install |
 
 | T-0070 | P1 | doing | Grow design/coding **skills + structural eval** (more text scorers) | — | T-0065 | Keep `eval-structural` green |
 | T-0074 | P1 | doing | Implement-lane via `make eval-auto` (fit-select + candidates) | — | — | deepseek-coder:6.7b lab-proven; StarCoder demoted |

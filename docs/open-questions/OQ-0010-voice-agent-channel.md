@@ -1,25 +1,38 @@
 # OQ-0010: Voice channel for tool-capable agentic coding
 
 - **Priority:** P2  
-- **Status:** open  
-- **Blocks:** T-0091 phase choices (not blocking local text worker/monitor)  
-- **Related:** [docs/ops/voice-agent-channel.md](../ops/voice-agent-channel.md), T-0085, ADR-0011
+- **Status:** **resolved** (2026-07-26) → [ADR-0012](../adr/0012-voice-half-duplex-local-first.md)  
+- **Blocks:** — (implementation follows ADR-0012)  
+- **Related:** [voice-agent-channel.md](../ops/voice-agent-channel.md), T-0085, ADR-0011/0012
 
 ## Question
 
 How should voice enter the stack so it has **tool use** (git, pipelines, file edit)—unlike Grok mobile voice—without forcing Hermes Agent as primary runtime?
 
-## Branching options
+## Branching options (historical)
 
-| ID | Option | Human decisions |
-|----|--------|-----------------|
-| A | **Voice edge only** (Whisper/TTS → existing Grok/OpenCode text) | Prefer local STT vs cloud STT? |
-| B | **Evaluate Hermes voice** as optional adapter (not primary CLI) | Allow Hermes install in lab? |
-| C | **Telephony** (Twilio/AgentPhone/VoIP) first | Accept third-party phone costs + security? |
-| D | **Defer voice** until T-0090 product levers exist | — |
+| ID | Option | Outcome |
+|----|--------|---------|
+| A | **Voice edge only** (Whisper/TTS → existing Grok/OpenCode text) | **Chosen**, refined |
+| B | Evaluate Hermes voice as optional adapter | Catalog/ref only; not primary |
+| C | Telephony first | Deferred (phase 4d+) |
+| D | Defer voice entirely | Rejected — half-duplex path already works |
 
-**Default until answered:** **A** (local STT edge → text agents), document B as catalog eval, C phase 4.
+## Resolution (operator + cost)
 
-## Resolution notes
+**Accepted path (ADR-0012):**
 
-- **2026-07-26:** Phase 1 shipped on path **A** — `examples/voice-stt-edge/` + `make smoke-voice-stt`. OQ stays **open** for B (Hermes adapter eval) / C (telephony) / local vs cloud STT preference; p1 does not require closing those branches.
+1. **Half-duplex** (push-to-talk / end-of-utterance) — not cloud full-duplex S2S.  
+2. **Local STT** (Whisper in project `.venv`).  
+3. **Default auto-agent = OpenCode → Ollama** for sustainable bulk; **Grok only opt-in** escalation (subscription cost rising).  
+4. **Tailscale** for phone → host (proven).  
+5. Full duplex (Pipecat/LiveKit/GPT-Live) **deferred** until local duplex is cheap or budget returns.
+
+Rationale: full duplex burns continuous tokens/minutes on expensive cloud; X/localmaxxing setups commonly accept half-duplex + local agent. Operator prioritizes OpenCode/local over Grok-as-default for voice.
+
+## Residual / later OQs
+
+- Tools-capable local Ollama model for OpenCode (or explicit tool-split).  
+- Optional short **local TTS** (status only), not full duplex.  
+- Optional D1: Pipecat local media without cloud S2S.  
+- Distillation: cloud → local coder quality (separate track).

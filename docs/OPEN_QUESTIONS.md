@@ -31,7 +31,7 @@ Related work queue: [TODO.md](TODO.md)
 | [OQ-0008](open-questions/OQ-0008-colibri-weights-ok.md) | P2 | tbd | OK to download colibri model weights on this machine? | T-0016 | disk/RAM, colibri pin |
 | [OQ-0009](open-questions/OQ-0009-write-guard-default-mode.md) | P1 | answered | Default WRITE_GUARD_MODE for new envs (audit vs enforce) | T-0031 | ADR-0007; default **audit** |
 | [OQ-0001](open-questions/OQ-0001-seed-x-post-content.md) | P3 | answered | Seed X post content extraction | — | Superseded by Entries 001–010 processed |
-| [OQ-0010](open-questions/OQ-0010-voice-agent-channel.md) | P2 | open | Voice channel with tool-capable agent (not chat-stuck) | T-0091 | [voice-agent-channel.md](ops/voice-agent-channel.md); default path A |
+| [OQ-0010](open-questions/OQ-0010-voice-agent-channel.md) | P2 | **resolved** | Voice half-duplex local-first (not cloud duplex) | T-0091 | [ADR-0012](adr/0012-voice-half-duplex-local-first.md) |
 
 ---
 

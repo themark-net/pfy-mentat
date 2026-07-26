@@ -12,8 +12,8 @@
 | **Cage/env polish** (auth dir mount, write-guard mcp-host) | **0 for this track** | Parked; not design/coding assist focus |
 | **Product forks needing ADR** | **0 open P1** | None until architecture pivot |
 | **Hybrid surfaces (ADR-0011)** | **0** | Defaults: Grok primary hard tasks; OpenCode+Ollama bulk; no Hermes runtime |
-| **Voice channel (OQ-0010)** | **0–1** | Default **A** (STT edge → existing agents) until you pick B/C |
-| **Total decisions needed from you this week** | **0 required** | Optional OQ-BATCH (4) + optional voice branch |
+| **Voice channel (OQ-0010)** | **0** | **Resolved** ADR-0012: half-duplex local-first; OpenCode default; no cloud duplex |
+| **Total decisions needed from you this week** | **0 required** | Optional OQ-BATCH (4) only |
 
 **Bottom line:** You can ignore human input for the design/coding assist track; agents should keep shipping skills, structural evals, and pattern docs. **4 deferred P2 OQs** remain when you want a single batch review.
 
@@ -68,9 +68,10 @@ Ollama + gate model present?
 
 ```text
 OQ-BATCH: 0003=no 0004=catalog 0007=no 0008=no
-VOICE-BATCH: OQ-0010=A
-# A=STT edge→text agents  B=eval Hermes voice adapter  C=telephony first  D=defer
+# Voice resolved 2026-07-26 → ADR-0012 (no VOICE-BATCH required)
+# half-duplex + local OpenCode default; Grok escalate only; duplex deferred
 ```
+
 
 ---
 

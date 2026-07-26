@@ -20,14 +20,21 @@ transcript / agent-prompt.md
   (phone: GET /api/last-run)
 ```
 
-## Opt-in (important)
+## Opt-in (important) — ADR-0012
 
-| `VOICE_AUTO_AGENT` | Behavior |
-|--------------------|----------|
-| unset / `0` | STT only — safe default |
-| `1` / `grok` | Run Grok with tools after STT |
-| `mock` | Fake agent (smokes / dry-run) |
-| `opencode` | Prefer OpenCode worker path |
+| `VOICE_AUTO_AGENT` | Behavior | Cost |
+|--------------------|----------|------|
+| unset / `0` | STT only — safe default | $0 |
+| **`opencode`** | **Preferred bulk:** OpenCode → Ollama after STT | Local only |
+| `1` / `grok` | Grok headless with tools | **Cloud — escalate only** |
+| `mock` | Fake agent (smokes / dry-run) | $0 |
+
+**Sustainable recipe (operator default under rising Grok price):**
+
+```bash
+VOICE_AUTO_AGENT=opencode VOICE_REMOTE_HOST=127.0.0.1 make voice-remote
+# escalate hard problems: VOICE_AUTO_AGENT=grok for one session
+```
 
 Remote open without this flag will **not** burn cloud quota.
 

@@ -1,8 +1,21 @@
 # Voice channel for agentic coding (goal)
 
-**Status:** Phase **1** + **4a** + **4b** live · TTS / session-resume still open  
-**ID:** T-0091 · OQ-0010  
-**Related:** T-0085 worker/monitor · ADR-0011 · Hermes pattern (not runtime) · T-0090 minimal levers
+**Status:** Phase **1** + **4a** + **4b** live · **ADR-0012** half-duplex local-first  
+**ID:** T-0091 · OQ-0010 **resolved**  
+**Related:** T-0085 worker/monitor · ADR-0011/0012 · Hermes pattern (not runtime) · T-0090 minimal levers
+
+## Cost decision (2026-07-26)
+
+**Full duplex cloud (GPT-Live, Realtime S2S) is not the implementation path.**  
+Operator: Grok pricing rising; bulk work must be **local OpenCode + Ollama**. Half-duplex is an acceptable industry-normal sacrifice for sustainability. Tailscale is the remote access SoT.
+
+| Default | Escalate only when needed |
+|---------|---------------------------|
+| Local Whisper STT | — |
+| OpenCode + local coder | Grok monitor / hard problems (`VOICE_AUTO_AGENT=grok`) |
+| Half-duplex (record → STT → agent → optional short TTS later) | Full duplex media (Pipecat) only if local and cheap |
+
+See **[ADR-0012](../adr/0012-voice-half-duplex-local-first.md)**.
 
 ## Phase 1 (desk) — live
 
