@@ -2,14 +2,23 @@
 
 The desktop browser UI is optional. **If the phone browser hangs**, use one of these instead — they talk HTTP to the same host port.
 
-## Why the browser hangs (usually)
+## Why the browser hangs or mic fails (usually)
 
 | Cause | Fix |
 |-------|-----|
 | Host bound to `127.0.0.1` only | `VOICE_REMOTE_HOST=0.0.0.0 make voice-remote` |
 | Opened `http://127.0.0.1:8787` **on the phone** | Phone must use host **Tailscale 100.x** or MagicDNS name |
 | Firewall / no tailnet | Same Tailscale account; `tailscale status` green on both |
+| **`getUserMedia` undefined / no Brave mic prompt** | Expected on **plain HTTP**. Use file-capture on the page, Termux, or `tailscale serve` HTTPS |
 | Slow first STT after upload | Page may sit until Whisper finishes — use Termux for clearer progress |
+
+### HTTPS for in-page browser mic
+
+```bash
+# host: voice-remote already on :8787
+tailscale serve --bg --https=443 http://127.0.0.1:8787
+# open the https://… URL from: tailscale serve status
+```
 
 **Connectivity test from phone (Termux):**
 

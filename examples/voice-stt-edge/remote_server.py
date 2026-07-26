@@ -57,19 +57,27 @@ MOBILE_HTML = """<!DOCTYPE html>
     button { cursor: pointer; font-weight: 600; margin-top: .5rem; }
     button.rec { background: #c62828; color: #fff; border: none; }
     button.rec.on { animation: pulse 1s infinite; }
+    button.rec:disabled { opacity: .45; }
     button.go { background: #1565c0; color: #fff; border: none; }
     button.secondary { background: transparent; }
+    #banner {
+      display: none; font-size: .85rem; margin: 0 0 1rem; padding: .75rem;
+      border-radius: .5rem; background: #b71c1c22; border: 1px solid #c62828aa;
+    }
+    #banner.show { display: block; }
     #status { white-space: pre-wrap; font-size: .85rem; margin-top: 1rem;
       padding: .75rem; border-radius: .5rem; background: #8881; min-height: 3rem; }
     @keyframes pulse { 50% { opacity: .7; } }
     .row { display: flex; gap: .5rem; }
     .row > * { flex: 1; }
+    code { font-size: .8rem; word-break: break-all; }
   </style>
 </head>
 <body>
   <h1>Voice → tool-capable agent</h1>
-  <p class="sub">Records on this phone → STT on your lab host → Grok/OpenCode handoff
-  (not Grok mobile voice stuck in chat).</p>
+  <p class="sub">Phone → host STT → Grok/OpenCode tools (not Grok mobile voice).</p>
+
+  <div id="banner"></div>
 
   <label>Token (VOICE_REMOTE_TOKEN)</label>
   <input id="token" type="password" autocomplete="off" placeholder="required"/>
@@ -81,15 +89,20 @@ MOBILE_HTML = """<!DOCTYPE html>
     <option value="raw">raw transcript</option>
   </select>
 
+  <label>In-page mic (needs HTTPS or localhost)</label>
   <div class="row">
-    <button class="rec" id="recBtn" type="button">Hold to record… (tap start)</button>
+    <button class="rec" id="recBtn" type="button">Start record</button>
   </div>
   <div class="row">
     <button class="secondary" id="stopBtn" type="button" disabled>Stop</button>
     <button class="go" id="sendAudio" type="button" disabled>Send audio → STT</button>
   </div>
 
-  <label>Or type text (no mic)</label>
+  <label>Works on plain HTTP: pick / capture audio file</label>
+  <input id="file" type="file" accept="audio/*,video/*" capture="user"/>
+  <button class="go" id="sendFile" type="button">Upload file → STT</button>
+
+  <label>Or type text (always works)</label>
   <textarea id="text" rows="3" placeholder="Run make smoke-opencode-ollama and report"></textarea>
   <button class="go" id="sendText" type="button">Send text</button>
 
@@ -101,21 +114,58 @@ MOBILE_HTML = """<!DOCTYPE html>
     let mediaRecorder = null;
     let chunks = [];
     let lastBlob = null;
+    let lastName = 'phone-capture.webm';
 
-    function authHeaders() {
+    const secure = window.isSecureContext === true;
+    const hasMD = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+    const origin = location.origin;
+    const isHttpTailnet = location.protocol === 'http:' && !/^localhost$|^127\\.0\\.0\\.1$/.test(location.hostname);
+
+    function showBanner(html) {
+      const b = $('banner');
+      b.innerHTML = html;
+      b.classList.add('show');
+    }
+
+    // Brave/Chrome: mediaDevices is undefined on non-secure contexts (http://100.x)
+    if (!hasMD) {
+      $('recBtn').disabled = true;
+      $('stopBtn').disabled = true;
+      showBanner(
+        '<strong>In-page mic unavailable</strong> — browsers only expose ' +
+        '<code>getUserMedia</code> on <strong>HTTPS</strong> or <strong>localhost</strong>. ' +
+        'You are on <code>' + origin + '</code> (secureContext=' + secure + ').<br><br>' +
+        '<strong>Use instead (no Brave mic prompt needed):</strong><br>' +
+        '1) <em>Pick / capture audio file</em> below (Android system recorder), or<br>' +
+        '2) Type text and Send text, or<br>' +
+        '3) Termux client (best): <code>termux-voice-send.sh</code><br><br>' +
+        'To enable in-page mic: on host run<br>' +
+        '<code>tailscale serve --bg --https=443 http://127.0.0.1:8787</code><br>' +
+        'then open the <strong>https://…</strong> MagicDNS URL Tailscale prints.'
+      );
+      status('Mic API missing (expected on http:// tailnet IP). Use file capture or text.');
+    } else if (isHttpTailnet) {
+      showBanner(
+        'Using HTTP on a tailnet IP — some browsers still block mic. Prefer HTTPS via ' +
+        '<code>tailscale serve</code> or the file/text paths below.'
+      );
+    }
+
+    function authHeaders(json) {
       const t = $('token').value.trim();
       if (!t) throw new Error('token required');
-      return {
+      const h = {
         'Authorization': 'Bearer ' + t,
         'X-Voice-Token': t,
-        'Content-Type': 'application/json',
       };
+      if (json) h['Content-Type'] = 'application/json';
+      return h;
     }
 
     async function postJson(path, body) {
       const r = await fetch(path, {
         method: 'POST',
-        headers: authHeaders(),
+        headers: authHeaders(true),
         body: JSON.stringify(body),
       });
       const text = await r.text();
@@ -125,21 +175,53 @@ MOBILE_HTML = """<!DOCTYPE html>
       return data;
     }
 
+    async function blobToB64(blob) {
+      const buf = await blob.arrayBuffer();
+      let binary = '';
+      const bytes = new Uint8Array(buf);
+      const chunk = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunk) {
+        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+      }
+      return btoa(binary);
+    }
+
+    async function sendBlob(blob, filename) {
+      status('Uploading + STT on host…');
+      const b64 = await blobToB64(blob);
+      const data = await postJson('/api/audio', {
+        audio_b64: b64,
+        mime: blob.type || 'audio/webm',
+        filename: filename || 'phone-capture.webm',
+        target: $('target').value,
+      });
+      status('OK transcript:\\n' + data.transcript + '\\n\\nHost handoff:\\n' + data.handoff_path +
+        '\\n\\nOn host: run handoff.sh');
+    }
+
     $('recBtn').onclick = async () => {
       try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error(
+            'getUserMedia missing. Use file capture / text, or open via HTTPS ' +
+            '(tailscale serve). Plain http://100.x blocks mic in Brave/Chrome.'
+          );
+        }
         chunks = [];
         lastBlob = null;
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        const mime = (window.MediaRecorder && MediaRecorder.isTypeSupported('audio/webm;codecs=opus'))
           ? 'audio/webm;codecs=opus'
-          : (MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '');
+          : ((window.MediaRecorder && MediaRecorder.isTypeSupported('audio/webm')) ? 'audio/webm' : '');
+        if (!window.MediaRecorder) throw new Error('MediaRecorder not supported in this browser');
         mediaRecorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
         mediaRecorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
         mediaRecorder.onstop = () => {
           lastBlob = new Blob(chunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+          lastName = 'phone-capture.webm';
           stream.getTracks().forEach(t => t.stop());
           $('sendAudio').disabled = false;
-          status('Recorded ' + lastBlob.size + ' bytes (' + lastBlob.type + '). Tap Send audio.');
+          status('Recorded ' + lastBlob.size + ' bytes. Tap Send audio.');
           $('recBtn').classList.remove('on');
         };
         mediaRecorder.start();
@@ -148,7 +230,7 @@ MOBILE_HTML = """<!DOCTYPE html>
         $('sendAudio').disabled = true;
         status('Recording… speak a full English phrase, then Stop.');
       } catch (e) {
-        status('Mic error: ' + e.message);
+        status('Mic error: ' + (e && e.message ? e.message : e));
       }
     };
 
@@ -157,27 +239,29 @@ MOBILE_HTML = """<!DOCTYPE html>
       $('stopBtn').disabled = true;
     };
 
-    async function blobToB64(blob) {
-      const buf = await blob.arrayBuffer();
-      let binary = '';
-      const bytes = new Uint8Array(buf);
-      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-      return btoa(binary);
-    }
-
     $('sendAudio').onclick = async () => {
       try {
         if (!lastBlob) throw new Error('no recording');
-        status('Uploading + STT on host…');
-        const b64 = await blobToB64(lastBlob);
-        const data = await postJson('/api/audio', {
-          audio_b64: b64,
-          mime: lastBlob.type || 'audio/webm',
-          filename: 'phone-capture.webm',
-          target: $('target').value,
-        });
-        status('OK transcript:\\n' + data.transcript + '\\n\\nHost handoff:\\n' + data.handoff_path +
-          '\\n\\nOn host: run handoff.sh or grok with agent-prompt.md');
+        await sendBlob(lastBlob, lastName);
+      } catch (e) {
+        status('Error: ' + e.message);
+      }
+    };
+
+    $('file').onchange = () => {
+      const f = $('file').files && $('file').files[0];
+      if (!f) return;
+      lastBlob = f;
+      lastName = f.name || 'phone-file';
+      $('sendAudio').disabled = false;
+      status('Selected file: ' + lastName + ' (' + f.size + ' bytes, ' + (f.type || 'unknown') + '). Tap Send audio or Upload file.');
+    };
+
+    $('sendFile').onclick = async () => {
+      try {
+        const f = $('file').files && $('file').files[0];
+        if (!f && !lastBlob) throw new Error('choose a file or record first');
+        await sendBlob(f || lastBlob, (f && f.name) || lastName);
       } catch (e) {
         status('Error: ' + e.message);
       }
@@ -198,7 +282,6 @@ MOBILE_HTML = """<!DOCTYPE html>
       }
     };
 
-    // restore token from session
     try {
       const t = sessionStorage.getItem('voice_token');
       if (t) $('token').value = t;

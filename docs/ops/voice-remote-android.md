@@ -88,9 +88,42 @@ examples/voice-stt-edge/.generated/handoff.sh
 
 ## Browser UI (optional)
 
-Only after `/ping` returns `pong`:
+Only after `/ping` returns `pong`.
 
-`http://<tailscale-ip>:8787/`
+### Why Brave shows “getUserMedia undefined” / no mic prompt
+
+Browsers treat **plain `http://100.x.y.z` as insecure**. On insecure pages,
+`navigator.mediaDevices` is **undefined** — Brave/Chrome never show a mic
+permission dialog. This is expected, not a bug in our server.
+
+| Approach | Mic in browser? |
+|----------|-----------------|
+| `http://100.x:8787` | **No** in-page mic |
+| **File capture** on the page (`accept=audio` + `capture`) | **Yes** (system recorder) |
+| **HTTPS via `tailscale serve`** | **Yes** in-page mic |
+| **Termux** | **Yes** (best) |
+| Typed text on the page | N/A (always works) |
+
+### Enable in-page mic (HTTPS on Tailscale)
+
+On the **host** (with `make voice-remote` already listening on 127.0.0.1 or 0.0.0.0:8787):
+
+```bash
+# HTTPS front door on the tailnet (Tailscale certs)
+tailscale serve --bg --https=443 http://127.0.0.1:8787
+tailscale serve status
+```
+
+Open the **`https://<magicdns-name>/`** URL Tailscale shows (not `http://100.x:8787`).
+Then Brave can prompt for mic.
+
+To stop: `tailscale serve reset`
+
+### Without HTTPS (works today)
+
+1. Reload the page after sync — use **“Pick / capture audio file”** (system mic UI).  
+2. Or **Send text**.  
+3. Or Termux: `termux-voice-send.sh`.
 
 ## API
 
