@@ -16,8 +16,8 @@ LITELLM_EXAMPLE := examples/litellm-ollama
 	cage-workspace-sync cage-grok-mcp-preset \
 	local-ollama-overlay-install local-ollama-up smoke-litellm-ollama \
 	smoke-codebase-memory smoke-repowise smoke-context-tools \
-	smoke-write-guard smoke-grok-skills smoke-opencode-ollama smoke-voice-stt \
-	voice-stt-install voice-listen voice-stt-probe \
+	smoke-write-guard smoke-grok-skills smoke-opencode-ollama smoke-voice-stt smoke-voice-remote \
+	voice-stt-install voice-listen voice-stt-probe voice-remote \
 	worker-stage worker-env monitor-brief \
 
 	eval-tier0 eval-tier1 eval-mvp eval-suite eval-matrix eval-v02 eval-structural \
@@ -76,7 +76,9 @@ help:
 	@echo "  make smoke-opencode-ollama  # T-0080 host: OpenCode adapter + Ollama worker (no cage)"
 	@echo "  make smoke-voice-stt        # T-0091 p1: wiring only (mock/text; no mic)"
 	@echo "  make voice-stt-install      # T-0091: .venv + faster-whisper (host, once; PEP 668)"
-	@echo "  make voice-listen           # T-0091: real mic → STT → handoff (needs install)"
+	@echo "  make voice-listen           # T-0091: desk mic → STT → handoff"
+	@echo "  make voice-remote           # T-0091 p4a: Android/Tailscale HTTP edge → STT"
+	@echo "  make smoke-voice-remote     # T-0091 p4a: localhost API smoke (no phone)"
 	@echo "  make worker-stage           # T-0085: smoke worker + write monitor brief / worker.env"
 	@echo "  make eval-structural           # design/coding gates, NO LLM (always run)"
 	@echo "  make eval-select-models        # pick gate/matrix models that FIT RAM/disk (may pull)"
@@ -257,6 +259,18 @@ voice-listen:
 	@chmod +x examples/voice-stt-edge/listen.sh examples/voice-stt-edge/stt_edge.py \
 	  examples/voice-stt-edge/python.sh
 	@./examples/voice-stt-edge/listen.sh
+
+# Host: Android/Tailscale remote edge (VOICE_REMOTE_HOST=0.0.0.0 for phone reachability)
+voice-remote:
+	@chmod +x examples/voice-stt-edge/remote.sh examples/voice-stt-edge/remote_server.py \
+	  examples/voice-stt-edge/python.sh
+	@./examples/voice-stt-edge/remote.sh
+
+# Localhost API smoke for remote edge (no phone / no Tailscale)
+smoke-voice-remote:
+	@chmod +x examples/voice-stt-edge/smoke-remote.sh examples/voice-stt-edge/remote_server.py \
+	  examples/voice-stt-edge/python.sh
+	@./examples/voice-stt-edge/smoke-remote.sh
 
 # T-0085: stage local worker + Grok monitor brief
 worker-stage:

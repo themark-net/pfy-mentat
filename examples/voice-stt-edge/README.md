@@ -10,7 +10,8 @@ This is **not** Hermes as primary runtime (OQ-0010 path **A**).
 | Command | Records mic? | Runs Whisper? | Purpose |
 |---------|--------------|---------------|---------|
 | **`make smoke-voice-stt`** | **No** | **No** | Wiring test: mock/text → prompt/handoff files |
-| **`make voice-listen`** | **Yes** | **Yes** | Real speech → STT → Grok/OpenCode |
+| **`make voice-listen`** | **Yes (desk)** | **Yes** | Real speech → STT → Grok/OpenCode |
+| **`make voice-remote`** | **Yes (Android)** | **Yes (on host)** | Phone browser → host STT → same handoff ([docs](../../docs/ops/voice-remote-android.md)) |
 
 If smoke **PASS** but you never spoke into a mic, that is expected. Smoke only proves the edge files work.
 

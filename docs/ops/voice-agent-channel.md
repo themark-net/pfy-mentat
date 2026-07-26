@@ -1,10 +1,10 @@
 # Voice channel for agentic coding (goal)
 
-**Status:** Phase **1 implemented** (STT edge smoke) · phases 2–5 open  
+**Status:** Phase **1** + **4a** live · TTS/auto-agent still open  
 **ID:** T-0091 · OQ-0010  
 **Related:** T-0085 worker/monitor · ADR-0011 · Hermes pattern (not runtime) · T-0090 minimal levers
 
-## Phase 1 (live)
+## Phase 1 (desk) — live
 
 | Piece | Path |
 |-------|------|
@@ -14,20 +14,29 @@
 | Operator README | `examples/voice-stt-edge/README.md` |
 | Handoff | `.generated/handoff.sh` after **successful** STT only (blocked if STT failed) |
 
-**Success (p1):** spoken or simulated intent becomes a **text prompt with tools instructions** for Grok monitor or OpenCode worker — not chat-stuck mobile voice.
+## Phase 4a (Android remote) — live
+
+| Piece | Path |
+|-------|------|
+| Remote HTTP edge | `make voice-remote` · `remote_server.py` |
+| Phone UI | `http://<host>:8787/` (Chrome record → upload) |
+| Operator doc | [voice-remote-android.md](voice-remote-android.md) |
+| Smoke | `make smoke-voice-remote` (localhost API; no phone) |
+| Transport | **Tailscale** (preferred) + token; not public internet |
 
 ```bash
-# Wiring only (no mic) — PASS does not mean voice worked
-make smoke-voice-stt
-
-# Real mic path (host) — install uses project .venv (PEP 668 safe)
-make voice-stt-install    # .venv + faster-whisper once
-make voice-listen         # arecord/ffmpeg + STT → artifacts
+# Desk
+make voice-stt-install && make voice-listen
 examples/voice-stt-edge/.generated/handoff.sh
 
-# Simulate without STT
-python3 examples/voice-stt-edge/stt_edge.py --text "Run make eval-structural" --target monitor
+# Android (host on tailnet)
+VOICE_REMOTE_HOST=0.0.0.0 make voice-remote
+# phone: http://<tailscale-host>:8787/  → token → record → Send
+# host:  examples/voice-stt-edge/.generated/handoff.sh   # tools via Grok CLI
 ```
+
+**Success (p1/p4a):** spoken intent (desk or phone) becomes a **text prompt with tools instructions** for Grok/OpenCode — not Grok-mobile-voice stuck in chat.  
+**Not yet:** auto-run agent on every upload, TTS reply to phone, true VoIP.
 
 ## Problem (operator experience)
 
@@ -115,7 +124,8 @@ So: **useful scaffold**, not yet “hands-free agentic coding.” Gaps: shared s
 | **1** | Local mic / file / text: Whisper (or cloud STT) → text into **monitor** Grok or worker OpenCode | Spoken “run smoke / fix fail” becomes a prompt with tools | **done** (`make smoke-voice-stt`) |
 | **2** | TTS replies + optional wake word | Hands-free loop at desk | open |
 | **3** | Shared worksheet auto-update (worker progress → monitor brief) | Less paste between terminals | open |
-| **4** | Remote: Tailscale / VoIP / Twilio-class | Phone while away; security review required | open |
+| **4a** | Remote HTTP + Android UI over Tailscale | Phone STT → same handoff as desk | **done** (`make voice-remote`) |
+| **4b–d** | Auto grok headless · TTS back · VoIP/Twilio | Hands-free / phone call | open |
 | **5** | Product lever: voice as input to `stage`/`ship` | Aligns T-0090 simplicity | open |
 
 ## Security / non-goals

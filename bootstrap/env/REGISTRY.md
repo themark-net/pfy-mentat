@@ -56,6 +56,9 @@ When integrating a new tool, **add a row here in the same PR** as the integratio
 | `VOICE_TARGET` | no | optional | `monitor` | `make voice-listen` | `monitor` \| `worker` \| `raw` |
 | `VOICE_HANDOFF` | no | optional | `0` | `make voice-listen` | `1` = exec handoff after STT |
 | `VOICE_STT_PYTHON` | no | optional | `examples/voice-stt-edge/.venv/bin/python` | `python.sh` / listen | Override interpreter; default prefers project venv |
+| `VOICE_REMOTE_HOST` | no | optional | `127.0.0.1` | `make voice-remote` | Use `0.0.0.0` for Android on Tailscale/LAN |
+| `VOICE_REMOTE_PORT` | no | optional | `8787` | voice-remote | HTTP port |
+| `VOICE_REMOTE_TOKEN` | **yes** (shared secret) | remote | auto `.generated/remote.token` | voice-remote auth | Never commit; phone UI Bearer token |
 
 ## Profile affinity
 

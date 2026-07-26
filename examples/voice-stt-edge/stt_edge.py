@@ -774,6 +774,7 @@ def write_meta(
     transcript: str,
     audio: str | None,
     ok: bool = True,
+    source: str = "local",
 ) -> Path:
     meta = {
         "generated": utc_now(),
@@ -783,11 +784,73 @@ def write_meta(
         "audio": audio,
         "transcript_chars": len(transcript),
         "transcript_preview": transcript[:200],
-        "phase": "T-0091-p1",
+        "phase": "T-0091",
+        "source": source,
     }
     path = out_dir / "last-meta.json"
     path.write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
     return path
+
+
+def persist_success(
+    out_dir: Path,
+    *,
+    transcript: str,
+    target: str,
+    backend: str,
+    audio: Path | None = None,
+    source: str = "local",
+    repo: Path | None = None,
+) -> dict:
+    """Write transcript + agent-prompt + handoff + meta. Returns paths dict."""
+    repo = repo or ROOT
+    out_dir = ensure_out(out_dir)
+    t_path = out_dir / "last-transcript.txt"
+    p_path = out_dir / "agent-prompt.md"
+    t_path.write_text(transcript.strip() + "\n", encoding="utf-8")
+    p_path.write_text(wrap_prompt(transcript, target, repo), encoding="utf-8")
+    h_path = write_handoff_script(out_dir, repo, target, t_path, p_path)
+    write_meta(
+        out_dir,
+        backend=backend,
+        target=target,
+        transcript=transcript,
+        audio=str(audio) if audio else None,
+        ok=True,
+        source=source,
+    )
+    needed = out_dir / "STT-NEEDED.txt"
+    if needed.is_file():
+        needed.unlink()
+
+    # Inbox copy for remote / multi-shot history (gitignored under .generated)
+    inbox = out_dir / "inbox"
+    inbox.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in transcript.strip()[:40])
+    item = inbox / f"{stamp}_{safe or 'prompt'}.md"
+    item.write_text(
+        f"# Voice inbox item\n\n"
+        f"- **When:** {utc_now()}\n"
+        f"- **Source:** {source}\n"
+        f"- **Target:** {target}\n"
+        f"- **Backend:** {backend}\n\n"
+        f"## Transcript\n\n{transcript.strip()}\n\n"
+        f"## Agent prompt\n\n"
+        f"(see also agent-prompt.md)\n\n"
+        f"{wrap_prompt(transcript, target, repo)}\n",
+        encoding="utf-8",
+    )
+    return {
+        "transcript_path": str(t_path),
+        "prompt_path": str(p_path),
+        "handoff_path": str(h_path),
+        "inbox_path": str(item),
+        "transcript": transcript.strip(),
+        "target": target,
+        "backend": backend,
+        "source": source,
+    }
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -881,34 +944,26 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     if not args.no_write:
-        t_path = out_dir / "last-transcript.txt"
-        p_path = out_dir / "agent-prompt.md"
-        t_path.write_text(transcript.strip() + "\n", encoding="utf-8")
-        p_path.write_text(wrap_prompt(transcript, args.target, ROOT), encoding="utf-8")
-        h_path = write_handoff_script(out_dir, ROOT, args.target, t_path, p_path)
-        write_meta(
+        paths = persist_success(
             out_dir,
-            backend=used,
-            target=args.target,
             transcript=transcript,
-            audio=str(audio_path) if audio_path else None,
-            ok=True,
+            target=args.target,
+            backend=used,
+            audio=audio_path,
+            source="local",
         )
-        # clear prior failure note
-        needed = out_dir / "STT-NEEDED.txt"
-        if needed.is_file():
-            needed.unlink()
-        print(f"==> wrote {t_path}", file=sys.stderr)
-        print(f"==> wrote {p_path}", file=sys.stderr)
-        print(f"==> wrote {h_path}", file=sys.stderr)
+        print(f"==> wrote {paths['transcript_path']}", file=sys.stderr)
+        print(f"==> wrote {paths['prompt_path']}", file=sys.stderr)
+        print(f"==> wrote {paths['handoff_path']}", file=sys.stderr)
+        print(f"==> inbox {paths['inbox_path']}", file=sys.stderr)
         print(
-            f"Handoff:  {h_path}\n"
-            f"  or:     grok \"$(cat {p_path})\"\n"
-            f"  or:     paste {p_path} into Grok / OpenCode",
+            f"Handoff:  {paths['handoff_path']}\n"
+            f"  or:     grok \"$(cat {paths['prompt_path']})\"\n"
+            f"  or:     paste {paths['prompt_path']} into Grok / OpenCode",
             file=sys.stderr,
         )
         if args.handoff:
-            os.execv(str(h_path), [str(h_path)])
+            os.execv(str(paths["handoff_path"]), [str(paths["handoff_path"])])
 
     sys.stdout.write(transcript.strip() + "\n")
     return 0
