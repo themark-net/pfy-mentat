@@ -48,6 +48,7 @@ argument-hint: "[stage | monitor | worker]"
 | Need | Next |
 |------|------|
 | Stage env | `make worker-stage` (host) |
+| Voice → this session | `make smoke-voice-stt`; `stt_edge.py --text\|--mic --target monitor` then `handoff.sh` (T-0091 p1) |
 | Loops/exits | `/agent-loops` |
 | Unattended implement on Grok | `/one-shot` (costs cloud) |
 | RCA | `/investigate` |

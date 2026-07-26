@@ -1,0 +1,1 @@
+Run make smoke-opencode-ollama and report pass or fail. If it fails, fix the first root cause and re-run once.

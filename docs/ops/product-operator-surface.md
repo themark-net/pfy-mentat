@@ -48,6 +48,7 @@ Monitor (Grok subscription / strong cloud)
 | Grok Build interactive agent | **No** — Grok cloud/subscription |
 | OpenCode pointed at Ollama | **Yes** if configured (T-0080) |
 | Dual session worker/monitor | **`make worker-stage`** + `/worker-monitor` (T-0085) — not a single daemon |
+| Voice → same agents (p1) | **`make smoke-voice-stt`** + `examples/voice-stt-edge/` (T-0091) — STT edge, not mobile-voice-stuck |
 
 ## Redeployable workflow (unchanged north star)
 

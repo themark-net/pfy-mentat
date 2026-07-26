@@ -59,6 +59,24 @@ Assumptions: host only (no cage); Grok remains monitor
 
 ---
 
+## A2. Voice STT edge → tool-capable agent (T-0091 p1)
+
+```text
+/one-shot Phase 1 voice channel: STT edge hands text to Grok/OpenCode.
+
+DoD:
+1. make smoke-voice-stt exits 0
+2. examples/voice-stt-edge/.generated/ has last-transcript.txt + agent-prompt.md + handoff.sh
+3. docs/ops/voice-agent-channel.md marks phase 1 done
+4. Optional host: --mic --backend local only if Whisper + arecord/ffmpeg installed
+
+Assumptions: no mic required for smoke; mock/text backends; OQ-0010 default A
+```
+
+**Green:** `make smoke-voice-stt`
+
+---
+
 ## A. LiteLLM → Ollama (T-0012 / T-0021)
 
 ```text

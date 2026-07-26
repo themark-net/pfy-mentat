@@ -110,7 +110,15 @@ Future automation (post T-0085):
 
 - append worker progress / `git diff --stat` into monitor brief  
 - stop when DoD `make` targets exit 0  
-- **voice edge** → same text agents ([voice-agent-channel.md](voice-agent-channel.md), T-0091)  
+
+**Voice (T-0091 p1):** STT edge → same agents — `make smoke-voice-stt` · [voice-agent-channel.md](voice-agent-channel.md) · `examples/voice-stt-edge/`
+
+```bash
+python3 examples/voice-stt-edge/stt_edge.py --text "Review worker diff and update DoD" --target monitor
+# or --mic --backend local  (host Whisper)
+examples/voice-stt-edge/.generated/handoff.sh
+```
+
 
 Do **not** wait for a multi-agent company runtime; this matches ADR-0005 light process.
 

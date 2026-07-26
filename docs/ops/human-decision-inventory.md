@@ -68,6 +68,8 @@ Ollama + gate model present?
 
 ```text
 OQ-BATCH: 0003=no 0004=catalog 0007=no 0008=no
+VOICE-BATCH: OQ-0010=A
+# A=STT edge→text agents  B=eval Hermes voice adapter  C=telephony first  D=defer
 ```
 
 ---

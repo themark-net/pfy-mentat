@@ -22,4 +22,4 @@ How should voice enter the stack so it has **tool use** (git, pipelines, file ed
 
 ## Resolution notes
 
-_(empty)_
+- **2026-07-26:** Phase 1 shipped on path **A** — `examples/voice-stt-edge/` + `make smoke-voice-stt`. OQ stays **open** for B (Hermes adapter eval) / C (telephony) / local vs cloud STT preference; p1 does not require closing those branches.

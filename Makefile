@@ -16,8 +16,9 @@ LITELLM_EXAMPLE := examples/litellm-ollama
 	cage-workspace-sync cage-grok-mcp-preset \
 	local-ollama-overlay-install local-ollama-up smoke-litellm-ollama \
 	smoke-codebase-memory smoke-repowise smoke-context-tools \
-	smoke-write-guard smoke-grok-skills smoke-opencode-ollama \
+	smoke-write-guard smoke-grok-skills smoke-opencode-ollama smoke-voice-stt \
 	worker-stage worker-env monitor-brief \
+
 	eval-tier0 eval-tier1 eval-mvp eval-suite eval-matrix eval-v02 eval-structural \
 	eval-select-models eval-auto \
 	cage-grok cage-grok-shell cage-grok-run cage-grok-sessions cage-grok-resume \
@@ -72,6 +73,7 @@ help:
 	@echo "  make smoke-grok-skills      # first-party skill structure (manifest + SKILL.md)"
 	@echo "  make smoke-grok-skills INSTALLED=1  # also check ~/.grok/skills"
 	@echo "  make smoke-opencode-ollama  # T-0080 host: OpenCode adapter + Ollama worker (no cage)"
+	@echo "  make smoke-voice-stt        # T-0091 p1: STT edge → Grok/OpenCode handoff (no mic required)"
 	@echo "  make worker-stage           # T-0085: smoke worker + write monitor brief / worker.env"
 	@echo "  make eval-structural           # design/coding gates, NO LLM (always run)"
 	@echo "  make eval-select-models        # pick gate/matrix models that FIT RAM/disk (may pull)"
@@ -230,6 +232,11 @@ smoke-opencode-ollama:
 	  LITELLM_SMOKE_MODEL=$${LITELLM_SMOKE_MODEL:-deepseek-coder:latest} \
 	  OPENAI_BASE_URL=$${OPENAI_BASE_URL:-http://127.0.0.1:11434/v1} \
 	  ./examples/opencode-ollama/smoke.sh
+
+# T-0091 phase 1: voice STT edge → text prompt for Grok/OpenCode (mock/text; no mic)
+smoke-voice-stt:
+	@chmod +x examples/voice-stt-edge/smoke.sh examples/voice-stt-edge/stt_edge.py
+	@./examples/voice-stt-edge/smoke.sh
 
 # T-0085: stage local worker + Grok monitor brief
 worker-stage:

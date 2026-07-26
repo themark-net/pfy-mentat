@@ -1,8 +1,26 @@
 # Voice channel for agentic coding (goal)
 
-**Status:** Documented goal · not implemented  
+**Status:** Phase **1 implemented** (STT edge smoke) · phases 2–5 open  
 **ID:** T-0091 · OQ-0010  
 **Related:** T-0085 worker/monitor · ADR-0011 · Hermes pattern (not runtime) · T-0090 minimal levers
+
+## Phase 1 (live)
+
+| Piece | Path |
+|-------|------|
+| STT edge CLI | `examples/voice-stt-edge/stt_edge.py` |
+| Host smoke | `make smoke-voice-stt` (mock/text; **no mic required**) |
+| Operator README | `examples/voice-stt-edge/README.md` |
+| Handoff | `.generated/handoff.sh` → `grok "$(cat last-transcript.txt)"` or OpenCode worker |
+
+**Success (p1):** spoken or simulated intent becomes a **text prompt with tools instructions** for Grok monitor or OpenCode worker — not chat-stuck mobile voice.
+
+```bash
+make smoke-voice-stt
+python3 examples/voice-stt-edge/stt_edge.py --text "Run make eval-structural" --target monitor
+examples/voice-stt-edge/.generated/handoff.sh   # needs grok on PATH
+# Real mic (host): --mic --backend local   # needs arecord/ffmpeg + Whisper install
+```
 
 ## Problem (operator experience)
 
@@ -80,18 +98,18 @@ So: **useful scaffold**, not yet “hands-free agentic coding.” Gaps: shared s
 1. **Do not** make Hermes Agent the primary runtime (ADR-0010/0011 posture).  
 2. **Do** catalog Hermes voice + hermes-voice-assistant as **A/B reference**.  
 3. Prefer **voice edge (STT/TTS) → our worker/monitor text agents** (OpenCode local + Grok monitor with tools/GitHub).  
-4. Phone/VoIP = phase 2 after local mic loop works.
+4. Phone/VoIP = phase 4 after local mic loop works.
 
 ## Phased plan
 
-| Phase | Deliverable | Success |
-|-------|-------------|---------|
-| **0** | This doc + OQ-0010 + T-0091 | Goal visible; no silent scope creep |
-| **1** | Local mic: Whisper (or cloud STT) → text into **monitor** Grok or worker OpenCode | Spoken “run smoke / fix fail” becomes a prompt with tools |
-| **2** | TTS replies + optional wake word | Hands-free loop at desk |
-| **3** | Shared worksheet auto-update (worker progress → monitor brief) | Less paste between terminals |
-| **4** | Remote: Tailscale / VoIP / Twilio-class | Phone while away; security review required |
-| **5** | Product lever: voice as input to `stage`/`ship` | Aligns T-0090 simplicity |
+| Phase | Deliverable | Success | Status |
+|-------|-------------|---------|--------|
+| **0** | This doc + OQ-0010 + T-0091 | Goal visible; no silent scope creep | **done** |
+| **1** | Local mic / file / text: Whisper (or cloud STT) → text into **monitor** Grok or worker OpenCode | Spoken “run smoke / fix fail” becomes a prompt with tools | **done** (`make smoke-voice-stt`) |
+| **2** | TTS replies + optional wake word | Hands-free loop at desk | open |
+| **3** | Shared worksheet auto-update (worker progress → monitor brief) | Less paste between terminals | open |
+| **4** | Remote: Tailscale / VoIP / Twilio-class | Phone while away; security review required | open |
+| **5** | Product lever: voice as input to `stage`/`ship` | Aligns T-0090 simplicity | open |
 
 ## Security / non-goals
 

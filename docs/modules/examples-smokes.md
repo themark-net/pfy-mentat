@@ -13,6 +13,8 @@ Cage agent must be running (`make cage-up-mcp` or `make local-ollama-up`).
 | `make smoke-repowise` | repowise health (zero LLM) |
 | `make smoke-context-tools` | both context tools + compare note |
 | `make smoke-litellm-ollama` | LiteLLM → host Ollama via gateway :11435 |
+| `make smoke-opencode-ollama` | Host OpenCode + Ollama worker (T-0080) |
+| `make smoke-voice-stt` | Host STT edge → Grok/OpenCode handoff (T-0091 p1; no mic) |
 | `make eval-tier0` / `eval-tier1` / `eval-mvp` | OQ-0002 opt5: connectivity + scored coding task |
 | `make eval-suite` / `eval-matrix` / `eval-v02` | T-0041: multi-task suite + multi-model matrix |
 
@@ -32,6 +34,7 @@ One-shot paste DoDs: [docs/ops/one-shot-example-dods.md](../ops/one-shot-example
 | `REPOWISE_PIP_SPEC` | repowise (default `repowise==0.30.0`) |
 | `OLLAMA_GATEWAY_PORT` | host gateway (default `11435`) |
 | `WRITE_GUARD_*` | write-guard |
+| `VOICE_STT_*` / `OPENAI_API_KEY` | voice-stt-edge (optional real Whisper) |
 
 ## Agent map
 

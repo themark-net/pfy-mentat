@@ -18,3 +18,6 @@ pipelines/eval/structural.latest.md
 # OpenCode generated smoke config + skill symlinks
 examples/opencode-ollama/.generated/
 .opencode/
+
+# Voice STT edge artifacts (transcripts, mic captures, handoff)
+examples/voice-stt-edge/.generated/
