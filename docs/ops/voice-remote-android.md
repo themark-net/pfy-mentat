@@ -113,36 +113,42 @@ Phone Brave  ──HTTPS :443──►  tailscale serve  ──HTTP :8787──�
                  (TLS ends here)                    (plain HTTP only)
 ```
 
-Python **never** speaks TLS. If you open `https://…:8787`, the browser’s TLS
-handshake hits Python → **HTTP 400 + binary garbage**. That is the classic failure.
+Python **never** speaks TLS.
 
-On the **host**:
+Your logs match this pattern:
 
-```bash
-# Terminal A — plain HTTP backend (prefer loopback when using Serve)
-VOICE_REMOTE_HOST=127.0.0.1 make voice-remote
-
-# Terminal B — HTTPS front door (Tailscale certs on :443)
-tailscale serve --bg --https=443 http://127.0.0.1:8787
-tailscale serve status
+```text
+GET / HTTP/1.1  200          ← first load over plain http://100.x:8787 worked
+TLS handshake on plain HTTP  ← Brave then tried https://100.x:8787 → ERR_SSL_PROTOCOL_ERROR
 ```
 
-Open **exactly** the `https://…` URL from `tailscale serve status`
-(MagicDNS hostname, **no `:8787`**).
+Brave’s **“Always use secure connections”** upgrades `http://` → `https://` on the
+**same host:port**. Upgrading to `https://…:8787` cannot work.
+
+On the **host** (two terminals):
+
+```bash
+# Terminal A — HTTP backend
+VOICE_REMOTE_HOST=127.0.0.1 make voice-remote
+
+# Terminal B — HTTPS front door on :443 (helper prints the phone URL)
+make voice-remote-serve
+# same as: ./examples/voice-stt-edge/tailscale-serve.sh
+```
+
+Open **only** the `https://…ts.net/` URL printed (MagicDNS, **port 443, no :8787**).
 
 | URL | Result |
 |-----|--------|
-| `https://nimo.tailnet-name.ts.net/` | Good (Serve → Python) |
+| `https://nimo.<tailnet>.ts.net/` | Good (Serve → Python) |
 | `http://127.0.0.1:8787/ping` on host | Good (backend) |
-| `https://100.x.y.z:8787/` | **Bad** — TLS to Python |
-| `https://nimo…:8787/` | **Bad** — TLS to Python |
+| `http://100.x:8787/` | Loads once, then Brave often SSL-errors |
+| `https://100.x:8787/` | **ERR_SSL_PROTOCOL_ERROR** |
+| `https://nimo…:8787/` | **ERR_SSL_PROTOCOL_ERROR** |
 
-Verify:
-
-```bash
-curl -sS http://127.0.0.1:8787/ping          # pong
-curl -sS https://$(tailscale status --json | …)/ping   # or MagicDNS from serve status
-```
+**Brave workaround without Serve:** Settings → Privacy and security →
+turn off **Always use secure connections**, then stay on `http://` and use
+**file capture / text** (in-page mic still blocked on plain HTTP).
 
 To stop Serve: `tailscale serve reset`
 

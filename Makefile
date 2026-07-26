@@ -17,7 +17,7 @@ LITELLM_EXAMPLE := examples/litellm-ollama
 	local-ollama-overlay-install local-ollama-up smoke-litellm-ollama \
 	smoke-codebase-memory smoke-repowise smoke-context-tools \
 	smoke-write-guard smoke-grok-skills smoke-opencode-ollama smoke-voice-stt smoke-voice-remote \
-	voice-stt-install voice-listen voice-stt-probe voice-remote \
+	voice-stt-install voice-listen voice-stt-probe voice-remote voice-remote-serve \
 	worker-stage worker-env monitor-brief \
 
 	eval-tier0 eval-tier1 eval-mvp eval-suite eval-matrix eval-v02 eval-structural \
@@ -77,7 +77,8 @@ help:
 	@echo "  make smoke-voice-stt        # T-0091 p1: wiring only (mock/text; no mic)"
 	@echo "  make voice-stt-install      # T-0091: .venv + faster-whisper (host, once; PEP 668)"
 	@echo "  make voice-listen           # T-0091: desk mic → STT → handoff"
-	@echo "  make voice-remote           # T-0091 p4a: Android/Tailscale HTTP edge → STT"
+	@echo "  make voice-remote           # T-0091 p4a: HTTP backend :8787 (plain HTTP only)"
+	@echo "  make voice-remote-serve     # T-0091: tailscale serve HTTPS :443 → :8787"
 	@echo "  make smoke-voice-remote     # T-0091 p4a: localhost API smoke (no phone)"
 	@echo "  make worker-stage           # T-0085: smoke worker + write monitor brief / worker.env"
 	@echo "  make eval-structural           # design/coding gates, NO LLM (always run)"
@@ -265,6 +266,11 @@ voice-remote:
 	@chmod +x examples/voice-stt-edge/remote.sh examples/voice-stt-edge/remote_server.py \
 	  examples/voice-stt-edge/python.sh
 	@./examples/voice-stt-edge/remote.sh
+
+# Host: Tailscale HTTPS front door (run after voice-remote). Phone must use https://MagicDNS/ NOT :8787
+voice-remote-serve:
+	@chmod +x examples/voice-stt-edge/tailscale-serve.sh
+	@./examples/voice-stt-edge/tailscale-serve.sh
 
 # Localhost API smoke for remote edge (no phone / no Tailscale)
 smoke-voice-remote:

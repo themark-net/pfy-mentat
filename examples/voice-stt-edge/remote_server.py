@@ -120,7 +120,9 @@ MOBILE_HTML = """<!DOCTYPE html>
     const secure = window.isSecureContext === true;
     const hasMD = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
     const origin = location.origin;
+    const port = location.port || (location.protocol === 'https:' ? '443' : '80');
     const isHttpTailnet = location.protocol === 'http:' && !/^localhost$|^127\\.0\\.0\\.1$/.test(location.hostname);
+    const httpsOnAppPort = location.protocol === 'https:' && port === '8787';
 
     function showBanner(html) {
       const b = $('banner');
@@ -128,27 +130,34 @@ MOBILE_HTML = """<!DOCTYPE html>
       b.classList.add('show');
     }
 
+    // If this script runs, you already got HTTP 200 — SSL errors are usually a
+    // *second* navigation where Brave upgraded to https://…:8787
+    if (httpsOnAppPort) {
+      showBanner(
+        '<strong>Wrong URL</strong>: HTTPS on port 8787. Python is HTTP-only.<br>' +
+        'On host: <code>make voice-remote-serve</code> then open <code>https://MagicDNS/</code> (port 443, no :8787).'
+      );
+    }
+
     // Brave/Chrome: mediaDevices is undefined on non-secure contexts (http://100.x)
     if (!hasMD) {
       $('recBtn').disabled = true;
       $('stopBtn').disabled = true;
       showBanner(
-        '<strong>In-page mic unavailable</strong> — browsers only expose ' +
-        '<code>getUserMedia</code> on <strong>HTTPS</strong> or <strong>localhost</strong>. ' +
-        'You are on <code>' + origin + '</code> (secureContext=' + secure + ').<br><br>' +
-        '<strong>Use instead (no Brave mic prompt needed):</strong><br>' +
-        '1) <em>Pick / capture audio file</em> below (Android system recorder), or<br>' +
-        '2) Type text and Send text, or<br>' +
-        '3) Termux client (best): <code>termux-voice-send.sh</code><br><br>' +
-        'To enable in-page mic: on host run<br>' +
-        '<code>tailscale serve --bg --https=443 http://127.0.0.1:8787</code><br>' +
-        'then open the <strong>https://…</strong> MagicDNS URL Tailscale prints.'
+        (document.getElementById('banner').innerHTML ? document.getElementById('banner').innerHTML + '<br><br>' : '') +
+        '<strong>In-page mic unavailable</strong> on <code>' + origin + '</code> ' +
+        '(secureContext=' + secure + ').<br><br>' +
+        '<strong>If Brave shows ERR_SSL_PROTOCOL_ERROR:</strong> it upgraded ' +
+        '<code>http://100.x:8787</code> → <code>https://100.x:8787</code>. That cannot work.<br>' +
+        'Fix: host <code>make voice-remote-serve</code>, open <code>https://&lt;MagicDNS&gt;/</code> only, ' +
+        'or disable Brave “Always use secure connections”, or use file/text/Termux below.<br><br>' +
+        '<strong>Works now without HTTPS:</strong> file capture · Send text · Termux'
       );
-      status('Mic API missing (expected on http:// tailnet IP). Use file capture or text.');
+      status('Mic API missing on plain HTTP. Use file/text, or HTTPS via make voice-remote-serve (port 443).');
     } else if (isHttpTailnet) {
       showBanner(
-        'Using HTTP on a tailnet IP — some browsers still block mic. Prefer HTTPS via ' +
-        '<code>tailscale serve</code> or the file/text paths below.'
+        'HTTP on tailnet IP — Brave may later force HTTPS and show SSL errors. ' +
+        'Prefer <code>make voice-remote-serve</code> + https://MagicDNS/ (no :8787).'
       );
     }
 
@@ -524,6 +533,12 @@ def make_handler(state: VoiceRemoteState):
                 return self._text(200, "pong\n")
             if path in ("/", "/index.html", "/m", "/mobile"):
                 return self._html(200, MOBILE_HTML)
+            if path == "/favicon.ico":
+                # Avoid noisy 404s; empty icon
+                self.send_response(204)
+                self.send_header("Connection", "close")
+                self.end_headers()
+                return
             if path == "/health":
                 return self._json(
                     200,
