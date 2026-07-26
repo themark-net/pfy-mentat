@@ -33,7 +33,10 @@ When integrating a new tool, **add a row here in the same PR** as the integratio
 | `OLLAMA_HOST` | no | local-only, balanced | Host: `http://127.0.0.1:11434` · **Cage:** `http://host.docker.internal:11435` | Ollama clients | Same gateway split as `OPENAI_BASE_URL` |
 | `OLLAMA_GATEWAY_PORT` | no | local-only, balanced (cage smokes) | `11435` | `examples/litellm-ollama/host-ollama-gateway.sh` | Publishes `0.0.0.0:11435` → `127.0.0.1:11434` without sudo |
 | `LITELLM_SMOKE_MODEL` | no | smoke | `deepseek-coder:latest` | `make smoke-litellm-ollama` | Prefer smallest local coding model already pulled |
-| `LOCAL_CODER_MODEL` | no | local-only, balanced | `deepseek-coder:6.7b` | OpenCode/worker agents, eval defaults | Bulk implement model; set via `eval-select-models` |
+| `LOCAL_CODER_MODEL` | no | local-only, balanced | `deepseek-coder:6.7b` | OpenCode/worker agents, eval defaults | Bulk implement / completion; set via `eval-select-models` |
+| `LOCAL_TOOLS_MODEL` | no | optional | *(empty if split)* | OpenCode agent / voice auto-agent | Tools-capable Ollama tag from `make eval-select-tools-model` (T-0093) |
+| `TOOLS_MODE` | no | optional | `split` \| `local_tools` | worker-stage / tools-model.env | Explicit tool-split vs local tools |
+| `OPENCODE_AGENT_MODEL` | no | optional | tools model or coder | OpenCode agent runs | Prefer `LOCAL_TOOLS_MODEL` when set |
 | `EVAL_MODEL` / `EVAL_GATE_MODEL` | no | eval | from select or profile | `make eval-suite` | Gate for scored tasks |
 | `EVAL_GATE_CANDIDATES` | no | eval-auto | set by select script | `make eval-auto` | Fallback list if gate fails chat tasks |
 | `LITELLM_MASTER_KEY` | **yes** | optional | — | LiteLLM proxy auth | If running shared LiteLLM |

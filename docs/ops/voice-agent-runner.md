@@ -44,7 +44,20 @@ make voice-agent-run
 VOICE_AUTO_AGENT=grok make voice-agent-run
 ```
 
-If OpenCode CLI is missing, runner falls back to **Ollama chat completions** (`LOCAL_CODER_MODEL`) so local voice still works.
+If OpenCode CLI is missing, runner falls back to **Ollama chat completions**.
+
+Model preference (T-0093):
+
+1. `LOCAL_TOOLS_MODEL` / `OPENCODE_AGENT_MODEL` (tools-capable, if set)  
+2. else `LOCAL_CODER_MODEL`  
+
+```bash
+make eval-select-tools-model
+set -a; . examples/opencode-ollama/.generated/tools-model.env; set +a
+VOICE_AUTO_AGENT=opencode make voice-agent-run
+```
+
+See [local-tools-split.md](local-tools-split.md).
 
 Remote open without this flag will **not** burn cloud quota.
 

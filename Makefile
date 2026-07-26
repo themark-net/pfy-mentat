@@ -17,12 +17,11 @@ LITELLM_EXAMPLE := examples/litellm-ollama
 	local-ollama-overlay-install local-ollama-up smoke-litellm-ollama \
 	smoke-codebase-memory smoke-repowise smoke-context-tools \
 	smoke-write-guard smoke-grok-skills smoke-opencode-ollama smoke-voice-stt smoke-voice-remote \
-	smoke-voice-agent \
+	smoke-voice-agent smoke-tools-model \
 	voice-stt-install voice-listen voice-stt-probe voice-remote voice-remote-serve voice-agent-run \
 	worker-stage worker-env monitor-brief \
-
 	eval-tier0 eval-tier1 eval-mvp eval-suite eval-matrix eval-v02 eval-structural \
-	eval-select-models eval-auto \
+	eval-select-models eval-select-tools-model eval-auto \
 	cage-grok cage-grok-shell cage-grok-run cage-grok-sessions cage-grok-resume \
 	cage-grok-sessions-import-host cage-grok-net-smoke cage-grok-skills-install \
 	cage-code-sync cage-code-status cage-code-from-cage cage-code-to-cage
@@ -86,6 +85,8 @@ help:
 	@echo "  make worker-stage           # T-0085: smoke worker + write monitor brief / worker.env"
 	@echo "  make eval-structural           # design/coding gates, NO LLM (always run)"
 	@echo "  make eval-select-models        # pick gate/matrix models that FIT RAM/disk (may pull)"
+	@echo "  make eval-select-tools-model   # T-0093: probe tools-capable Ollama tag + tool-split"
+	@echo "  make smoke-tools-model         # T-0093 smoke (Ollama optional soft-skip)"
 	@echo "  make eval-auto                 # select-models + pull-gate + eval-v02"
 	@echo "  make eval-tier0|eval-tier1|eval-mvp  # OQ-0002 opt5 scored eval"
 	@echo "  make eval-suite|eval-matrix|eval-v02 # v0.2 multi-task / multi-model (needs Ollama)"
@@ -297,6 +298,14 @@ smoke-voice-agent:
 	@chmod +x examples/voice-stt-edge/smoke-agent.sh examples/voice-stt-edge/agent_runner.py \
 	  examples/voice-stt-edge/python.sh examples/voice-stt-edge/remote_server.py
 	@./examples/voice-stt-edge/smoke-agent.sh
+
+# T-0093: select/probe tools-capable Ollama model (writes tools-model.env)
+eval-select-tools-model:
+	@python3 examples/eval-harness/select_tools_model.py
+
+smoke-tools-model:
+	@chmod +x examples/eval-harness/smoke_tools_model.sh
+	@./examples/eval-harness/smoke_tools_model.sh
 
 # T-0085: stage local worker + Grok monitor brief
 worker-stage:

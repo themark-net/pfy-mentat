@@ -199,10 +199,18 @@ def local_coder_model() -> str:
     return os.environ.get("LOCAL_CODER_MODEL") or os.environ.get("EVAL_MODEL") or "deepseek-coder:6.7b"
 
 
+def local_agent_model() -> str:
+    """Prefer tools-capable model (T-0093) for agent runs; else coder."""
+    tools = (os.environ.get("LOCAL_TOOLS_MODEL") or os.environ.get("OPENCODE_AGENT_MODEL") or "").strip()
+    if tools:
+        return tools
+    return local_coder_model()
+
+
 def run_ollama_completion(prompt: str, out: Path, run_id: str, timeout_s: int) -> dict:
     """Direct local chat completion (no OpenCode CLI). Cloud-free fallback."""
     base = ollama_base_url()
-    model = local_coder_model()
+    model = local_agent_model()
     url = base + "/chat/completions"
     # Keep prompt bounded for small local models
     user = prompt if len(prompt) < 6000 else (prompt[:5500] + "\n\n[truncated]\n")
@@ -294,8 +302,17 @@ def run_opencode(prompt: str, repo: Path, out: Path, run_id: str, timeout_s: int
     prompt_file = out / "last-agent-prompt.txt"
     prompt_file.write_text(prompt, encoding="utf-8")
     log_path = out / "last-run.log"
-    model = local_coder_model()
+    model = local_agent_model()
     cfg = os.environ.get("OPENCODE_CONFIG") or str(OPENCODE_GEN / "opencode.json")
+    # Auto-load tools-model.env if present and LOCAL_TOOLS_MODEL unset
+    tools_env = OPENCODE_GEN / "tools-model.env"
+    if tools_env.is_file() and not os.environ.get("LOCAL_TOOLS_MODEL"):
+        for line in tools_env.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line.startswith("export ") and "=" in line:
+                k, v = line[len("export ") :].split("=", 1)
+                os.environ.setdefault(k.strip(), v.strip())
+        model = local_agent_model()
 
     oc = shutil.which("opencode")
     if oc:

@@ -25,13 +25,19 @@ export LOCAL_CODER_MODEL=deepseek-coder:6.7b   # or from eval-select-models
 curl -sS http://127.0.0.1:11434/api/tags | grep -q "$LOCAL_CODER_MODEL"
 ```
 
-**Tools note:** Some Ollama tags (including `deepseek-coder:6.7b`) **do not support tools**.  
-OpenCode agent mode may error with “does not support tools”. Options:
+**Tools (T-0093):** Many Ollama tags (including `deepseek-coder:6.7b`) **do not support tools**.
 
-| Mode | When |
-|------|------|
-| Completion / guided edit without tools | OK on 6.7b |
-| Full agent tools (shell, multi-file) | Prefer a tools-capable local model if you have one; else keep tools on **monitor (Grok)** |
+```bash
+make eval-select-tools-model   # probe + write tools-model.env
+set -a; . examples/opencode-ollama/.generated/tools-model.env; set +a
+```
+
+| `TOOLS_MODE` | Meaning |
+|--------------|---------|
+| `local_tools` | Use `LOCAL_TOOLS_MODEL` for OpenCode agent |
+| `split` | Completion on `LOCAL_CODER_MODEL`; tool-heavy → **monitor (Grok)** |
+
+Full policy: [local-tools-split.md](local-tools-split.md).
 
 ## Stage worker (one command)
 

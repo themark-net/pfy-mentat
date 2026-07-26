@@ -46,8 +46,17 @@ Skills: smoke creates **symlinks** under `.opencode/skills/` → `bootstrap/grok
 
 | Role | Tool | Model |
 |------|------|--------|
-| Worker | OpenCode → Ollama | `LOCAL_CODER_MODEL` |
+| Worker (completion) | OpenCode → Ollama | `LOCAL_CODER_MODEL` |
+| Worker (tools agent) | OpenCode → Ollama | `LOCAL_TOOLS_MODEL` if set (T-0093) |
 | Monitor | Grok Build | subscription |
+
+```bash
+make eval-select-tools-model   # probe tools support; write tools-model.env
+# TOOLS_MODE=local_tools → use LOCAL_TOOLS_MODEL for agent
+# TOOLS_MODE=split → deepseek-class coder only; tools on Grok
+```
+
+Docs: [local-tools-split.md](../../docs/ops/local-tools-split.md).
 
 See [docs/ops/local-cloud-split.md](../../docs/ops/local-cloud-split.md) · [product-operator-surface.md](../../docs/ops/product-operator-surface.md).
 
