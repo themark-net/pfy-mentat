@@ -17,8 +17,9 @@ LITELLM_EXAMPLE := examples/litellm-ollama
 	local-ollama-overlay-install local-ollama-up smoke-litellm-ollama \
 	smoke-codebase-memory smoke-repowise smoke-context-tools \
 	smoke-write-guard smoke-grok-skills smoke-opencode-ollama smoke-voice-stt smoke-voice-remote \
-	smoke-voice-agent smoke-tools-model \
-	voice-stt-install voice-listen voice-stt-probe voice-remote voice-remote-serve voice-agent-run \
+	smoke-voice-agent smoke-voice-orchestrate smoke-tools-model \
+	voice-stt-install voice-listen voice-stt-probe voice-remote voice-remote-serve \
+	voice-agent-run voice-orchestrate \
 	worker-stage worker-env monitor-brief \
 	eval-tier0 eval-tier1 eval-mvp eval-suite eval-matrix eval-v02 eval-structural \
 	eval-select-models eval-select-tools-model eval-auto \
@@ -79,9 +80,11 @@ help:
 	@echo "  make voice-listen           # T-0091: desk mic → STT → handoff"
 	@echo "  make voice-remote           # T-0091 p4a: HTTP backend :8787 (plain HTTP only)"
 	@echo "  make voice-remote-serve     # T-0091: tailscale serve HTTPS :443 → :8787"
-	@echo "  make voice-agent-run        # T-0092: local OpenCode/Ollama on last transcript"
+	@echo "  make voice-agent-run        # T-0096: orchestrate (high-first) or single tier"
+	@echo "  make voice-orchestrate      # T-0096: dual-tier high↔low on last prompt"
 	@echo "  make smoke-voice-remote     # T-0091 p4a: localhost API smoke (no phone)"
-	@echo "  make smoke-voice-agent      # T-0092: local-first auto-agent smoke (no cloud)"
+	@echo "  make smoke-voice-agent      # local opencode path smoke"
+	@echo "  make smoke-voice-orchestrate # T-0096 dual-tier mock smoke (no cloud)"
 	@echo "  make worker-stage           # T-0085: smoke worker + write monitor brief / worker.env"
 	@echo "  make eval-structural           # design/coding gates, NO LLM (always run)"
 	@echo "  make eval-select-models        # pick gate/matrix models that FIT RAM/disk (may pull)"
@@ -282,22 +285,39 @@ smoke-voice-remote:
 	  examples/voice-stt-edge/python.sh
 	@./examples/voice-stt-edge/smoke-remote.sh
 
-# T-0092: run agent on last STT prompt (default opencode/local; VOICE_AUTO_AGENT=grok to escalate)
+# T-0096: run on last STT (default orchestrate high-first; VOICE_AUTO_AGENT=opencode for local-only)
 voice-agent-run:
-	@chmod +x examples/voice-stt-edge/agent_runner.py examples/voice-stt-edge/python.sh
+	@chmod +x examples/voice-stt-edge/agent_runner.py examples/voice-stt-edge/orchestrator.py \
+	  examples/voice-stt-edge/python.sh
 	@examples/voice-stt-edge/python.sh examples/voice-stt-edge/agent_runner.py \
-	  --mode $${VOICE_AGENT_MODE:-$${VOICE_AUTO_AGENT:-opencode}} \
+	  --mode $${VOICE_AGENT_MODE:-$${VOICE_AUTO_AGENT:-orchestrate}} \
 	  --out-dir examples/voice-stt-edge/.generated \
 	  --repo "$(CURDIR)" \
-	  --target $${VOICE_TARGET:-worker} \
+	  --target $${VOICE_TARGET:-monitor} \
 	  --max-turns $${VOICE_AGENT_MAX_TURNS:-8} \
 	  --timeout $${VOICE_AGENT_TIMEOUT:-600}
 
-# T-0092 smoke: mock + opencode/ollama path + VOICE_AUTO_AGENT=1→opencode (no cloud)
+voice-orchestrate:
+	@chmod +x examples/voice-stt-edge/orchestrator.py examples/voice-stt-edge/python.sh
+	@examples/voice-stt-edge/python.sh examples/voice-stt-edge/orchestrator.py \
+	  --route $${VOICE_ROUTE:-high-first} \
+	  --out-dir examples/voice-stt-edge/.generated \
+	  --repo "$(CURDIR)" \
+	  --max-turns $${VOICE_AGENT_MAX_TURNS:-8} \
+	  --timeout $${VOICE_AGENT_TIMEOUT:-600} \
+	  $(if $(filter 1 true yes,$(VOICE_ORCH_MOCK)),--mock,)
+
+# T-0092 smoke: local opencode path
 smoke-voice-agent:
 	@chmod +x examples/voice-stt-edge/smoke-agent.sh examples/voice-stt-edge/agent_runner.py \
 	  examples/voice-stt-edge/python.sh examples/voice-stt-edge/remote_server.py
 	@./examples/voice-stt-edge/smoke-agent.sh
+
+# T-0096 dual-tier mock smoke (no cloud)
+smoke-voice-orchestrate:
+	@chmod +x examples/voice-stt-edge/smoke-orchestrate.sh examples/voice-stt-edge/orchestrator.py \
+	  examples/voice-stt-edge/agent_runner.py examples/voice-stt-edge/python.sh
+	@./examples/voice-stt-edge/smoke-orchestrate.sh
 
 # T-0093: select/probe tools-capable Ollama model (writes tools-model.env)
 eval-select-tools-model:

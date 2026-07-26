@@ -29,19 +29,21 @@ transcript / agent-prompt.md
 | `grok` | Grok headless with tools | **Cloud — escalate only** |
 | `mock` | Fake agent (smokes) | $0 |
 
-**T-0092:** bare `VOICE_AUTO_AGENT=1` means **opencode**, not grok.
+**T-0096:** bare `VOICE_AUTO_AGENT=1` means **orchestrate** (default **high-first** dual-tier).  
+Use `=opencode` for local-only cost control.
 
-**Sustainable recipe:**
+| Value | Behavior |
+|-------|----------|
+| `1` / `orchestrate` | Dual-tier — see [voice-orchestrator.md](voice-orchestrator.md) |
+| `opencode` | Local only |
+| `grok` | High only |
 
 ```bash
-VOICE_AUTO_AGENT=opencode VOICE_REMOTE_HOST=127.0.0.1 make voice-remote
-# same:
-VOICE_AUTO_AGENT=1 VOICE_REMOTE_HOST=127.0.0.1 make voice-remote
+# Full operator (high coordinates → local implements)
+VOICE_AUTO_AGENT=1 VOICE_ROUTE=high-first make voice-remote
 
-# desk
-make voice-agent-run
-# escalate once:
-VOICE_AUTO_AGENT=grok make voice-agent-run
+# Cheap day
+VOICE_AUTO_AGENT=opencode make voice-remote
 ```
 
 If OpenCode CLI is missing, runner falls back to **Ollama chat completions**.

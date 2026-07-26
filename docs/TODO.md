@@ -24,7 +24,7 @@
 
 ## Active (sorted P0 → P3)
 
-**Session (2026-07-26):** **T-0093** tools-model probe + tool-split docs. Host: `make eval-select-tools-model` after Ollama up.
+**Session (2026-07-26):** **T-0096** dual-tier orchestrator (high-first default). Smoke: `make smoke-voice-orchestrate`.
 
 ### Active — design / coding + local path (agent may pick freely)
 
@@ -32,9 +32,10 @@
 |----|----------|--------|------|----------------|---------|-------|
 
 | T-0090 | P0 | todo | **Minimal product levers audit**: collapse end-user surface to onboard / stage / ship; cap public Make targets | — | — | [product-operator-surface.md](ops/product-operator-surface.md); platform targets stay advanced |
-| T-0091 | P1 | doing | **Voice local path** (half-duplex) polish | — | T-0085, ADR-0012 | 4b + T-0092 + T-0093 shipped |
-| T-0092 | P1 | done | **Voice auto-agent default → opencode** (`1`/`opencode` local; `grok` escalate) | — | T-0091 4b | `make smoke-voice-agent`; Ollama HTTP fallback if no opencode CLI |
-| T-0093 | P1 | done | **Tools-capable Ollama select + tool-split** | — | T-0080 | `make eval-select-tools-model` · `smoke-tools-model` · [local-tools-split.md](ops/local-tools-split.md) |
+| T-0091 | P1 | doing | **Voice path** polish (session sticky / MCP deep) | — | ADR-0012 | Orchestrator shipped; optional TTS |
+| T-0092 | P1 | done | Voice auto-agent local opencode path | — | T-0091 4b | still: `VOICE_AUTO_AGENT=opencode` |
+| T-0093 | P1 | done | Tools-capable Ollama select + tool-split | — | T-0080 | `eval-select-tools-model` |
+| T-0096 | P1 | done | **Dual-tier orchestrator** high↔low (`VOICE_ROUTE=high-first` default) | — | T-0092, T-0093 | [voice-orchestrator.md](ops/voice-orchestrator.md); `smoke-voice-orchestrate` |
 | T-0094 | P3 | todo | Optional short **local TTS** status (not duplex) | — | T-0092 | Kokoro/piper after local agent path green |
 | T-0095 | P3 | todo | Catalog Stage 0: Pipecat / LiveKit / freeapp (ref only) | — | ADR-0012 | No primary install |
 

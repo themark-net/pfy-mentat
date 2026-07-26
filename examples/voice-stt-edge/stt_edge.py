@@ -975,11 +975,11 @@ def main(argv: list[str] | None = None) -> int:
 
                 mode = ar.auto_mode()
                 if mode == "off" and args.auto_agent:
-                    mode = "opencode"  # T-0092: --auto-agent defaults local
+                    mode = "orchestrate"  # T-0096: --auto-agent defaults dual-tier high-first
                 if mode != "off":
                     tgt = args.target
                     if tgt == "raw":
-                        tgt = "worker" if mode == "opencode" else "monitor"
+                        tgt = "monitor" if mode in ("orchestrate", "grok") else "worker"
                     print(f"==> auto-agent mode={mode} target={tgt}", file=sys.stderr)
                     result = ar.run_once(
                         repo=ROOT,

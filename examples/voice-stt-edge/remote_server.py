@@ -520,16 +520,13 @@ class VoiceRemoteState:
                 "agent_queued": False,
                 "agent_mode": "off",
                 "agent_message": (
-                    "VOICE_AUTO_AGENT off — set VOICE_AUTO_AGENT=opencode "
-                    "(local default) or =grok (cloud escalate)"
+                    "VOICE_AUTO_AGENT off — set =1 for dual-tier high-first (T-0096), "
+                    "=opencode local-only, or =grok high-only"
                 ),
             }
-        # T-0092: default target worker for opencode, monitor for grok
+        # T-0096: orchestrate uses monitor-style target; opencode uses worker
         if target == "raw":
             target = "worker" if mode == "opencode" else "monitor"
-        elif mode == "opencode" and target == "monitor":
-            # keep monitor if user asked; still run opencode stack
-            pass
         max_turns = int(os.environ.get("VOICE_AGENT_MAX_TURNS", "8"))
         timeout_s = int(os.environ.get("VOICE_AGENT_TIMEOUT", "600"))
         prompt_path = self.out_dir / "agent-prompt.md"
@@ -928,7 +925,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  bind: plain HTTP only  http://{args.host}:{args.port}/")
     print(f"  out  {state.out_dir}")
     print(f"  backend={args.backend}")
-    print(f"  auto-agent={amode}  (ADR-0012: 1/opencode=local · grok=cloud escalate)")
+    print(f"  auto-agent={amode}  (1/orchestrate=high-first dual · opencode=local · grok=high-only)")
     print(f"  repo={repo}")
     print("")
     print("  HTTPS for phone mic:")

@@ -62,7 +62,11 @@ When integrating a new tool, **add a row here in the same PR** as the integratio
 | `VOICE_REMOTE_HOST` | no | optional | `127.0.0.1` | `make voice-remote` | Use `0.0.0.0` for Android on Tailscale/LAN |
 | `VOICE_REMOTE_PORT` | no | optional | `8787` | voice-remote | HTTP port |
 | `VOICE_REMOTE_TOKEN` | **yes** (shared secret) | remote | auto `.generated/remote.token` | voice-remote auth | Never commit; phone UI Bearer token |
-| `VOICE_AUTO_AGENT` | no | optional | `0` (off) | voice auto-runner | `0` · **`1`/`opencode`=local** · `grok`=cloud escalate · `mock` (T-0092) |
+| `VOICE_AUTO_AGENT` | no | optional | `0` (off) | voice auto-runner | `0` · **`1`/`orchestrate`=dual-tier** · `opencode`=local · `grok`=high-only · `mock` |
+| `VOICE_ROUTE` | no | optional | `high-first` | T-0096 orchestrator | `high-first` \| `local-first` \| `local-only` \| `high-only` |
+| `VOICE_ORCH_MOCK` | no | optional | `0` | orchestrator smoke | `1` = mock high+low tiers (no cloud) |
+| `VOICE_ORCH_REVIEW` | no | optional | `0` | high-first | `1` = Grok reviews after local implement |
+| `VOICE_ORCH_FALLBACK_LOCAL` | no | optional | `1` | high-first | If high fails, try local |
 | `VOICE_AGENT_MAX_TURNS` | no | optional | `8` | agent_runner / grok | `--max-turns` |
 | `VOICE_AGENT_TIMEOUT` | no | optional | `600` | agent_runner | Seconds |
 | `VOICE_AGENT_ALWAYS_APPROVE` | no | optional | `1` | agent_runner | Passes grok `--always-approve` when set |

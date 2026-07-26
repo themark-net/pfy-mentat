@@ -66,15 +66,22 @@ def read_run(out: Path) -> dict:
 
 
 def normalize_mode(raw: str | None) -> str:
-    """Map env/CLI tokens → off|mock|grok|opencode."""
+    """Map env/CLI tokens → off|mock|grok|opencode|orchestrate.
+
+    T-0096: bare 1/on/auto → **orchestrate** (default route high-first via VOICE_ROUTE).
+    Explicit opencode/grok remain single-tier.
+    """
     s = (raw or "0").strip().lower()
     if s in ("", "0", "false", "no", "off"):
         return "off"
-    # T-0092: bare "on" means local OpenCode, not Grok
-    if s in ("1", "true", "yes", "on", "auto", "opencode", "worker", "local"):
+    if s in ("1", "true", "yes", "on", "auto", "orchestrate", "orch", "dual"):
+        return "orchestrate"
+    if s in ("opencode", "worker", "local"):
         return "opencode"
     if s in ("mock", "test"):
-        return "mock"
+        return "mock"  # mock single-tier; use orchestrate+VOICE_ORCH_MOCK for dual mock
+    if s in ("mock-orch", "mock_orchestrate", "orchestrate-mock"):
+        return "orchestrate-mock"
     if s in ("grok", "cloud", "monitor"):
         return "grok"
     return "off"
@@ -507,7 +514,8 @@ def run_once(
 ) -> dict:
     out = ensure_out(out)
     run_id = uuid.uuid4().hex[:12]
-    mode = normalize_mode(mode) if mode not in ("off", "mock", "grok", "opencode") else mode
+    known = ("off", "mock", "grok", "opencode", "orchestrate", "orchestrate-mock")
+    mode = normalize_mode(mode) if mode not in known else mode
 
     if mode == "off":
         write_run(
@@ -518,8 +526,8 @@ def run_once(
                 "run_id": run_id,
                 "mode": "off",
                 "message": (
-                    "VOICE_AUTO_AGENT off — set VOICE_AUTO_AGENT=opencode "
-                    "(local default) or =grok (escalate)"
+                    "VOICE_AUTO_AGENT off — set VOICE_AUTO_AGENT=1 for dual-tier "
+                    "(high-first default) or =opencode / =grok for single tier"
                 ),
             },
         )
@@ -537,13 +545,40 @@ def run_once(
         }
 
     try:
+        prompt = build_prompt(prompt_path, transcript, target, repo)
+
+        # T-0096 dual-tier
+        if mode in ("orchestrate", "orchestrate-mock"):
+            import orchestrator as orch
+
+            mock = mode == "orchestrate-mock" or os.environ.get("VOICE_ORCH_MOCK", "").strip() in (
+                "1",
+                "true",
+                "yes",
+            )
+            print(
+                f"==> agent_runner orchestrate run_id={run_id} mock={mock}",
+                file=sys.stderr,
+            )
+            result = orch.orchestrate(
+                repo=repo,
+                out=out,
+                user_prompt=prompt,
+                route=None,  # VOICE_ROUTE (default high-first)
+                max_turns=max_turns,
+                timeout_s=timeout_s,
+                mock=mock,
+            )
+            result["target"] = target
+            write_run(out, result)
+            return result
+
         # target=worker forces opencode path even if mode=grok was a mistake
         effective = mode
         if target == "worker" and mode == "grok":
             print("==> target=worker → using opencode (local) not grok", file=sys.stderr)
             effective = "opencode"
 
-        prompt = build_prompt(prompt_path, transcript, target, repo)
         write_run(
             out,
             {
@@ -644,7 +679,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument(
         "--mode",
         default=None,
-        help="off|mock|opencode|grok|1(=opencode). Default: VOICE_AUTO_AGENT or opencode",
+        help="off|orchestrate|opencode|grok|mock|1(=orchestrate high-first). Default: VOICE_AUTO_AGENT",
     )
     p.add_argument(
         "--max-turns",
@@ -667,8 +702,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.mode is None:
         env_mode = auto_mode()
-        # CLI explicit run without env: default **opencode** (T-0092), not grok
-        mode = env_mode if env_mode != "off" else "opencode"
+        # CLI without env: default orchestrate (T-0096 high-first); env off → orchestrate for explicit CLI
+        mode = env_mode if env_mode != "off" else "orchestrate"
     else:
         mode = normalize_mode(args.mode)
 

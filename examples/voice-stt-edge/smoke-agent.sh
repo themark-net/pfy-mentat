@@ -19,7 +19,7 @@ echo "  default bulk: opencode/ollama · grok only if VOICE_AUTO_AGENT=grok"
 mkdir -p "$OUT"
 
 # --- 0) mode mapping ---
-echo "==> mode mapping (1/on → opencode, not grok)"
+echo "==> mode mapping (1/on → orchestrate T-0096; opencode stays local-only)"
 MAP=$("$VOICE_PY" - <<'PY'
 import importlib.util
 from pathlib import Path
@@ -27,15 +27,16 @@ p = Path("examples/voice-stt-edge/agent_runner.py")
 spec = importlib.util.spec_from_file_location("ar", p)
 ar = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(ar)
-assert ar.normalize_mode("1") == "opencode", ar.normalize_mode("1")
-assert ar.normalize_mode("on") == "opencode"
-assert ar.normalize_mode("auto") == "opencode"
+assert ar.normalize_mode("1") == "orchestrate", ar.normalize_mode("1")
+assert ar.normalize_mode("on") == "orchestrate"
+assert ar.normalize_mode("auto") == "orchestrate"
+assert ar.normalize_mode("opencode") == "opencode"
 assert ar.normalize_mode("grok") == "grok"
 assert ar.normalize_mode("0") == "off"
 print("map-ok")
 PY
 )
-if [[ "$MAP" == "map-ok" ]]; then ok "VOICE_AUTO_AGENT=1 → opencode"; else bad "mode map"; fi
+if [[ "$MAP" == "map-ok" ]]; then ok "VOICE_AUTO_AGENT=1 → orchestrate"; else bad "mode map"; fi
 
 # seed prompt
 "$VOICE_PY" "$EDGE/stt_edge.py" --backend text \
@@ -87,8 +88,8 @@ DEF=$("$VOICE_PY" "$EDGE/agent_runner.py" --help 2>&1 | head -1)
 "$VOICE_PY" "$EDGE/agent_runner.py" --status --out-dir "$OUT" >/dev/null && ok "status CLI"
 
 # --- 4) remote hook with VOICE_AUTO_AGENT=1 (must queue opencode, not require grok) ---
-echo "==> remote VOICE_AUTO_AGENT=1 queues local agent"
-export VOICE_AUTO_AGENT=1
+echo "==> remote VOICE_AUTO_AGENT=opencode queues local agent"
+export VOICE_AUTO_AGENT=opencode
 PORT="${VOICE_REMOTE_SMOKE_PORT:-18791}"
 TOKEN="t0092-$RANDOM"
 "$VOICE_PY" "$EDGE/remote_server.py" --host 127.0.0.1 --port "$PORT" --token "$TOKEN" --out-dir "$OUT" \
@@ -105,20 +106,15 @@ BODY=$(curl -sS -m 5 -H "Authorization: Bearer $TOKEN" -H 'Content-Type: applica
   -d '{"text":"Reply LOCAL_VOICE_AGENT_OK","target":"worker"}' \
   "http://127.0.0.1:$PORT/api/text")
 if echo "$BODY" | grep -q '"agent_queued": true' || echo "$BODY" | grep -q '"agent_queued":true'; then
-  ok "api/text agent_queued under VOICE_AUTO_AGENT=1"
+  ok "api/text agent_queued under VOICE_AUTO_AGENT=opencode"
 else
   bad "agent_queued missing: $(echo "$BODY" | head -c 220)"
 fi
-if echo "$BODY" | grep -q 'opencode'; then
-  ok "agent_mode is opencode (not grok)"
+AM=$(echo "$BODY" | "$VOICE_PY" -c "import sys,json; d=json.load(sys.stdin); print(d.get('agent_mode',''))" 2>/dev/null || echo "")
+if [[ "$AM" == "opencode" ]]; then
+  ok "agent_mode=opencode"
 else
-  # field agent_mode
-  AM=$(echo "$BODY" | "$VOICE_PY" -c "import sys,json; d=json.load(sys.stdin); print(d.get('agent_mode',''))" 2>/dev/null || echo "")
-  if [[ "$AM" == "opencode" ]]; then
-    ok "agent_mode=opencode"
-  else
-    bad "expected agent_mode=opencode got '$AM' body=$(echo "$BODY" | head -c 180)"
-  fi
+  bad "expected agent_mode=opencode got '$AM' body=$(echo "$BODY" | head -c 180)"
 fi
 
 for _ in $(seq 1 60); do
@@ -145,6 +141,7 @@ if [[ "$FAIL" -ne 0 ]]; then
   exit 1
 fi
 echo "voice-agent smoke (T-0092): PASS"
-echo "Recipe: VOICE_AUTO_AGENT=opencode make voice-remote   # or =1 (same)"
-echo "Escalate: VOICE_AUTO_AGENT=grok make voice-remote"
+echo "Local only:  VOICE_AUTO_AGENT=opencode make voice-remote"
+echo "Dual-tier:   VOICE_AUTO_AGENT=1 VOICE_ROUTE=high-first make voice-remote"
+echo "Orchestrate smoke: make smoke-voice-orchestrate"
 exit 0
