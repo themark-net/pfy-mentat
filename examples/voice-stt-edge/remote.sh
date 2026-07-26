@@ -48,26 +48,27 @@ if command -v tailscale >/dev/null 2>&1; then
 fi
 
 echo "== voice-remote =="
-echo "  bind:  http://${HOST}:${PORT}/"
+echo "  bind:  plain HTTP  http://${HOST}:${PORT}/  (Python does NOT speak TLS)"
 echo "  token: $EDGE/.generated/remote.token"
 if [[ -n "$TS_IP" ]]; then
   echo "  Tailscale IPv4: $TS_IP"
-  echo "  Phone URL:      http://${TS_IP}:${PORT}/ping   # must print pong"
-  echo "  Phone UI:       http://${TS_IP}:${PORT}/"
+  echo "  Backend ping:   curl -sS http://127.0.0.1:${PORT}/ping"
 fi
 echo ""
-echo "  Browser hangs? Prefer Termux client (no browser):"
-echo "    docs: examples/voice-stt-edge/clients/README.md"
-echo "    script: clients/termux-voice-send.sh"
-echo "    VOICE_REMOTE_URL=http://${TS_IP:-100.x.y.z}:${PORT}"
+echo "  Phone HTTPS (in-page mic) — two steps:"
+echo "    1) this process on :${PORT}  (HTTP)"
+echo "    2) tailscale serve --bg --https=443 http://127.0.0.1:${PORT}"
+echo "       tailscale serve status   → open https://…/  (NO :${PORT})"
+echo "    NEVER: https://host:${PORT}/  (400 + binary garbage)"
+echo ""
+echo "  No HTTPS? Use Termux or file-capture on http:// page:"
+echo "    clients/README.md · clients/termux-voice-send.sh"
+if [[ -n "$TS_IP" ]]; then
+  echo "    VOICE_REMOTE_URL=http://${TS_IP}:${PORT}"
+fi
 echo "    VOICE_REMOTE_TOKEN=\$(cat $EDGE/.generated/remote.token)"
 echo ""
 echo "  After STT on host: $EDGE/.generated/handoff.sh"
 echo ""
-
-if [[ "$HOST" == "127.0.0.1" || "$HOST" == "localhost" ]]; then
-  echo "warning: bound to localhost only — Android cannot connect." >&2
-  echo "  fix: VOICE_REMOTE_HOST=0.0.0.0 make voice-remote" >&2
-fi
 
 exec "$VOICE_PY" "$EDGE/remote_server.py" --host "$HOST" --port "$PORT" --token "$TOKEN"

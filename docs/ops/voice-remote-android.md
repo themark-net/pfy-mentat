@@ -106,18 +106,45 @@ permission dialog. This is expected, not a bug in our server.
 
 ### Enable in-page mic (HTTPS on Tailscale)
 
-On the **host** (with `make voice-remote` already listening on 127.0.0.1 or 0.0.0.0:8787):
+**Architecture (important):**
+
+```text
+Phone Brave  ──HTTPS :443──►  tailscale serve  ──HTTP :8787──►  Python voice-remote
+                 (TLS ends here)                    (plain HTTP only)
+```
+
+Python **never** speaks TLS. If you open `https://…:8787`, the browser’s TLS
+handshake hits Python → **HTTP 400 + binary garbage**. That is the classic failure.
+
+On the **host**:
 
 ```bash
-# HTTPS front door on the tailnet (Tailscale certs)
+# Terminal A — plain HTTP backend (prefer loopback when using Serve)
+VOICE_REMOTE_HOST=127.0.0.1 make voice-remote
+
+# Terminal B — HTTPS front door (Tailscale certs on :443)
 tailscale serve --bg --https=443 http://127.0.0.1:8787
 tailscale serve status
 ```
 
-Open the **`https://<magicdns-name>/`** URL Tailscale shows (not `http://100.x:8787`).
-Then Brave can prompt for mic.
+Open **exactly** the `https://…` URL from `tailscale serve status`
+(MagicDNS hostname, **no `:8787`**).
 
-To stop: `tailscale serve reset`
+| URL | Result |
+|-----|--------|
+| `https://nimo.tailnet-name.ts.net/` | Good (Serve → Python) |
+| `http://127.0.0.1:8787/ping` on host | Good (backend) |
+| `https://100.x.y.z:8787/` | **Bad** — TLS to Python |
+| `https://nimo…:8787/` | **Bad** — TLS to Python |
+
+Verify:
+
+```bash
+curl -sS http://127.0.0.1:8787/ping          # pong
+curl -sS https://$(tailscale status --json | …)/ping   # or MagicDNS from serve status
+```
+
+To stop Serve: `tailscale serve reset`
 
 ### Without HTTPS (works today)
 

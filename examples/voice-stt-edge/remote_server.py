@@ -20,6 +20,7 @@ import json
 import os
 import re
 import secrets
+import socket
 import sys
 import threading
 import traceback
@@ -351,12 +352,84 @@ class VoiceRemoteState:
         self.lock = threading.Lock()
 
 
+TLS_HELP = (
+    "ERROR: TLS/HTTPS was sent to the plain HTTP voice-remote port.\n"
+    "\n"
+    "This Python process only speaks HTTP (default :8787).\n"
+    "Tailscale Serve terminates HTTPS on :443 and proxies HTTP here.\n"
+    "\n"
+    "Do NOT open:  https://<host>:8787/   ← causes HTTP 400 + binary garbage\n"
+    "Do NOT open:  https://100.x.y.z:8787/\n"
+    "\n"
+    "Correct setup:\n"
+    "  1) make voice-remote   # or VOICE_REMOTE_HOST=127.0.0.1 make voice-remote\n"
+    "  2) tailscale serve --bg --https=443 http://127.0.0.1:8787\n"
+    "  3) tailscale serve status   # copy the https://… URL (no :8787)\n"
+    "  4) Phone: open that https://MagicDNS/ URL (port 443)\n"
+    "\n"
+    "Quick checks:\n"
+    "  curl -sS http://127.0.0.1:8787/ping          # → pong\n"
+    "  curl -sS https://<magicdns>/ping              # → pong via Serve\n"
+)
+
+
 def make_handler(state: VoiceRemoteState):
     class Handler(BaseHTTPRequestHandler):
         server_version = "pfy-voice-remote/0.1"
+        # Allow long headers from reverse proxies
+        protocol_version = "HTTP/1.1"
 
         def log_message(self, fmt: str, *args) -> None:
             sys.stderr.write("%s - %s\n" % (self.address_string(), fmt % args))
+
+        def handle(self) -> None:
+            """Reject TLS ClientHello with a clear text error (not binary 400)."""
+            try:
+                self.connection.settimeout(30)
+                peek = self.connection.recv(5, socket.MSG_PEEK)
+            except Exception:
+                peek = b""
+            # TLS record: ContentType 0x16 (Handshake), version 0x03 0x01/02/03/04
+            if peek and peek[0:1] == b"\x16":
+                sys.stderr.write(
+                    f"{self.address_string()} - TLS handshake on plain HTTP port "
+                    f"(client opened https://…:{state.port}? use tailscale serve URL)\n"
+                )
+                try:
+                    body = TLS_HELP.encode("utf-8")
+                    msg = (
+                        b"HTTP/1.0 400 Bad Request\r\n"
+                        b"Content-Type: text/plain; charset=utf-8\r\n"
+                        b"Connection: close\r\n"
+                        b"Content-Length: "
+                        + str(len(body)).encode()
+                        + b"\r\n\r\n"
+                        + body
+                    )
+                    self.connection.sendall(msg)
+                except Exception:
+                    pass
+                return
+            # HTTP/2 connection preface
+            if peek.startswith(b"PRI ") or peek.startswith(b"PRI\r"):
+                try:
+                    body = (
+                        b"ERROR: HTTP/2 prior knowledge sent to HTTP/1 voice-remote.\n"
+                        b"Use HTTP/1.1 or access via tailscale serve https://…/\n"
+                    )
+                    self.connection.sendall(
+                        b"HTTP/1.0 400 Bad Request\r\n"
+                        b"Content-Type: text/plain\r\n"
+                        b"Connection: close\r\n"
+                        b"Content-Length: "
+                        + str(len(body)).encode()
+                        + b"\r\n\r\n"
+                        + body
+                    )
+                except Exception:
+                    pass
+                return
+            return super().handle()
 
         def _read_body(self) -> bytes:
             n = int(self.headers.get("Content-Length") or 0)
@@ -624,13 +697,17 @@ def main(argv: list[str] | None = None) -> int:
     )
     httpd = ThreadingHTTPServer((args.host, args.port), make_handler(state))
     print(f"== voice-remote (T-0091 p4a) ==")
-    print(f"  bind http://{args.host}:{args.port}/")
+    print(f"  bind: plain HTTP only  http://{args.host}:{args.port}/")
     print(f"  out  {state.out_dir}")
     print(f"  backend={args.backend}")
-    print(f"  Android (same LAN/tailnet): open http://<host-ip>:{args.port}/")
-    print(f"  health: curl -sS http://127.0.0.1:{args.port}/health")
-    print(f"  token:  set in phone UI (Bearer)")
-    print("  After STT: on host run  .generated/handoff.sh")
+    print("")
+    print("  HTTPS for phone mic:")
+    print(f"    tailscale serve --bg --https=443 http://127.0.0.1:{args.port}")
+    print("    tailscale serve status     # open the https://… URL (NO :8787)")
+    print("")
+    print(f"  NEVER open https://…:{args.port}  (TLS on this port → 400 garbage)")
+    print(f"  Desk check: curl -sS http://127.0.0.1:{args.port}/ping")
+    print("  After STT:  .generated/handoff.sh")
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
