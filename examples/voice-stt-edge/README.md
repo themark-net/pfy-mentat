@@ -1,6 +1,54 @@
 # Voice STT edge → tool-capable agents (T-0091 phase 1)
 
-**Host-only edge.** Turns speech (or pasted text) into a **transcript + agent prompt**, then hands off to:
+**Host-only edge.** Turns speech into a **transcript + agent prompt**, then hands off to Grok (monitor) or OpenCode (worker).
+
+This is **not** Grok mobile voice (code stuck in chat).  
+This is **not** Hermes as primary runtime (OQ-0010 path **A**).
+
+## Two different commands (do not confuse)
+
+| Command | Records mic? | Runs Whisper? | Purpose |
+|---------|--------------|---------------|---------|
+| **`make smoke-voice-stt`** | **No** | **No** | Wiring test: mock/text → prompt/handoff files |
+| **`make voice-listen`** | **Yes** | **Yes** | Real speech → STT → Grok/OpenCode |
+
+If smoke **PASS** but you never spoke into a mic, that is expected. Smoke only proves the edge files work.
+
+```bash
+# 1) Lab wiring (what you already ran)
+make smoke-voice-stt
+
+# 2) Real voice path (host, once + each listen)
+make voice-stt-install          # pip install faster-whisper (once)
+make voice-stt-probe            # should exit 0
+make voice-listen               # record 5s → STT → artifacts
+examples/voice-stt-edge/.generated/handoff.sh
+```
+
+### Re-transcribe a capture you already made
+
+Your earlier run **did record** (`last-capture.wav`) but failed STT because Whisper was not installed:
+
+```bash
+make voice-stt-install
+python3 examples/voice-stt-edge/stt_edge.py \
+  --audio examples/voice-stt-edge/.generated/last-capture.wav \
+  --backend local --target monitor
+examples/voice-stt-edge/.generated/handoff.sh
+```
+
+Do **not** run `handoff.sh` after a failed STT — it used to re-launch whatever smoke left behind (often raw `ping` → Grok “Pong”). Failed STT now **blocks** handoff until a successful transcription.
+
+## Simulate without STT
+
+```bash
+python3 examples/voice-stt-edge/stt_edge.py \
+  --text "Run make eval-structural and fix any failures" \
+  --target monitor
+examples/voice-stt-edge/.generated/handoff.sh
+```
+
+## Targets
 
 | Target | Runtime | Tools |
 |--------|---------|-------|
@@ -8,46 +56,23 @@
 | `worker` | OpenCode → Ollama | Partial (model-dependent) |
 | `raw` | transcript only | — |
 
-This is **not** Grok mobile voice (code stuck in chat).  
-This is **not** Hermes as primary runtime (OQ-0010 path **A**: STT edge → existing agents).
-
-## Quick start
-
-```bash
-# Lab smoke (no mic, no Whisper install)
-make smoke-voice-stt
-
-# Simulate a spoken request without STT
-python3 examples/voice-stt-edge/stt_edge.py \
-  --text "Run make eval-structural and fix any failures" \
-  --target monitor
-
-# Launch Grok with that prompt (tools on)
-examples/voice-stt-edge/.generated/handoff.sh
-# or:
-grok "$(cat examples/voice-stt-edge/.generated/last-transcript.txt)"
-```
-
-## Real STT (host)
-
-Backends (`--backend`):
+## STT backends
 
 | Backend | Needs |
 |---------|--------|
-| `mock` | Fixture only (smoke default) |
+| `mock` | Fixture only (smoke) |
 | `text` | `--text` or stdin |
-| `local` / `whisper` | `pip install openai-whisper` or `faster-whisper`, or `whisper` CLI |
-| `openai` | `OPENAI_API_KEY` (Whisper API) |
-| `ollama` | Ollama with audio transcription API + model (experimental) |
-| `auto` | Tries local → openai → ollama |
+| `local` | `make voice-stt-install` (faster-whisper) or openai-whisper / whisper CLI |
+| `openai` | `OPENAI_API_KEY` |
+| `ollama` | Experimental; often 404 unless you pull a whisper-capable model |
+| `auto` | local → openai → ollama (quiet probes) |
 
 ```bash
 # Mic → local Whisper → Grok monitor
 python3 examples/voice-stt-edge/stt_edge.py --mic --seconds 6 --backend local --target monitor
-./examples/voice-stt-edge/.generated/handoff.sh
 
-# File → cloud Whisper → worker prompt
-python3 examples/voice-stt-edge/stt_edge.py --audio note.wav --backend openai --target worker
+# Cloud Whisper
+OPENAI_API_KEY=… python3 examples/voice-stt-edge/stt_edge.py --mic --backend openai --target monitor
 ```
 
 Mic capture uses `arecord` or `ffmpeg` when installed.
@@ -58,23 +83,25 @@ Under `examples/voice-stt-edge/.generated/`:
 
 | File | Role |
 |------|------|
-| `last-transcript.txt` | Clean spoken intent |
+| `last-capture.wav` | Last mic recording (even if STT failed) |
+| `last-transcript.txt` | Clean spoken intent (only after successful STT) |
 | `agent-prompt.md` | Wrapped prompt (role + tool instructions) |
-| `handoff.sh` | Launch `grok` or `opencode` with prompt |
-| `last-meta.json` | Backend/target metadata |
-| `last-capture.wav` | Last mic recording (if `--mic`) |
+| `handoff.sh` | Launch `grok` / `opencode` — **blocked** if STT failed |
+| `STT-NEEDED.txt` | Written when capture ok but STT missing |
+| `last-meta.json` | Backend/target metadata (`ok: true/false`) |
 
 ## Env vars
 
 | Variable | Purpose |
 |----------|---------|
 | `OPENAI_API_KEY` | Cloud Whisper (`--backend openai`) |
-| `VOICE_STT_WHISPER_MODEL` | Local model name (default `base`) |
+| `VOICE_STT_WHISPER_MODEL` | Local model (default `base`) |
 | `VOICE_STT_OLLAMA_MODEL` | Ollama audio model (default `whisper`) |
-| `OLLAMA_HOST` | Ollama base (default `http://127.0.0.1:11434`) |
-| `VOICE_STT_OUT` | Override output dir for smoke |
-
-Registered in [bootstrap/env/REGISTRY.md](../../bootstrap/env/REGISTRY.md).
+| `OLLAMA_HOST` | Ollama base |
+| `VOICE_STT_OUT` | Override artifact dir |
+| `VOICE_LISTEN_SECONDS` | `make voice-listen` duration (default 5) |
+| `VOICE_TARGET` | `monitor` \| `worker` \| `raw` |
+| `VOICE_HANDOFF=1` | `make voice-listen` also exec handoff |
 
 ## Phase map
 
@@ -87,8 +114,3 @@ Registered in [bootstrap/env/REGISTRY.md](../../bootstrap/env/REGISTRY.md).
 | 5 | Product lever voice→stage/ship |
 
 See [docs/ops/voice-agent-channel.md](../../docs/ops/voice-agent-channel.md).
-
-## Related
-
-- T-0085 worker/monitor · ADR-0011 hybrid surfaces  
-- Pattern refs: Hermes voice mode, l0cut15/hermes-voice-assistant (edge only; not primary runtime)  

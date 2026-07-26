@@ -9,17 +9,24 @@
 | Piece | Path |
 |-------|------|
 | STT edge CLI | `examples/voice-stt-edge/stt_edge.py` |
-| Host smoke | `make smoke-voice-stt` (mock/text; **no mic required**) |
+| Wiring smoke | `make smoke-voice-stt` — **mock/text only; does not record audio** |
+| Real mic | `make voice-stt-install` then `make voice-listen` |
 | Operator README | `examples/voice-stt-edge/README.md` |
-| Handoff | `.generated/handoff.sh` → `grok "$(cat last-transcript.txt)"` or OpenCode worker |
+| Handoff | `.generated/handoff.sh` after **successful** STT only (blocked if STT failed) |
 
 **Success (p1):** spoken or simulated intent becomes a **text prompt with tools instructions** for Grok monitor or OpenCode worker — not chat-stuck mobile voice.
 
 ```bash
+# Wiring only (no mic) — PASS does not mean voice worked
 make smoke-voice-stt
+
+# Real mic path (host)
+make voice-stt-install    # faster-whisper once
+make voice-listen         # arecord/ffmpeg + STT → artifacts
+examples/voice-stt-edge/.generated/handoff.sh
+
+# Simulate without STT
 python3 examples/voice-stt-edge/stt_edge.py --text "Run make eval-structural" --target monitor
-examples/voice-stt-edge/.generated/handoff.sh   # needs grok on PATH
-# Real mic (host): --mic --backend local   # needs arecord/ffmpeg + Whisper install
 ```
 
 ## Problem (operator experience)

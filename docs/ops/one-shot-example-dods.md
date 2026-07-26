@@ -64,16 +64,21 @@ Assumptions: host only (no cage); Grok remains monitor
 ```text
 /one-shot Phase 1 voice channel: STT edge hands text to Grok/OpenCode.
 
-DoD:
-1. make smoke-voice-stt exits 0
+DoD (wiring):
+1. make smoke-voice-stt exits 0 (mock/text only — does NOT record audio)
 2. examples/voice-stt-edge/.generated/ has last-transcript.txt + agent-prompt.md + handoff.sh
-3. docs/ops/voice-agent-channel.md marks phase 1 done
-4. Optional host: --mic --backend local only if Whisper + arecord/ffmpeg installed
+3. smoke does not leave raw "ping" as default handoff
 
-Assumptions: no mic required for smoke; mock/text backends; OQ-0010 default A
+DoD (real mic, host optional):
+4. make voice-stt-install (faster-whisper)
+5. make voice-stt-probe exits 0
+6. make voice-listen produces a non-fixture transcript from mic (or re-STT last-capture.wav)
+
+Assumptions: smoke ≠ real voice; OQ-0010 default A
 ```
 
-**Green:** `make smoke-voice-stt`
+**Green (wiring):** `make smoke-voice-stt`  
+**Green (real):** `make voice-stt-install && make voice-listen`
 
 ---
 

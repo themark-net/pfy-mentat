@@ -49,6 +49,9 @@ When integrating a new tool, **add a row here in the same PR** as the integratio
 | `VOICE_STT_WHISPER_MODEL` | no | optional | `base` | `examples/voice-stt-edge` local Whisper | T-0091 p1; openai-whisper / faster-whisper model id |
 | `VOICE_STT_OLLAMA_MODEL` | no | optional | `whisper` | voice-stt-edge ollama backend | Experimental; only if Ollama exposes audio transcription |
 | `VOICE_STT_OUT` | no | smoke | `examples/voice-stt-edge/.generated` | `make smoke-voice-stt` | Override artifact dir |
+| `VOICE_LISTEN_SECONDS` | no | optional | `5` | `make voice-listen` | Mic duration |
+| `VOICE_TARGET` | no | optional | `monitor` | `make voice-listen` | `monitor` \| `worker` \| `raw` |
+| `VOICE_HANDOFF` | no | optional | `0` | `make voice-listen` | `1` = exec handoff after STT |
 
 ## Profile affinity
 

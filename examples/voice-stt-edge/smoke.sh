@@ -24,9 +24,11 @@ bad() { printf '  FAIL %s\n' "$*" >&2; FAIL=1; }
 
 echo "== voice-stt-edge smoke (T-0091 p1) =="
 echo "  OUT=$OUT"
+echo "  MODE=wiring only (mock + text) — does NOT record mic or run Whisper"
+echo "  Real mic: make voice-stt-install && make voice-listen"
 
 mkdir -p "$OUT" "$(dirname "$RESULT_MD")"
-rm -f "$OUT/last-transcript.txt" "$OUT/agent-prompt.md" "$OUT/handoff.sh" "$OUT/last-meta.json"
+rm -f "$OUT/last-transcript.txt" "$OUT/agent-prompt.md" "$OUT/handoff.sh" "$OUT/last-meta.json" "$OUT/STT-NEEDED.txt"
 
 # --- 1) CLI exists ---
 log "CLI present"
@@ -107,39 +109,41 @@ else
   fi
 fi
 
-# --- 4) raw target ---
-log "raw target"
-if ! "$PY" "$EDGE/stt_edge.py" --backend text --text "ping" --target raw --out-dir "$OUT" >/dev/null; then
+# --- 4) raw target (in subdir so we do not leave "ping" as the operator handoff) ---
+log "raw target (isolated)"
+RAW_OUT="$OUT/raw-check"
+mkdir -p "$RAW_OUT"
+if ! "$PY" "$EDGE/stt_edge.py" --backend text --text "ping" --target raw --out-dir "$RAW_OUT" >/dev/null; then
   bad "raw target failed"
 else
-  if [[ "$(cat "$OUT/agent-prompt.md")" == "ping" ]] || grep -qx 'ping' "$OUT/agent-prompt.md"; then
+  if [[ "$(tr -d '\n' <"$RAW_OUT/agent-prompt.md")" == "ping" ]]; then
     ok "raw prompt is transcript only"
   else
-    # allow trailing newline only
-    if [[ "$(tr -d '\n' <"$OUT/agent-prompt.md")" == "ping" ]]; then
-      ok "raw prompt is transcript only"
-    else
-      bad "raw prompt has wrapper: $(head -c 80 "$OUT/agent-prompt.md")"
-    fi
+    bad "raw prompt has wrapper: $(head -c 80 "$RAW_OUT/agent-prompt.md")"
   fi
 fi
 
-# --- 5) optional real STT probe (informational) ---
-log "optional STT backend probe"
-STT_NOTE="none"
-if "$PY" -c "import whisper" 2>/dev/null; then
-  STT_NOTE="openai-whisper importable"
-  ok "local whisper available (not exercised without audio fixture)"
-elif "$PY" -c "import faster_whisper" 2>/dev/null; then
-  STT_NOTE="faster-whisper importable"
-  ok "faster-whisper available (not exercised without audio fixture)"
-elif [[ -n "${OPENAI_API_KEY:-}" ]]; then
-  STT_NOTE="OPENAI_API_KEY set (cloud Whisper ready)"
-  ok "cloud Whisper key present (not called in smoke)"
+# --- 5) leave monitor-targeted fixture as the default handoff (not smoke ping) ---
+log "restore monitor fixture as default handoff"
+if ! "$PY" "$EDGE/stt_edge.py" --backend mock --target monitor --out-dir "$OUT" >/dev/null; then
+  bad "final mock restore failed"
 else
-  STT_NOTE="no local/cloud Whisper — mock/text only (expected for phase-1 lab)"
-  ok "no Whisper required for phase-1 smoke"
+  ok "default handoff = mock fixture → monitor (not raw ping)"
 fi
+
+# --- 6) optional real STT probe (informational) ---
+log "optional real STT probe (does not fail smoke)"
+STT_NOTE="none"
+PROBE_RC=0
+"$PY" "$EDGE/stt_edge.py" --probe >/tmp/voice-stt-probe.txt 2>&1 || PROBE_RC=$?
+if [[ "$PROBE_RC" -eq 0 ]]; then
+  STT_NOTE="real STT ready (local or OPENAI_API_KEY)"
+  ok "real STT ready — try: make voice-listen"
+else
+  STT_NOTE="no real STT — mock/text only (install: make voice-stt-install)"
+  ok "no Whisper required for this smoke (expected until voice-stt-install)"
+fi
+cat /tmp/voice-stt-probe.txt 2>/dev/null | sed 's/^/  | /' || true
 
 # --- result receipt ---
 STATUS=PASS
@@ -149,9 +153,12 @@ STATUS=PASS
   echo ""
   echo "- **When:** $(date -Iseconds 2>/dev/null || date)"
   echo "- **Status:** $STATUS"
+  echo "- **Mode:** wiring only (mock/text) — **no mic**"
   echo "- **Out:** \`$OUT\`"
-  echo "- **STT probe:** $STT_NOTE"
+  echo "- **Real STT probe:** $STT_NOTE"
   echo "- **Phase:** T-0091 p1"
+  echo ""
+  echo "Real mic path: \`make voice-stt-install && make voice-listen\`"
 } >"$RESULT_MD"
 echo "==> wrote $RESULT_MD"
 
@@ -159,10 +166,15 @@ if [[ "$FAIL" -ne 0 ]]; then
   echo "voice-stt-edge smoke: FAIL" >&2
   exit 1
 fi
-echo "voice-stt-edge smoke: PASS"
+echo "voice-stt-edge smoke: PASS (wiring only — did not record audio)"
 echo ""
-echo "Operator (host, with mic + Whisper later):"
-echo "  python3 examples/voice-stt-edge/stt_edge.py --mic --seconds 5 --target monitor"
+echo "Real mic (host):"
+echo "  make voice-stt-install     # once: faster-whisper"
+echo "  make voice-listen          # mic → STT → handoff artifacts"
 echo "  examples/voice-stt-edge/.generated/handoff.sh"
-echo "  # or: grok \"\$(cat examples/voice-stt-edge/.generated/last-transcript.txt)\""
+echo "If you already recorded last-capture.wav without STT:"
+echo "  make voice-stt-install"
+echo "  python3 examples/voice-stt-edge/stt_edge.py \\"
+echo "    --audio examples/voice-stt-edge/.generated/last-capture.wav \\"
+echo "    --backend local --target monitor"
 exit 0
