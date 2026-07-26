@@ -52,6 +52,7 @@ When integrating a new tool, **add a row here in the same PR** as the integratio
 | `VOICE_LISTEN_SECONDS` | no | optional | `5` | `make voice-listen` | Mic duration |
 | `VOICE_TARGET` | no | optional | `monitor` | `make voice-listen` | `monitor` \| `worker` \| `raw` |
 | `VOICE_HANDOFF` | no | optional | `0` | `make voice-listen` | `1` = exec handoff after STT |
+| `VOICE_STT_PYTHON` | no | optional | `examples/voice-stt-edge/.venv/bin/python` | `python.sh` / listen | Override interpreter; default prefers project venv |
 
 ## Profile affinity
 

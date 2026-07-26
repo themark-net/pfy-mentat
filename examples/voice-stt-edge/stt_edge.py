@@ -57,14 +57,15 @@ def read_text_file(path: Path) -> str:
 def install_hint() -> str:
     return (
         "Real STT is not installed (smoke does not record audio).\n"
-        "  1) make voice-stt-install          # pip install faster-whisper\n"
+        "  1) make voice-stt-install          # creates .venv + faster-whisper (PEP 668 safe)\n"
         "  2) make voice-listen              # mic → transcript → handoff artifacts\n"
-        "  or: OPENAI_API_KEY=… python3 examples/voice-stt-edge/stt_edge.py "
-        "--mic --backend openai --target monitor\n"
+        "  or: OPENAI_API_KEY=… examples/voice-stt-edge/python.sh "
+        "examples/voice-stt-edge/stt_edge.py --mic --backend openai --target monitor\n"
         "If you already recorded: re-run on the wav (no re-record):\n"
-        "  python3 examples/voice-stt-edge/stt_edge.py "
+        "  examples/voice-stt-edge/python.sh examples/voice-stt-edge/stt_edge.py "
         "--audio examples/voice-stt-edge/.generated/last-capture.wav "
-        "--backend local --target monitor"
+        "--backend local --target monitor\n"
+        "Do not: pip install --user into system Python (PEP 668 / Debian blocks it)."
     )
 
 
@@ -303,8 +304,9 @@ def backend_local_whisper(audio: Path, model: str = "base") -> str:
             return read_text_file(txts[0])
 
     raise SttError(
-        "no local Whisper package. Run: make voice-stt-install  "
-        "(or: python3 -m pip install --user 'faster-whisper')"
+        "no local Whisper in this Python. Run: make voice-stt-install  "
+        "(creates examples/voice-stt-edge/.venv with faster-whisper). "
+        "Then use: make voice-listen  or  examples/voice-stt-edge/python.sh …"
     )
 
 

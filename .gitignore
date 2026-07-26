@@ -21,3 +21,6 @@ examples/opencode-ollama/.generated/
 
 # Voice STT edge artifacts (transcripts, mic captures, handoff)
 examples/voice-stt-edge/.generated/
+# Local Whisper venv (make voice-stt-install) — never commit
+examples/voice-stt-edge/.venv/
+examples/voice-stt-edge/.venv-python-path

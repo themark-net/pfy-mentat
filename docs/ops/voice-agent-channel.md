@@ -20,8 +20,8 @@
 # Wiring only (no mic) — PASS does not mean voice worked
 make smoke-voice-stt
 
-# Real mic path (host)
-make voice-stt-install    # faster-whisper once
+# Real mic path (host) — install uses project .venv (PEP 668 safe)
+make voice-stt-install    # .venv + faster-whisper once
 make voice-listen         # arecord/ffmpeg + STT → artifacts
 examples/voice-stt-edge/.generated/handoff.sh
 

@@ -15,7 +15,10 @@ cd "$ROOT"
 EDGE="$ROOT/examples/voice-stt-edge"
 OUT="${VOICE_STT_OUT:-$EDGE/.generated}"
 RESULT_MD="${VOICE_STT_RESULT:-$ROOT/pipelines/smoke/voice-stt-edge/results.latest.md}"
-PY="${PYTHON:-python3}"
+# Wiring smoke uses system python3 (mock/text only). Real STT uses .venv via python.sh.
+# shellcheck source=python.sh
+source "$EDGE/python.sh" 2>/dev/null || true
+PY="${VOICE_PY:-${PYTHON:-python3}}"
 FAIL=0
 
 log() { printf '==> %s\n' "$*"; }
@@ -169,12 +172,12 @@ fi
 echo "voice-stt-edge smoke: PASS (wiring only — did not record audio)"
 echo ""
 echo "Real mic (host):"
-echo "  make voice-stt-install     # once: faster-whisper"
+echo "  make voice-stt-install     # once: .venv + faster-whisper (PEP 668 safe)"
 echo "  make voice-listen          # mic → STT → handoff artifacts"
 echo "  examples/voice-stt-edge/.generated/handoff.sh"
 echo "If you already recorded last-capture.wav without STT:"
 echo "  make voice-stt-install"
-echo "  python3 examples/voice-stt-edge/stt_edge.py \\"
+echo "  examples/voice-stt-edge/python.sh examples/voice-stt-edge/stt_edge.py \\"
 echo "    --audio examples/voice-stt-edge/.generated/last-capture.wav \\"
 echo "    --backend local --target monitor"
 exit 0

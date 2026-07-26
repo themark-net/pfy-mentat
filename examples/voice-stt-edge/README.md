@@ -19,11 +19,18 @@ If smoke **PASS** but you never spoke into a mic, that is expected. Smoke only p
 make smoke-voice-stt
 
 # 2) Real voice path (host, once + each listen)
-make voice-stt-install          # pip install faster-whisper (once)
+make voice-stt-install          # creates examples/voice-stt-edge/.venv + faster-whisper
 make voice-stt-probe            # should exit 0
 make voice-listen               # record 5s → STT → artifacts
 examples/voice-stt-edge/.generated/handoff.sh
 ```
+
+**PEP 668 / Debian:** install never uses system `pip` (that fails with
+`externally-managed-environment`). It uses a **project venv**. If venv creation
+fails: `sudo apt install python3-venv python3-full`.
+
+Always run STT via `make voice-listen` or `examples/voice-stt-edge/python.sh`
+(not bare `python3`, which will not see the venv packages).
 
 ### Re-transcribe a capture you already made
 
@@ -31,7 +38,7 @@ Your earlier run **did record** (`last-capture.wav`) but failed STT because Whis
 
 ```bash
 make voice-stt-install
-python3 examples/voice-stt-edge/stt_edge.py \
+examples/voice-stt-edge/python.sh examples/voice-stt-edge/stt_edge.py \
   --audio examples/voice-stt-edge/.generated/last-capture.wav \
   --backend local --target monitor
 examples/voice-stt-edge/.generated/handoff.sh
@@ -62,7 +69,7 @@ examples/voice-stt-edge/.generated/handoff.sh
 |---------|--------|
 | `mock` | Fixture only (smoke) |
 | `text` | `--text` or stdin |
-| `local` | `make voice-stt-install` (faster-whisper) or openai-whisper / whisper CLI |
+| `local` | `make voice-stt-install` → `.venv` + faster-whisper (or system whisper CLI) |
 | `openai` | `OPENAI_API_KEY` |
 | `ollama` | Experimental; often 404 unless you pull a whisper-capable model |
 | `auto` | local → openai → ollama (quiet probes) |

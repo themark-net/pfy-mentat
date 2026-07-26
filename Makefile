@@ -75,7 +75,7 @@ help:
 	@echo "  make smoke-grok-skills INSTALLED=1  # also check ~/.grok/skills"
 	@echo "  make smoke-opencode-ollama  # T-0080 host: OpenCode adapter + Ollama worker (no cage)"
 	@echo "  make smoke-voice-stt        # T-0091 p1: wiring only (mock/text; no mic)"
-	@echo "  make voice-stt-install      # T-0091: pip install faster-whisper (host, once)"
+	@echo "  make voice-stt-install      # T-0091: .venv + faster-whisper (host, once; PEP 668)"
 	@echo "  make voice-listen           # T-0091: real mic → STT → handoff (needs install)"
 	@echo "  make worker-stage           # T-0085: smoke worker + write monitor brief / worker.env"
 	@echo "  make eval-structural           # design/coding gates, NO LLM (always run)"
@@ -242,18 +242,20 @@ smoke-voice-stt:
 	  examples/voice-stt-edge/listen.sh examples/voice-stt-edge/install-local-stt.sh
 	@./examples/voice-stt-edge/smoke.sh
 
-# Host once: install faster-whisper for real mic path
+# Host once: project venv + faster-whisper (PEP 668 / Debian safe — not system pip)
 voice-stt-install:
-	@chmod +x examples/voice-stt-edge/install-local-stt.sh
+	@chmod +x examples/voice-stt-edge/install-local-stt.sh examples/voice-stt-edge/python.sh
 	@./examples/voice-stt-edge/install-local-stt.sh
 
-# Host: probe whether real STT is ready (exit 0 ready, 2 not)
+# Host: probe whether real STT is ready (exit 0 ready, 2 not); uses .venv if present
 voice-stt-probe:
-	@python3 examples/voice-stt-edge/stt_edge.py --probe
+	@chmod +x examples/voice-stt-edge/python.sh
+	@examples/voice-stt-edge/python.sh examples/voice-stt-edge/stt_edge.py --probe
 
 # Host: real mic → STT → artifacts (VOICE_LISTEN_SECONDS=5 VOICE_TARGET=monitor VOICE_HANDOFF=1)
 voice-listen:
-	@chmod +x examples/voice-stt-edge/listen.sh examples/voice-stt-edge/stt_edge.py
+	@chmod +x examples/voice-stt-edge/listen.sh examples/voice-stt-edge/stt_edge.py \
+	  examples/voice-stt-edge/python.sh
 	@./examples/voice-stt-edge/listen.sh
 
 # T-0085: stage local worker + Grok monitor brief
