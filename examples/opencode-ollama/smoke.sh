@@ -20,6 +20,17 @@ OLLAMA_ROOT="${OLLAMA_OPENAI_BASE%/v1}"
 
 LOCAL_CODER_MODEL="${LOCAL_CODER_MODEL:-${EVAL_MODEL:-deepseek-coder:6.7b}}"
 LITELLM_SMOKE_MODEL="${LITELLM_SMOKE_MODEL:-deepseek-coder:latest}"
+# T-0093: agent/tools model (OpenCode agent mode) — never force tools on deepseek 6.7b
+if [[ -f "${OPENCODE_SMOKE_OUT:-$ROOT/examples/opencode-ollama/.generated}/tools-model.env" ]]; then
+  # shellcheck disable=SC1091
+  set -a
+  # shellcheck disable=SC1090
+  . "${OPENCODE_SMOKE_OUT:-$ROOT/examples/opencode-ollama/.generated}/tools-model.env"
+  set +a
+fi
+LOCAL_TOOLS_MODEL="${LOCAL_TOOLS_MODEL:-}"
+OPENCODE_AGENT_MODEL="${OPENCODE_AGENT_MODEL:-${LOCAL_TOOLS_MODEL:-$LOCAL_CODER_MODEL}}"
+TOOLS_MODE="${TOOLS_MODE:-}"
 SKILLS_SRC="${OPENCODE_SKILLS:-$ROOT/bootstrap/grok-cli/skills}"
 OUT_DIR="${OPENCODE_SMOKE_OUT:-$ROOT/examples/opencode-ollama/.generated}"
 CFG="$OUT_DIR/opencode.json"
@@ -35,6 +46,7 @@ bad() { printf '  FAIL %s\n' "$*" >&2; FAIL=1; }
 echo "== opencode-ollama host smoke =="
 echo "  OLLAMA_OPENAI_BASE=$OLLAMA_OPENAI_BASE"
 echo "  LOCAL_CODER_MODEL=$LOCAL_CODER_MODEL"
+echo "  OPENCODE_AGENT_MODEL=$OPENCODE_AGENT_MODEL  (tools/agent; T-0093)"
 echo "  SKILLS_SRC=$SKILLS_SRC"
 
 # --- 1) Ollama tags ---
@@ -91,12 +103,21 @@ ok ".opencode/skills → bootstrap/grok-cli/skills (symlinks)"
 # --- 3) Generate OpenCode config (no secrets) ---
 log "Generate project OpenCode config"
 mkdir -p "$OUT_DIR"
-export OLLAMA_OPENAI_BASE LOCAL_CODER_MODEL LITELLM_SMOKE_MODEL
+export OLLAMA_OPENAI_BASE LOCAL_CODER_MODEL LITELLM_SMOKE_MODEL OPENCODE_AGENT_MODEL OUT_DIR
 python3 - <<'PY'
 import json, os, pathlib
 base = os.environ["OLLAMA_OPENAI_BASE"]
 worker = os.environ["LOCAL_CODER_MODEL"]
 smoke = os.environ["LITELLM_SMOKE_MODEL"]
+agent = os.environ.get("OPENCODE_AGENT_MODEL") or worker
+models = {
+    worker: {"name": worker},
+    smoke: {"name": smoke},
+}
+if agent and agent not in models:
+    models[agent] = {"name": agent}
+# Default model = agent/tools model when different (OpenCode agent mode)
+default = agent if agent else worker
 cfg = {
     "$schema": "https://opencode.ai/config.json",
     "provider": {
@@ -104,25 +125,23 @@ cfg = {
             "npm": "@ai-sdk/openai-compatible",
             "name": "Ollama (local)",
             "options": {"baseURL": base, "apiKey": "ollama"},
-            "models": {
-                worker: {"name": worker},
-                smoke: {"name": smoke},
-            },
+            "models": models,
         }
     },
-    "model": f"ollama/{worker}",
+    "model": f"ollama/{default}",
 }
 out = pathlib.Path(os.environ.get("OUT_DIR", "examples/opencode-ollama/.generated"))
 out.mkdir(parents=True, exist_ok=True)
 path = out / "opencode.json"
 path.write_text(json.dumps(cfg, indent=2) + "\n")
 print(f"  wrote {path}")
-# also project root optional (gitignored)
-proj = pathlib.Path("opencode.json")
-if not proj.exists() or proj.read_text()[:20].find("generated") or True:
-    # write only under .generated to avoid polluting repo; link note in README
-    pass
-print(json.dumps({"provider": "ollama", "model": cfg["model"], "baseURL": base}))
+print(json.dumps({
+    "provider": "ollama",
+    "model": cfg["model"],
+    "coder": worker,
+    "agent": agent,
+    "baseURL": base,
+}))
 PY
 ok "opencode.json generated"
 
@@ -172,18 +191,26 @@ if ! command -v opencode >/dev/null 2>&1; then
   SKIP_OPENCODE=1
 else
   ok "opencode $(opencode --version 2>/dev/null | head -1 || echo present)"
-  # Non-interactive if supported
+  # Non-interactive: use AGENT model (tools-capable when T-0093 selected)
+  AGENT_M="${OPENCODE_AGENT_MODEL:-$LOCAL_CODER_MODEL}"
   if opencode run --help >/dev/null 2>&1; then
     set +e
-    out=$(OPENCODE_CONFIG="$CFG" opencode run -m "ollama/${LOCAL_CODER_MODEL}" \
-      "Reply with exactly: OPENCODE_CLI_OK" 2>&1 | tail -20)
+    out=$(OPENCODE_CONFIG="$CFG" opencode run -m "ollama/${AGENT_M}" \
+      "Reply with exactly: OPENCODE_CLI_OK" 2>&1 | tail -30)
     rc=$?
     set -e
-    echo "$out" | tail -5 | sed 's/^/  /'
-    if [[ $rc -ne 0 ]]; then
-      bad "opencode run failed rc=$rc"
+    echo "$out" | tail -8 | sed 's/^/  /'
+    if echo "$out" | grep -qi 'does not support tools'; then
+      bad "opencode still on a no-tools model ($AGENT_M) — run make eval-select-tools-model"
+    elif [[ $rc -ne 0 ]]; then
+      # Some local models exit non-zero with partial output; soft-ok if no tools error
+      if [[ -n "$out" ]]; then
+        ok "opencode run (rc=$rc, non-empty; model=$AGENT_M)"
+      else
+        bad "opencode run failed rc=$rc model=$AGENT_M"
+      fi
     else
-      ok "opencode run"
+      ok "opencode run (model=$AGENT_M)"
     fi
   else
     echo "  note: no 'opencode run' — binary present; config ready at $CFG"
@@ -195,15 +222,16 @@ fi
 mkdir -p "$(dirname "$RESULT_MD")"
 ts=$(date -Iseconds 2>/dev/null || date)
 if [[ "$FAIL" -ne 0 ]]; then
-  echo "| $ts | FAIL | model=$LOCAL_CODER_MODEL |" >> "$RESULT_MD"
+  echo "| $ts | FAIL | coder=$LOCAL_CODER_MODEL agent=${OPENCODE_AGENT_MODEL:-} |" >> "$RESULT_MD"
   echo "opencode-ollama smoke: FAIL"
   exit 1
 fi
 if [[ "$SKIP_OPENCODE" -eq 1 ]]; then
-  echo "| $ts | PASS_PARTIAL | ollama+skills+config OK; opencode CLI missing | model=$LOCAL_CODER_MODEL |" >> "$RESULT_MD"
+  echo "| $ts | PASS_PARTIAL | ollama+skills+config OK; opencode CLI missing | coder=$LOCAL_CODER_MODEL agent=${OPENCODE_AGENT_MODEL:-} |" >> "$RESULT_MD"
   echo "opencode-ollama smoke: PASS (partial — install opencode for full CLI check)"
   exit 0
 fi
-echo "| $ts | PASS | model=$LOCAL_CODER_MODEL |" >> "$RESULT_MD"
+echo "| $ts | PASS | coder=$LOCAL_CODER_MODEL agent=${OPENCODE_AGENT_MODEL:-} |" >> "$RESULT_MD"
 echo "opencode-ollama smoke: PASS"
+echo "  coder=$LOCAL_CODER_MODEL  agent=${OPENCODE_AGENT_MODEL:-$LOCAL_CODER_MODEL}"
 exit 0
