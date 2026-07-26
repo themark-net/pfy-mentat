@@ -886,6 +886,11 @@ def main(argv: list[str] | None = None) -> int:
         help="Exec handoff.sh after write (launch grok/opencode)",
     )
     p.add_argument(
+        "--auto-agent",
+        action="store_true",
+        help="T-0091 4b: run agent_runner after STT (or set VOICE_AUTO_AGENT=1)",
+    )
+    p.add_argument(
         "--probe",
         action="store_true",
         help="Print STT capability probe and exit 0 if any real STT ready, else 2",
@@ -959,9 +964,38 @@ def main(argv: list[str] | None = None) -> int:
         print(
             f"Handoff:  {paths['handoff_path']}\n"
             f"  or:     grok \"$(cat {paths['prompt_path']})\"\n"
-            f"  or:     paste {paths['prompt_path']} into Grok / OpenCode",
+            f"  or:     VOICE_AUTO_AGENT=1 / --auto-agent for tools without handoff.sh",
             file=sys.stderr,
         )
+        want_auto = args.auto_agent or (
+            os.environ.get("VOICE_AUTO_AGENT", "").strip().lower()
+            in ("1", "true", "yes", "on", "grok", "mock", "opencode", "auto")
+        )
+        if want_auto and not args.handoff:
+            try:
+                import agent_runner as ar
+
+                mode = ar.auto_mode()
+                if mode == "off":
+                    mode = "grok" if args.auto_agent else "off"
+                if mode != "off":
+                    print(f"==> auto-agent mode={mode}", file=sys.stderr)
+                    result = ar.run_once(
+                        repo=ROOT,
+                        out=out_dir,
+                        mode=mode,
+                        target=args.target if args.target != "raw" else "monitor",
+                        prompt_path=Path(paths["prompt_path"]),
+                        transcript=transcript,
+                        max_turns=int(os.environ.get("VOICE_AGENT_MAX_TURNS", "8")),
+                        timeout_s=int(os.environ.get("VOICE_AGENT_TIMEOUT", "600")),
+                    )
+                    print(
+                        f"==> agent {result.get('status')} exit={result.get('exit_code')}",
+                        file=sys.stderr,
+                    )
+            except Exception as e:
+                print(f"==> auto-agent failed: {e}", file=sys.stderr)
         if args.handoff:
             os.execv(str(paths["handoff_path"]), [str(paths["handoff_path"])])
 

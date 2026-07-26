@@ -17,7 +17,8 @@ LITELLM_EXAMPLE := examples/litellm-ollama
 	local-ollama-overlay-install local-ollama-up smoke-litellm-ollama \
 	smoke-codebase-memory smoke-repowise smoke-context-tools \
 	smoke-write-guard smoke-grok-skills smoke-opencode-ollama smoke-voice-stt smoke-voice-remote \
-	voice-stt-install voice-listen voice-stt-probe voice-remote voice-remote-serve \
+	smoke-voice-agent \
+	voice-stt-install voice-listen voice-stt-probe voice-remote voice-remote-serve voice-agent-run \
 	worker-stage worker-env monitor-brief \
 
 	eval-tier0 eval-tier1 eval-mvp eval-suite eval-matrix eval-v02 eval-structural \
@@ -79,7 +80,9 @@ help:
 	@echo "  make voice-listen           # T-0091: desk mic → STT → handoff"
 	@echo "  make voice-remote           # T-0091 p4a: HTTP backend :8787 (plain HTTP only)"
 	@echo "  make voice-remote-serve     # T-0091: tailscale serve HTTPS :443 → :8787"
+	@echo "  make voice-agent-run        # T-0091 4b: run agent on last transcript (tools)"
 	@echo "  make smoke-voice-remote     # T-0091 p4a: localhost API smoke (no phone)"
+	@echo "  make smoke-voice-agent      # T-0091 4b: mock auto-agent smoke (no cloud)"
 	@echo "  make worker-stage           # T-0085: smoke worker + write monitor brief / worker.env"
 	@echo "  make eval-structural           # design/coding gates, NO LLM (always run)"
 	@echo "  make eval-select-models        # pick gate/matrix models that FIT RAM/disk (may pull)"
@@ -277,6 +280,23 @@ smoke-voice-remote:
 	@chmod +x examples/voice-stt-edge/smoke-remote.sh examples/voice-stt-edge/remote_server.py \
 	  examples/voice-stt-edge/python.sh
 	@./examples/voice-stt-edge/smoke-remote.sh
+
+# T-0091 4b: run tool-capable agent on last STT prompt (MODE=mock|grok)
+voice-agent-run:
+	@chmod +x examples/voice-stt-edge/agent_runner.py examples/voice-stt-edge/python.sh
+	@examples/voice-stt-edge/python.sh examples/voice-stt-edge/agent_runner.py \
+	  --mode $${VOICE_AGENT_MODE:-$${VOICE_AUTO_AGENT:-grok}} \
+	  --out-dir examples/voice-stt-edge/.generated \
+	  --repo "$(CURDIR)" \
+	  --target $${VOICE_TARGET:-monitor} \
+	  --max-turns $${VOICE_AGENT_MAX_TURNS:-8} \
+	  --timeout $${VOICE_AGENT_TIMEOUT:-600}
+
+# T-0091 4b smoke (mock; set VOICE_AGENT_SMOKE_REAL=1 for short grok -p)
+smoke-voice-agent:
+	@chmod +x examples/voice-stt-edge/smoke-agent.sh examples/voice-stt-edge/agent_runner.py \
+	  examples/voice-stt-edge/python.sh examples/voice-stt-edge/remote_server.py
+	@./examples/voice-stt-edge/smoke-agent.sh
 
 # T-0085: stage local worker + Grok monitor brief
 worker-stage:

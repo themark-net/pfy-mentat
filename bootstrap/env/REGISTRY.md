@@ -59,6 +59,11 @@ When integrating a new tool, **add a row here in the same PR** as the integratio
 | `VOICE_REMOTE_HOST` | no | optional | `127.0.0.1` | `make voice-remote` | Use `0.0.0.0` for Android on Tailscale/LAN |
 | `VOICE_REMOTE_PORT` | no | optional | `8787` | voice-remote | HTTP port |
 | `VOICE_REMOTE_TOKEN` | **yes** (shared secret) | remote | auto `.generated/remote.token` | voice-remote auth | Never commit; phone UI Bearer token |
+| `VOICE_AUTO_AGENT` | no | optional | `0` (off) | voice 4b auto-runner | `0` \| `1`/`grok` \| `mock` \| `opencode` — **opt-in** tool runs |
+| `VOICE_AGENT_MAX_TURNS` | no | optional | `8` | agent_runner / grok | `--max-turns` |
+| `VOICE_AGENT_TIMEOUT` | no | optional | `600` | agent_runner | Seconds |
+| `VOICE_AGENT_ALWAYS_APPROVE` | no | optional | `1` | agent_runner | Passes grok `--always-approve` when set |
+| `VOICE_AGENT_REPO` | no | optional | repo root | remote_server / runner | Grok `--cwd` |
 
 ## Profile affinity
 

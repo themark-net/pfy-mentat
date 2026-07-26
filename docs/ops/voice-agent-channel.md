@@ -1,6 +1,6 @@
 # Voice channel for agentic coding (goal)
 
-**Status:** Phase **1** + **4a** live · TTS/auto-agent still open  
+**Status:** Phase **1** + **4a** + **4b** live · TTS / session-resume still open  
 **ID:** T-0091 · OQ-0010  
 **Related:** T-0085 worker/monitor · ADR-0011 · Hermes pattern (not runtime) · T-0090 minimal levers
 
@@ -35,8 +35,24 @@ VOICE_REMOTE_HOST=0.0.0.0 make voice-remote
 # host:  examples/voice-stt-edge/.generated/handoff.sh   # tools via Grok CLI
 ```
 
-**Success (p1/p4a):** spoken intent (desk or phone) becomes a **text prompt with tools instructions** for Grok/OpenCode — not Grok-mobile-voice stuck in chat.  
-**Not yet:** auto-run agent on every upload, TTS reply to phone, true VoIP.
+**Success (p1/p4a):** spoken intent → text prompt.  
+**Success (p4b):** same prompt **auto-runs tool-capable Grok** (opt-in) — no manual `handoff.sh`.
+
+```bash
+# Auto tools after remote STT (opt-in — spends Grok quota)
+VOICE_AUTO_AGENT=1 VOICE_REMOTE_HOST=127.0.0.1 make voice-remote
+# phone: STT → poll /api/last-run for agent reply
+
+# Desk one-shot
+python3 examples/voice-stt-edge/stt_edge.py --text "run make eval-structural" --auto-agent
+# or on last capture:
+make voice-agent-run   # MODE via VOICE_AUTO_AGENT / VOICE_AGENT_MODE
+
+# Smoke without cloud
+make smoke-voice-agent
+```
+
+**Not yet:** TTS reply audio, multi-turn session resume by default, true VoIP.
 
 ## Problem (operator experience)
 
@@ -125,7 +141,8 @@ So: **useful scaffold**, not yet “hands-free agentic coding.” Gaps: shared s
 | **2** | TTS replies + optional wake word | Hands-free loop at desk | open |
 | **3** | Shared worksheet auto-update (worker progress → monitor brief) | Less paste between terminals | open |
 | **4a** | Remote HTTP + Android UI over Tailscale | Phone STT → same handoff as desk | **done** (`make voice-remote`) |
-| **4b–d** | Auto grok headless · TTS back · VoIP/Twilio | Hands-free / phone call | open |
+| **4b** | Auto agent runner (Grok headless + tools) | No manual handoff.sh | **done** (`agent_runner.py`, `VOICE_AUTO_AGENT=1`) |
+| **4c–d** | TTS back · VoIP/Twilio | Hands-free / phone call | open |
 | **5** | Product lever: voice as input to `stage`/`ship` | Aligns T-0090 simplicity | open |
 
 ## Security / non-goals

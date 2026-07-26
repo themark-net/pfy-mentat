@@ -12,6 +12,9 @@ This is **not** Hermes as primary runtime (OQ-0010 path **A**).
 | **`make smoke-voice-stt`** | **No** | **No** | Wiring test: mock/text → prompt/handoff files |
 | **`make voice-listen`** | **Yes (desk)** | **Yes** | Real speech → STT → Grok/OpenCode |
 | **`make voice-remote`** | **Yes (Android)** | **Yes (on host)** | Phone → host STT → handoff; prefer **Termux client** if browser hangs ([clients/](clients/README.md)) |
+| **`VOICE_AUTO_AGENT=1 make voice-remote`** | Yes | Yes + **tools** | Phase **4b**: STT → Grok headless with tools (no `handoff.sh`) |
+| **`make voice-agent-run`** | No | Re-run agent | Run tools on last transcript/prompt |
+| **`make smoke-voice-agent`** | No | Mock agent | 4b smoke without cloud |
 
 If smoke **PASS** but you never spoke into a mic, that is expected. Smoke only proves the edge files work.
 

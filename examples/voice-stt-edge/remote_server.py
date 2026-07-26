@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
-"""T-0091 phase 4a — remote voice edge for Android / Tailscale.
+"""T-0091 phase 4a/4b — remote voice edge for Android / Tailscale.
 
 Listens on HTTP (default 127.0.0.1:8787). Phone browser records audio → STT
-on this host → same agent-prompt/handoff artifacts as voice-listen.
+on this host → agent-prompt artifacts; optional auto agent (4b).
+
+VOICE_AUTO_AGENT=1|mock|grok  → after STT, run tool-capable Grok (or mock).
+Default off so remote open does not auto-spend cloud.
 
 Security:
   - Requires VOICE_REMOTE_TOKEN (or --token) on every mutating request
@@ -32,6 +35,7 @@ from urllib.parse import parse_qs, urlparse
 EDGE = Path(__file__).resolve().parent
 sys.path.insert(0, str(EDGE))
 
+import agent_runner as ar  # noqa: E402
 import stt_edge as se  # noqa: E402
 
 DEFAULT_HOST = "127.0.0.1"
@@ -126,6 +130,8 @@ MOBILE_HTML = """<!DOCTYPE html>
     let lastBlob = null;
     let lastName = 'phone-capture.webm';
 
+    let pollTimer = null;
+
     function showResult(data) {
       const tr = (data && (data.transcript || data.text)) || '';
       const box = $('result');
@@ -145,17 +151,74 @@ MOBILE_HTML = """<!DOCTYPE html>
       body.textContent = tr;
       const meta = document.createElement('div');
       meta.className = 'meta';
-      meta.textContent = 'backend=' + (data.backend || '?') +
-        '  target=' + (data.target || '?') +
-        '\\nOn host: examples/voice-stt-edge/.generated/handoff.sh' +
-        (data.handoff_path ? ('\\n' + data.handoff_path) : '');
+      let extra = 'backend=' + (data.backend || '?') + '  target=' + (data.target || '?');
+      if (data.agent_queued) {
+        extra += '\\nAuto-agent queued (' + (data.agent_mode || '?') + ') — waiting for tools…';
+      } else if (data.agent_message) {
+        extra += '\\n' + data.agent_message;
+      } else {
+        extra += '\\nOn host: handoff.sh  OR  VOICE_AUTO_AGENT=1';
+      }
+      meta.textContent = extra;
       box.appendChild(title);
       box.appendChild(body);
       box.appendChild(meta);
       box.classList.add('show');
       try { $('text').value = tr; } catch (_) {}
-      status('OK — transcript shown above (' + tr.length + ' chars). On host run handoff.sh for tools.');
+      if (data.agent_queued) {
+        status('Transcript OK — agent running on host. Polling /api/last-run…');
+        startAgentPoll();
+      } else {
+        status('OK — transcript shown (' + tr.length + ' chars). Tools: handoff.sh or enable VOICE_AUTO_AGENT=1');
+      }
       try { console.log('voice-remote result', data); } catch (_) {}
+    }
+
+    function showAgentRun(run) {
+      if (!run || run.status === 'none') return;
+      const box = $('result');
+      let agentEl = document.getElementById('agentRun');
+      if (!agentEl) {
+        agentEl = document.createElement('div');
+        agentEl.id = 'agentRun';
+        agentEl.className = 'meta';
+        agentEl.style.marginTop = '1rem';
+        agentEl.style.paddingTop = '0.75rem';
+        agentEl.style.borderTop = '1px solid #6664';
+        box.appendChild(agentEl);
+        box.classList.add('show');
+      }
+      const reply = run.reply_preview || run.reply || run.message || run.error || '';
+      agentEl.textContent =
+        'Agent: ' + (run.status || '?') +
+        (run.mode ? (' (' + run.mode + ')') : '') +
+        (run.exit_code != null ? (' exit=' + run.exit_code) : '') +
+        (run.duration_s != null ? (' ' + run.duration_s + 's') : '') +
+        (reply ? ('\\n\\n' + reply) : '');
+      status('Agent status: ' + (run.status || '?'));
+    }
+
+    function startAgentPoll() {
+      if (pollTimer) clearInterval(pollTimer);
+      let n = 0;
+      pollTimer = setInterval(async () => {
+        n += 1;
+        try {
+          const run = await getJson('/api/last-run');
+          showAgentRun(run);
+          if (run.status === 'done' || run.status === 'error' || run.status === 'skipped') {
+            clearInterval(pollTimer);
+            pollTimer = null;
+            status('Agent finished: ' + run.status + (run.ok ? ' OK' : ' (see reply)'));
+          }
+        } catch (e) {
+          if (n > 3) status('Poll error: ' + e.message);
+        }
+        if (n > 180) { // ~6 min at 2s
+          clearInterval(pollTimer);
+          pollTimer = null;
+        }
+      }, 2000);
     }
 
     const secure = window.isSecureContext === true;
@@ -359,7 +422,9 @@ MOBILE_HTML = """<!DOCTYPE html>
           backend: (data.meta && data.meta.backend) || '?',
           target: (data.meta && data.meta.target) || '?',
           handoff_path: data.handoff_path,
+          agent_queued: false,
         });
+        if (data.last_run) showAgentRun(data.last_run);
       } catch (e) {
         status('Error: ' + e.message);
       }
@@ -430,13 +495,53 @@ def maybe_to_wav(src: Path) -> Path:
 
 
 class VoiceRemoteState:
-    def __init__(self, token: str, out_dir: Path, backend: str, host: str, port: int):
+    def __init__(
+        self,
+        token: str,
+        out_dir: Path,
+        backend: str,
+        host: str,
+        port: int,
+        repo: Path,
+    ):
         self.token = token
         self.out_dir = out_dir
         self.backend = backend
         self.host = host
         self.port = port
+        self.repo = repo
         self.lock = threading.Lock()
+
+    def maybe_queue_agent(self, target: str, transcript: str) -> dict:
+        """Opt-in 4b: queue tool-capable agent after STT."""
+        mode = ar.auto_mode()
+        if mode == "off":
+            return {
+                "agent_queued": False,
+                "agent_mode": "off",
+                "agent_message": "VOICE_AUTO_AGENT off — set VOICE_AUTO_AGENT=1 for auto grok",
+            }
+        # raw target: still allow agent if user wants
+        max_turns = int(os.environ.get("VOICE_AGENT_MAX_TURNS", "8"))
+        timeout_s = int(os.environ.get("VOICE_AGENT_TIMEOUT", "600"))
+        prompt_path = self.out_dir / "agent-prompt.md"
+        run_id = ar.spawn_background(
+            repo=self.repo,
+            out=self.out_dir,
+            mode=mode,
+            target=target if target != "raw" else "monitor",
+            prompt_path=prompt_path if prompt_path.is_file() else None,
+            transcript=transcript,
+            max_turns=max_turns,
+            timeout_s=timeout_s,
+        )
+        sys.stderr.write(f"==> auto-agent queued mode={mode} run_id={run_id}\n")
+        return {
+            "agent_queued": True,
+            "agent_mode": mode,
+            "agent_run_id": run_id,
+            "agent_message": f"agent {mode} queued — poll GET /api/last-run",
+        }
 
 
 TLS_HELP = (
@@ -595,6 +700,12 @@ def make_handler(state: VoiceRemoteState):
             sys.stderr.write(
                 f"==> wrote {result.get('transcript_path')} · handoff {result.get('handoff_path')}\n"
             )
+            agent_info = state.maybe_queue_agent(target, tr)
+            hint = (
+                "Agent auto-running — poll /api/last-run"
+                if agent_info.get("agent_queued")
+                else "On host: handoff.sh  OR  VOICE_AUTO_AGENT=1 make voice-remote"
+            )
             return self._json(
                 200,
                 {
@@ -607,7 +718,8 @@ def make_handler(state: VoiceRemoteState):
                     "prompt_path": result["prompt_path"],
                     "inbox_path": result["inbox_path"],
                     "transcript_path": result.get("transcript_path"),
-                    "hint": "On host: run handoff.sh or: grok \"$(cat agent-prompt.md)\"",
+                    "hint": hint,
+                    **agent_info,
                 },
             )
 
@@ -650,8 +762,13 @@ def make_handler(state: VoiceRemoteState):
                         else {},
                         "handoff_path": str(state.out_dir / "handoff.sh"),
                         "prompt_path": str(state.out_dir / "agent-prompt.md"),
+                        "last_run": ar.read_run(state.out_dir),
                     },
                 )
+            if path in ("/api/last-run", "/api/agent-status"):
+                if not self._check_token():
+                    return self._json(401, {"error": "unauthorized"})
+                return self._json(200, ar.read_run(state.out_dir))
             return self._json(404, {"error": "not found"})
 
         def do_POST(self) -> None:  # noqa: N802
@@ -788,26 +905,33 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
 
+    repo = Path(os.environ.get("VOICE_AGENT_REPO", str(se.ROOT))).resolve()
     state = VoiceRemoteState(
         token=token,
         out_dir=se.ensure_out(args.out_dir),
         backend=args.backend,
         host=args.host,
         port=args.port,
+        repo=repo,
     )
     httpd = ThreadingHTTPServer((args.host, args.port), make_handler(state))
-    print(f"== voice-remote (T-0091 p4a) ==")
+    amode = ar.auto_mode()
+    print(f"== voice-remote (T-0091 p4a/4b) ==")
     print(f"  bind: plain HTTP only  http://{args.host}:{args.port}/")
     print(f"  out  {state.out_dir}")
     print(f"  backend={args.backend}")
+    print(f"  auto-agent={amode}  (VOICE_AUTO_AGENT=1 for grok tools after STT)")
+    print(f"  repo={repo}")
     print("")
     print("  HTTPS for phone mic:")
-    print(f"    tailscale serve --bg --https=443 http://127.0.0.1:{args.port}")
-    print("    tailscale serve status     # open the https://… URL (NO :8787)")
+    print(f"    make voice-remote-serve   # tailscale serve :443 → :{args.port}")
     print("")
-    print(f"  NEVER open https://…:{args.port}  (TLS on this port → 400 garbage)")
+    print(f"  NEVER open https://…:{args.port}  (TLS on this port → SSL error)")
     print(f"  Desk check: curl -sS http://127.0.0.1:{args.port}/ping")
-    print("  After STT:  .generated/handoff.sh")
+    if amode == "off":
+        print("  After STT:  .generated/handoff.sh   OR set VOICE_AUTO_AGENT=1")
+    else:
+        print("  After STT:  auto agent runs; poll GET /api/last-run")
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

@@ -24,7 +24,7 @@
 
 ## Active (sorted P0 → P3)
 
-**Session (2026-07-26):** T-0091 p1 desk STT + **p4a Android remote** (`make voice-remote`). Human: Tailscale on phone/host; optional VOICE-BATCH.
+**Session (2026-07-26):** T-0091 **4b auto agent runner** (`VOICE_AUTO_AGENT=1`, `make smoke-voice-agent`). Human: opt-in only (quota).
 
 ### Active — design / coding + local path (agent may pick freely)
 
@@ -32,7 +32,7 @@
 |----|----------|--------|------|----------------|---------|-------|
 
 | T-0090 | P0 | todo | **Minimal product levers audit**: collapse end-user surface to onboard / stage / ship; cap public Make targets | — | — | [product-operator-surface.md](ops/product-operator-surface.md); platform targets stay advanced |
-| T-0091 | P1 | doing | **Voice → tool-capable agent** (p1 + p4a **done**; TTS / auto-handoff / VoIP open) | [OQ-0010](open-questions/OQ-0010-voice-agent-channel.md) | T-0085 | `make voice-listen` · `make voice-remote`; [voice-remote-android.md](ops/voice-remote-android.md) |
+| T-0091 | P1 | doing | **Voice → tool-capable agent** (p1+p4a+**4b done**; TTS / session-resume / VoIP open) | [OQ-0010](open-questions/OQ-0010-voice-agent-channel.md) | T-0085 | `VOICE_AUTO_AGENT=1`; [voice-agent-runner.md](ops/voice-agent-runner.md) |
 
 | T-0070 | P1 | doing | Grow design/coding **skills + structural eval** (more text scorers) | — | T-0065 | Keep `eval-structural` green |
 | T-0074 | P1 | doing | Implement-lane via `make eval-auto` (fit-select + candidates) | — | — | deepseek-coder:6.7b lab-proven; StarCoder demoted |
