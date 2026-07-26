@@ -24,7 +24,7 @@
 
 ## Active (sorted P0 → P3)
 
-**Session (2026-07-26):** **ADR-0012** voice half-duplex local-first; next = OpenCode-default auto-agent (not Grok). OQ-0010 resolved.
+**Session (2026-07-26):** **T-0092** OpenCode-default voice auto-agent (`VOICE_AUTO_AGENT=1`→local). Next: T-0093 tools model.
 
 ### Active — design / coding + local path (agent may pick freely)
 
@@ -32,8 +32,8 @@
 |----|----------|--------|------|----------------|---------|-------|
 
 | T-0090 | P0 | todo | **Minimal product levers audit**: collapse end-user surface to onboard / stage / ship; cap public Make targets | — | — | [product-operator-surface.md](ops/product-operator-surface.md); platform targets stay advanced |
-| T-0091 | P1 | doing | **Voice local path** (half-duplex): OpenCode-default auto-agent + tools-capable local model | — | T-0085, ADR-0012 | Do **not** prioritize full duplex; Grok voice auto opt-in only |
-| T-0092 | P1 | todo | **Voice auto-agent default → opencode** (`VOICE_AUTO_AGENT=opencode`); smoke without cloud | — | T-0091 4b | [ADR-0012](adr/0012-voice-half-duplex-local-first.md); keep `=grok` escalate |
+| T-0091 | P1 | doing | **Voice local path** (half-duplex); polish tools-capable local model | — | T-0085, ADR-0012 | 4b+T-0092 shipped; T-0093 next for tools models |
+| T-0092 | P1 | done | **Voice auto-agent default → opencode** (`1`/`opencode` local; `grok` escalate) | — | T-0091 4b | `make smoke-voice-agent`; Ollama HTTP fallback if no opencode CLI |
 | T-0093 | P2 | todo | Tools-capable Ollama model for OpenCode worker (or explicit tool-split docs) | — | T-0080 | deepseek 6.7b no tools; find/fit model |
 | T-0094 | P3 | todo | Optional short **local TTS** status (not duplex) | — | T-0092 | Kokoro/piper after local agent path green |
 | T-0095 | P3 | todo | Catalog Stage 0: Pipecat / LiveKit / freeapp (ref only) | — | ADR-0012 | No primary install |

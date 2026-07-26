@@ -80,9 +80,9 @@ help:
 	@echo "  make voice-listen           # T-0091: desk mic → STT → handoff"
 	@echo "  make voice-remote           # T-0091 p4a: HTTP backend :8787 (plain HTTP only)"
 	@echo "  make voice-remote-serve     # T-0091: tailscale serve HTTPS :443 → :8787"
-	@echo "  make voice-agent-run        # T-0091 4b: run agent on last transcript (tools)"
+	@echo "  make voice-agent-run        # T-0092: local OpenCode/Ollama on last transcript"
 	@echo "  make smoke-voice-remote     # T-0091 p4a: localhost API smoke (no phone)"
-	@echo "  make smoke-voice-agent      # T-0091 4b: mock auto-agent smoke (no cloud)"
+	@echo "  make smoke-voice-agent      # T-0092: local-first auto-agent smoke (no cloud)"
 	@echo "  make worker-stage           # T-0085: smoke worker + write monitor brief / worker.env"
 	@echo "  make eval-structural           # design/coding gates, NO LLM (always run)"
 	@echo "  make eval-select-models        # pick gate/matrix models that FIT RAM/disk (may pull)"
@@ -281,18 +281,18 @@ smoke-voice-remote:
 	  examples/voice-stt-edge/python.sh
 	@./examples/voice-stt-edge/smoke-remote.sh
 
-# T-0091 4b: run tool-capable agent on last STT prompt (MODE=mock|grok)
+# T-0092: run agent on last STT prompt (default opencode/local; VOICE_AUTO_AGENT=grok to escalate)
 voice-agent-run:
 	@chmod +x examples/voice-stt-edge/agent_runner.py examples/voice-stt-edge/python.sh
 	@examples/voice-stt-edge/python.sh examples/voice-stt-edge/agent_runner.py \
-	  --mode $${VOICE_AGENT_MODE:-$${VOICE_AUTO_AGENT:-grok}} \
+	  --mode $${VOICE_AGENT_MODE:-$${VOICE_AUTO_AGENT:-opencode}} \
 	  --out-dir examples/voice-stt-edge/.generated \
 	  --repo "$(CURDIR)" \
-	  --target $${VOICE_TARGET:-monitor} \
+	  --target $${VOICE_TARGET:-worker} \
 	  --max-turns $${VOICE_AGENT_MAX_TURNS:-8} \
 	  --timeout $${VOICE_AGENT_TIMEOUT:-600}
 
-# T-0091 4b smoke (mock; set VOICE_AGENT_SMOKE_REAL=1 for short grok -p)
+# T-0092 smoke: mock + opencode/ollama path + VOICE_AUTO_AGENT=1→opencode (no cloud)
 smoke-voice-agent:
 	@chmod +x examples/voice-stt-edge/smoke-agent.sh examples/voice-stt-edge/agent_runner.py \
 	  examples/voice-stt-edge/python.sh examples/voice-stt-edge/remote_server.py

@@ -967,31 +967,33 @@ def main(argv: list[str] | None = None) -> int:
             f"  or:     VOICE_AUTO_AGENT=1 / --auto-agent for tools without handoff.sh",
             file=sys.stderr,
         )
-        want_auto = args.auto_agent or (
-            os.environ.get("VOICE_AUTO_AGENT", "").strip().lower()
-            in ("1", "true", "yes", "on", "grok", "mock", "opencode", "auto")
-        )
+        env_auto = os.environ.get("VOICE_AUTO_AGENT", "").strip().lower()
+        want_auto = args.auto_agent or env_auto not in ("", "0", "false", "no", "off")
         if want_auto and not args.handoff:
             try:
                 import agent_runner as ar
 
                 mode = ar.auto_mode()
-                if mode == "off":
-                    mode = "grok" if args.auto_agent else "off"
+                if mode == "off" and args.auto_agent:
+                    mode = "opencode"  # T-0092: --auto-agent defaults local
                 if mode != "off":
-                    print(f"==> auto-agent mode={mode}", file=sys.stderr)
+                    tgt = args.target
+                    if tgt == "raw":
+                        tgt = "worker" if mode == "opencode" else "monitor"
+                    print(f"==> auto-agent mode={mode} target={tgt}", file=sys.stderr)
                     result = ar.run_once(
                         repo=ROOT,
                         out=out_dir,
                         mode=mode,
-                        target=args.target if args.target != "raw" else "monitor",
+                        target=tgt,
                         prompt_path=Path(paths["prompt_path"]),
                         transcript=transcript,
                         max_turns=int(os.environ.get("VOICE_AGENT_MAX_TURNS", "8")),
                         timeout_s=int(os.environ.get("VOICE_AGENT_TIMEOUT", "600")),
                     )
                     print(
-                        f"==> agent {result.get('status')} exit={result.get('exit_code')}",
+                        f"==> agent {result.get('status')} mode={result.get('mode')} "
+                        f"exit={result.get('exit_code')}",
                         file=sys.stderr,
                     )
             except Exception as e:

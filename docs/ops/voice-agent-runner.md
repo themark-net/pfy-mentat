@@ -20,21 +20,31 @@ transcript / agent-prompt.md
   (phone: GET /api/last-run)
 ```
 
-## Opt-in (important) — ADR-0012
+## Opt-in (important) — ADR-0012 / T-0092
 
 | `VOICE_AUTO_AGENT` | Behavior | Cost |
 |--------------------|----------|------|
-| unset / `0` | STT only — safe default | $0 |
-| **`opencode`** | **Preferred bulk:** OpenCode → Ollama after STT | Local only |
-| `1` / `grok` | Grok headless with tools | **Cloud — escalate only** |
-| `mock` | Fake agent (smokes / dry-run) | $0 |
+| unset / `0` | STT only | $0 |
+| **`1` / `on` / `auto` / `opencode`** | **Local bulk:** OpenCode CLI → Ollama, or Ollama HTTP fallback | Local only |
+| `grok` | Grok headless with tools | **Cloud — escalate only** |
+| `mock` | Fake agent (smokes) | $0 |
 
-**Sustainable recipe (operator default under rising Grok price):**
+**T-0092:** bare `VOICE_AUTO_AGENT=1` means **opencode**, not grok.
+
+**Sustainable recipe:**
 
 ```bash
 VOICE_AUTO_AGENT=opencode VOICE_REMOTE_HOST=127.0.0.1 make voice-remote
-# escalate hard problems: VOICE_AUTO_AGENT=grok for one session
+# same:
+VOICE_AUTO_AGENT=1 VOICE_REMOTE_HOST=127.0.0.1 make voice-remote
+
+# desk
+make voice-agent-run
+# escalate once:
+VOICE_AUTO_AGENT=grok make voice-agent-run
 ```
+
+If OpenCode CLI is missing, runner falls back to **Ollama chat completions** (`LOCAL_CODER_MODEL`) so local voice still works.
 
 Remote open without this flag will **not** burn cloud quota.
 

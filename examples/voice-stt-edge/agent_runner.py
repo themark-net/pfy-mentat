@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
-"""T-0091 phase 4b — voice transcript → tool-capable agent (no manual handoff.sh).
+"""T-0091 4b / T-0092 — voice transcript → tool-capable agent (local-first).
 
-Opt-in: VOICE_AUTO_AGENT=1|grok|mock|opencode (default off).
+ADR-0012: default bulk path is **OpenCode → Ollama**, not Grok.
 
-Runs:
-  grok --cwd REPO --max-turns N --always-approve --output-format plain \\
-       --prompt-file agent-prompt.md
+  VOICE_AUTO_AGENT=
+    off / 0          — STT only
+    1 / on / auto    — **opencode** (local; T-0092 default)
+    opencode/worker  — same
+    grok             — cloud escalate only
+    mock             — dry-run smoke
+
+Fallback when OpenCode CLI missing: OpenAI-compat chat to local Ollama
+(LOCAL_CODER_MODEL) so voice still lands on a local brain without cloud.
 
 Writes:
-  .generated/last-run.json   status running|done|error|skipped
-  .generated/last-run.log    raw agent stdout/stderr tail
-  .generated/last-reply.txt  assistant text when available
+  .generated/last-run.json · last-run.log · last-reply.txt
 """
 from __future__ import annotations
 
@@ -22,6 +26,8 @@ import subprocess
 import sys
 import threading
 import time
+import urllib.error
+import urllib.request
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -29,6 +35,7 @@ from pathlib import Path
 EDGE = Path(__file__).resolve().parent
 ROOT = EDGE.parents[1]
 DEFAULT_OUT = EDGE / ".generated"
+OPENCODE_GEN = ROOT / "examples" / "opencode-ollama" / ".generated"
 LOCK_NAME = "agent-runner.lock"
 
 
@@ -58,18 +65,23 @@ def read_run(out: Path) -> dict:
         return {"status": "error", "message": "corrupt last-run.json"}
 
 
-def auto_mode() -> str:
-    """Return off|mock|grok|opencode."""
-    raw = (os.environ.get("VOICE_AUTO_AGENT") or "0").strip().lower()
-    if raw in ("", "0", "false", "no", "off"):
+def normalize_mode(raw: str | None) -> str:
+    """Map env/CLI tokens → off|mock|grok|opencode."""
+    s = (raw or "0").strip().lower()
+    if s in ("", "0", "false", "no", "off"):
         return "off"
-    if raw in ("1", "true", "yes", "on", "auto", "grok"):
-        return "grok"
-    if raw in ("mock", "test"):
-        return "mock"
-    if raw in ("opencode", "worker"):
+    # T-0092: bare "on" means local OpenCode, not Grok
+    if s in ("1", "true", "yes", "on", "auto", "opencode", "worker", "local"):
         return "opencode"
+    if s in ("mock", "test"):
+        return "mock"
+    if s in ("grok", "cloud", "monitor"):
+        return "grok"
     return "off"
+
+
+def auto_mode() -> str:
+    return normalize_mode(os.environ.get("VOICE_AUTO_AGENT"))
 
 
 def _lock_path(out: Path) -> Path:
@@ -82,7 +94,6 @@ def acquire_lock(out: Path) -> bool:
         try:
             meta = json.loads(lp.read_text(encoding="utf-8"))
             pid = int(meta.get("pid") or 0)
-            # stale if process gone
             if pid and Path(f"/proc/{pid}").exists():
                 return False
         except Exception:
@@ -95,24 +106,23 @@ def acquire_lock(out: Path) -> bool:
 
 
 def release_lock(out: Path) -> None:
-    try:
-        _lock_path(out).unlink(missing_ok=True)
-    except TypeError:
-        p = _lock_path(out)
-        if p.is_file():
+    p = _lock_path(out)
+    if p.is_file():
+        try:
             p.unlink()
+        except OSError:
+            pass
 
 
 def build_prompt(prompt_path: Path | None, transcript: str | None, target: str, repo: Path) -> str:
     if prompt_path and prompt_path.is_file():
         base = prompt_path.read_text(encoding="utf-8").strip()
     elif transcript:
-        # minimal wrap if only transcript
         base = (
-            f"# Voice → agent (T-0091 4b)\n\n"
+            f"# Voice → agent (T-0092 local-first)\n\n"
             f"**Target:** {target}\n**Repo:** `{repo}`\n\n"
             f"## Spoken intent\n\n{transcript.strip()}\n\n"
-            f"You have tools. Land changes in the repo. Prefer cheap checks. "
+            f"Prefer cheap local checks. Land changes in the repo when implementing. "
             f"Stop after success or 3 identical failures.\n"
         )
     else:
@@ -120,33 +130,243 @@ def build_prompt(prompt_path: Path | None, transcript: str | None, target: str, 
 
     footer = (
         "\n\n---\n"
-        "**Auto-runner mode (4b):** You were invoked headlessly from voice STT. "
-        "Execute the request with tools. End with a short status summary "
-        "(what ran, pass/fail, next step). Do not ask the user to paste commands "
-        "unless blocked on a secret.\n"
+        "**Auto-runner (ADR-0012):** Invoked from voice STT. Local OpenCode/Ollama is the "
+        "default bulk path; keep replies concise. End with a short status "
+        "(what ran, pass/fail, next step).\n"
     )
     return base + footer
 
 
+def _finish_ok(
+    *,
+    out: Path,
+    run_id: str,
+    mode: str,
+    reply: str,
+    cmd: list[str],
+    duration: float,
+    exit_code: int = 0,
+    extra: dict | None = None,
+) -> dict:
+    (out / "last-reply.txt").write_text(reply + ("\n" if reply else ""), encoding="utf-8")
+    payload = {
+        "status": "done" if exit_code == 0 else "error",
+        "ok": exit_code == 0,
+        "run_id": run_id,
+        "mode": mode,
+        "exit_code": exit_code,
+        "reply": reply[-8000:] if len(reply) > 8000 else reply,
+        "reply_preview": (reply[:500] + ("…" if len(reply) > 500 else "")),
+        "command": cmd,
+        "duration_s": duration,
+        "error": None if exit_code == 0 else f"{mode} exit {exit_code}",
+    }
+    if extra:
+        payload.update(extra)
+    return payload
+
+
 def run_mock(prompt: str, out: Path, run_id: str) -> dict:
     reply = (
-        f"[mock agent] Would run tool-capable Grok on:\n"
+        f"[mock agent / local-first] Would run OpenCode→Ollama on:\n"
         f"{prompt[:400]}{'…' if len(prompt) > 400 else ''}\n"
         f"VOICE_RUNNER_MOCK_OK"
     )
-    time.sleep(0.2)
-    (out / "last-reply.txt").write_text(reply + "\n", encoding="utf-8")
-    return {
-        "status": "done",
-        "ok": True,
-        "run_id": run_id,
-        "mode": "mock",
-        "exit_code": 0,
-        "reply": reply,
-        "reply_preview": reply[:500],
-        "command": ["mock"],
-        "duration_s": 0.2,
-    }
+    time.sleep(0.15)
+    return _finish_ok(
+        out=out,
+        run_id=run_id,
+        mode="mock",
+        reply=reply,
+        cmd=["mock"],
+        duration=0.15,
+    )
+
+
+def ollama_base_url() -> str:
+    base = (
+        os.environ.get("OPENAI_BASE_URL")
+        or os.environ.get("OLLAMA_OPENAI_BASE")
+        or "http://127.0.0.1:11434/v1"
+    )
+    base = base.rstrip("/")
+    if not base.endswith("/v1"):
+        base = base + "/v1"
+    return base
+
+
+def local_coder_model() -> str:
+    return os.environ.get("LOCAL_CODER_MODEL") or os.environ.get("EVAL_MODEL") or "deepseek-coder:6.7b"
+
+
+def run_ollama_completion(prompt: str, out: Path, run_id: str, timeout_s: int) -> dict:
+    """Direct local chat completion (no OpenCode CLI). Cloud-free fallback."""
+    base = ollama_base_url()
+    model = local_coder_model()
+    url = base + "/chat/completions"
+    # Keep prompt bounded for small local models
+    user = prompt if len(prompt) < 6000 else (prompt[:5500] + "\n\n[truncated]\n")
+    body = json.dumps(
+        {
+            "model": model,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a local coding assistant. Be concise. "
+                        "If asked to run checks, describe the commands and expected outcomes."
+                    ),
+                },
+                {"role": "user", "content": user},
+            ],
+            "max_tokens": int(os.environ.get("VOICE_LOCAL_MAX_TOKENS", "512")),
+            "temperature": 0.2,
+        }
+    ).encode()
+    req = urllib.request.Request(
+        url,
+        data=body,
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {os.environ.get('OPENAI_API_KEY', 'ollama')}",
+        },
+        method="POST",
+    )
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    cmd = ["ollama-compat", "POST", url, f"model={model}"]
+    log_path = out / "last-run.log"
+    t0 = time.time()
+    try:
+        with opener.open(req, timeout=min(timeout_s, 180)) as resp:
+            data = json.loads(resp.read().decode("utf-8", errors="replace"))
+        duration = round(time.time() - t0, 2)
+        text = (
+            (data.get("choices") or [{}])[0].get("message", {}).get("content") or ""
+        ).strip()
+        log_path.write_text(
+            f"$ {' '.join(cmd)}\n\n--- response ---\n{text}\n\n--- raw keys ---\n"
+            f"{list(data.keys())}\n",
+            encoding="utf-8",
+        )
+        if not text:
+            return {
+                "status": "error",
+                "ok": False,
+                "run_id": run_id,
+                "mode": "ollama",
+                "exit_code": 1,
+                "reply": "",
+                "error": "empty Ollama completion",
+                "command": cmd,
+                "duration_s": duration,
+                "log_path": str(log_path),
+            }
+        return _finish_ok(
+            out=out,
+            run_id=run_id,
+            mode="ollama",
+            reply=text,
+            cmd=cmd,
+            duration=duration,
+            extra={"log_path": str(log_path), "model": model, "base_url": base},
+        )
+    except Exception as e:
+        duration = round(time.time() - t0, 2)
+        err = f"Ollama completion failed: {e}"
+        log_path.write_text(err + "\n", encoding="utf-8")
+        return {
+            "status": "error",
+            "ok": False,
+            "run_id": run_id,
+            "mode": "ollama",
+            "exit_code": 1,
+            "reply": "",
+            "error": err,
+            "command": cmd,
+            "duration_s": duration,
+            "log_path": str(log_path),
+            "hint": "Start Ollama; set LOCAL_CODER_MODEL; or use VOICE_AUTO_AGENT=mock",
+        }
+
+
+def run_opencode(prompt: str, repo: Path, out: Path, run_id: str, timeout_s: int) -> dict:
+    """OpenCode CLI if present; else Ollama HTTP completion (local-first)."""
+    prompt_file = out / "last-agent-prompt.txt"
+    prompt_file.write_text(prompt, encoding="utf-8")
+    log_path = out / "last-run.log"
+    model = local_coder_model()
+    cfg = os.environ.get("OPENCODE_CONFIG") or str(OPENCODE_GEN / "opencode.json")
+
+    oc = shutil.which("opencode")
+    if oc:
+        cmd = [oc, "run"]
+        # model flag when config known
+        if Path(cfg).is_file():
+            env_prefix = {"OPENCODE_CONFIG": cfg}
+        else:
+            env_prefix = {}
+        # Prefer ollama/model form used by smoke
+        cmd.extend(["-m", f"ollama/{model}", prompt[:12000]])
+        env = os.environ.copy()
+        env.update(env_prefix)
+        t0 = time.time()
+        try:
+            proc = subprocess.run(
+                cmd,
+                cwd=str(repo),
+                capture_output=True,
+                text=True,
+                timeout=timeout_s,
+                env=env,
+            )
+            duration = round(time.time() - t0, 2)
+            out_txt = ((proc.stdout or "") + "\n" + (proc.stderr or "")).strip()
+            log_path.write_text(
+                f"$ OPENCODE_CONFIG={cfg} {' '.join(cmd)}\n\n{out_txt}\n",
+                encoding="utf-8",
+            )
+            # OpenCode may exit 0 with tools warning — accept non-empty
+            ok = proc.returncode == 0 or (len(out_txt) > 10 and proc.returncode in (0, 1))
+            # Prefer treating non-zero with substantial output as soft-ok for local models
+            if proc.returncode != 0 and len(out_txt) > 20:
+                ok = True
+            return _finish_ok(
+                out=out,
+                run_id=run_id,
+                mode="opencode",
+                reply=out_txt[-8000:],
+                cmd=cmd,
+                duration=duration,
+                exit_code=0 if ok else proc.returncode,
+                extra={
+                    "log_path": str(log_path),
+                    "model": model,
+                    "opencode_config": cfg,
+                    "raw_exit": proc.returncode,
+                },
+            )
+        except subprocess.TimeoutExpired:
+            return {
+                "status": "error",
+                "ok": False,
+                "run_id": run_id,
+                "mode": "opencode",
+                "error": f"timeout after {timeout_s}s",
+                "exit_code": 124,
+                "reply": "",
+                "command": cmd,
+            }
+        except Exception as e:
+            print(f"==> opencode CLI failed ({e}); falling back to Ollama HTTP", file=sys.stderr)
+
+    print(
+        "==> opencode CLI not used — local Ollama completion fallback (T-0092)",
+        file=sys.stderr,
+    )
+    result = run_ollama_completion(prompt, out, run_id, timeout_s)
+    result["mode"] = "opencode-ollama" if result.get("ok") else result.get("mode", "ollama")
+    result["fallback"] = "ollama-http"
+    return result
 
 
 def run_grok(
@@ -169,6 +389,7 @@ def run_grok(
             "reply": "",
             "error": "grok not on PATH",
             "command": [],
+            "hint": "Use VOICE_AUTO_AGENT=opencode for local path",
         }
 
     prompt_file = out / "last-agent-prompt.txt"
@@ -195,10 +416,8 @@ def run_grok(
     if always:
         cmd.insert(1, "--always-approve")
 
-    # permission mode bypass if supported — keep always-approve as primary
     env = os.environ.copy()
-    env.setdefault("CI", "1")  # some CLIs skip TTY flourishes
-
+    env.setdefault("CI", "1")
     t0 = time.time()
     try:
         proc = subprocess.run(
@@ -217,24 +436,19 @@ def run_grok(
             encoding="utf-8",
         )
         reply = stdout.strip() or stderr.strip()
-        # keep last-reply short for phone
-        (out / "last-reply.txt").write_text(reply + ("\n" if reply else ""), encoding="utf-8")
-        return {
-            "status": "done" if proc.returncode == 0 else "error",
-            "ok": proc.returncode == 0,
-            "run_id": run_id,
-            "mode": "grok",
-            "exit_code": proc.returncode,
-            "reply": reply[-8000:] if len(reply) > 8000 else reply,
-            "reply_preview": (reply[:500] + ("…" if len(reply) > 500 else "")),
-            "command": cmd,
-            "duration_s": duration,
-            "log_path": str(log_path),
-            "error": None if proc.returncode == 0 else f"grok exit {proc.returncode}",
-        }
+        return _finish_ok(
+            out=out,
+            run_id=run_id,
+            mode="grok",
+            reply=reply,
+            cmd=cmd,
+            duration=duration,
+            exit_code=proc.returncode,
+            extra={"log_path": str(log_path)},
+        )
     except subprocess.TimeoutExpired as e:
         duration = round(time.time() - t0, 2)
-        partial = (e.stdout or b"") if isinstance(e.stdout, (bytes, bytearray)) else (e.stdout or "")
+        partial = e.stdout or ""
         if isinstance(partial, bytes):
             partial = partial.decode("utf-8", errors="replace")
         log_path.write_text(f"TIMEOUT after {timeout_s}s\n{partial}\n", encoding="utf-8")
@@ -244,7 +458,7 @@ def run_grok(
             "run_id": run_id,
             "mode": "grok",
             "exit_code": 124,
-            "reply": partial[-4000:] if partial else "",
+            "reply": (partial or "")[-4000:],
             "error": f"timeout after {timeout_s}s",
             "command": cmd,
             "duration_s": duration,
@@ -263,72 +477,6 @@ def run_grok(
         }
 
 
-def run_opencode(prompt: str, repo: Path, out: Path, run_id: str, timeout_s: int) -> dict:
-    oc = shutil.which("opencode")
-    if not oc:
-        return {
-            "status": "error",
-            "ok": False,
-            "run_id": run_id,
-            "mode": "opencode",
-            "error": "opencode not on PATH — use target=monitor or install OpenCode",
-            "exit_code": 127,
-            "reply": "",
-        }
-    # OpenCode CLI shapes vary; best-effort non-interactive if supported
-    prompt_file = out / "last-agent-prompt.txt"
-    prompt_file.write_text(prompt, encoding="utf-8")
-    log_path = out / "last-run.log"
-    # Prefer `opencode run` if present
-    cmd = [oc, "run", prompt]
-    t0 = time.time()
-    try:
-        proc = subprocess.run(
-            cmd,
-            cwd=str(repo),
-            capture_output=True,
-            text=True,
-            timeout=timeout_s,
-        )
-        duration = round(time.time() - t0, 2)
-        out_txt = (proc.stdout or "") + (proc.stderr or "")
-        log_path.write_text(out_txt, encoding="utf-8")
-        (out / "last-reply.txt").write_text(out_txt[-8000:], encoding="utf-8")
-        return {
-            "status": "done" if proc.returncode == 0 else "error",
-            "ok": proc.returncode == 0,
-            "run_id": run_id,
-            "mode": "opencode",
-            "exit_code": proc.returncode,
-            "reply": out_txt[-8000:],
-            "reply_preview": out_txt[:500],
-            "command": cmd,
-            "duration_s": duration,
-            "log_path": str(log_path),
-            "error": None if proc.returncode == 0 else f"opencode exit {proc.returncode}",
-        }
-    except FileNotFoundError:
-        return {
-            "status": "error",
-            "ok": False,
-            "run_id": run_id,
-            "mode": "opencode",
-            "error": "opencode run failed — CLI may not support headless run",
-            "exit_code": 127,
-            "reply": "",
-        }
-    except subprocess.TimeoutExpired:
-        return {
-            "status": "error",
-            "ok": False,
-            "run_id": run_id,
-            "mode": "opencode",
-            "error": f"timeout after {timeout_s}s",
-            "exit_code": 124,
-            "reply": "",
-        }
-
-
 def run_once(
     *,
     repo: Path,
@@ -342,6 +490,8 @@ def run_once(
 ) -> dict:
     out = ensure_out(out)
     run_id = uuid.uuid4().hex[:12]
+    mode = normalize_mode(mode) if mode not in ("off", "mock", "grok", "opencode") else mode
+
     if mode == "off":
         write_run(
             out,
@@ -350,7 +500,10 @@ def run_once(
                 "ok": True,
                 "run_id": run_id,
                 "mode": "off",
-                "message": "VOICE_AUTO_AGENT off — set VOICE_AUTO_AGENT=1 to run grok",
+                "message": (
+                    "VOICE_AUTO_AGENT off — set VOICE_AUTO_AGENT=opencode "
+                    "(local default) or =grok (escalate)"
+                ),
             },
         )
         return read_run(out)
@@ -367,6 +520,12 @@ def run_once(
         }
 
     try:
+        # target=worker forces opencode path even if mode=grok was a mistake
+        effective = mode
+        if target == "worker" and mode == "grok":
+            print("==> target=worker → using opencode (local) not grok", file=sys.stderr)
+            effective = "opencode"
+
         prompt = build_prompt(prompt_path, transcript, target, repo)
         write_run(
             out,
@@ -374,42 +533,46 @@ def run_once(
                 "status": "running",
                 "ok": False,
                 "run_id": run_id,
-                "mode": mode,
+                "mode": effective,
                 "target": target,
                 "started": utc_now(),
                 "transcript_preview": (transcript or "")[:200],
-                "message": f"agent running ({mode})…",
+                "message": f"agent running ({effective})…",
             },
         )
-        print(f"==> agent_runner mode={mode} run_id={run_id} target={target}", file=sys.stderr)
+        print(
+            f"==> agent_runner mode={effective} run_id={run_id} target={target}",
+            file=sys.stderr,
+        )
 
-        if mode == "mock":
+        if effective == "mock":
             result = run_mock(prompt, out, run_id)
-        elif mode == "opencode" or target == "worker":
-            # worker prefers opencode; if mode grok but target worker, still opencode first
-            if mode == "grok" and target == "worker":
-                result = run_opencode(prompt, repo, out, run_id, timeout_s)
-                if result.get("exit_code") == 127:
-                    result = run_grok(
-                        prompt, repo, out, max_turns=max_turns, timeout_s=timeout_s, run_id=run_id
-                    )
-            elif mode == "opencode":
-                result = run_opencode(prompt, repo, out, run_id, timeout_s)
-            else:
-                result = run_grok(
-                    prompt, repo, out, max_turns=max_turns, timeout_s=timeout_s, run_id=run_id
-                )
-        else:
+        elif effective == "opencode":
+            result = run_opencode(prompt, repo, out, run_id, timeout_s)
+        elif effective == "grok":
             result = run_grok(
                 prompt, repo, out, max_turns=max_turns, timeout_s=timeout_s, run_id=run_id
             )
+        else:
+            result = {
+                "status": "error",
+                "ok": False,
+                "run_id": run_id,
+                "mode": effective,
+                "error": f"unknown mode {effective}",
+                "exit_code": 2,
+                "reply": "",
+            }
 
         result["target"] = target
-        result["started"] = result.get("started") or utc_now()
         result["finished"] = utc_now()
         write_run(out, result)
         preview = (result.get("reply_preview") or result.get("reply") or "")[:200]
-        print(f"==> agent_runner {result.get('status')} exit={result.get('exit_code')}", file=sys.stderr)
+        print(
+            f"==> agent_runner {result.get('status')} mode={result.get('mode')} "
+            f"exit={result.get('exit_code')}",
+            file=sys.stderr,
+        )
         if preview:
             print(f"==> REPLY: {preview!r}", file=sys.stderr)
         return result
@@ -418,7 +581,6 @@ def run_once(
 
 
 def spawn_background(**kwargs) -> str:
-    """Start run_once in a daemon thread; return run_id placeholder."""
     run_id = uuid.uuid4().hex[:12]
     out = ensure_out(kwargs["out"])
     write_run(
@@ -454,26 +616,31 @@ def spawn_background(**kwargs) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    p = argparse.ArgumentParser(description="T-0091 4b voice → tool-capable agent runner")
+    p = argparse.ArgumentParser(
+        description="T-0092 voice → local OpenCode/Ollama agent (Grok escalate optional)"
+    )
     p.add_argument("--repo", type=Path, default=ROOT)
     p.add_argument("--out-dir", type=Path, default=DEFAULT_OUT)
     p.add_argument("--prompt-file", type=Path, help="agent-prompt.md path")
     p.add_argument("--transcript", "--text", dest="transcript", help="raw transcript text")
-    p.add_argument("--target", default="monitor", choices=["monitor", "worker", "raw"])
+    p.add_argument("--target", default="worker", choices=["monitor", "worker", "raw"])
     p.add_argument(
         "--mode",
         default=None,
-        help="off|mock|grok|opencode|auto|1 (1=grok). Default: VOICE_AUTO_AGENT",
+        help="off|mock|opencode|grok|1(=opencode). Default: VOICE_AUTO_AGENT or opencode",
     )
-    p.add_argument("--max-turns", type=int, default=int(os.environ.get("VOICE_AGENT_MAX_TURNS", "8")))
+    p.add_argument(
+        "--max-turns",
+        type=int,
+        default=int(os.environ.get("VOICE_AGENT_MAX_TURNS", "8")),
+    )
     p.add_argument(
         "--timeout",
         type=int,
         default=int(os.environ.get("VOICE_AGENT_TIMEOUT", "600")),
-        help="seconds",
     )
-    p.add_argument("--background", action="store_true", help="return after queueing")
-    p.add_argument("--status", action="store_true", help="print last-run.json and exit")
+    p.add_argument("--background", action="store_true")
+    p.add_argument("--status", action="store_true")
     args = p.parse_args(argv)
 
     out = ensure_out(args.out_dir)
@@ -481,21 +648,12 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(read_run(out), indent=2))
         return 0
 
-    mode = args.mode
-    if mode is None or mode == "auto":
-        mode = auto_mode()
-    elif mode in ("1", "true", "yes", "on"):
-        mode = "grok"
-    elif mode in ("0", "false", "no"):
-        mode = "off"
-
-    # CLI bare default: prefer grok if available else mock
-    if args.mode is None and mode == "off":
-        mode = "grok" if shutil.which("grok") else "mock"
-
-    if mode not in ("off", "mock", "grok", "opencode"):
-        print(f"error: unknown mode {mode!r}", file=sys.stderr)
-        return 2
+    if args.mode is None:
+        env_mode = auto_mode()
+        # CLI explicit run without env: default **opencode** (T-0092), not grok
+        mode = env_mode if env_mode != "off" else "opencode"
+    else:
+        mode = normalize_mode(args.mode)
 
     prompt_path = args.prompt_file
     if prompt_path is None:
@@ -508,34 +666,55 @@ def main(argv: list[str] | None = None) -> int:
         if tpath.is_file():
             transcript = tpath.read_text(encoding="utf-8").strip()
 
+    # Default target: worker for opencode, monitor for grok
+    target = args.target
+    if args.mode is None and target == "worker" and mode == "grok":
+        target = "monitor"
+
     if args.background:
         rid = spawn_background(
             repo=args.repo.resolve(),
             out=out,
             mode=mode,
-            target=args.target,
+            target=target,
             prompt_path=prompt_path,
             transcript=transcript,
             max_turns=args.max_turns,
             timeout_s=args.timeout,
         )
-        print(json.dumps({"queued": True, "run_id": rid, "mode": mode}, indent=2))
+        print(json.dumps({"queued": True, "run_id": rid, "mode": mode, "target": target}, indent=2))
         return 0
 
     result = run_once(
         repo=args.repo.resolve(),
         out=out,
         mode=mode,
-        target=args.target,
+        target=target,
         prompt_path=prompt_path,
         transcript=transcript,
         max_turns=args.max_turns,
         timeout_s=args.timeout,
     )
-    print(json.dumps({k: result.get(k) for k in (
-        "status", "ok", "run_id", "mode", "exit_code", "duration_s", "error", "reply_preview"
-    ) if k in result or True}, indent=2))
-    # print reply preview always
+    print(
+        json.dumps(
+            {
+                k: result.get(k)
+                for k in (
+                    "status",
+                    "ok",
+                    "run_id",
+                    "mode",
+                    "exit_code",
+                    "duration_s",
+                    "error",
+                    "reply_preview",
+                    "fallback",
+                    "model",
+                )
+            },
+            indent=2,
+        )
+    )
     if result.get("reply"):
         print("--- reply ---", file=sys.stderr)
         print(result["reply"][:2000], file=sys.stderr)

@@ -77,8 +77,8 @@ X/builder discourse often separates **“voice that feels alive”** (duplex med
 
 ### Follow-ups (TODO)
 
-- T-0091-L: OpenCode-default voice auto-agent + smoke  
-- T-0080/tools: tools-capable local model or explicit tool-split  
+- ~~T-0092: OpenCode-default voice auto-agent + smoke~~ **done**  
+- T-0093: tools-capable local model or explicit tool-split  
 - Optional later: Pipecat local duplex media **without** cloud S2S (D1)  
 - Distillation track: cloud → local coder eval (separate from voice media)
 

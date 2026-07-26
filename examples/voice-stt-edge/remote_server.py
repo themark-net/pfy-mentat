@@ -519,9 +519,17 @@ class VoiceRemoteState:
             return {
                 "agent_queued": False,
                 "agent_mode": "off",
-                "agent_message": "VOICE_AUTO_AGENT off — set VOICE_AUTO_AGENT=1 for auto grok",
+                "agent_message": (
+                    "VOICE_AUTO_AGENT off — set VOICE_AUTO_AGENT=opencode "
+                    "(local default) or =grok (cloud escalate)"
+                ),
             }
-        # raw target: still allow agent if user wants
+        # T-0092: default target worker for opencode, monitor for grok
+        if target == "raw":
+            target = "worker" if mode == "opencode" else "monitor"
+        elif mode == "opencode" and target == "monitor":
+            # keep monitor if user asked; still run opencode stack
+            pass
         max_turns = int(os.environ.get("VOICE_AGENT_MAX_TURNS", "8"))
         timeout_s = int(os.environ.get("VOICE_AGENT_TIMEOUT", "600"))
         prompt_path = self.out_dir / "agent-prompt.md"
@@ -529,7 +537,7 @@ class VoiceRemoteState:
             repo=self.repo,
             out=self.out_dir,
             mode=mode,
-            target=target if target != "raw" else "monitor",
+            target=target,
             prompt_path=prompt_path if prompt_path.is_file() else None,
             transcript=transcript,
             max_turns=max_turns,
@@ -920,7 +928,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  bind: plain HTTP only  http://{args.host}:{args.port}/")
     print(f"  out  {state.out_dir}")
     print(f"  backend={args.backend}")
-    print(f"  auto-agent={amode}  (VOICE_AUTO_AGENT=1 for grok tools after STT)")
+    print(f"  auto-agent={amode}  (ADR-0012: 1/opencode=local · grok=cloud escalate)")
     print(f"  repo={repo}")
     print("")
     print("  HTTPS for phone mic:")
@@ -929,7 +937,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  NEVER open https://…:{args.port}  (TLS on this port → SSL error)")
     print(f"  Desk check: curl -sS http://127.0.0.1:{args.port}/ping")
     if amode == "off":
-        print("  After STT:  .generated/handoff.sh   OR set VOICE_AUTO_AGENT=1")
+        print("  After STT:  VOICE_AUTO_AGENT=opencode  (local) or =grok (paid)")
     else:
         print("  After STT:  auto agent runs; poll GET /api/last-run")
     try:
