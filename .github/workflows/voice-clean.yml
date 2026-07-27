@@ -1,9 +1,7 @@
 name: voice-clean
 
-# First-goal verification: clean voice interface on the self-hosted runner.
-# Required steps need no mic and no cloud. Optional Ollama path is soft.
-#
-# Trigger: push to voice paths, or Actions → voice-clean → Run workflow
+# Installable voice agent path on self-hosted runner (nimo).
+# Required: no mic, no cloud. Structural rubric parallel.
 
 on:
   workflow_dispatch:
@@ -14,23 +12,24 @@ on:
         default: true
         type: boolean
       include_remote:
-        description: "Also run smoke-voice-remote (localhost API)"
+        description: "Also run smoke-voice-remote"
         required: false
         default: true
         type: boolean
   push:
-    branches: [main, heavy-worth-300, ci-self-hosted-runner]
+    branches: [main, heavy-worth-300, ci-self-hosted-runner, fix-voice-remote-port-20260727]
     paths:
       - "examples/voice-stt-edge/**"
+      - "examples/eval-harness/tasks/**"
       - ".github/workflows/voice-clean.yml"
       - "Makefile"
+      - "make/voice.mk"
 
 concurrency:
   group: voice-clean-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # --- required: wiring + agent path (no mic, no cloud) ---
   voice:
     name: voice interface
     runs-on: [self-hosted, pfy-mentat]
@@ -40,7 +39,6 @@ jobs:
     env:
       PFY_CI: "1"
       CI: "1"
-      VOICE_AUTO_AGENT: mock
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -50,112 +48,79 @@ jobs:
           set -euo pipefail
           echo "host=$(hostname) user=$(whoami)"
           python3 --version
-          nproc 2>/dev/null || true
-          free -h 2>/dev/null | head -3 || true
-          command -v docker >/dev/null && docker version --format 'docker={{.Server.Version}}' || echo "docker=none"
           command -v ollama >/dev/null && ollama list 2>/dev/null | head -10 || echo "ollama=none"
+          command -v grok >/dev/null && echo "grok=present" || echo "grok=none"
+          command -v opencode >/dev/null && echo "opencode=present" || echo "opencode=none"
 
-      - name: smoke-voice-stt (wiring, mock/text)
+      - name: Reserve free port for remote smoke
         run: |
           set -euo pipefail
-          chmod +x examples/voice-stt-edge/smoke.sh \
-            examples/voice-stt-edge/stt_edge.py \
-            examples/voice-stt-edge/python.sh \
-            examples/voice-stt-edge/listen.sh \
-            examples/voice-stt-edge/install-local-stt.sh || true
-          make smoke-voice-stt
+          PORT=$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1]); s.close()')
+          echo "VOICE_REMOTE_SMOKE_PORT=$PORT" >> "$GITHUB_ENV"
+          echo "remote smoke port=$PORT"
 
-      - name: smoke-voice-agent (mock + mode map + local path)
+      - name: install-voice-agent
         run: |
           set -euo pipefail
-          chmod +x examples/voice-stt-edge/smoke-agent.sh \
+          chmod +x examples/voice-stt-edge/install-voice-agent.sh \
+            examples/voice-stt-edge/smoke.sh \
+            examples/voice-stt-edge/smoke-agent.sh \
+            examples/voice-stt-edge/voice-repl.sh \
             examples/voice-stt-edge/agent_runner.py \
-            examples/voice-stt-edge/remote_server.py \
             examples/voice-stt-edge/python.sh || true
-          make smoke-voice-agent
+          ./examples/voice-stt-edge/install-voice-agent.sh
 
-      - name: long-task mock (DoD / exit-card intent)
+      - name: long-task receipt scored by 008
         run: |
           set -euo pipefail
           export VOICE_LONG_TASK=1
           OUT=examples/voice-stt-edge/.generated
           mkdir -p "$OUT"
           python3 examples/voice-stt-edge/agent_runner.py \
-            --mode mock \
-            --transcript "Multi-step definition of done with exit card; delegate to worker until green" \
-            --target worker \
-            --timeout 60 \
-            --out-dir "$OUT" \
-            --repo "${GITHUB_WORKSPACE}"
-          python3 - <<'PY'
-          import json, sys
-          from pathlib import Path
-          p = Path("examples/voice-stt-edge/.generated/last-run.json")
-          d = json.loads(p.read_text())
-          status = d.get("status")
-          ok = d.get("ok")
-          print(f"long-task mock status={status} ok={ok} mode={d.get('mode')}")
-          if status not in ("done",) and not ok:
-              sys.exit(f"long-task mock failed: {d}")
-          # Marker from mock path
-          reply = (d.get("reply") or "") + Path("examples/voice-stt-edge/.generated/last-reply.txt").read_text(errors="replace") if Path("examples/voice-stt-edge/.generated/last-reply.txt").is_file() else d.get("reply") or ""
-          if "VOICE_RUNNER_MOCK_OK" not in reply and "VOICE_RUNNER_MOCK_OK" not in json.dumps(d):
-              # still accept clean done from mock
-              if status != "done":
-                  sys.exit("mock marker missing")
-          print("long-task mock: PASS")
-          PY
+            --mode mock --long-task \
+            --transcript "Multi-step DoD under rubric; keep voice-clean green" \
+            --target worker --timeout 60 \
+            --out-dir "$OUT" --repo "${GITHUB_WORKSPACE}"
+          python3 examples/eval-harness/tasks/008-voice-receipt/score.py "$OUT/last-reply.txt"
+          python3 -c "import json; d=json.load(open('$OUT/last-run.json')); assert d.get('status')=='done' and d.get('ok'); print('long-task ok long_task=', d.get('long_task'))"
 
-      - name: smoke-voice-remote (localhost API)
+      - name: smoke-voice-remote
         if: github.event_name != 'workflow_dispatch' || inputs.include_remote
         run: |
           set -euo pipefail
           chmod +x examples/voice-stt-edge/smoke-remote.sh \
-            examples/voice-stt-edge/remote_server.py \
-            examples/voice-stt-edge/python.sh || true
+            examples/voice-stt-edge/remote_server.py || true
           make smoke-voice-remote
 
-      - name: Write voice-clean receipt
+      - name: Write receipt
         if: always()
         run: |
           set -euo pipefail
           mkdir -p pipelines/smoke/voice-clean
           {
             echo "# voice-clean"
-            echo
-            echo "- **When:** $(date -Iseconds 2>/dev/null || date)"
-            echo "- **Ref:** ${GITHUB_REF}"
-            echo "- **SHA:** ${GITHUB_SHA}"
-            echo "- **Runner:** $(hostname)"
-            echo "- **Event:** ${GITHUB_EVENT_NAME}"
-            echo
-            echo "## Artifacts present"
-            ls -la examples/voice-stt-edge/.generated/ 2>/dev/null || echo "(none)"
-            echo
-            if [ -f examples/voice-stt-edge/.generated/last-run.json ]; then
-              echo "## last-run.json"
-              echo '```json'
-              head -c 2000 examples/voice-stt-edge/.generated/last-run.json
-              echo
-              echo '```'
+            echo "- When: $(date -Iseconds 2>/dev/null || date)"
+            echo "- SHA: ${GITHUB_SHA}"
+            echo "- Runner: $(hostname)"
+            echo "- PORT: ${VOICE_REMOTE_SMOKE_PORT:-}"
+            ls -la examples/voice-stt-edge/.generated/ 2>/dev/null || true
+            if [ -f examples/voice-stt-edge/.generated/last-reply.txt ]; then
+              echo; echo "## last-reply"; head -c 1500 examples/voice-stt-edge/.generated/last-reply.txt; echo
             fi
           } > pipelines/smoke/voice-clean/results.latest.md
 
-      - name: Upload voice receipts
+      - name: Upload receipts
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: voice-clean-${{ github.run_id }}
           path: |
-            pipelines/smoke/voice-stt-edge/
-            pipelines/smoke/voice-clean/
+            pipelines/smoke/
+            pipelines/eval/
             examples/voice-stt-edge/.generated/last-run.json
             examples/voice-stt-edge/.generated/last-reply.txt
-            examples/voice-stt-edge/.generated/last-meta.json
-            examples/voice-stt-edge/.generated/agent-prompt.md
           if-no-files-found: ignore
 
-  # --- parallel on capable host: structural stays green ---
   structural:
     name: structural gates
     if: github.event_name != 'workflow_dispatch' || inputs.include_structural
@@ -169,10 +134,9 @@ jobs:
         run: |
           set -euo pipefail
           python3 examples/eval-harness/run_structural.py --write-md pipelines/eval/structural.latest.md
-          tail -40 pipelines/eval/structural.latest.md || true
-      - name: Upload structural
+          cat pipelines/eval/structural.latest.md
+      - uses: actions/upload-artifact@v4
         if: always()
-        uses: actions/upload-artifact@v4
         with:
           name: structural-from-voice-clean-${{ github.run_id }}
           path: pipelines/eval/structural.latest.md
