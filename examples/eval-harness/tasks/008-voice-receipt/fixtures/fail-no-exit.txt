@@ -1,0 +1,3 @@
+STATUS: pass
+DOD: ran make smoke-voice-stt
+NEXT: continue

@@ -1,0 +1,6 @@
+Agent finished the voice long-task path.
+
+STATUS: pass
+DOD: smoke-voice-agent and structural eval green on self-hosted runner
+EXIT: goal
+NEXT: done

@@ -1,0 +1,6 @@
+{
+  "id": "008-voice-receipt",
+  "kind": "text_scorer",
+  "title": "Voice long-task receipt (STATUS / DOD / EXIT / NEXT)",
+  "related": ["T-0075", "T-0091", "T-0092", "VOICE_LONG_TASK"]
+}
