@@ -1,0 +1,15 @@
+# Open Questions
+
+| ID | Priority | Status | Title | Blocks | Related |
+|----|----------|--------|-------|--------|---------|
+| OQ-0099 | P1 | open | Example structural open question | eval-structural | T-0075 |
+
+### OQ-0099: Example structural open question
+
+- **Priority:** P1
+- **Status:** open
+- **Created:** 2026-07-26
+
+**Question:** Does the structural lane correctly validate OQ index rows?
+
+**Context:** Needed for T-0075 expansion of deterministic scorers.
