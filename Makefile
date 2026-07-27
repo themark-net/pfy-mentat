@@ -18,7 +18,8 @@ LITELLM_EXAMPLE := examples/litellm-ollama
 	smoke-codebase-memory smoke-repowise smoke-context-tools \
 	smoke-write-guard smoke-grok-skills smoke-opencode-ollama smoke-voice-stt smoke-voice-remote \
 	smoke-voice-agent smoke-tools-model \
-	voice-stt-install voice-listen voice-stt-probe voice-remote voice-remote-serve voice-agent-run \
+	voice-stt-install voice-listen voice-stt-probe voice-remote voice-remote-serve \
+	voice-agent-install voice-repl voice-agent-run voice-agent-long-mock voice-agent-e2e \
 	worker-stage worker-env monitor-brief \
 	eval-tier0 eval-tier1 eval-mvp eval-suite eval-matrix eval-v02 eval-structural \
 	eval-select-models eval-select-tools-model eval-auto \
@@ -79,7 +80,11 @@ help:
 	@echo "  make voice-listen           # T-0091: desk mic → STT → handoff"
 	@echo "  make voice-remote           # T-0091 p4a: HTTP backend :8787 (plain HTTP only)"
 	@echo "  make voice-remote-serve     # T-0091: tailscale serve HTTPS :443 → :8787"
-	@echo "  make voice-agent-run        # T-0092: local OpenCode/Ollama on last transcript"
+	@echo "  make voice-agent-install    # installable voice path (structural + mock + 008)"
+	@echo "  make voice-repl             # text REPL; VOICE_LONG_TASK=1 STATUS/DOD/EXIT/NEXT"
+	@echo "  make voice-agent-run        # long-task agent (default opencode; grok escalate)"
+	@echo "  make voice-agent-long-mock  # mock long-task + score 008 receipt"
+	@echo "  make voice-agent-e2e        # deterministic develop-loop fixture (no LLM)"
 	@echo "  make smoke-voice-remote     # T-0091 p4a: localhost API smoke (no phone)"
 	@echo "  make smoke-voice-agent      # T-0092: local-first auto-agent smoke (no cloud)"
 	@echo "  make worker-stage           # T-0085: smoke worker + write monitor brief / worker.env"
@@ -282,16 +287,8 @@ smoke-voice-remote:
 	  examples/voice-stt-edge/python.sh
 	@./examples/voice-stt-edge/smoke-remote.sh
 
-# T-0092: run agent on last STT prompt (default opencode/local; VOICE_AUTO_AGENT=grok to escalate)
-voice-agent-run:
-	@chmod +x examples/voice-stt-edge/agent_runner.py examples/voice-stt-edge/python.sh
-	@examples/voice-stt-edge/python.sh examples/voice-stt-edge/agent_runner.py \
-	  --mode $${VOICE_AGENT_MODE:-$${VOICE_AUTO_AGENT:-opencode}} \
-	  --out-dir examples/voice-stt-edge/.generated \
-	  --repo "$(CURDIR)" \
-	  --target $${VOICE_TARGET:-worker} \
-	  --max-turns $${VOICE_AGENT_MAX_TURNS:-8} \
-	  --timeout $${VOICE_AGENT_TIMEOUT:-600}
+# voice-agent-install / voice-repl / voice-agent-run / voice-agent-long-mock / voice-agent-e2e:
+# see make/voice.mk (included below)
 
 # T-0092 smoke: mock + opencode/ollama path + VOICE_AUTO_AGENT=1→opencode (no cloud)
 smoke-voice-agent:
@@ -398,3 +395,6 @@ env-init:
 
 env-check:
 	@python3 bootstrap/env/check_env.py
+
+# Installable voice operator targets (voice-agent-install, voice-repl, voice-agent-run, …)
+include make/voice.mk
