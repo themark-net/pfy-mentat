@@ -91,11 +91,21 @@ jobs:
           chmod +x examples/voice-stt-edge/e2e-develop-loop.sh || true
           ./examples/voice-stt-edge/e2e-develop-loop.sh
 
-      - name: optional real local long-task
+      - name: T-0097 hard local receipt when model present
         run: |
           set -euo pipefail
-          chmod +x examples/voice-stt-edge/ci-optional-local-long-task.sh || true
+          chmod +x examples/voice-stt-edge/ci-optional-local-long-task.sh \
+            examples/voice-stt-edge/lib-local-model.sh || true
           ./examples/voice-stt-edge/ci-optional-local-long-task.sh
+
+      - name: T-0098 tool-use microtask when model present
+        run: |
+          set -euo pipefail
+          chmod +x examples/voice-stt-edge/tool-use-microtask.sh \
+            examples/voice-stt-edge/lib-local-model.sh || true
+          # Bounded; SKIP on timeout/infra; FAIL only if model present and no marker
+          VOICE_TOOL_MICROTASK_TIMEOUT="${VOICE_TOOL_MICROTASK_TIMEOUT:-240}" \
+            ./examples/voice-stt-edge/tool-use-microtask.sh
 
       - name: smoke-voice-remote
         if: github.event_name != 'workflow_dispatch' || inputs.include_remote
@@ -119,6 +129,15 @@ jobs:
             ls -la examples/voice-stt-edge/.generated/ 2>/dev/null || true
             if [ -f examples/voice-stt-edge/.generated/last-reply.txt ]; then
               echo; echo "## last-reply"; head -c 1500 examples/voice-stt-edge/.generated/last-reply.txt; echo
+            fi
+            echo; echo "## local-eval receipts"
+            ls -la examples/voice-stt-edge/.generated/local-eval-*.md 2>/dev/null || echo "(none)"
+            for f in examples/voice-stt-edge/.generated/local-eval-*.md; do
+              [ -f "$f" ] || continue
+              echo; echo "### $f"; cat "$f"
+            done
+            if [ -f examples/voice-stt-edge/.generated/tool-microtask-marker.txt ]; then
+              echo; echo "## tool-microtask-marker"; cat examples/voice-stt-edge/.generated/tool-microtask-marker.txt
             fi
           } > pipelines/smoke/voice-clean/results.latest.md
 

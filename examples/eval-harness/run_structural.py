@@ -135,6 +135,8 @@ def check_voice_operator_surface() -> tuple[bool, str]:
         edge / "voice-repl.sh",
         edge / "e2e-develop-loop.sh",
         edge / "ci-optional-local-long-task.sh",
+        edge / "tool-use-microtask.sh",
+        edge / "lib-local-model.sh",
         edge / "remote_server.py",
         ROOT / "make" / "voice.mk",
         ROOT / "docs" / "ops" / "voice-agent-install.md",
@@ -159,6 +161,7 @@ def check_voice_operator_surface() -> tuple[bool, str]:
                 "assert m.normalize_mode('auto')=='opencode'; "
                 "assert m.normalize_mode('grok')=='grok'; "
                 "assert m.normalize_mode('recipe')=='recipe'; "
+                "assert m.normalize_mode('tool_microtask')=='tool_microtask'; "
                 "assert m.normalize_mode('0')=='off'; "
                 "print('mode-map-ok')"
             ),

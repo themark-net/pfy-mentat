@@ -1,14 +1,17 @@
 # Voice agent operator targets (included from top Makefile; also: make -f make/voice.mk <target>)
 # Installable path + interactive REPL + agent run + deterministic e2e.
 
-.PHONY: voice-agent-install voice-repl voice-agent-run voice-agent-long-mock voice-agent-e2e
+.PHONY: voice-agent-install voice-repl voice-agent-run voice-agent-long-mock \
+	voice-agent-e2e voice-agent-local-receipt voice-agent-tool-microtask
 
 voice-agent-install:
 	@chmod +x examples/voice-stt-edge/install-voice-agent.sh \
 	  examples/voice-stt-edge/smoke.sh examples/voice-stt-edge/smoke-agent.sh \
 	  examples/voice-stt-edge/voice-repl.sh examples/voice-stt-edge/agent_runner.py \
 	  examples/voice-stt-edge/python.sh examples/voice-stt-edge/e2e-develop-loop.sh \
-	  examples/voice-stt-edge/ci-optional-local-long-task.sh 2>/dev/null || true
+	  examples/voice-stt-edge/ci-optional-local-long-task.sh \
+	  examples/voice-stt-edge/tool-use-microtask.sh \
+	  examples/voice-stt-edge/lib-local-model.sh 2>/dev/null || true
 	./examples/voice-stt-edge/install-voice-agent.sh
 
 voice-repl:
@@ -46,3 +49,15 @@ voice-agent-long-mock:
 voice-agent-e2e:
 	@chmod +x examples/voice-stt-edge/e2e-develop-loop.sh 2>/dev/null || true
 	./examples/voice-stt-edge/e2e-develop-loop.sh
+
+# T-0097: hard 008 when local model present; SKIP artifact if no model / infra.
+voice-agent-local-receipt:
+	@chmod +x examples/voice-stt-edge/ci-optional-local-long-task.sh \
+	  examples/voice-stt-edge/lib-local-model.sh 2>/dev/null || true
+	./examples/voice-stt-edge/ci-optional-local-long-task.sh
+
+# T-0098: OpenCode tools model must write known marker file (SKIP if no model).
+voice-agent-tool-microtask:
+	@chmod +x examples/voice-stt-edge/tool-use-microtask.sh \
+	  examples/voice-stt-edge/lib-local-model.sh 2>/dev/null || true
+	./examples/voice-stt-edge/tool-use-microtask.sh

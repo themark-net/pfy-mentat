@@ -22,6 +22,8 @@ Proves: `eval-structural` (003–008) · STT wiring · agent smoke · mock long-
 | One long-task run | `VOICE_TEXT='fix the flaky smoke' make voice-agent-run` |
 | Mock + score 008 | `make voice-agent-long-mock` |
 | Deterministic e2e | `make voice-agent-e2e` |
+| Hard local 008 (T-0097) | `make voice-agent-local-receipt` — SKIP if no model; fail if model + bad receipt |
+| Tool-use microtask (T-0098) | `make voice-agent-tool-microtask` — OpenCode must write marker; SKIP if no tools path |
 | Desk mic (optional) | `make voice-stt-install && make voice-listen` then `make voice-agent-run` |
 | Phone remote | `export VOICE_REMOTE_TOKEN=…; make voice-remote` (+ `make voice-remote-serve` for HTTPS) |
 
@@ -48,7 +50,8 @@ Tools-capable local model (optional): `make eval-select-tools-model` then source
 Workflow: **voice-clean** (`runs-on: [self-hosted, pfy-mentat]`).
 
 - Always: `install-voice-agent` · mock long-task + **008** + **009** · recipe e2e · free-port remote smoke · structural (incl. voice surface)
-- Soft-optional: if `ollama list` shows `deepseek-coder` / `LOCAL_TOOLS_MODEL`, one bounded real local long-task; else **SKIP** (never fails for missing models)
+- **T-0097:** if Ollama model present → real long-task must pass **008** (hard fail on garbage receipt); if no model / timeout / empty → **SKIP** artifact
+- **T-0098:** if OpenCode tools path available → must write token marker file; chat-only fallback / no model → **SKIP**; tools ran but no marker → hard fail
 
 **Eval ladder / integration scores:** [voice-stack-integration-eval.md](../evaluation/voice-stack-integration-eval.md)
 

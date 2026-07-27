@@ -35,8 +35,8 @@
 | T-0091 | P1 | doing | **Voice local path** (half-duplex) polish | — | T-0085, ADR-0012 | install+REPL+long-task green; eval report [voice-stack-integration-eval.md](evaluation/voice-stack-integration-eval.md) |
 | T-0092 | P1 | done | **Voice auto-agent default → opencode** (`1`/`opencode` local; `grok` escalate) | — | T-0091 4b | `make smoke-voice-agent`; Ollama HTTP fallback if no opencode CLI |
 | T-0093 | P1 | done | **Tools-capable Ollama select + tool-split** | — | T-0080 | `make eval-select-tools-model` · `smoke-tools-model` · [local-tools-split.md](ops/local-tools-split.md) |
-| T-0097 | P1 | todo | **S3 hard local receipt**: when Ollama model present, 008 must pass or explicit SKIP artifact | — | T-0091 | Close soft-optional garbage-green hole |
-| T-0098 | P1 | todo | **S4 tool-use microtask** (OpenCode+LOCAL_TOOLS_MODEL edits known fixture) | — | T-0093 | Real “develop under voice” measure |
+| T-0097 | P1 | done | **S3 hard local receipt**: when Ollama model present, 008 must pass or explicit SKIP artifact | — | T-0091 | `make voice-agent-local-receipt` · CI hard 008 |
+| T-0098 | P1 | done | **S4 tool-use microtask** (OpenCode+LOCAL_TOOLS_MODEL edits known fixture) | — | T-0093 | `make voice-agent-tool-microtask` · marker+token |
 | T-0099 | P2 | todo | **S5 STT WER fixture** (known wav → transcript threshold) | — | T-0091 | Separate STT quality from agent quality |
 | T-0100 | P2 | todo | Optional Grok escalate smoke (max-turns=2, always-approve, CI opt-in) | — | T-0092 | Cloud; never default |
 | T-0101 | P2 | todo | Tighten OpenCode `last-run.ok` (short text + nonzero exit → fail) | — | T-0092 | False ok risk |

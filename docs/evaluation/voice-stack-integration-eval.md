@@ -86,9 +86,9 @@ Full boundary table: exploration session notes (agent map 2026-07-27).
 |------|------|------|------|--------|
 | **S0** | Structural contracts | `make eval-structural` (003–009 + surface) | $0 | **shipped** |
 | **S1** | Install + mock long-task | `install-voice-agent` / voice-clean | $0 | **shipped** |
-| **S2** | Soft real local reply | optional Ollama long-task | local GPU | **shipped soft** |
-| **S3** | Hard real receipt when model present | if model: must pass 008 **or** explicit SKIP with reason in artifact | local | **TODO T-0097** |
-| **S4** | Tool-use microtask | OpenCode edits fixture file under timed prompt; verify content + structural | local | **TODO T-0098** |
+| **S2** | Soft real local reply | optional Ollama long-task | local GPU | superseded by S3 |
+| **S3** | Hard real receipt when model present | if model: must pass 008 **or** explicit SKIP with reason in artifact | local | **shipped T-0097** (`make voice-agent-local-receipt`) |
+| **S4** | Tool-use microtask | OpenCode edits fixture file under timed prompt; verify content + structural | local | **shipped T-0098** (`make voice-agent-tool-microtask`) |
 | **S5** | STT fixture WER | known wav → expected transcript (CER/WER threshold) | host | **TODO T-0099** |
 | **S6** | Grok escalate smoke | `VOICE_AUTO_AGENT=grok` dry path with always-approve, max-turns=2 | cloud | **TODO T-0100** (opt-in CI) |
 | **S7** | Full duplex | Pipecat/LiveKit | high | **reject as primary** (catalog only T-0095) |
@@ -114,8 +114,8 @@ Full boundary table: exploration session notes (agent map 2026-07-27).
 
 | ID | Item | Why |
 |----|------|-----|
-| T-0097 | When Ollama model present, hard-fail optional long-task if reply fails 008 **unless** labeled SKIP | Closes “green forever with garbage LLM receipts” |
-| T-0098 | Tool-use microtask eval (OpenCode + LOCAL_TOOLS_MODEL → known file edit) | Only real measure of “develop under voice” |
+| T-0097 | ~~When Ollama model present, hard-fail if 008 fails~~ | **done** — SKIP only for missing model / timeout / empty infra |
+| T-0098 | ~~Tool-use microtask~~ | **done** — marker+token; SKIP chat-only fallback |
 | T-0099 | Optional STT WER fixture (small wav in repo or generate) | Separates STT quality from agent quality |
 | T-0101 | Tighten OpenCode `ok` semantics (non-zero + short text = fail) | Reduces false `last-run.ok` |
 

@@ -20,6 +20,7 @@ LITELLM_EXAMPLE := examples/litellm-ollama
 	smoke-voice-agent smoke-tools-model \
 	voice-stt-install voice-listen voice-stt-probe voice-remote voice-remote-serve \
 	voice-agent-install voice-repl voice-agent-run voice-agent-long-mock voice-agent-e2e \
+	voice-agent-local-receipt voice-agent-tool-microtask \
 	worker-stage worker-env monitor-brief \
 	eval-tier0 eval-tier1 eval-mvp eval-suite eval-matrix eval-v02 eval-structural \
 	eval-select-models eval-select-tools-model eval-auto \
@@ -85,6 +86,8 @@ help:
 	@echo "  make voice-agent-run        # long-task agent (default opencode; grok escalate)"
 	@echo "  make voice-agent-long-mock  # mock long-task + score 008 receipt"
 	@echo "  make voice-agent-e2e        # deterministic develop-loop fixture (no LLM)"
+	@echo "  make voice-agent-local-receipt  # T-0097 hard 008 when Ollama model present"
+	@echo "  make voice-agent-tool-microtask # T-0098 OpenCode tools must write marker"
 	@echo "  make smoke-voice-remote     # T-0091 p4a: localhost API smoke (no phone)"
 	@echo "  make smoke-voice-agent      # T-0092: local-first auto-agent smoke (no cloud)"
 	@echo "  make worker-stage           # T-0085: smoke worker + write monitor brief / worker.env"
