@@ -32,15 +32,20 @@
 |----|----------|--------|------|----------------|---------|-------|
 
 | T-0090 | P0 | todo | **Minimal product levers audit**: collapse end-user surface to onboard / stage / ship; cap public Make targets | — | — | [product-operator-surface.md](ops/product-operator-surface.md); platform targets stay advanced |
-| T-0091 | P1 | doing | **Voice local path** (half-duplex) polish | — | T-0085, ADR-0012 | install path + REPL + long-task + voice-clean; see docs/ops/voice-agent-install.md |
+| T-0091 | P1 | doing | **Voice local path** (half-duplex) polish | — | T-0085, ADR-0012 | install+REPL+long-task green; eval report [voice-stack-integration-eval.md](evaluation/voice-stack-integration-eval.md) |
 | T-0092 | P1 | done | **Voice auto-agent default → opencode** (`1`/`opencode` local; `grok` escalate) | — | T-0091 4b | `make smoke-voice-agent`; Ollama HTTP fallback if no opencode CLI |
 | T-0093 | P1 | done | **Tools-capable Ollama select + tool-split** | — | T-0080 | `make eval-select-tools-model` · `smoke-tools-model` · [local-tools-split.md](ops/local-tools-split.md) |
-| T-0094 | P3 | todo | Optional short **local TTS** status (not duplex) | — | T-0092 | Kokoro/piper after local agent path green |
+| T-0097 | P1 | todo | **S3 hard local receipt**: when Ollama model present, 008 must pass or explicit SKIP artifact | — | T-0091 | Close soft-optional garbage-green hole |
+| T-0098 | P1 | todo | **S4 tool-use microtask** (OpenCode+LOCAL_TOOLS_MODEL edits known fixture) | — | T-0093 | Real “develop under voice” measure |
+| T-0099 | P2 | todo | **S5 STT WER fixture** (known wav → transcript threshold) | — | T-0091 | Separate STT quality from agent quality |
+| T-0100 | P2 | todo | Optional Grok escalate smoke (max-turns=2, always-approve, CI opt-in) | — | T-0092 | Cloud; never default |
+| T-0101 | P2 | todo | Tighten OpenCode `last-run.ok` (short text + nonzero exit → fail) | — | T-0092 | False ok risk |
+| T-0094 | P3 | todo | Optional short **local TTS** status (not duplex) | — | T-0092 | Kokoro/piper after L4 tool-use eval |
 | T-0095 | P3 | todo | Catalog Stage 0: Pipecat / LiveKit / freeapp (ref only) | — | ADR-0012 | No primary install |
 
-| T-0070 | P1 | doing | Grow design/coding **skills + structural eval** (more text scorers) | — | T-0065 | Keep `eval-structural` green |
+| T-0070 | P1 | doing | Grow design/coding **skills + structural eval** (more text scorers) | — | T-0065 | 003–009 + voice_operator_surface; keep green |
 | T-0074 | P1 | doing | Implement-lane via `make eval-auto` (fit-select + candidates) | — | — | deepseek-coder:6.7b lab-proven; StarCoder demoted |
-| T-0075 | P2 | todo | More structural scorers: ADR shape, open-question row shape | — | T-0070 | |
+| T-0075 | P2 | done | More structural scorers: ADR shape, OQ row, voice receipt/last-run | — | T-0070 | 006/007/008/009 shipped |
 | T-0076 | P2 | todo | Wire mattpocock to-spec/tdd checklist into structural or skill cross-links | — | — | paths pack already installed |
 | T-0081 | P2 | todo | Optional OpenCode-in-cage smoke | — | T-0080 | After host smoke green |
 | T-0040 | P2 | todo | Broader multi-CLI parity notes (Claude Code) | — | T-0080 | OpenCode first |
