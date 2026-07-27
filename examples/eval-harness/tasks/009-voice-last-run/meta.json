@@ -1,0 +1,6 @@
+{
+  "id": "009-voice-last-run",
+  "kind": "text_scorer",
+  "title": "Voice agent_runner last-run.json contract",
+  "related": ["T-0070", "T-0075", "T-0091", "VOICE_LONG_TASK", "agent_runner"]
+}

@@ -1,0 +1,9 @@
+{
+  "status": "done",
+  "ok": true,
+  "run_id": "abc123",
+  "mode": "mock",
+  "exit_code": 0,
+  "long_task": true,
+  "reply_preview": "STATUS: pass"
+}

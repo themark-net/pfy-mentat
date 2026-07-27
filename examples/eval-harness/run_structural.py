@@ -8,6 +8,7 @@ Checks:
   2. Deterministic text scorers under tasks/*/score.py with fixtures/
   3. data/tools.json parses and has required schema fields
   4. Key design/coding skill SKILL.md files exist (agent-loops, investigate, one-shot, adr)
+  5. Voice operator surface (install path files + VOICE_AUTO_AGENT mode map + 008/009)
 
 Write summary to pipelines/eval/structural.latest.md when --write-md.
 """
@@ -125,6 +126,56 @@ def check_text_scorers() -> tuple[bool, str]:
     return True, "ok all text scorer fixtures"
 
 
+def check_voice_operator_surface() -> tuple[bool, str]:
+    """Installable voice path files + mode map contract (ADR-0012 / T-0092)."""
+    edge = ROOT / "examples" / "voice-stt-edge"
+    required = [
+        edge / "install-voice-agent.sh",
+        edge / "agent_runner.py",
+        edge / "voice-repl.sh",
+        edge / "e2e-develop-loop.sh",
+        edge / "ci-optional-local-long-task.sh",
+        edge / "remote_server.py",
+        ROOT / "make" / "voice.mk",
+        ROOT / "docs" / "ops" / "voice-agent-install.md",
+        TASKS / "008-voice-receipt" / "score.py",
+        TASKS / "009-voice-last-run" / "score.py",
+    ]
+    missing = [str(p.relative_to(ROOT)) for p in required if not p.is_file()]
+    if missing:
+        return False, f"missing: {missing[:5]}"
+    # Mode map: VOICE_AUTO_AGENT=1 → opencode (not grok)
+    code, out = run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "import importlib.util; from pathlib import Path; "
+                "p=Path('examples/voice-stt-edge/agent_runner.py'); "
+                "s=importlib.util.spec_from_file_location('ar', p); "
+                "m=importlib.util.module_from_spec(s); s.loader.exec_module(m); "
+                "assert m.normalize_mode('1')=='opencode'; "
+                "assert m.normalize_mode('on')=='opencode'; "
+                "assert m.normalize_mode('auto')=='opencode'; "
+                "assert m.normalize_mode('grok')=='grok'; "
+                "assert m.normalize_mode('recipe')=='recipe'; "
+                "assert m.normalize_mode('0')=='off'; "
+                "print('mode-map-ok')"
+            ),
+        ]
+    )
+    if code != 0 or "mode-map-ok" not in out:
+        return False, f"mode map failed: {out.strip()[:200]}"
+    mk = (ROOT / "Makefile").read_text(encoding="utf-8")
+    if "include make/voice.mk" not in mk and "include make/voice.mk".replace(" ", "") not in mk.replace(
+        " ", ""
+    ):
+        # tolerate tab/spacing variants
+        if "voice.mk" not in mk:
+            return False, "Makefile does not include make/voice.mk"
+    return True, "ok install path + mode map + 008/009 scorers"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--write-md", type=Path, default=None)
@@ -135,6 +186,7 @@ def main() -> int:
         ("tools_json_schema", check_tools_json),
         ("design_coding_skills", check_design_skill_files),
         ("text_scorer_fixtures", check_text_scorers),
+        ("voice_operator_surface", check_voice_operator_surface),
     ]
     rows: list[tuple[str, bool, str]] = []
     for name, fn in checks:

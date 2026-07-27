@@ -1,0 +1,8 @@
+[mock agent / long-task] Would run OpenCode→Ollama on multi-step DoD.
+Prompt head: implement voice install path under rubric
+VOICE_RUNNER_MOCK_OK
+
+STATUS: pass
+DOD: mock long-task path exercised with receipt block
+EXIT: goal
+NEXT: done

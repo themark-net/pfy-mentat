@@ -28,9 +28,10 @@ python3 "$EDGE/agent_runner.py" \
 MARKER="$OUT/e2e-loop-marker.txt"
 test -f "$MARKER" || { echo "FAIL: marker missing at $MARKER" >&2; exit 1; }
 python3 "$ROOT/examples/eval-harness/tasks/008-voice-receipt/score.py" "$OUT/last-reply.txt"
+python3 "$ROOT/examples/eval-harness/tasks/009-voice-last-run/score.py" "$OUT/last-run.json"
 make eval-structural
 
-echo "==> deterministic recipe path: PASS (marker + 008 + structural)"
+echo "==> deterministic recipe path: PASS (marker + 008 + 009 + structural)"
 
 # 2) Soft-optional: real OpenCode/Ollama long-task when model is present
 if [[ "${VOICE_E2E_TRY_OPENCODE:-0}" == "1" ]] || [[ "${VOICE_E2E_TRY_OPENCODE:-}" == "auto" ]]; then

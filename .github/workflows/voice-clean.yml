@@ -82,6 +82,7 @@ jobs:
             --target worker --timeout 60 \
             --out-dir "$OUT" --repo "${GITHUB_WORKSPACE}"
           python3 examples/eval-harness/tasks/008-voice-receipt/score.py "$OUT/last-reply.txt"
+          python3 examples/eval-harness/tasks/009-voice-last-run/score.py "$OUT/last-run.json"
           python3 -c "import json; d=json.load(open('$OUT/last-run.json')); assert d.get('status')=='done' and d.get('ok'); print('long-task ok long_task=', d.get('long_task'))"
 
       - name: deterministic e2e develop-loop (recipe)

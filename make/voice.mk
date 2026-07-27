@@ -38,7 +38,9 @@ voice-agent-long-mock:
 	  --transcript "mock long-task receipt" --target worker \
 	  --out-dir examples/voice-stt-edge/.generated --repo .; \
 	python3 examples/eval-harness/tasks/008-voice-receipt/score.py \
-	  examples/voice-stt-edge/.generated/last-reply.txt
+	  examples/voice-stt-edge/.generated/last-reply.txt; \
+	python3 examples/eval-harness/tasks/009-voice-last-run/score.py \
+	  examples/voice-stt-edge/.generated/last-run.json
 
 # Deterministic develop loop (no LLM): recipe mode writes fixture + re-runs eval-structural.
 voice-agent-e2e:
