@@ -1,0 +1,95 @@
+name: eval-long
+
+# Long-running operator jobs on self-hosted only. Unsupervised eval / smoke ladder.
+# Trigger: Actions → eval-long → Run workflow
+on:
+  workflow_dispatch:
+    inputs:
+      lane:
+        description: "Lane to run"
+        required: true
+        default: structural
+        type: choice
+        options:
+          - structural
+          - smoke-skills
+          - eval-auto
+          - voice-agent-mock
+          - full-local-ladder
+      max_minutes:
+        description: "Hard timeout minutes"
+        required: true
+        default: "120"
+        type: string
+
+jobs:
+  long:
+    name: long (${{ inputs.lane }})
+    runs-on: [self-hosted, pfy-mentat]
+    timeout-minutes: ${{ fromJSON(inputs.max_minutes) }}
+    permissions:
+      contents: write  # allow committing receipts if PFY_CI_COMMIT_RECEIPTS=1
+    env:
+      PFY_CI: "1"
+      # Prefer local models already on the runner host; never force cloud.
+      VOICE_AUTO_AGENT: mock
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show runner context
+        run: |
+          set -euo pipefail
+          echo "runner=$(hostname) user=$(whoami) pwd=$(pwd)"
+          python3 --version
+          command -v docker >/dev/null && docker version --format '{{.Server.Version}}' || echo "docker: not available"
+          command -v ollama >/dev/null && ollama list 2>/dev/null | head -20 || echo "ollama: not available"
+
+      - name: structural
+        if: inputs.lane == 'structural' || inputs.lane == 'full-local-ladder'
+        run: |
+          set -euo pipefail
+          python3 examples/eval-harness/run_structural.py --write-md pipelines/eval/structural.latest.md
+          cat pipelines/eval/structural.latest.md
+
+      - name: smoke-skills
+        if: inputs.lane == 'smoke-skills' || inputs.lane == 'full-local-ladder'
+        run: |
+          set -euo pipefail
+          python3 bootstrap/grok-cli/scripts/verify_skills.py
+
+      - name: voice-agent-mock
+        if: inputs.lane == 'voice-agent-mock' || inputs.lane == 'full-local-ladder'
+        run: |
+          set -euo pipefail
+          chmod +x examples/voice-stt-edge/smoke-agent.sh examples/voice-stt-edge/agent_runner.py examples/voice-stt-edge/python.sh || true
+          # Prefer dedicated mock path; never block on mic.
+          python3 examples/voice-stt-edge/agent_runner.py \
+            --mode mock \
+            --transcript "Long-running structural and one-shot DoD validation from CI" \
+            --target worker \
+            --timeout 120 \
+            --out-dir examples/voice-stt-edge/.generated \
+            --repo "${GITHUB_WORKSPACE}"
+
+      - name: eval-auto (optional Ollama)
+        if: inputs.lane == 'eval-auto' || inputs.lane == 'full-local-ladder'
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          if ! command -v ollama >/dev/null; then
+            echo "ollama not on PATH — skip eval-auto (structural already required)"
+            exit 0
+          fi
+          make eval-auto || make eval-structural
+
+      - name: Upload receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pfy-ci-receipts-${{ github.run_id }}
+          path: |
+            pipelines/eval/
+            examples/voice-stt-edge/.generated/last-run.json
+            examples/voice-stt-edge/.generated/last-reply.txt
+          if-no-files-found: ignore

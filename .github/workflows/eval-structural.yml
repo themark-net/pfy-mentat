@@ -1,0 +1,50 @@
+name: eval-structural
+
+# Deterministic, no LLM. Safe default gate for self-hosted or GitHub-hosted.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, heavy-worth-300, heavy-structural-voice-lift]
+    paths:
+      - "examples/eval-harness/**"
+      - "bootstrap/grok-cli/scripts/verify_skills.py"
+      - "data/tools.json"
+      - ".github/workflows/eval-structural.yml"
+  pull_request:
+    paths:
+      - "examples/eval-harness/**"
+      - "bootstrap/grok-cli/scripts/verify_skills.py"
+      - "data/tools.json"
+
+# Fork PRs must NOT use self-hosted (supply-chain risk). Use GitHub-hosted for PRs.
+jobs:
+  structural:
+    name: structural (no LLM)
+    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-latest' || fromJSON('["self-hosted", "pfy-mentat"]') }}
+    # Fallback: if no self-hosted runner is online, re-run manually on ubuntu via dispatch input later.
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python setup (hosted only)
+        if: runner.environment == 'github-hosted' || runner.os == 'Linux' && contains(runner.name, 'GitHub')
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+        continue-on-error: true
+
+      - name: Run structural eval
+        run: |
+          set -euo pipefail
+          python3 examples/eval-harness/run_structural.py --write-md pipelines/eval/structural.latest.md
+
+      - name: Upload structural receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: structural-latest
+          path: pipelines/eval/structural.latest.md
+          if-no-files-found: ignore
