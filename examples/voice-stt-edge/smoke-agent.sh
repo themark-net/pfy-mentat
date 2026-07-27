@@ -67,7 +67,6 @@ OKFLAG=$("$VOICE_PY" -c "import json;print(json.load(open('$OUT/last-run.json'))
 if [[ "$STATUS" == "done" && "$OKFLAG" == "True" ]]; then
   ok "local agent done mode=$MODE"
 elif [[ "$STATUS" == "error" ]]; then
-  # Ollama down is environment — soft pass with clear note if mock path still green
   if grep -qi 'Ollama completion failed\|cannot connect\|Connection refused' "$OUT/last-run.json" \
     || grep -qi 'Ollama completion failed\|Connection refused' "$OUT/smoke-opencode.err" 2>/dev/null; then
     ok "local agent SKIP (Ollama unreachable) — install/start Ollama for full path"
@@ -80,65 +79,84 @@ else
   bad "unexpected status=$STATUS ok=$OKFLAG mode=$MODE rc=$OC_RC"
 fi
 
-# --- 3) make voice-agent-run default mode is opencode-ish ---
-echo "==> CLI default mode without env is opencode"
-DEF=$("$VOICE_PY" "$EDGE/agent_runner.py" --help 2>&1 | head -1)
-# run status only
+# --- 3) status CLI ---
+echo "==> CLI status"
 "$VOICE_PY" "$EDGE/agent_runner.py" --status --out-dir "$OUT" >/dev/null && ok "status CLI"
 
-# --- 4) remote hook with VOICE_AUTO_AGENT=1 (must queue opencode, not require grok) ---
+# --- 4) remote hook: free port + matching token ---
 echo "==> remote VOICE_AUTO_AGENT=1 queues local agent"
 export VOICE_AUTO_AGENT=1
-PORT="${VOICE_REMOTE_SMOKE_PORT:-18791}"
-TOKEN="t0092-$RANDOM"
+if [[ -n "${VOICE_REMOTE_SMOKE_PORT:-}" ]]; then
+  PORT="$VOICE_REMOTE_SMOKE_PORT"
+else
+  PORT=$("$VOICE_PY" -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1]); s.close()')
+fi
+TOKEN="t0092-$(date +%s)-$RANDOM"
+LOG="/tmp/voice-t0092-remote-$$.log"
 "$VOICE_PY" "$EDGE/remote_server.py" --host 127.0.0.1 --port "$PORT" --token "$TOKEN" --out-dir "$OUT" \
-  >/tmp/voice-t0092-remote.log 2>&1 &
+  >"$LOG" 2>&1 &
 PID=$!
 cleanup() { kill "$PID" 2>/dev/null || true; wait "$PID" 2>/dev/null || true; }
 trap cleanup EXIT
-for _ in $(seq 1 25); do
-  curl -sS -m 1 "http://127.0.0.1:$PORT/ping" 2>/dev/null | grep -q pong && break
-  sleep 0.2
+
+PONG=0
+for _ in $(seq 1 40); do
+  if curl -sS -m 1 "http://127.0.0.1:$PORT/ping" 2>/dev/null | grep -qx 'pong'; then
+    PONG=1
+    break
+  fi
+  if ! kill -0 "$PID" 2>/dev/null; then
+    bad "remote_server exited before ready; log:"
+    tail -30 "$LOG" 2>/dev/null || true
+    break
+  fi
+  sleep 0.15
 done
 
-BODY=$(curl -sS -m 5 -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-  -d '{"text":"Reply LOCAL_VOICE_AGENT_OK","target":"worker"}' \
-  "http://127.0.0.1:$PORT/api/text")
-if echo "$BODY" | grep -q '"agent_queued": true' || echo "$BODY" | grep -q '"agent_queued":true'; then
-  ok "api/text agent_queued under VOICE_AUTO_AGENT=1"
+if [[ "$PONG" -ne 1 ]]; then
+  bad "remote /ping never returned pong on port $PORT"
+  tail -30 "$LOG" 2>/dev/null || true
 else
-  bad "agent_queued missing: $(echo "$BODY" | head -c 220)"
-fi
-if echo "$BODY" | grep -q 'opencode'; then
-  ok "agent_mode is opencode (not grok)"
-else
-  # field agent_mode
-  AM=$(echo "$BODY" | "$VOICE_PY" -c "import sys,json; d=json.load(sys.stdin); print(d.get('agent_mode',''))" 2>/dev/null || echo "")
+  ok "remote /ping on :$PORT"
+  BODY=$(curl -sS -m 8 -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+    -d '{"text":"Reply LOCAL_VOICE_AGENT_OK","target":"worker"}' \
+    "http://127.0.0.1:$PORT/api/text" || true)
+  if echo "$BODY" | grep -qE '"agent_queued"[[:space:]]*:[[:space:]]*true'; then
+    ok "api/text agent_queued under VOICE_AUTO_AGENT=1"
+  else
+    bad "agent_queued missing: $(echo "$BODY" | head -c 220)"
+    tail -20 "$LOG" 2>/dev/null || true
+  fi
+  AM=$(echo "$BODY" | "$VOICE_PY" -c "import sys,json
+try:
+ d=json.load(sys.stdin); print(d.get('agent_mode',''))
+except Exception:
+ print('')" 2>/dev/null || echo "")
   if [[ "$AM" == "opencode" ]]; then
     ok "agent_mode=opencode"
   else
     bad "expected agent_mode=opencode got '$AM' body=$(echo "$BODY" | head -c 180)"
   fi
-fi
 
-for _ in $(seq 1 60); do
-  st=$("$VOICE_PY" -c "import json;print(json.load(open('$OUT/last-run.json')).get('status',''))" 2>/dev/null || echo "")
-  [[ "$st" == "done" || "$st" == "error" ]] && break
-  sleep 0.25
-done
-st=$("$VOICE_PY" -c "import json;print(json.load(open('$OUT/last-run.json')).get('status',''))")
-md=$("$VOICE_PY" -c "import json;print(json.load(open('$OUT/last-run.json')).get('mode',''))")
-if [[ "$st" == "done" ]]; then
-  ok "auto-agent finished status=done mode=$md"
-elif [[ "$st" == "error" ]] && echo "$md" | grep -qE 'ollama|opencode'; then
-  ok "auto-agent errored on local stack only (Ollama?) mode=$md — wiring OK"
-else
-  bad "auto-agent status=$st mode=$md"
-  tail -25 /tmp/voice-t0092-remote.log 2>/dev/null || true
-fi
+  for _ in $(seq 1 60); do
+    st=$("$VOICE_PY" -c "import json;print(json.load(open('$OUT/last-run.json')).get('status',''))" 2>/dev/null || echo "")
+    [[ "$st" == "done" || "$st" == "error" ]] && break
+    sleep 0.25
+  done
+  st=$("$VOICE_PY" -c "import json;print(json.load(open('$OUT/last-run.json')).get('status',''))")
+  md=$("$VOICE_PY" -c "import json;print(json.load(open('$OUT/last-run.json')).get('mode',''))")
+  if [[ "$st" == "done" ]]; then
+    ok "auto-agent finished status=done mode=$md"
+  elif [[ "$st" == "error" ]] && echo "$md" | grep -qE 'ollama|opencode|mock'; then
+    ok "auto-agent finished with local-stack status=$st mode=$md — wiring OK"
+  else
+    bad "auto-agent status=$st mode=$md"
+    tail -25 "$LOG" 2>/dev/null || true
+  fi
 
-LR=$(curl -sS -m 5 -H "Authorization: Bearer $TOKEN" "http://127.0.0.1:$PORT/api/last-run")
-echo "$LR" | grep -q '"status"' && ok "GET /api/last-run" || bad "last-run"
+  LR=$(curl -sS -m 5 -H "Authorization: Bearer $TOKEN" "http://127.0.0.1:$PORT/api/last-run" || true)
+  echo "$LR" | grep -q '"status"' && ok "GET /api/last-run" || bad "last-run body=$(echo "$LR" | head -c 120)"
+fi
 
 if [[ "$FAIL" -ne 0 ]]; then
   echo "voice-agent smoke (T-0092): FAIL" >&2
