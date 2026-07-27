@@ -1,0 +1,6 @@
+{
+  "id": "007-oq-index-row",
+  "kind": "text_scorer",
+  "title": "Open-question index/detail shape (OQ-NNNN, Priority, Status, Question)",
+  "related": ["T-0075", "docs/OPEN_QUESTIONS.md"]
+}

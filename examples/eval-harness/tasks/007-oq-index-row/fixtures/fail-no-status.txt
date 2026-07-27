@@ -1,0 +1,7 @@
+OQ-9997 incomplete shape test case
+
+**Priority:** P3
+
+**Question:** Missing Status should fail the structural scorer.
+
+No Status field present on purpose.

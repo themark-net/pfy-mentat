@@ -1,0 +1,7 @@
+# OQ-9998: Missing priority on purpose
+
+- **Status:** open
+
+**Question:** Does this pass without Priority field?
+
+**Context:** Structural scorer must reject this.
