@@ -17,6 +17,7 @@ MODE_OK = frozenset(
     {
         "mock",
         "recipe",
+        "tool_microtask",
         "opencode",
         "opencode-ollama",
         "ollama",
