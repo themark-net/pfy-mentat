@@ -574,7 +574,12 @@ def ollama_base_url() -> str:
 
 
 def local_coder_model() -> str:
-    return os.environ.get("LOCAL_CODER_MODEL") or os.environ.get("EVAL_MODEL") or "deepseek-coder:6.7b"
+    # Prefer instruct tags that exist on common lab hosts (OpenCode is picky about exact tags).
+    return (
+        os.environ.get("LOCAL_CODER_MODEL")
+        or os.environ.get("EVAL_MODEL")
+        or "deepseek-coder:6.7b-instruct"
+    )
 
 
 def local_agent_model() -> str:
@@ -718,7 +723,7 @@ def run_opencode(prompt: str, repo: Path, out: Path, run_id: str, timeout_s: int
                 f"$ OPENCODE_CONFIG={cfg} {' '.join(cmd)}\n\n{out_txt}\n",
                 encoding="utf-8",
             )
-            # Provider/model registry failures must not look like success (T-0101 partial).
+            # Provider/model registry failures: fall through to Ollama HTTP (local-first).
             infra_err = any(
                 s in out_txt
                 for s in (
@@ -727,30 +732,38 @@ def run_opencode(prompt: str, repo: Path, out: Path, run_id: str, timeout_s: int
                     "does not support tools",
                 )
             )
-            ok = (not infra_err) and (
-                proc.returncode == 0
-                or (len(out_txt) > 10 and proc.returncode in (0, 1))
-            )
-            if proc.returncode != 0 and len(out_txt) > 20 and not infra_err:
-                ok = True
             if infra_err:
-                ok = False
-            return _finish_ok(
-                out=out,
-                run_id=run_id,
-                mode="opencode",
-                reply=out_txt[-8000:],
-                cmd=cmd,
-                duration=duration,
-                exit_code=0 if ok else (proc.returncode or 1),
-                extra={
-                    "log_path": str(log_path),
-                    "model": model,
-                    "opencode_config": cfg,
-                    "raw_exit": proc.returncode,
-                    "error": "opencode provider/model error" if infra_err else None,
-                },
-            )
+                print(
+                    f"==> opencode provider/model error; falling back to Ollama HTTP "
+                    f"(model={model})",
+                    file=sys.stderr,
+                )
+                log_path.write_text(
+                    f"$ OPENCODE_CONFIG={cfg} {' '.join(cmd)}\n\n{out_txt}\n\n"
+                    f"--- fallback ollama-http ---\n",
+                    encoding="utf-8",
+                )
+            else:
+                ok = proc.returncode == 0 or (
+                    len(out_txt) > 10 and proc.returncode in (0, 1)
+                )
+                if proc.returncode != 0 and len(out_txt) > 20:
+                    ok = True
+                return _finish_ok(
+                    out=out,
+                    run_id=run_id,
+                    mode="opencode",
+                    reply=out_txt[-8000:],
+                    cmd=cmd,
+                    duration=duration,
+                    exit_code=0 if ok else (proc.returncode or 1),
+                    extra={
+                        "log_path": str(log_path),
+                        "model": model,
+                        "opencode_config": cfg,
+                        "raw_exit": proc.returncode,
+                    },
+                )
         except subprocess.TimeoutExpired:
             return {
                 "status": "error",
