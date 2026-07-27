@@ -32,7 +32,7 @@
 |----|----------|--------|------|----------------|---------|-------|
 
 | T-0090 | P0 | todo | **Minimal product levers audit**: collapse end-user surface to onboard / stage / ship; cap public Make targets | — | — | [product-operator-surface.md](ops/product-operator-surface.md); platform targets stay advanced |
-| T-0091 | P1 | doing | **Voice local path** (half-duplex) polish | — | T-0085, ADR-0012 | 4b + T-0092 + T-0093 shipped |
+| T-0091 | P1 | doing | **Voice local path** (half-duplex) polish | — | T-0085, ADR-0012 | install path + REPL + long-task + voice-clean; see docs/ops/voice-agent-install.md |
 | T-0092 | P1 | done | **Voice auto-agent default → opencode** (`1`/`opencode` local; `grok` escalate) | — | T-0091 4b | `make smoke-voice-agent`; Ollama HTTP fallback if no opencode CLI |
 | T-0093 | P1 | done | **Tools-capable Ollama select + tool-split** | — | T-0080 | `make eval-select-tools-model` · `smoke-tools-model` · [local-tools-split.md](ops/local-tools-split.md) |
 | T-0094 | P3 | todo | Optional short **local TTS** status (not duplex) | — | T-0092 | Kokoro/piper after local agent path green |
