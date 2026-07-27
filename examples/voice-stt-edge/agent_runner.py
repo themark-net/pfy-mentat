@@ -68,7 +68,7 @@ def read_run(out: Path) -> dict:
 
 
 def normalize_mode(raw: str | None) -> str:
-    """Map env/CLI tokens → off|mock|grok|opencode."""
+    """Map env/CLI tokens → off|mock|grok|opencode|recipe."""
     s = (raw or "0").strip().lower()
     if s in ("", "0", "false", "no", "off"):
         return "off"
@@ -78,6 +78,8 @@ def normalize_mode(raw: str | None) -> str:
         return "mock"
     if s in ("grok", "cloud", "monitor"):
         return "grok"
+    if s in ("recipe", "e2e", "deterministic"):
+        return "recipe"
     return "off"
 
 
@@ -221,6 +223,93 @@ def run_mock(prompt: str, out: Path, run_id: str) -> dict:
         cmd=["mock"],
         duration=0.15,
     )
+
+
+def run_recipe(prompt: str, repo: Path, out: Path, run_id: str) -> dict:
+    """Deterministic multi-step develop loop (no LLM): edit fixture + verify structural.
+
+    Proves text → agent_runner → repo file change → make eval-structural under
+    VOICE_LONG_TASK receipt framing. Used by make voice-agent-e2e / install path.
+    """
+    t0 = time.time()
+    marker = out / "e2e-loop-marker.txt"
+    stamp = utc_now()
+    body = (
+        f"# pfy-mentat voice e2e develop-loop marker\n"
+        f"generated: {stamp}\n"
+        f"run_id: {run_id}\n"
+        f"prompt_head: {prompt[:120].replace(chr(10), ' ')}\n"
+    )
+    marker.write_text(body, encoding="utf-8")
+    cmd = ["recipe", "touch", str(marker), "&&", "make", "eval-structural"]
+    log_path = out / "last-run.log"
+    eval_ok = False
+    eval_out = ""
+    try:
+        proc = subprocess.run(
+            ["make", "eval-structural"],
+            cwd=str(repo),
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        eval_out = ((proc.stdout or "") + "\n" + (proc.stderr or "")).strip()
+        eval_ok = proc.returncode == 0
+        log_path.write_text(
+            f"$ write {marker}\n$ make eval-structural\n\n{eval_out}\n",
+            encoding="utf-8",
+        )
+    except Exception as e:
+        eval_out = str(e)
+        log_path.write_text(f"recipe failed: {e}\n", encoding="utf-8")
+
+    duration = round(time.time() - t0, 2)
+    if eval_ok and marker.is_file():
+        try:
+            marker_disp = str(marker.relative_to(repo))
+        except ValueError:
+            marker_disp = str(marker)
+        reply = (
+            f"[recipe agent / long-task] Wrote {marker_disp}\n"
+            f"Ran make eval-structural: PASS\n"
+            f"VOICE_RUNNER_RECIPE_OK\n\n"
+            f"STATUS: pass\n"
+            f"DOD: deterministic develop loop wrote marker and eval-structural green\n"
+            f"EXIT: goal\n"
+            f"NEXT: done\n"
+        )
+        return _finish_ok(
+            out=out,
+            run_id=run_id,
+            mode="recipe",
+            reply=reply,
+            cmd=cmd,
+            duration=duration,
+            extra={"log_path": str(log_path), "marker": str(marker)},
+        )
+    reply = (
+        f"[recipe agent] marker={marker.is_file()} eval_ok={eval_ok}\n"
+        f"{eval_out[-1500:]}\n\n"
+        f"STATUS: fail\n"
+        f"DOD: deterministic develop loop did not complete cleanly\n"
+        f"EXIT: error\n"
+        f"NEXT: re-run make voice-agent-e2e and inspect last-run.log\n"
+    )
+    (out / "last-reply.txt").write_text(reply, encoding="utf-8")
+    return {
+        "status": "error",
+        "ok": False,
+        "run_id": run_id,
+        "mode": "recipe",
+        "exit_code": 1,
+        "reply": reply,
+        "reply_preview": reply[:500],
+        "command": cmd,
+        "duration_s": duration,
+        "error": "recipe develop loop failed",
+        "long_task": long_task_enabled(),
+        "log_path": str(log_path),
+    }
 
 
 def ollama_base_url() -> str:
@@ -543,7 +632,11 @@ def run_once(
 ) -> dict:
     out = ensure_out(out)
     run_id = uuid.uuid4().hex[:12]
-    mode = normalize_mode(mode) if mode not in ("off", "mock", "grok", "opencode") else mode
+    mode = (
+        normalize_mode(mode)
+        if mode not in ("off", "mock", "grok", "opencode", "recipe")
+        else mode
+    )
 
     if mode == "off":
         write_run(
@@ -601,6 +694,9 @@ def run_once(
 
         if effective == "mock":
             result = run_mock(prompt, out, run_id)
+        elif effective == "recipe":
+            os.environ.setdefault("VOICE_LONG_TASK", "1")
+            result = run_recipe(prompt, repo, out, run_id)
         elif effective == "opencode":
             result = run_opencode(prompt, repo, out, run_id, timeout_s)
         elif effective == "grok":
@@ -681,7 +777,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument(
         "--mode",
         default=None,
-        help="off|mock|opencode|grok|1(=opencode). Default: VOICE_AUTO_AGENT or opencode",
+        help="off|mock|opencode|grok|recipe|1(=opencode). Default: VOICE_AUTO_AGENT or opencode",
     )
     p.add_argument(
         "--max-turns",
@@ -716,12 +812,13 @@ def main(argv: list[str] | None = None) -> int:
     else:
         mode = normalize_mode(args.mode)
 
+    # Prefer explicit CLI inputs. Auto-discover artifacts only when omitted.
     prompt_path = args.prompt_file
-    if prompt_path is None:
+    transcript = args.transcript
+    if prompt_path is None and transcript is None:
         cand = out / "agent-prompt.md"
         if cand.is_file():
             prompt_path = cand
-    transcript = args.transcript
     if transcript is None:
         tpath = out / "last-transcript.txt"
         if tpath.is_file():

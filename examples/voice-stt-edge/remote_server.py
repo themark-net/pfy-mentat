@@ -532,6 +532,8 @@ class VoiceRemoteState:
             pass
         max_turns = int(os.environ.get("VOICE_AGENT_MAX_TURNS", "8"))
         timeout_s = int(os.environ.get("VOICE_AGENT_TIMEOUT", "600"))
+        # VOICE_LONG_TASK is read inside agent_runner (build_prompt / mock receipt).
+        long_task = ar.long_task_enabled()
         prompt_path = self.out_dir / "agent-prompt.md"
         run_id = ar.spawn_background(
             repo=self.repo,
@@ -543,12 +545,19 @@ class VoiceRemoteState:
             max_turns=max_turns,
             timeout_s=timeout_s,
         )
-        sys.stderr.write(f"==> auto-agent queued mode={mode} run_id={run_id}\n")
+        sys.stderr.write(
+            f"==> auto-agent queued mode={mode} run_id={run_id} long_task={long_task}\n"
+        )
         return {
             "agent_queued": True,
             "agent_mode": mode,
             "agent_run_id": run_id,
-            "agent_message": f"agent {mode} queued — poll GET /api/last-run",
+            "agent_long_task": long_task,
+            "agent_message": (
+                f"agent {mode} queued"
+                + (" (VOICE_LONG_TASK)" if long_task else "")
+                + " — poll GET /api/last-run"
+            ),
         }
 
 
