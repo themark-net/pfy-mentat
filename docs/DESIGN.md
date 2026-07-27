@@ -108,7 +108,7 @@ One-line purpose: **Track · Categorize · Rank · Integrate** tools for robust 
 
 - **T-0085** worker/monitor dual-session (**done** recipe; deepen automation later)  
 - **T-0090** product surface: onboard / stage / ship only for end users  
-- **T-0091** voice → tool-capable agent (p1 STT edge: `make smoke-voice-stt`) — [voice-agent-channel.md](ops/voice-agent-channel.md)  
+- **T-0091** voice → tool-capable agent — [voice-agent-install.md](ops/voice-agent-install.md) (`make voice-agent-install` / REPL / long-task) · [voice-agent-channel.md](ops/voice-agent-channel.md)  
 - Keep **`make eval-structural`** + local **`eval-suite`** green  
 - Platform Make complexity OK in MVP; product UX must stay ≤ ~3 levers
 
