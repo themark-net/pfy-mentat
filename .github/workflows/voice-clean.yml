@@ -84,6 +84,18 @@ jobs:
           python3 examples/eval-harness/tasks/008-voice-receipt/score.py "$OUT/last-reply.txt"
           python3 -c "import json; d=json.load(open('$OUT/last-run.json')); assert d.get('status')=='done' and d.get('ok'); print('long-task ok long_task=', d.get('long_task'))"
 
+      - name: deterministic e2e develop-loop (recipe)
+        run: |
+          set -euo pipefail
+          chmod +x examples/voice-stt-edge/e2e-develop-loop.sh || true
+          ./examples/voice-stt-edge/e2e-develop-loop.sh
+
+      - name: optional real local long-task
+        run: |
+          set -euo pipefail
+          chmod +x examples/voice-stt-edge/ci-optional-local-long-task.sh || true
+          ./examples/voice-stt-edge/ci-optional-local-long-task.sh
+
       - name: smoke-voice-remote
         if: github.event_name != 'workflow_dispatch' || inputs.include_remote
         run: |

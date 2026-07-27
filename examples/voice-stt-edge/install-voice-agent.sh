@@ -25,7 +25,8 @@ chmod +x \
   "$EDGE/smoke.sh" "$EDGE/smoke-agent.sh" "$EDGE/smoke-remote.sh" \
   "$EDGE/agent_runner.py" "$EDGE/stt_edge.py" "$EDGE/remote_server.py" \
   "$EDGE/python.sh" "$EDGE/install-local-stt.sh" "$EDGE/listen.sh" \
-  "$EDGE/install-voice-agent.sh" 2>/dev/null || true
+  "$EDGE/install-voice-agent.sh" "$EDGE/voice-repl.sh" \
+  "$EDGE/e2e-develop-loop.sh" "$EDGE/ci-optional-local-long-task.sh" 2>/dev/null || true
 
 echo "==> structural rubric (no LLM)"
 make eval-structural
@@ -48,19 +49,17 @@ python3 "$EDGE/agent_runner.py" \
 python3 "$ROOT/examples/eval-harness/tasks/008-voice-receipt/score.py" \
   "$EDGE/.generated/last-reply.txt"
 
+echo "==> deterministic e2e develop-loop (recipe)"
+"$EDGE/e2e-develop-loop.sh"
+
 echo ""
-echo "voice-agent install: PASS (wiring + rubric)"
+echo "voice-agent install: PASS (wiring + rubric + e2e)"
 echo ""
-echo "Daily operator path:"
-echo "  # local bulk (default)"
-echo "  VOICE_AUTO_AGENT=opencode VOICE_LONG_TASK=1 make voice-agent-run"
-echo "  # or text without mic:"
-echo "  python3 examples/voice-stt-edge/stt_edge.py --text 'your task' --target worker"
-echo "  VOICE_LONG_TASK=1 make voice-agent-run"
-echo "  # cloud escalate"
-echo "  VOICE_AUTO_AGENT=grok make voice-agent-run"
-echo "  # desk mic (optional)"
-echo "  make voice-stt-install && make voice-listen"
-echo "  # remote phone"
+echo "Daily operator path (see docs/ops/voice-agent-install.md):"
+echo "  make voice-repl                          # text REPL, long-task receipts"
+echo "  VOICE_TEXT='your task' make voice-agent-run"
+echo "  VOICE_AUTO_AGENT=grok make voice-agent-run   # cloud escalate"
+echo "  make voice-agent-long-mock               # mock + 008"
+echo "  make voice-stt-install && make voice-listen  # desk mic (optional)"
 echo "  export VOICE_REMOTE_TOKEN=...; make voice-remote"
 exit 0
