@@ -13,14 +13,21 @@ pfy_detect_local_model() {
   list="$(ollama list 2>/dev/null || true)"
   [[ -z "$list" ]] && return 0
 
-  if [[ -n "${LOCAL_TOOLS_MODEL:-}" ]] && printf '%s\n' "$list" | grep -qF "${LOCAL_TOOLS_MODEL%%:*}"; then
+  # Prefer exact env tags when present in list; else family match.
+  if [[ -n "${LOCAL_TOOLS_MODEL:-}" ]] && printf '%s\n' "$list" | awk '{print $1}' | grep -qxF "$LOCAL_TOOLS_MODEL"; then
     match="$LOCAL_TOOLS_MODEL"
-  elif [[ -n "${LOCAL_CODER_MODEL:-}" ]] && printf '%s\n' "$list" | grep -qF "${LOCAL_CODER_MODEL%%:*}"; then
+  elif [[ -n "${LOCAL_TOOLS_MODEL:-}" ]] && printf '%s\n' "$list" | grep -qF "${LOCAL_TOOLS_MODEL%%:*}"; then
+    match="$(printf '%s\n' "$list" | awk '{print $1}' | grep -F "${LOCAL_TOOLS_MODEL%%:*}" | head -1)"
+  elif [[ -n "${LOCAL_CODER_MODEL:-}" ]] && printf '%s\n' "$list" | awk '{print $1}' | grep -qxF "$LOCAL_CODER_MODEL"; then
     match="$LOCAL_CODER_MODEL"
+  elif [[ -n "${LOCAL_CODER_MODEL:-}" ]] && printf '%s\n' "$list" | grep -qF "${LOCAL_CODER_MODEL%%:*}"; then
+    match="$(printf '%s\n' "$list" | awk '{print $1}' | grep -F "${LOCAL_CODER_MODEL%%:*}" | head -1)"
+  elif printf '%s\n' "$list" | grep -qi 'qwen2.5-coder'; then
+    match="$(printf '%s\n' "$list" | grep -i 'qwen2.5-coder' | head -1 | awk '{print $1}')"
   elif printf '%s\n' "$list" | grep -qi 'deepseek-coder'; then
     match="$(printf '%s\n' "$list" | grep -i 'deepseek-coder' | head -1 | awk '{print $1}')"
-  elif printf '%s\n' "$list" | grep -qiE 'qwen2\.5-coder|qwen3-coder|coder'; then
-    match="$(printf '%s\n' "$list" | grep -iE 'qwen2\.5-coder|qwen3-coder|coder' | head -1 | awk '{print $1}')"
+  elif printf '%s\n' "$list" | grep -qiE 'qwen3-coder|coder'; then
+    match="$(printf '%s\n' "$list" | grep -iE 'qwen3-coder|coder' | head -1 | awk '{print $1}')"
   fi
   printf '%s' "$match"
 }

@@ -718,9 +718,23 @@ def run_opencode(prompt: str, repo: Path, out: Path, run_id: str, timeout_s: int
                 f"$ OPENCODE_CONFIG={cfg} {' '.join(cmd)}\n\n{out_txt}\n",
                 encoding="utf-8",
             )
-            ok = proc.returncode == 0 or (len(out_txt) > 10 and proc.returncode in (0, 1))
-            if proc.returncode != 0 and len(out_txt) > 20:
+            # Provider/model registry failures must not look like success (T-0101 partial).
+            infra_err = any(
+                s in out_txt
+                for s in (
+                    "ProviderModelNotFoundError",
+                    "Model not found:",
+                    "does not support tools",
+                )
+            )
+            ok = (not infra_err) and (
+                proc.returncode == 0
+                or (len(out_txt) > 10 and proc.returncode in (0, 1))
+            )
+            if proc.returncode != 0 and len(out_txt) > 20 and not infra_err:
                 ok = True
+            if infra_err:
+                ok = False
             return _finish_ok(
                 out=out,
                 run_id=run_id,
@@ -728,12 +742,13 @@ def run_opencode(prompt: str, repo: Path, out: Path, run_id: str, timeout_s: int
                 reply=out_txt[-8000:],
                 cmd=cmd,
                 duration=duration,
-                exit_code=0 if ok else proc.returncode,
+                exit_code=0 if ok else (proc.returncode or 1),
                 extra={
                     "log_path": str(log_path),
                     "model": model,
                     "opencode_config": cfg,
                     "raw_exit": proc.returncode,
+                    "error": "opencode provider/model error" if infra_err else None,
                 },
             )
         except subprocess.TimeoutExpired:
@@ -1139,7 +1154,10 @@ def main(argv: list[str] | None = None) -> int:
     if result.get("reply"):
         print("--- reply ---", file=sys.stderr)
         print(result["reply"][:2000], file=sys.stderr)
-    return 0 if result.get("ok") or result.get("status") in ("skipped", "done") else 1
+    # status=done with ok=false is still a failure (e.g. OpenCode provider error).
+    if result.get("ok") or result.get("status") == "skipped":
+        return 0
+    return 1
 
 
 if __name__ == "__main__":
