@@ -16,9 +16,10 @@
 | [0007](0007-write-guard-mcp-layer.md) | Write-guard MCP as filesystem write mediation layer | Accepted (design) | 2026-07-12 |
 | [0008](0008-one-shot-workflow.md) | One-shot workflow: min questions, cheap iteration, lab prerequisites | Accepted | 2026-07-12 |
 | [0009](0009-skill-port-hybrid-strategy.md) | Hybrid skill ports: first-party core + skills.paths snapshots | Accepted | 2026-07-12 |
-| [0010](0010-reject-agenc-as-primary-runtime.md) | Reject AgenC as primary; Grok CLI + agent-cage; revisit if UX matures | Accepted | 2026-07-12 |
+| [0010](0010-reject-agenc-as-primary-runtime.md) | Reject AgenC as primary; Grok CLI + agent-cage; revisit if UX matures | Superseded by 0013 | 2026-07-12 |
 | [0011](0011-hybrid-operator-surfaces-grok-opencode-ollama.md) | Hybrid surfaces: Grok primary + OpenCode/Ollama local-cloud split | Accepted | 2026-07-25 |
 | [0012](0012-voice-half-duplex-local-first.md) | Voice half-duplex local-first; no cloud full-duplex primary | Accepted | 2026-07-26 |
+| [0013](0013-optional-operator-tuis-empirical-preference.md) | Treat operator TUIs (incl. AgenC) as optional scored components; empirical preference dimension | Accepted | 2026-07-27 |
 
 ## How to add
 
