@@ -10,14 +10,12 @@ transcript / agent-prompt.md
         │
         ▼
   agent_runner.py
-        │  VOICE_AUTO_AGENT=1|mock|grok|opencode
-        ▼
-  grok --cwd REPO --max-turns N --always-approve \\
-       --output-format plain --prompt-file …
-        │
+        │  VOICE_AUTO_AGENT=1|opencode → OpenCode CLI or Ollama HTTP
+        │  VOICE_AUTO_AGENT=grok       → grok --always-approve (escalate)
+        │  mock | recipe               → CI / deterministic e2e
         ▼
   last-run.json · last-reply.txt · last-run.log
-  (phone: GET /api/last-run)
+  (phone: GET /api/last-run; score 008 receipt + 009 last-run contract)
 ```
 
 ## Opt-in (important) — ADR-0012 / T-0092

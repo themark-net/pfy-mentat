@@ -12,7 +12,7 @@ This is **not** Hermes as primary runtime (OQ-0010 path **A**).
 | **`make smoke-voice-stt`** | **No** | **No** | Wiring test: mock/text → prompt/handoff files |
 | **`make voice-listen`** | **Yes (desk)** | **Yes** | Real speech → STT → Grok/OpenCode |
 | **`make voice-remote`** | **Yes (Android)** | **Yes (on host)** | Phone → host STT → handoff; prefer **Termux client** if browser hangs ([clients/](clients/README.md)) |
-| **`VOICE_AUTO_AGENT=1 make voice-remote`** | Yes | Yes + **tools** | Phase **4b**: STT → Grok headless with tools (no `handoff.sh`) |
+| **`VOICE_AUTO_AGENT=1 make voice-remote`** | Yes | Yes + **tools** | Phase **4b**: STT → **OpenCode/Ollama** (local); `=grok` to escalate |
 | **`make voice-agent-run`** | No | Re-run agent | Long-task agent on last transcript (`VOICE_TEXT=…`) |
 | **`make voice-repl`** | No | Text REPL | Interactive long-task sessions (no mic) |
 | **`make voice-agent-install`** | No | Full install path | Structural + smokes + mock 008 + e2e |

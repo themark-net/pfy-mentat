@@ -45,16 +45,22 @@ examples/voice-stt-edge/.generated/handoff.sh
 # Android (host on tailnet)
 VOICE_REMOTE_HOST=0.0.0.0 make voice-remote
 # phone: http://<tailscale-host>:8787/  → token → record → Send
-# host:  examples/voice-stt-edge/.generated/handoff.sh   # tools via Grok CLI
+# host:  examples/voice-stt-edge/.generated/handoff.sh
+# or auto-agent: VOICE_AUTO_AGENT=opencode (local) / =grok (cloud escalate)
 ```
 
 **Success (p1/p4a):** spoken intent → text prompt.  
-**Success (p4b):** same prompt **auto-runs tool-capable Grok** (opt-in) — no manual `handoff.sh`.
+**Success (p4b):** same prompt **auto-runs tool-capable agent** (opt-in) — no manual `handoff.sh`.  
+**T-0092 / ADR-0012:** `VOICE_AUTO_AGENT=1` means **OpenCode/Ollama local**, not Grok. Use `=grok` only to escalate.
 
 ```bash
-# Auto tools after remote STT (opt-in — spends Grok quota)
-VOICE_AUTO_AGENT=1 VOICE_REMOTE_HOST=127.0.0.1 make voice-remote
+# Auto tools after remote STT — local bulk (default product path)
+VOICE_AUTO_AGENT=opencode VOICE_LONG_TASK=1 VOICE_REMOTE_HOST=127.0.0.1 make voice-remote
+# same as VOICE_AUTO_AGENT=1 (maps to opencode)
 # phone: STT → poll /api/last-run for agent reply
+
+# Cloud escalate only when needed
+VOICE_AUTO_AGENT=grok VOICE_REMOTE_HOST=127.0.0.1 make voice-remote
 
 # Desk one-shot
 python3 examples/voice-stt-edge/stt_edge.py --text "run make eval-structural" --auto-agent

@@ -869,7 +869,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--text", help="Skip STT; use this text as transcript")
     p.add_argument(
         "--target",
-        default="monitor",
+        default="worker",
         choices=["monitor", "worker", "raw"],
         help="Wrap prompt for monitor (Grok) or worker (OpenCode)",
     )

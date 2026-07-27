@@ -4,7 +4,7 @@
 Listens on HTTP (default 127.0.0.1:8787). Phone browser records audio → STT
 on this host → agent-prompt artifacts; optional auto agent (4b).
 
-VOICE_AUTO_AGENT=1|mock|grok  → after STT, run tool-capable Grok (or mock).
+VOICE_AUTO_AGENT=1|opencode|mock|grok → after STT, run agent (1/opencode=local; grok=escalate).
 Default off so remote open does not auto-spend cloud.
 
 Security:
@@ -96,8 +96,8 @@ MOBILE_HTML = """<!DOCTYPE html>
 
   <label>Target</label>
   <select id="target">
-    <option value="monitor" selected>monitor (Grok — tools)</option>
-    <option value="worker">worker (OpenCode — local)</option>
+    <option value="worker" selected>worker (OpenCode/Ollama — local default)</option>
+    <option value="monitor">monitor (Grok escalate)</option>
     <option value="raw">raw transcript</option>
   </select>
 
@@ -532,7 +532,10 @@ class VoiceRemoteState:
             pass
         max_turns = int(os.environ.get("VOICE_AGENT_MAX_TURNS", "8"))
         timeout_s = int(os.environ.get("VOICE_AGENT_TIMEOUT", "600"))
-        # VOICE_LONG_TASK is read inside agent_runner (build_prompt / mock receipt).
+        # Align remote auto-agent with installable long-task path (VOICE_LONG_TASK=0 to disable).
+        lt = os.environ.get("VOICE_LONG_TASK", "").strip().lower()
+        if lt in ("",):
+            os.environ["VOICE_LONG_TASK"] = "1"
         long_task = ar.long_task_enabled()
         prompt_path = self.out_dir / "agent-prompt.md"
         run_id = ar.spawn_background(
@@ -807,7 +810,7 @@ def make_handler(state: VoiceRemoteState):
 
             # Termux/curl: raw audio bytes (no JSON base64)
             if path == "/api/audio-raw":
-                target = (self.headers.get("X-Voice-Target") or "monitor").strip().lower()
+                target = (self.headers.get("X-Voice-Target") or "worker").strip().lower()
                 if target not in ("monitor", "worker", "raw"):
                     return self._json(400, {"error": "X-Voice-Target must be monitor|worker|raw"})
                 if not body:
@@ -831,7 +834,7 @@ def make_handler(state: VoiceRemoteState):
             except Exception as e:
                 return self._json(400, {"error": f"bad json body: {e}"})
 
-            target = (data.get("target") or "monitor").strip().lower()
+            target = (data.get("target") or "worker").strip().lower()
             if target not in ("monitor", "worker", "raw"):
                 return self._json(400, {"error": "target must be monitor|worker|raw"})
 

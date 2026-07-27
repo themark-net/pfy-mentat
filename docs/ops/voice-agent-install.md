@@ -47,8 +47,10 @@ Tools-capable local model (optional): `make eval-select-tools-model` then source
 
 Workflow: **voice-clean** (`runs-on: [self-hosted, pfy-mentat]`).
 
-- Always: `install-voice-agent` · mock long-task + 008 · free-port remote smoke · structural
+- Always: `install-voice-agent` · mock long-task + **008** + **009** · recipe e2e · free-port remote smoke · structural (incl. voice surface)
 - Soft-optional: if `ollama list` shows `deepseek-coder` / `LOCAL_TOOLS_MODEL`, one bounded real local long-task; else **SKIP** (never fails for missing models)
+
+**Eval ladder / integration scores:** [voice-stack-integration-eval.md](../evaluation/voice-stack-integration-eval.md)
 
 ```bash
 # local parity
