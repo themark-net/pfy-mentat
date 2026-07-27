@@ -1,0 +1,30 @@
+# ADR-0099: Example Structural Decision
+
+- **Date:** 2026-07-26
+- **Status:** Accepted
+- **Deciders:** operator
+
+## Context
+
+We needed a deterministic gate for ADR completeness without calling an LLM.
+
+## Decision
+
+Adopt a text scorer that requires Status, Context, Decision, Rationale (with rejected alternatives), and Consequences.
+
+## Rationale
+
+Rejected alternatives:
+1. LLM-as-judge — non-deterministic and slow for structural lane.
+2. Soft checklist only in docs — no automated receipt.
+
+Template alignment and fixture symmetry with exit-card scorers won.
+
+## Consequences
+
+`make eval-structural` stays green only when ADR-shaped artifacts pass. Future ADRs should follow the multi-file form.
+
+## References
+
+- bootstrap/grok-cli/skills/adr/references/template.md
+- T-0075

@@ -1,0 +1,16 @@
+# ADR-0098: Missing Rationale
+
+- **Date:** 2026-07-26
+- **Status:** Proposed
+
+## Context
+
+Something needed deciding.
+
+## Decision
+
+We chose option A.
+
+## Consequences
+
+Some follow-up work.

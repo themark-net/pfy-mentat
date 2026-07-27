@@ -1,0 +1,6 @@
+{
+  "id": "006-adr-shape",
+  "kind": "text_scorer",
+  "purpose": "ADR multi-file / single-file required sections including rejected alternatives",
+  "related": ["T-0075", "adr skill template"]
+}
