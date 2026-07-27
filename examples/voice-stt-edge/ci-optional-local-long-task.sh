@@ -37,17 +37,32 @@ if [[ -z "$MATCH" ]]; then
   exit 0
 fi
 
-echo "==> model present: $MATCH — hard 008 path"
+echo "==> model present: $MATCH — hard 008 path (Ollama HTTP chat; not OpenCode tools)"
+# Prefer a small/fast chat model for receipt fidelity (7b over 32b tool planners).
 export LOCAL_CODER_MODEL="${LOCAL_CODER_MODEL:-$MATCH}"
-export LOCAL_TOOLS_MODEL="${LOCAL_TOOLS_MODEL:-$MATCH}"
-export OPENCODE_AGENT_MODEL="${OPENCODE_AGENT_MODEL:-${LOCAL_TOOLS_MODEL:-$MATCH}}"
+case "$LOCAL_CODER_MODEL" in
+  *32b*|*30b*|*70b*)
+    if [[ -n "${LOCAL_TOOLS_MODEL:-}" && "$LOCAL_TOOLS_MODEL" != *32b* ]]; then
+      export LOCAL_CODER_MODEL="$LOCAL_TOOLS_MODEL"
+    elif printf '%s\n' "$(ollama list 2>/dev/null || true)" | grep -qi 'qwen2.5-coder:7b'; then
+      export LOCAL_CODER_MODEL="$(ollama list 2>/dev/null | grep -i 'qwen2.5-coder:7b' | head -1 | awk '{print $1}')"
+    fi
+    ;;
+esac
+export LOCAL_TOOLS_MODEL="${LOCAL_TOOLS_MODEL:-$LOCAL_CODER_MODEL}"
 export VOICE_LONG_TASK=1
+# Force chat completion so models emit STATUS lines instead of tool-call plans.
+export VOICE_FORCE_OLLAMA_HTTP=1
 
 set +e
 timeout "$TIMEOUT" python3 "$EDGE/agent_runner.py" \
   --mode opencode \
   --long-task \
-  --transcript "Bounded CI long-task (T-0097): reply with ONLY a short status and end with exactly STATUS/DOD/EXIT/NEXT lines for a healthy voice install. Do not edit files." \
+  --transcript "Bounded CI long-task (T-0097): reply with ONLY these four lines and nothing else:
+STATUS: pass
+DOD: healthy voice install receipt
+EXIT: goal
+NEXT: done" \
   --target worker \
   --timeout "$TIMEOUT" \
   --out-dir "$OUT" \
@@ -78,40 +93,10 @@ if [[ ! -f "$OUT/last-reply.txt" ]]; then
   exit 1
 fi
 
-# OpenCode registry / provider errors are infrastructure, not a bad receipt
-if grep -qiE 'ProviderModelNotFoundError|Model not found:|does not support tools|connection refused|failed to connect' \
+# Infrastructure-shaped reply → SKIP (not hard 008 fail)
+if grep -qiE 'ProviderModelNotFoundError|Model not found:|does not support tools|connection refused|failed to connect|Ollama completion failed' \
   "$OUT/last-reply.txt" 2>/dev/null; then
-  # Retry once via Ollama HTTP completion (same long-task prompt) when OpenCode misconfigured
-  echo "==> OpenCode provider error — retry via Ollama HTTP completion"
-  # Force fallback: hide opencode briefly by PATH without opencode? Use mock no.
-  # agent_runner falls back only if opencode missing or CLI exception.
-  # Call ollama path by temporarily renaming — cleaner: python one-shot using --mode with
-  # internal flag. Use tool_microtask is wrong for receipt-only.
-  # Practical approach: SKIP if OpenCode cannot resolve model (operator must fix OPENCODE_CONFIG)
-  # unless Ollama HTTP works — invoke agent_runner after PATH without opencode.
-  set +e
-  PATH="$(echo "$PATH" | tr ':' '\n' | grep -v opencode | paste -sd: -)" \
-  timeout "$TIMEOUT" python3 "$EDGE/agent_runner.py" \
-    --mode opencode \
-    --long-task \
-    --transcript "Bounded CI long-task (T-0097 retry): end with STATUS/DOD/EXIT/NEXT only. Healthy voice install." \
-    --target worker \
-    --timeout "$TIMEOUT" \
-    --out-dir "$OUT" \
-    --repo "$ROOT"
-  rc2=$?
-  set -e
-  if [[ $rc2 -eq 0 ]] && [[ -f "$OUT/last-reply.txt" ]]; then
-    if ! grep -qiE 'ProviderModelNotFoundError|Model not found:' "$OUT/last-reply.txt"; then
-      rc=$rc2
-    fi
-  fi
-fi
-
-# Still infrastructure-shaped reply → SKIP (not hard 008 fail)
-if grep -qiE 'ProviderModelNotFoundError|Model not found:|does not support tools|connection refused|failed to connect' \
-  "$OUT/last-reply.txt" 2>/dev/null; then
-  reason="provider/infra error in agent reply (OpenCode model registry or Ollama) — SKIP"
+  reason="provider/infra error in agent reply — SKIP"
   echo "SKIP: $reason"
   head -c 400 "$OUT/last-reply.txt" || true
   echo

@@ -697,6 +697,19 @@ def run_opencode(prompt: str, repo: Path, out: Path, run_id: str, timeout_s: int
                 os.environ.setdefault(k.strip(), v.strip())
         model = local_agent_model()
 
+    # Receipt-only CI path: skip OpenCode agent (tool planning) for reliable STATUS block.
+    if os.environ.get("VOICE_FORCE_OLLAMA_HTTP", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    ):
+        print("==> VOICE_FORCE_OLLAMA_HTTP=1 — Ollama chat completion only", file=sys.stderr)
+        result = run_ollama_completion(prompt, out, run_id, timeout_s)
+        result["mode"] = "opencode-ollama" if result.get("ok") else result.get("mode", "ollama")
+        result["fallback"] = "force-ollama-http"
+        return result
+
     oc = shutil.which("opencode")
     if oc:
         cmd = [oc, "run"]
