@@ -1,0 +1,10 @@
+### Entry 075: asm (agent-skill-manager) — Universal Skill Manager for AI Coding Agents
+
+- **URL**: https://x.com/i/status/2082323563298607566
+- **Date**: 2026-07-29 (post); cataloged 2026-07-28
+- **Poster**: Tom Dörr (@tom_doerr)
+- **Summary / Key Claims**: `agent-skill-manager` (`asm`) is a scriptable CLI + optional TUI that installs, searches, audits, and organizes agent skills across Claude Code, Codex, Cursor, and 16+ other tools (19 providers total). Agent-friendly (`--json` / `--yes`), security scanning (shell exec, network, credentials), duplicate cleanup, skill authoring (`asm init` / `link` / `publish`), and a catalog of 4,300+ skills. “npm for AI agent skills.”
+- **Extracted Repos / Tools**: https://github.com/luongnv89/asm (also referenced as agent-skill-manager). MIT, ~750 stars, Node.js ≥18, TypeScript. Related: luongnv89/asm-registry, luongnv89/skills.
+- **TOOLS.md Link**: New row under **Agent Frameworks & Orchestration** (or skills infrastructure). High synergy with existing skills packs (ponytail, mattpocock, marketing-skills, Hermes, Hyperframes skills, first-party skill packs). Directly addresses fragmentation of skill directories across agents.
+- **Notes**: Stage 0 pass (open, local, installable in <5 min, agent-scriptable). Supported providers include many already in catalog (Claude Code, Codex, Cursor, Cline, Continue, Aider, Hermes, OpenCode, etc.). Security audit + pinned-commit install is a strong differentiator. Recommend: catalog + evaluate as default skill installation path for Grok CLI / agent-cage workflows; consider first-party skill packs publishable via `asm`. Pattern of cross-agent skill linking is high pipeline value.
+- **Status**: Quick-evaluated - cataloged (A/S candidate after local smoke)
