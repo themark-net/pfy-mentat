@@ -62,6 +62,7 @@ This file contains the detailed, living table of evaluated local LLM development
 | **Bumblebee** | Tool Calling & Function Infrastructure | https://github.com/perplexityai/bumblebee | 88 | 90 | 92 | 85 | 89 | A | #mcp-compatible #security #supply-chain #local-first #go | **X Entry 069.** Perplexity read-only scanner for packages, extensions, **MCP configs**. NDJSON, zero deps, baseline/project/deep profiles. Directly addresses MCP install trust gap. Pair with write-guard-mcp. |
 | **Hyperframes** | Agent Frameworks & Orchestration | https://github.com/heygen-com/hyperframes | 90 | 85 | 92 | 95 | 90 | S | #skills #multimodal #video #agent-native #html | **X Entry 070.** HeyGen open-source: agents write plain HTML → deterministic MP4. Ships skills (`npx skills add heygen-com/hyperframes`), CLI, catalog. Production use at HeyGen. Canonical agent-native video surface. |
 | **Camofox Browser** | Tool Calling & Function Infrastructure | https://github.com/jo-inc/camofox-browser | 88 | 82 | 90 | 88 | 87 | A | #browser #anti-detection #mcp-compatible #agent-tool #local-first | **X Entry 071.** Camoufox (C++ fingerprint spoofing) wrapped as REST API for agents. Production engine behind jo/askjo.ai. MCP variants exist. Default candidate for stealth web tools in agent-cage. |
+| **asm (agent-skill-manager)** | Agent Frameworks & Orchestration | https://github.com/luongnv89/asm | 90 | 88 | 95 | 90 | 91 | A | #skills #cli #cross-agent #security-audit #local-first #npm | **X Entry 075.** Universal skill manager across 19 agents (Claude Code, Codex, Cursor, Cline, Continue, Aider, Hermes, …). Install/search/audit/organize; `--json` for agents; security scan; 4.3k+ skill catalog. MIT. “npm for AI agent skills.” High priority for Grok CLI skill distribution. |
 
 ## Autonomous AI Companies
 
@@ -86,7 +87,7 @@ Full multi-agent simulated companies. **Do not** score with S1–S4 alone. Use [
 | Scored eval | eval-harness | `eval-v02` |
 | Company patterns (docs) | Auto-Company patterns | scoring-summary Cluster 5 |
 
-*v0.4.7 — Entry 073: Laguna S 2.1 (Poolside 118B/8B MoE, 1M ctx, open agentic coding, S-tier).*
+*v0.4.8 — Entry 075: asm (agent-skill-manager) — universal skill manager across 19 agents, A-tier.*
 
 ## Paper Analysis Use Case (Recurring Workflow)
 
