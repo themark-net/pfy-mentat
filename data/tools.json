@@ -1,9 +1,15 @@
 {
-  "version": "0.4.6",
-  "last_updated": "2026-07-25T22:00:00Z",
-  "description": "Structured catalog. v0.4.6: Graphify B-tier reference + CM primary decision note; loop/ops hygiene.",
+  "version": "0.4.9",
+  "last_updated": "2026-07-29T14:48:54Z",
+  "description": "Structured catalog. v0.4.9: sync TOOLS.md Active Catalog missing rows (incl. Entries 075\u2013076 asm, claude-codex-settings); fix triple-write drift.",
   "schema_notes": {
-    "required_for_all": ["name", "primary_category", "github", "scores", "tier"],
+    "required_for_all": [
+      "name",
+      "primary_category",
+      "github",
+      "scores",
+      "tier"
+    ],
     "optional_tracking": {
       "pinned_commit": "Exact SHA or tag for reproducibility in pipelines",
       "subtree_path": "Relative path if added via git subtree",
@@ -20,9 +26,21 @@
       "name": "Grok CLI bootstrap",
       "primary_category": "Pipeline & CI/CD Components",
       "github": "https://github.com/themark-net/pfy-mentat",
-      "scores": {"s1": 95, "s2": 90, "s3": 98, "s4": 90, "overall": 94},
+      "scores": {
+        "s1": 95,
+        "s2": 90,
+        "s3": 98,
+        "s4": 90,
+        "overall": 94
+      },
       "tier": "S",
-      "tags": ["grok-cli", "mcp-compatible", "code-memory", "pipeline", "local-first"],
+      "tags": [
+        "grok-cli",
+        "mcp-compatible",
+        "code-memory",
+        "pipeline",
+        "local-first"
+      ],
       "bootstrap_path": "bootstrap/grok-cli",
       "notes": "Primary operator env (ADR-0002)."
     },
@@ -30,9 +48,20 @@
       "name": "project-process bootstrap",
       "primary_category": "Pipeline & CI/CD Components",
       "github": "https://github.com/themark-net/pfy-mentat",
-      "scores": {"s1": 92, "s2": 95, "s3": 96, "s4": 80, "overall": 92},
+      "scores": {
+        "s1": 92,
+        "s2": 95,
+        "s3": 96,
+        "s4": 80,
+        "overall": 92
+      },
       "tier": "S",
-      "tags": ["grok-cli", "pipeline", "local-first", "agentic"],
+      "tags": [
+        "grok-cli",
+        "pipeline",
+        "local-first",
+        "agentic"
+      ],
       "bootstrap_path": "bootstrap/project-process",
       "notes": "Scaffold DESIGN/ADR/TODO/OQ/AGENTS."
     },
@@ -40,19 +69,44 @@
       "name": "AgenC",
       "primary_category": "Coding & Dev Agents",
       "github": "https://github.com/tetsuo-ai/agenc-core",
-      "scores": {"s1": 78, "s2": 70, "s3": 88, "s4": 82, "overall": 78},
+      "scores": {
+        "s1": 78,
+        "s2": 70,
+        "s3": 88,
+        "s4": 82,
+        "overall": 78
+      },
       "tier": "B",
-      "tags": ["coding-agent", "terminal", "daemon", "mcp-compatible", "watch"],
+      "tags": [
+        "coding-agent",
+        "terminal",
+        "daemon",
+        "mcp-compatible",
+        "watch"
+      ],
       "bootstrap_path": "bootstrap/agenc",
-      "notes": "REFERENCE ONLY — ADR-0010. Prefer Grok CLI + agent-cage."
+      "notes": "REFERENCE ONLY \u2014 ADR-0010. Prefer Grok CLI + agent-cage."
     },
     {
       "name": "agent-cage (PNNL)",
       "primary_category": "Pipeline & CI/CD Components",
       "github": "https://github.com/pnnl/agent-cage",
-      "scores": {"s1": 94, "s2": 86, "s3": 99, "s4": 85, "overall": 92},
+      "scores": {
+        "s1": 94,
+        "s2": 86,
+        "s3": 99,
+        "s4": 85,
+        "overall": 92
+      },
       "tier": "S",
-      "tags": ["docker", "sandbox", "mcp-compatible", "harness", "pipeline", "local-first"],
+      "tags": [
+        "docker",
+        "sandbox",
+        "mcp-compatible",
+        "harness",
+        "pipeline",
+        "local-first"
+      ],
       "pinned_commit": "ea0cdb328683",
       "bootstrap_path": "harness/agent-cage",
       "notes": "PRIMARY container harness + Grok Build path."
@@ -61,9 +115,20 @@
       "name": "codebase-memory-mcp",
       "primary_category": "Memory & RAG Systems",
       "github": "https://github.com/DeusData/codebase-memory-mcp",
-      "scores": {"s1": 92, "s2": 88, "s3": 95, "s4": 85, "overall": 91},
+      "scores": {
+        "s1": 92,
+        "s2": 88,
+        "s3": 95,
+        "s4": 85,
+        "overall": 91
+      },
       "tier": "S",
-      "tags": ["mcp-compatible", "code-memory", "local-first", "rag"],
+      "tags": [
+        "mcp-compatible",
+        "code-memory",
+        "local-first",
+        "rag"
+      ],
       "pinned_commit": "ee68144af5453addda995a27cce8142999f318fb",
       "notes": "Primary Grok MCP code-graph. Decision vs Graphify: docs/evaluation/codebase-memory-vs-graphify.md. Smoke: make smoke-codebase-memory."
     },
@@ -71,9 +136,21 @@
       "name": "Graphify",
       "primary_category": "Memory & RAG Systems",
       "github": "https://github.com/Graphify-Labs/graphify",
-      "scores": {"s1": 85, "s2": 72, "s3": 78, "s4": 88, "overall": 80},
+      "scores": {
+        "s1": 85,
+        "s2": 72,
+        "s3": 78,
+        "s4": 88,
+        "overall": 80
+      },
       "tier": "B",
-      "tags": ["code-memory", "graph", "tree-sitter", "mcp-compatible", "local-first"],
+      "tags": [
+        "code-memory",
+        "graph",
+        "tree-sitter",
+        "mcp-compatible",
+        "local-first"
+      ],
       "x_post_id": "2076092909372453048",
       "notes": "Entry 017. Not integrated; CM primary. Re-open with cage smoke + head-to-head. See docs/evaluation/codebase-memory-vs-graphify.md."
     },
@@ -81,27 +158,62 @@
       "name": "LiteLLM",
       "primary_category": "Proxy & Routing",
       "github": "https://github.com/BerriAI/litellm",
-      "scores": {"s1": 95, "s2": 85, "s3": 98, "s4": 90, "overall": 93},
+      "scores": {
+        "s1": 95,
+        "s2": 85,
+        "s3": 98,
+        "s4": 90,
+        "overall": 93
+      },
       "tier": "S",
-      "tags": ["litellm-ready", "openai-shim", "grok-cli", "multi-llm", "proxy"],
+      "tags": [
+        "litellm-ready",
+        "openai-shim",
+        "grok-cli",
+        "multi-llm",
+        "proxy"
+      ],
       "notes": "Critical unification layer."
     },
     {
       "name": "Ollama",
       "primary_category": "Inference & Serving",
       "github": "https://github.com/ollama/ollama",
-      "scores": {"s1": 90, "s2": 88, "s3": 95, "s4": 95, "overall": 92},
+      "scores": {
+        "s1": 90,
+        "s2": 88,
+        "s3": 95,
+        "s4": 95,
+        "overall": 92
+      },
       "tier": "S",
-      "tags": ["local-first", "consumer-hw", "openai-shim", "tool-calling"],
+      "tags": [
+        "local-first",
+        "consumer-hw",
+        "openai-shim",
+        "tool-calling"
+      ],
       "notes": "Default local backend."
     },
     {
       "name": "write-guard-mcp",
       "primary_category": "Tool Calling & Function Infrastructure",
       "github": "https://github.com/themark-net/pfy-mentat",
-      "scores": {"s1": 90, "s2": 92, "s3": 95, "s4": 80, "overall": 90},
+      "scores": {
+        "s1": 90,
+        "s2": 92,
+        "s3": 95,
+        "s4": 80,
+        "overall": 90
+      },
       "tier": "S",
-      "tags": ["mcp-compatible", "security", "filesystem", "audit", "local-first"],
+      "tags": [
+        "mcp-compatible",
+        "security",
+        "filesystem",
+        "audit",
+        "local-first"
+      ],
       "bootstrap_path": "harness/write-guard-mcp",
       "notes": "First-party write mediation. Default audit."
     },
@@ -109,18 +221,41 @@
       "name": "Continue.dev",
       "primary_category": "Coding & Dev Agents",
       "github": "https://github.com/continuedev/continue",
-      "scores": {"s1": 92, "s2": 80, "s3": 92, "s4": 88, "overall": 90},
+      "scores": {
+        "s1": 92,
+        "s2": 80,
+        "s3": 92,
+        "s4": 88,
+        "overall": 90
+      },
       "tier": "S",
-      "tags": ["ide-integration", "coding-agent", "local-first", "tool-calling"],
+      "tags": [
+        "ide-integration",
+        "coding-agent",
+        "local-first",
+        "tool-calling"
+      ],
       "notes": "Best IDE surface."
     },
     {
       "name": "Hermes Agent (feedback loops)",
       "primary_category": "Agent Frameworks & Orchestration",
       "github": "https://github.com/NousResearch/hermes-agent",
-      "scores": {"s1": 90, "s2": 82, "s3": 92, "s4": 90, "overall": 89},
+      "scores": {
+        "s1": 90,
+        "s2": 82,
+        "s3": 92,
+        "s4": 90,
+        "overall": 89
+      },
       "tier": "A",
-      "tags": ["agentic", "self-healing", "skills", "memory", "feedback-loop"],
+      "tags": [
+        "agentic",
+        "self-healing",
+        "skills",
+        "memory",
+        "feedback-loop"
+      ],
       "x_post_id": "2077132507343134788",
       "notes": "Entry 048. Ported as /hermes-feedback (T-0048, bootstrap/grok-cli/skills/hermes-feedback/). Pattern only; not Hermes runtime."
     },
@@ -128,32 +263,89 @@
       "name": "Multica",
       "primary_category": "Agent Frameworks & Orchestration",
       "github": "https://github.com/multica-ai/multica",
-      "scores": {"s1": 88, "s2": 78, "s3": 92, "s4": 95, "overall": 88},
+      "scores": {
+        "s1": 88,
+        "s2": 78,
+        "s3": 92,
+        "s4": 95,
+        "overall": 88
+      },
       "tier": "A",
-      "tags": ["multi-agent", "orchestration", "workflow", "skills", "self-host", "docker", "ai-company"],
+      "tags": [
+        "multi-agent",
+        "orchestration",
+        "workflow",
+        "skills",
+        "self-host",
+        "docker",
+        "ai-company"
+      ],
       "pinned_commit": "2a48ffa2aa73",
       "x_post_id": "2075999281996312951",
-      "company_scores": {"c1_org": 3, "c2_cycle": 4, "c3_memory": 4, "c4_safety": 3, "c5_econ": 3, "c6_local": 4, "weighted": 3.5},
+      "company_scores": {
+        "c1_org": 3,
+        "c2_cycle": 4,
+        "c3_memory": 4,
+        "c4_safety": 3,
+        "c5_econ": 3,
+        "c6_local": 4,
+        "weighted": 3.5
+      },
       "notes": "X Entry 012. Also company-rubric A for board/teammate use."
     },
     {
       "name": "gstack",
       "primary_category": "Agent Frameworks & Orchestration",
       "github": "https://github.com/garrytan/gstack",
-      "scores": {"s1": 85, "s2": 85, "s3": 90, "s4": 95, "overall": 88},
+      "scores": {
+        "s1": 85,
+        "s2": 85,
+        "s3": 90,
+        "s4": 95,
+        "overall": 88
+      },
       "tier": "A",
-      "tags": ["skills", "multi-agent", "roles", "workflow", "docs-only"],
+      "tags": [
+        "skills",
+        "multi-agent",
+        "roles",
+        "workflow",
+        "docs-only"
+      ],
       "x_post_id": "2075933298627383473",
-      "company_scores": {"c1_org": 4, "c2_cycle": 3, "c3_memory": 3, "c4_safety": 4, "c5_econ": 2, "c6_local": 3, "weighted": 3.2},
+      "company_scores": {
+        "c1_org": 4,
+        "c2_cycle": 3,
+        "c3_memory": 3,
+        "c4_safety": 4,
+        "c5_econ": 2,
+        "c6_local": 3,
+        "weighted": 3.2
+      },
       "notes": "X Entry 010. Company comparison set B."
     },
     {
       "name": "Auto-Company",
       "primary_category": "Autonomous AI Companies",
       "github": "https://github.com/MaxMiksa/Auto-Company",
-      "scores": {"s1": 85, "s2": 70, "s3": 88, "s4": 88, "overall": 83},
+      "scores": {
+        "s1": 85,
+        "s2": 70,
+        "s3": 88,
+        "s4": 88,
+        "overall": 83
+      },
       "tier": "S",
-      "tags": ["ai-company", "multi-agent-org", "consensus-memory", "persona-roles", "cycle-autonomy", "local-first", "claude-code", "codex"],
+      "tags": [
+        "ai-company",
+        "multi-agent-org",
+        "consensus-memory",
+        "persona-roles",
+        "cycle-autonomy",
+        "local-first",
+        "claude-code",
+        "codex"
+      ],
       "x_post_id": "2079230095345209479",
       "company_scores": {
         "c1_org": 5,
@@ -170,9 +362,21 @@
       "name": "colibri",
       "primary_category": "Inference & Serving",
       "github": "https://github.com/JustVugg/colibri",
-      "scores": {"s1": 92, "s2": 78, "s3": 85, "s4": 88, "overall": 86},
+      "scores": {
+        "s1": 92,
+        "s2": 78,
+        "s3": 85,
+        "s4": 88,
+        "overall": 86
+      },
       "tier": "A",
-      "tags": ["inference-engine", "moe", "cpu-only", "low-ram", "local-first"],
+      "tags": [
+        "inference-engine",
+        "moe",
+        "cpu-only",
+        "low-ram",
+        "local-first"
+      ],
       "x_post_id": "2075731830477877612",
       "notes": "Extreme low-resource MoE."
     },
@@ -180,9 +384,19 @@
       "name": "LEANN",
       "primary_category": "Memory & RAG Systems",
       "github": "https://github.com/StarTrail-org/LEANN",
-      "scores": {"s1": 88, "s2": 85, "s3": 88, "s4": 85, "overall": 87},
+      "scores": {
+        "s1": 88,
+        "s2": 85,
+        "s3": 88,
+        "s4": 85,
+        "overall": 87
+      },
       "tier": "A",
-      "tags": ["rag", "compression", "local-first"],
+      "tags": [
+        "rag",
+        "compression",
+        "local-first"
+      ],
       "x_post_id": "2077528059339817025",
       "notes": "Entry 052."
     },
@@ -190,19 +404,39 @@
       "name": "Memvid",
       "primary_category": "Memory & RAG Systems",
       "github": "https://github.com/memvid/memvid",
-      "scores": {"s1": 88, "s2": 82, "s3": 85, "s4": 88, "overall": 86},
+      "scores": {
+        "s1": 88,
+        "s2": 82,
+        "s3": 85,
+        "s4": 88,
+        "overall": 86
+      },
       "tier": "A",
-      "tags": ["memory", "versioning", "local-first"],
+      "tags": [
+        "memory",
+        "versioning",
+        "local-first"
+      ],
       "x_post_id": "2077064295209443504",
       "notes": "Entry 044."
     },
     {
-      "name": "llama.cpp ngram-mod",
+      "name": "llama.cpp (server mode)",
       "primary_category": "Inference & Serving",
       "github": "https://github.com/ggerganov/llama.cpp",
-      "scores": {"s1": 85, "s2": 95, "s3": 88, "s4": 90, "overall": 89},
+      "scores": {
+        "s1": 85,
+        "s2": 95,
+        "s3": 88,
+        "s4": 90,
+        "overall": 89
+      },
       "tier": "A",
-      "tags": ["high-perf", "speculative-decoding", "local-first"],
+      "tags": [
+        "high-perf",
+        "speculative-decoding",
+        "local-first"
+      ],
       "x_post_id": "2077718647905333549",
       "notes": "Entry 051."
     },
@@ -210,9 +444,19 @@
       "name": "repowise",
       "primary_category": "Coding & Dev Agents",
       "github": "https://github.com/repowise-dev/repowise",
-      "scores": {"s1": 88, "s2": 92, "s3": 88, "s4": 82, "overall": 88},
+      "scores": {
+        "s1": 88,
+        "s2": 92,
+        "s3": 88,
+        "s4": 82,
+        "overall": 88
+      },
       "tier": "A",
-      "tags": ["context", "token-efficiency", "coding-agent"],
+      "tags": [
+        "context",
+        "token-efficiency",
+        "coding-agent"
+      ],
       "x_post_id": "2076117959958053084",
       "notes": "Entry 006."
     },
@@ -220,9 +464,19 @@
       "name": "eval-harness (pfy)",
       "primary_category": "Evaluation & Benchmarking",
       "github": "https://github.com/themark-net/pfy-mentat",
-      "scores": {"s1": 88, "s2": 90, "s3": 95, "s4": 80, "overall": 89},
+      "scores": {
+        "s1": 88,
+        "s2": 90,
+        "s3": 95,
+        "s4": 80,
+        "overall": 89
+      },
       "tier": "A",
-      "tags": ["evaluation", "pipeline", "local-first"],
+      "tags": [
+        "evaluation",
+        "pipeline",
+        "local-first"
+      ],
       "bootstrap_path": "examples/eval-harness",
       "notes": "First-party scored ladder."
     },
@@ -230,9 +484,22 @@
       "name": "Finn Loop / eval-loop / 8-exits patterns",
       "primary_category": "Agent Frameworks & Orchestration",
       "github": "https://github.com/themark-net/pfy-mentat",
-      "scores": {"s1": 92, "s2": 90, "s3": 92, "s4": 88, "overall": 91},
+      "scores": {
+        "s1": 92,
+        "s2": 90,
+        "s3": 92,
+        "s4": 88,
+        "overall": 91
+      },
       "tier": "A",
-      "tags": ["agentic", "loops", "evaluation", "human-in-loop", "stop-conditions", "exits"],
+      "tags": [
+        "agentic",
+        "loops",
+        "evaluation",
+        "human-in-loop",
+        "stop-conditions",
+        "exits"
+      ],
       "bootstrap_path": "integration/agenc/skills/loop-engineering",
       "x_post_id": "2079325855155707941",
       "notes": "Entries 024/027/031/032/068. Ported as /agent-loops (T-0050, bootstrap/grok-cli/skills/agent-loops/). Exit card + 4 types + Finn + rubric; pairs with /one-shot."
@@ -241,9 +508,18 @@
       "name": "awesome-hermes-skills",
       "primary_category": "Agent Frameworks & Orchestration",
       "github": "https://github.com/ZeroPointRepo/awesome-hermes-skills",
-      "scores": {"s1": 88, "s2": 90, "s3": 90, "s4": 92, "overall": 89},
+      "scores": {
+        "s1": 88,
+        "s2": 90,
+        "s3": 90,
+        "s4": 92,
+        "overall": 89
+      },
       "tier": "A",
-      "tags": ["skills", "curated"],
+      "tags": [
+        "skills",
+        "curated"
+      ],
       "x_post_id": "2077738909778542896",
       "notes": "Entry 053."
     },
@@ -251,9 +527,18 @@
       "name": "destructive_command_guard",
       "primary_category": "Tool Calling & Function Infrastructure",
       "github": "https://github.com/Dicklesworthstone/destructive_command_guard",
-      "scores": {"s1": 80, "s2": 90, "s3": 85, "s4": 82, "overall": 84},
+      "scores": {
+        "s1": 80,
+        "s2": 90,
+        "s3": 85,
+        "s4": 82,
+        "overall": 84
+      },
       "tier": "A",
-      "tags": ["security", "guardrail"],
+      "tags": [
+        "security",
+        "guardrail"
+      ],
       "x_post_id": "2076855961189507099",
       "notes": "Entry 041."
     },
@@ -261,9 +546,18 @@
       "name": "OpenClaude-Portable",
       "primary_category": "Coding & Dev Agents",
       "github": "https://github.com/techjarves/OpenClaude-Portable",
-      "scores": {"s1": 82, "s2": 88, "s3": 85, "s4": 85, "overall": 85},
+      "scores": {
+        "s1": 82,
+        "s2": 88,
+        "s3": 85,
+        "s4": 85,
+        "overall": 85
+      },
       "tier": "A",
-      "tags": ["coding-agent", "portable"],
+      "tags": [
+        "coding-agent",
+        "portable"
+      ],
       "x_post_id": "2077768643128009110",
       "notes": "Entry 054."
     },
@@ -271,9 +565,19 @@
       "name": "opencode-mem",
       "primary_category": "Memory & RAG Systems",
       "github": "https://github.com/tickernelz/opencode-mem",
-      "scores": {"s1": 82, "s2": 85, "s3": 85, "s4": 80, "overall": 83},
+      "scores": {
+        "s1": 82,
+        "s2": 85,
+        "s3": 85,
+        "s4": 80,
+        "overall": 83
+      },
       "tier": "A",
-      "tags": ["memory", "vector", "coding-agent"],
+      "tags": [
+        "memory",
+        "vector",
+        "coding-agent"
+      ],
       "x_post_id": "2077134466267394303",
       "notes": "Entry 049."
     },
@@ -281,11 +585,486 @@
       "name": "MUE-X",
       "primary_category": "Agent Frameworks & Orchestration",
       "github": "https://github.com/KorroAi/mue-x",
-      "scores": {"s1": 85, "s2": 70, "s3": 90, "s4": 72, "overall": 81},
+      "scores": {
+        "s1": 85,
+        "s2": 70,
+        "s3": 90,
+        "s4": 72,
+        "overall": 81
+      },
       "tier": "A",
-      "tags": ["agentic", "self-evolving", "ast-mutation", "autonomous", "memory", "mcp-compatible", "self-modifying", "local-first"],
+      "tags": [
+        "agentic",
+        "self-evolving",
+        "ast-mutation",
+        "autonomous",
+        "memory",
+        "mcp-compatible",
+        "self-modifying",
+        "local-first"
+      ],
       "x_post_id": "2079155411471503656",
       "notes": "Entry 067. Self-rewriting via 6 AST strategies + autonomic drives + PAD + memory lattice + GitHub absorption. Standalone CLI. Deeper local eval queued."
+    },
+    {
+      "name": "adr-tools",
+      "primary_category": "Pipeline & CI/CD Components",
+      "github": "https://github.com/npryce/adr-tools",
+      "scores": {
+        "s1": 70,
+        "s2": 90,
+        "s3": 75,
+        "s4": 85,
+        "overall": 78
+      },
+      "tier": "B",
+      "tags": [
+        "pipeline",
+        "local-first"
+      ],
+      "notes": "Classic CLI for ADR create/supersede numbering. Complements our skills; **not required** \u2014 skills + templates cover agent workflows. Pin if a team wants shell automation."
+    },
+    {
+      "name": "Laguna S 2.1",
+      "primary_category": "Inference & Serving",
+      "github": "https://huggingface.co/poolside/Laguna-S-2.1",
+      "scores": {
+        "s1": 92,
+        "s2": 85,
+        "s3": 95,
+        "s4": 92,
+        "overall": 91
+      },
+      "tier": "S",
+      "tags": [
+        "moe",
+        "agentic-coding",
+        "open-weights",
+        "1m-context",
+        "local-first",
+        "gguf",
+        "mlx"
+      ],
+      "notes": "**X Entry 073.** Poolside 118B total / 8B active MoE, 1M context, thinking modes. OpenMDW-1.1. Strong Terminal-Bench / DeepSWE scores. Day-one llama.cpp, Ollama, vLLM, SGLang, TRT-LLM, GGUF, MLX, DFlash. High priority for local/hybrid coding agents."
+    },
+    {
+      "name": "Aider",
+      "primary_category": "Coding & Dev Agents",
+      "github": "https://github.com/paul-gauthier/aider",
+      "scores": {
+        "s1": 88,
+        "s2": 82,
+        "s3": 85,
+        "s4": 90,
+        "overall": 87
+      },
+      "tier": "A",
+      "tags": [
+        "terminal",
+        "git-native",
+        "coding-agent",
+        "local-first",
+        "headless"
+      ],
+      "notes": "Excellent terminal/git-aware coding agent. Works great with Ollama. Strong at iterative editing. Easy to script in pipelines. Lower IDE friction than Continue for some workflows. Good MCP target (repo as context)."
+    },
+    {
+      "name": "DSPy",
+      "primary_category": "Agent Frameworks & Orchestration",
+      "github": "https://github.com/stanfordnlp/dspy",
+      "scores": {
+        "s1": 85,
+        "s2": 75,
+        "s3": 90,
+        "s4": 85,
+        "overall": 85
+      },
+      "tier": "A",
+      "tags": [
+        "agentic",
+        "optimizer",
+        "pipeline",
+        "litellm-ready",
+        "reasoning"
+      ],
+      "notes": "Systematic programming of LM pipelines. Optimizers (BootstrapFewShot, MIPRO) dramatically improve reliability. Pairs perfectly with LiteLLM for local + Grok. High value for gom-jobbar style agents. MCP memory can feed into DSPy modules."
+    },
+    {
+      "name": "llama.cpp (server mode)",
+      "primary_category": "Inference & Serving",
+      "github": "https://github.com/ggerganov/llama.cpp",
+      "scores": {
+        "s1": 85,
+        "s2": 95,
+        "s3": 80,
+        "s4": 85,
+        "overall": 88
+      },
+      "tier": "A",
+      "tags": [
+        "high-perf",
+        "quantized",
+        "gguf",
+        "openai-shim",
+        "cpu-gpu"
+      ],
+      "notes": "Ultimate performance/quantization control. GGUF ecosystem is massive. Server has OpenAI compat. Slightly more setup than Ollama but unmatched speed/footprint on consumer HW. Good base for custom agents."
+    },
+    {
+      "name": "MLX + MLX-LM",
+      "primary_category": "Inference & Serving",
+      "github": "https://github.com/ml-explore/mlx (mlx-lm)",
+      "scores": {
+        "s1": 80,
+        "s2": 92,
+        "s3": 78,
+        "s4": 80,
+        "overall": 82
+      },
+      "tier": "A",
+      "tags": [
+        "apple-silicon",
+        "high-perf",
+        "quantized",
+        "local-first"
+      ],
+      "notes": "Best-in-class on Apple Silicon (M-series). Fast unified memory, 4/8-bit native. mlx-lm provides server. Excellent for Mac-based dev pipelines. Tool calling via adapters."
+    },
+    {
+      "name": "LangGraph (LangChain)",
+      "primary_category": "Agent Frameworks & Orchestration",
+      "github": "https://github.com/langchain-ai/langgraph",
+      "scores": {
+        "s1": 82,
+        "s2": 70,
+        "s3": 88,
+        "s4": 88,
+        "overall": 82
+      },
+      "tier": "A",
+      "tags": [
+        "agentic",
+        "graph",
+        "orchestration",
+        "tool-calling",
+        "rag"
+      ],
+      "notes": "Stateful multi-actor agent graphs. Excellent for complex pipelines. Can use local Ollama via LangChain integration. Strong RAG/memory support (can integrate MCP). More boilerplate than DSPy for simple cases."
+    },
+    {
+      "name": "Open WebUI",
+      "primary_category": "UI & Interfaces",
+      "github": "https://github.com/open-webui/open-webui",
+      "scores": {
+        "s1": 75,
+        "s2": 80,
+        "s3": 85,
+        "s4": 92,
+        "overall": 82
+      },
+      "tier": "A",
+      "tags": [
+        "ui",
+        "chat",
+        "local-first",
+        "docker",
+        "multi-model"
+      ],
+      "notes": "Polished ChatGPT-like UI for local models (Ollama, llama.cpp, etc.). Supports tools in recent versions. Great for human-in-loop debugging of agents before headless pipeline use. Docker one-liner."
+    },
+    {
+      "name": "Chroma (or LanceDB)",
+      "primary_category": "Memory & RAG Systems",
+      "github": "https://github.com/chroma-core/chroma",
+      "scores": {
+        "s1": 70,
+        "s2": 85,
+        "s3": 80,
+        "s4": 85,
+        "overall": 78
+      },
+      "tier": "B",
+      "tags": [
+        "rag",
+        "vector",
+        "code-memory",
+        "local-first",
+        "embeddings"
+      ],
+      "notes": "Solid local vector DB. Easy Python SDK. Good for code RAG (embed functions/classes). Can serve as foundation for MCP-style persistent code memory. Lightweight."
+    },
+    {
+      "name": "Atomic Task Graph (ATG)",
+      "primary_category": "Agent Frameworks & Orchestration",
+      "github": "https://github.com/themark-net/pfy-mentat",
+      "scores": {
+        "s1": 88,
+        "s2": 75,
+        "s3": 90,
+        "s4": 60,
+        "overall": 82
+      },
+      "tier": "A",
+      "tags": [
+        "agentic",
+        "graph",
+        "dag",
+        "planning",
+        "parallelism",
+        "failure-repair",
+        "paper-based",
+        "prototype"
+      ],
+      "notes": "Research framework using explicit DAGs for task decomposition instead of linear chains. See full notes in prior revisions / atg-framework repo."
+    },
+    {
+      "name": "ponytail (skills pack)",
+      "primary_category": "Coding & Dev Agents",
+      "github": "https://github.com/DietrichGebert/ponytail",
+      "scores": {
+        "s1": 80,
+        "s2": 92,
+        "s3": 88,
+        "s4": 82,
+        "overall": 86
+      },
+      "tier": "A",
+      "tags": [
+        "terminal",
+        "coding-agent",
+        "local-first",
+        "grok-cli"
+      ],
+      "notes": "Minimalism / YAGNI skill pack. Pin `8e69b4a`."
+    },
+    {
+      "name": "karpathy-guidelines",
+      "primary_category": "Coding & Dev Agents",
+      "github": "https://github.com/forrestchang/andrej-karpathy-skills",
+      "scores": {
+        "s1": 78,
+        "s2": 95,
+        "s3": 85,
+        "s4": 80,
+        "overall": 84
+      },
+      "tier": "A",
+      "tags": [
+        "coding-agent",
+        "grok-cli",
+        "local-first"
+      ],
+      "notes": "MIT single skill; pin `2c60614`."
+    },
+    {
+      "name": "mattpocock/skills",
+      "primary_category": "Agent Frameworks & Orchestration",
+      "github": "https://github.com/mattpocock/skills",
+      "scores": {
+        "s1": 82,
+        "s2": 90,
+        "s3": 90,
+        "s4": 90,
+        "overall": 87
+      },
+      "tier": "A",
+      "tags": [
+        "skills",
+        "planning",
+        "tdd",
+        "review",
+        "composable"
+      ],
+      "notes": "**X Entry 008.**"
+    },
+    {
+      "name": "marketing-skills (marketing-council)",
+      "primary_category": "Agent Frameworks & Orchestration",
+      "github": "https://github.com/coreyhaines31/marketingskills",
+      "scores": {
+        "s1": 78,
+        "s2": 90,
+        "s3": 88,
+        "s4": 92,
+        "overall": 85
+      },
+      "tier": "A",
+      "tags": [
+        "skills",
+        "multi-agent",
+        "council",
+        "prompt-pack"
+      ],
+      "notes": "**X Entry 004.** First-party port."
+    },
+    {
+      "name": "Antigravity-Manager",
+      "primary_category": "Proxy & Routing",
+      "github": "https://github.com/lbjlaq/Antigravity-Manager",
+      "scores": {
+        "s1": 85,
+        "s2": 80,
+        "s3": 90,
+        "s4": 90,
+        "overall": 86
+      },
+      "tier": "A",
+      "tags": [
+        "proxy",
+        "account-pool",
+        "tauri",
+        "openai-shim"
+      ],
+      "notes": "**X Entry 005.**"
+    },
+    {
+      "name": "Jamon Holmgren agentic setup",
+      "primary_category": "Pipeline & CI/CD Components",
+      "github": "https://x.com/i/status/2076001786700394610",
+      "scores": {
+        "s1": 70,
+        "s2": 85,
+        "s3": 92,
+        "s4": 80,
+        "overall": 81
+      },
+      "tier": "A",
+      "tags": [
+        "workflow",
+        "harness",
+        "agents-md",
+        "process"
+      ],
+      "notes": "**X Entry 007.**",
+      "x_post_id": "2076001786700394610"
+    },
+    {
+      "name": "Ruben Hassid context/token hacks",
+      "primary_category": "Pipeline & CI/CD Components",
+      "github": "https://x.com/i/status/2075807299638014212",
+      "scores": {
+        "s1": 65,
+        "s2": 92,
+        "s3": 80,
+        "s4": 75,
+        "overall": 77
+      },
+      "tier": "B",
+      "tags": [
+        "token-efficiency",
+        "prompt",
+        "workflow"
+      ],
+      "notes": "**X Entry 009.**",
+      "x_post_id": "2075807299638014212"
+    },
+    {
+      "name": "Bumblebee",
+      "primary_category": "Tool Calling & Function Infrastructure",
+      "github": "https://github.com/perplexityai/bumblebee",
+      "scores": {
+        "s1": 88,
+        "s2": 90,
+        "s3": 92,
+        "s4": 85,
+        "overall": 89
+      },
+      "tier": "A",
+      "tags": [
+        "mcp-compatible",
+        "security",
+        "supply-chain",
+        "local-first",
+        "go"
+      ],
+      "notes": "**X Entry 069.** Perplexity read-only scanner for packages, extensions, **MCP configs**. NDJSON, zero deps, baseline/project/deep profiles. Directly addresses MCP install trust gap. Pair with write-guard-mcp."
+    },
+    {
+      "name": "Hyperframes",
+      "primary_category": "Agent Frameworks & Orchestration",
+      "github": "https://github.com/heygen-com/hyperframes",
+      "scores": {
+        "s1": 90,
+        "s2": 85,
+        "s3": 92,
+        "s4": 95,
+        "overall": 90
+      },
+      "tier": "S",
+      "tags": [
+        "skills",
+        "multimodal",
+        "video",
+        "agent-native",
+        "html"
+      ],
+      "notes": "**X Entry 070.** HeyGen open-source: agents write plain HTML \u2192 deterministic MP4. Ships skills (`npx skills add heygen-com/hyperframes`), CLI, catalog. Production use at HeyGen. Canonical agent-native video surface."
+    },
+    {
+      "name": "Camofox Browser",
+      "primary_category": "Tool Calling & Function Infrastructure",
+      "github": "https://github.com/jo-inc/camofox-browser",
+      "scores": {
+        "s1": 88,
+        "s2": 82,
+        "s3": 90,
+        "s4": 88,
+        "overall": 87
+      },
+      "tier": "A",
+      "tags": [
+        "browser",
+        "anti-detection",
+        "mcp-compatible",
+        "agent-tool",
+        "local-first"
+      ],
+      "notes": "**X Entry 071.** Camoufox (C++ fingerprint spoofing) wrapped as REST API for agents. Production engine behind jo/askjo.ai. MCP variants exist. Default candidate for stealth web tools in agent-cage."
+    },
+    {
+      "name": "asm (agent-skill-manager)",
+      "primary_category": "Agent Frameworks & Orchestration",
+      "github": "https://github.com/luongnv89/asm",
+      "scores": {
+        "s1": 90,
+        "s2": 88,
+        "s3": 95,
+        "s4": 90,
+        "overall": 91
+      },
+      "tier": "A",
+      "tags": [
+        "skills",
+        "cli",
+        "cross-agent",
+        "security-audit",
+        "local-first",
+        "npm"
+      ],
+      "notes": "**X Entry 075.** Universal skill manager across 19 agents (Claude Code, Codex, Cursor, Cline, Continue, Aider, Hermes, \u2026). Install/search/audit/organize; `--json` for agents; security scan; 4.3k+ skill catalog. MIT. \u201cnpm for AI agent skills.\u201d High priority for Grok CLI skill distribution."
+    },
+    {
+      "name": "claude-codex-settings",
+      "primary_category": "Coding & Dev Agents",
+      "github": "https://github.com/fcakyon/claude-codex-settings",
+      "scores": {
+        "s1": 88,
+        "s2": 85,
+        "s3": 90,
+        "s4": 88,
+        "overall": 88
+      },
+      "tier": "A",
+      "tags": [
+        "configs",
+        "hooks",
+        "plugins",
+        "claude-code",
+        "codex",
+        "cursor",
+        "quality"
+      ],
+      "notes": "**X Entry 076.** Battle-tested plugins, hooks, agents & shared guidance for Claude Code, Codex, Cursor, Gemini CLI. Targets Karpathy-style pitfalls (overcomplication, no clarification). Complements asm. Extract hooks for Grok policy packs."
     }
   ],
   "aggregates": [],
@@ -296,7 +1075,9 @@
       "author": "@heyrimsha",
       "date": "2026-07-20",
       "status": "processed",
-      "tools_extracted": ["Auto-Company"],
+      "tools_extracted": [
+        "Auto-Company"
+      ],
       "summary": "Auto-Company: 14 persona agents, consensus.md, cycle-based autonomous AI company by MaxMiksa (CMU)."
     },
     {
@@ -305,7 +1086,9 @@
       "author": "@tom_doerr",
       "date": "2026-07-20",
       "status": "processed",
-      "tools_extracted": ["MUE-X"],
+      "tools_extracted": [
+        "MUE-X"
+      ],
       "summary": "MUE-X: self-evolving agent that rewrites own Python source via 6 AST mutation strategies; continuous loop, memory, GitHub absorption."
     },
     {
@@ -314,7 +1097,9 @@
       "author": "@hanakoxbt",
       "date": "2026-07-20",
       "status": "processed",
-      "tools_extracted": ["Finn Loop / eval-loop / 8-exits patterns"],
+      "tools_extracted": [
+        "Finn Loop / eval-loop / 8-exits patterns"
+      ],
       "summary": "8 mandatory exits for agent loops (goal met, turn/budget/wallclock caps, no-progress, human interrupt, error threshold, external event). Canonical stop-condition taxonomy."
     }
   ]
