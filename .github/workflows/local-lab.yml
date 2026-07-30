@@ -16,15 +16,8 @@ on:
           - inventory
           - product
           - integration
-  push:
-    branches: [main]
-    paths:
-      - "examples/eval-harness/**"
-      - "scripts/**"
-      - "data/**"
-      - "bootstrap/**"
-      - "Makefile"
-      - ".github/workflows/local-lab.yml"
+  # Push no longer auto-starts full lab (avoids serializing behind long eval-auto).
+  # Use schedule + workflow_dispatch; dual G0 still runs on every push via eval-structural.
   schedule:
     - cron: "15 6 * * *"
 
