@@ -27,7 +27,7 @@ jobs:
           else
             echo "up=false" >> "$GITHUB_OUTPUT"
             mkdir -p pipelines/eval
-            echo "# nightly-models SKIP — Ollama down $(date -u +%Y-%m-%dT%H:%MZ)" > pipelines/eval/nightly-models.latest.md
+            echo "# nightly-models SKIP — Ollama down" > pipelines/eval/nightly-models.latest.md
           fi
 
       - name: Select models + run suite
@@ -37,21 +37,10 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p pipelines/eval
-          if [[ -n "${EVAL_MODELS:-}" ]]; then
-            MODELS="$EVAL_MODELS"
-          else
-            MODELS=$(curl -sf http://127.0.0.1:11434/api/tags | python3 -c '
-import json,sys
-d=json.load(sys.stdin)
-names=[m.get("name","") for m in d.get("models") or []]
-prefer=["deepseek-coder:6.7b-instruct","deepseek-coder:6.7b","qwen2.5-coder:7b-instruct","qwen2.5:7b-instruct"]
-pick=[p for p in prefer if p in names]
-if not pick:
-    pick=[n for n in names if "coder" in n or "instruct" in n][:3]
-if not pick:
-    pick=names[:2]
-print(",".join(pick[:4]))
-')
+          MODELS=$(python3 scripts/nightly_pick_models.py)
+          if [[ -z "$MODELS" ]]; then
+            echo "no models picked" > pipelines/eval/nightly-models.latest.md
+            exit 0
           fi
           GATE="${MODELS%%,*}"
           echo "MODELS=$MODELS GATE=$GATE"
@@ -67,15 +56,6 @@ print(",".join(pick[:4]))
           set -e
           echo "" >> pipelines/eval/nightly-models.latest.md
           echo "suite_exit=$rc event=${GITHUB_EVENT_NAME} models=$MODELS" >> pipelines/eval/nightly-models.latest.md
-          # schedule always green (observational)
-          if [[ "${GITHUB_EVENT_NAME}" == "schedule" ]]; then
-            exit 0
-          fi
-          # dispatch: soft if skip
-          if [[ $rc -eq 2 ]]; then
-            exit 0
-          fi
-          # manual: still soft-ok (creative ranking, not merge gate)
           exit 0
 
       - name: Upload matrix
