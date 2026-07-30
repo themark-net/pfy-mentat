@@ -7,6 +7,8 @@
 |-------------|---------|---------|
 | **Structural** | Design/coding gates, **no LLM** | `make eval-structural` |
 | **Golden** | Golden-task card validate, **no LLM** | `make eval-golden` |
+| **Deploy-ready (G1)** | Structural + golden + soft smokes | `make eval-deploy-ready` |
+| **UX UAT (G2)** | Human acceptance after simple deploy | human — `pipelines/uat/` |
 | **0** | Connectivity smoke | `make eval-tier0` → `smoke-litellm-ollama` |
 | **1** | One scored coding task | `make eval-tier1` (`EVAL_TASK`) |
 | **MVP** | tier0 + tier1 | `make eval-mvp` |
@@ -15,7 +17,7 @@
 | **v0.2 ladder** | tier0 + suite | `make eval-v02` |
 | **Later** | DSPy + MCP; LLM golden replay | Deferred |
 
-Lanes schema: [`data/eval-lanes.json`](../../data/eval-lanes.json) · [design-coding-assist-rubric.md](../../docs/evaluation/design-coding-assist-rubric.md) · [local-model-storage-and-eval.md](../../docs/ops/local-model-storage-and-eval.md)
+Gates: [eval-gates-and-ux-uat.md](../../docs/ops/eval-gates-and-ux-uat.md) (HD #33). Lanes schema: [`data/eval-lanes.json`](../../data/eval-lanes.json) · [design-coding-assist-rubric.md](../../docs/evaluation/design-coding-assist-rubric.md) · [local-model-storage-and-eval.md](../../docs/ops/local-model-storage-and-eval.md)
 
 ## Tasks
 

@@ -72,3 +72,10 @@ Host-only `selftest` is tier 0; integration DoD still needs the cage Make target
 
 - Spec-before-code: paths pack **to-spec** (`skills-external/mattpocock/to-spec`) — see [docs/ops/mattpocock-checklist-wiring.md](../../../../docs/ops/mattpocock-checklist-wiring.md)
 - TDD: **tdd** skill in same pack
+
+## DoD vs human UAT (HD #33)
+
+- **Implement DoD** must be achievable with **G0 + G1** (`eval-structural`, smokes, `eval-deploy-ready`).
+- Do **not** schedule human testing until deploy is **simple on client and lab** and UAT steps are observable.
+- **G2 UX UAT** is separate: refine DoD until humans pass; UX fails are design input, not smoke failures.
+- Policy: `docs/ops/eval-gates-and-ux-uat.md`

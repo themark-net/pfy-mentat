@@ -77,3 +77,13 @@ Audit checkpoint: count public Make targets aimed at product users; goal **≤ 5
 ## Implemented targets (2026-07-30)
 
 Public product Make targets: **project-onboard**, **env-stage**, **product-ship** (3 ≤ 5). Platform remains on `make help`.
+
+## Eval gates (product relevance)
+
+| Lever | Typical gate |
+|-------|----------------|
+| onboard / stage | G1 when changing deploy spine |
+| ship (verify) | G0+G1 before claiming ready |
+| User “it feels right” | **G2 UAT** — human, after simple deploy |
+
+See [eval-gates-and-ux-uat.md](eval-gates-and-ux-uat.md).

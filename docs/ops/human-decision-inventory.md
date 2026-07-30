@@ -28,7 +28,7 @@ Related: [integration-stages.md](integration-stages.md) · [evaluation-framework
 
 | Bucket | Count | Automation loop (instead of N chats) |
 |--------|------:|--------------------------------------|
-| **Blocked OQs (P2)** | **1** remaining in batch | OQ-0008 colibri weights only (0003/0004/0007 answered 2026-07-30) |
+| **Blocked OQs (P2)** | **0** | Batch done 2026-07-30 |
 | **Optional tool adopt** | defaults below | **I1 + skip install**; lower priority in eval pipeline — **not** OQ |
 | **Cage/env polish** | **0 for this track** | Parked |
 | **Product forks needing ADR** | **0 open P1** | None until architecture pivot |
@@ -118,3 +118,13 @@ OQ-BATCH: 0003=wait 0004=submodule-later 0007=skip 0008=?
 4. **Night-shift TODO** — only pick rows with Open questions = `—`.  
 5. **`make cage-code-sync PUSH=1`** on host after any cage agent session (import commits + rsync).  
 6. **OQ gate check** — before creating OQ, confirm no safe default and blast radius real (see table above).
+
+## HD #33 — Host-lab / close policy (answered 2026-07-30)
+
+**Not** docs-vs-host binary. Use **G0 structural · G1 deploy-ready (build+smoke) · G2 UX UAT (human)**.
+
+- Agent closes runtime on **G1**.
+- Human UAT only after **simple dual-sided deploy** meets UX standards.
+- Tests/frameworks must themselves be deployable to publishing standards.
+
+Canonical: [eval-gates-and-ux-uat.md](eval-gates-and-ux-uat.md) · `make eval-deploy-ready`

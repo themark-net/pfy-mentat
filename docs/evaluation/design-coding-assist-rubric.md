@@ -62,3 +62,13 @@ Optional per-task field under `examples/eval-harness/tasks/<id>/meta.json`:
 ## Human decisions
 
 See [human-decision-inventory.md](../ops/human-decision-inventory.md) — branch maps + pending count for automation loops.
+
+## Gates G0–G2 (HD #33)
+
+| Gate | Lane | Agent close? |
+|------|------|--------------|
+| G0 | structural, golden | yes (docs/schema) |
+| G1 | deploy_ready (+ connectivity/implement when relevant) | yes (implement-done) |
+| G2 | ux_uat | **human only** |
+
+Full policy: [ops/eval-gates-and-ux-uat.md](../ops/eval-gates-and-ux-uat.md).

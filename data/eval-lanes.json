@@ -1,21 +1,25 @@
 {
-  "version": "1.2",
+  "version": "1.3",
   "last_updated": "2026-07-30",
-  "description": "Automated evaluation lanes for design/coding assist. Structural never requires LLM. Golden validate is deterministic; LLM replay still optional later.",
+  "description": "Lanes G0 structural/golden, G1 deploy_ready (build+smoke), G2 ux_uat human-only. See docs/ops/eval-gates-and-ux-uat.md (HD #33).",
   "lanes": [
     {
       "id": "structural",
       "requires_llm": false,
       "command": "make eval-structural",
-      "artifacts": ["pipelines/eval/structural.latest.md"],
-      "purpose": "Skills, tools.json schema, text-scorer fixtures, design/coding SKILL.md presence, golden-task cards"
+      "artifacts": [
+        "pipelines/eval/structural.latest.md"
+      ],
+      "purpose": "Skills, tools.json schema, text-scorer fixtures, design/coding SKILL.md presence, golden-task cards",
+      "gate": "G0"
     },
     {
       "id": "connectivity",
       "requires_llm": false,
       "requires_backend": "ollama+litellm_gateway",
       "command": "make eval-tier0",
-      "purpose": "LiteLLM → Ollama path alive"
+      "purpose": "LiteLLM \u2192 Ollama path alive",
+      "gate": "G1"
     },
     {
       "id": "implement",
@@ -24,42 +28,91 @@
       "command": "make eval-suite",
       "gate_model_env": "EVAL_MODEL",
       "default_gate_model": "qwen2.5:14b",
-      "purpose": "Model coding tasks with hidden tests (001, 002)"
+      "purpose": "Model coding tasks with hidden tests (001, 002)",
+      "gate": "G1"
     },
     {
       "id": "matrix",
       "requires_llm": true,
       "requires_backend": "ollama",
       "command": "make eval-matrix",
-      "purpose": "Multi-model observational table; missing models SKIP"
+      "purpose": "Multi-model observational table; missing models SKIP",
+      "gate": "G1"
     },
     {
       "id": "golden_replay",
       "requires_llm": false,
       "status": "active_deterministic",
       "command": "make eval-golden",
-      "artifacts": ["data/golden-tasks/", "pipelines/eval/golden.latest.md"],
+      "artifacts": [
+        "data/golden-tasks/",
+        "pipelines/eval/golden.latest.md"
+      ],
       "purpose": "Validate golden-task cards (schema + acceptance_checks). LLM agent replay deferred.",
-      "notes": "Also invoked from eval-structural golden_tasks check"
+      "notes": "Also invoked from eval-structural golden_tasks check",
+      "gate": "G0"
+    },
+    {
+      "id": "deploy_ready",
+      "gate": "G1",
+      "requires_llm": false,
+      "command": "make eval-deploy-ready",
+      "artifacts": [
+        "pipelines/eval/deploy-ready.latest.md"
+      ],
+      "purpose": "Build green + smoke on publishable deploy path; agent implement-done bar",
+      "closes_agent_work": true,
+      "not": "human UAT"
+    },
+    {
+      "id": "ux_uat",
+      "gate": "G2",
+      "requires_llm": false,
+      "requires_human": true,
+      "command": null,
+      "status": "human_only",
+      "purpose": "User acceptance tests after simple dual-sided deploy; refine DoD until pass",
+      "closes_agent_work": false,
+      "policy_doc": "docs/ops/eval-gates-and-ux-uat.md"
     }
   ],
   "task_kinds": [
     {
       "kind": "implement",
-      "required_files": ["prompt.txt", "test_task.py"],
+      "required_files": [
+        "prompt.txt",
+        "test_task.py"
+      ],
       "in_default_suite": true
     },
     {
       "kind": "text_scorer",
-      "required_files": ["score.py", "fixtures/pass*", "fixtures/fail*"],
+      "required_files": [
+        "score.py",
+        "fixtures/pass*",
+        "fixtures/fail*"
+      ],
       "in_default_suite": false,
       "in_structural": true
     },
     {
       "kind": "golden_card",
-      "required_files": ["data/golden-tasks/GT-*.json"],
+      "required_files": [
+        "data/golden-tasks/GT-*.json"
+      ],
       "in_default_suite": false,
       "in_golden_replay": true
+    },
+    {
+      "kind": "uat_checklist",
+      "required_fields": [
+        "environment",
+        "steps",
+        "observable_expects"
+      ],
+      "in_default_suite": false,
+      "in_ux_uat": true,
+      "human_only": true
     }
   ],
   "model_pool": {
@@ -67,5 +120,11 @@
     "policy_doc": "docs/ops/local-model-storage-and-eval.md",
     "never_commit_weights": true,
     "prefer_concurrent_minis": true
+  },
+  "agent_close_policy": {
+    "docs_patterns": "G0",
+    "runtime_features": "G0+G1",
+    "user_accepted": "G2 human only",
+    "doc": "docs/ops/eval-gates-and-ux-uat.md"
   }
 }
