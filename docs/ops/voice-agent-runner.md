@@ -124,4 +124,23 @@ make smoke-voice-agent
 ## Related
 
 - [voice-agent-channel.md](voice-agent-channel.md)  
-- [voice-remote-android.md](voice-remote-android.md)  
+- [voice-remote-android.md](voice-remote-android.md)
+
+## Session sticky (T-0091)
+
+- File: `examples/voice-stt-edge/.generated/session.id`
+- Env: `VOICE_SESSION_ID=…` pin; `VOICE_SESSION_RESET=1` new session
+- Every `last-run.json` includes `session_id` for phone `/api/last-run` continuity
+- Grok multi-turn: same session id across `voice-agent-run` / orchestrator turns (operator may still use `grok -c` for CLI chat history)
+
+## MCP deep path (monitor)
+
+High tier (Grok) is the **tool-capable** path: filesystem MCP, write-guard, GitHub when configured on host/cage.
+
+| Surface | MCP depth |
+|---------|-----------|
+| Grok monitor | Full host/cage MCP stack (primary) |
+| OpenCode worker | Local tools/config only — not full GitHub MCP by default |
+| Orchestrator high-first | Coordinator may use MCP; delegates bulk to local |
+
+Smoke: `make smoke-voice-agent` (mock) + G1 soft voice-stt. Human UAT (G2) for real mic/MCP feel.

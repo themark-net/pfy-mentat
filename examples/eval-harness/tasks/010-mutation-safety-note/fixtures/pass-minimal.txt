@@ -1,0 +1,8 @@
+# Mutation plan (bounded)
+
+Self-mod of product code only via PR. Agent harness rewrite is forbidden without ADR.
+
+- Immune layer: write-guard + cage policy (sealed kernel idea)
+- Blast radius: single package
+- Pin external deps; never unattended evolve
+- Must not rewrite process docs without human

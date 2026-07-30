@@ -1,0 +1,12 @@
+# Example skill
+
+## When to use
+Use when the operator needs a short checklist.
+
+## Steps
+1. Restate DoD
+2. Execute
+3. Verify
+
+## Do not
+Do not invent architecture without an ADR.

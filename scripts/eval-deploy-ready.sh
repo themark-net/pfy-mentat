@@ -34,6 +34,9 @@ fi
 if [[ -x examples/eval-harness/smoke_tools_model.sh ]]; then
   soft tools-model ./examples/eval-harness/smoke_tools_model.sh
 fi
+if [[ -x examples/opencode-cage/smoke.sh ]]; then soft opencode-cage ./examples/opencode-cage/smoke.sh; fi
+if [[ -x examples/voice-tts-status/smoke.sh ]]; then soft voice-tts ./examples/voice-tts-status/smoke.sh; fi
+if [[ -x examples/asm-smoke/smoke.sh ]]; then soft asm ./examples/asm-smoke/smoke.sh; fi
 
 # Write receipt
 cat > pipelines/eval/deploy-ready.latest.md <<MD

@@ -398,29 +398,11 @@ eval-select-models:
 
 # Select fit models (pull gate if needed) then full v0.2 ladder.
 # Tries EVAL_GATE_CANDIDATES in order until suite passes (chat/instruct before base FIM).
-eval-auto: eval-structural
-	@$(LITELLM_EXAMPLE)/host-ollama-gateway.sh start 2>/dev/null \
-	  || ./examples/litellm-ollama/host-ollama-gateway.sh start
-	@python3 examples/eval-harness/select_ollama_models.py --pull-gate
-	@python3 examples/eval-harness/select_ollama_models.py --exports 2>/dev/null \
-	  | grep -E '^(EVAL_|LITELLM_)' > /tmp/pfy-eval-model-exports.sh
-	@echo "==> using selected models:"; cat /tmp/pfy-eval-model-exports.sh
-	@set -a; . /tmp/pfy-eval-model-exports.sh; set +a; \
-	  cands="$${EVAL_GATE_CANDIDATES:-$$EVAL_GATE_MODEL}"; \
-	  ok=0; \
-	  IFS=','; for g in $$cands; do \
-	    g=$$(echo "$$g" | tr -d ' '); \
-	    [[ -z "$$g" ]] && continue; \
-	    echo "==> eval-v02 gate candidate: $$g"; \
-	    if $(MAKE) eval-v02 \
-	      EVAL_MODEL="$$g" EVAL_GATE_MODEL="$$g" \
-	      EVAL_MODELS="$${EVAL_MODELS}" \
-	      LITELLM_SMOKE_MODEL="$${LITELLM_SMOKE_MODEL:-deepseek-coder:latest}"; then \
-	      ok=1; echo "eval-auto: PASS with gate $$g"; break; \
-	    fi; \
-	    echo "eval-auto: gate $$g failed — try next candidate"; \
-	  done; \
-	  [[ $$ok -eq 1 ]] || { echo "eval-auto: all gate candidates failed"; exit 1; }
+# Select fit models then full v0.2 ladder (T-0074). Soft-SKIP if Ollama down unless EVAL_AUTO_REQUIRE_OLLAMA=1.
+eval-auto:
+	@chmod +x scripts/eval-auto.sh
+	@./scripts/eval-auto.sh
+
 
 env-init:
 	@if [ -f .env ]; then \
@@ -448,3 +430,14 @@ product-ship:
 	@chmod +x scripts/product-ship.sh
 	@./scripts/product-ship.sh
 
+smoke-opencode-cage:
+	@chmod +x examples/opencode-cage/smoke.sh
+	@./examples/opencode-cage/smoke.sh
+
+smoke-voice-tts:
+	@chmod +x examples/voice-tts-status/smoke.sh
+	@./examples/voice-tts-status/smoke.sh
+
+smoke-asm:
+	@chmod +x examples/asm-smoke/smoke.sh
+	@./examples/asm-smoke/smoke.sh

@@ -1,4 +1,4 @@
-# Deploy-ready (G1) — 2026-07-30T05:57:15Z
+# Deploy-ready (G1) — 2026-07-30T06:01:05Z
 
 - structural: see structural.latest.md
 - golden: see golden.latest.md

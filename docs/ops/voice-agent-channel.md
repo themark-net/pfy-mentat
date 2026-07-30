@@ -65,7 +65,7 @@ make voice-agent-run   # MODE via VOICE_AUTO_AGENT / VOICE_AGENT_MODE
 make smoke-voice-agent
 ```
 
-**Not yet:** TTS reply audio, multi-turn session resume by default, true VoIP.
+**Not yet:** TTS reply audio (T-0094), true VoIP. **Session sticky:** default via `session.id` / last-run (T-0091).
 
 ## Problem (operator experience)
 

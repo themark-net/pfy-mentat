@@ -21,7 +21,7 @@
 
 ## Structural hook
 
-Future: text scorer “mutation safety note” requiring immune/exit language before any self-mod plan. Not required for `eval-structural` today.
+Structural: `examples/eval-harness/tasks/010-mutation-safety-note/` (in `eval-structural`). Deeper local-backend evolve lab still deferred.
 
 ## Deeper lab deferred (issue #28)
 

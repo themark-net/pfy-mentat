@@ -32,6 +32,33 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
+import uuid
+
+def _gen_dir() -> Path:
+    return Path(__file__).resolve().parent / ".generated"
+
+def resolve_session_id() -> str:
+    """Sticky multi-turn session id (T-0091)."""
+    gen = _gen_dir()
+    gen.mkdir(parents=True, exist_ok=True)
+    sid_path = gen / "session.id"
+    if os.environ.get("VOICE_SESSION_RESET", "").strip().lower() in ("1", "true", "yes"):
+        sid = str(uuid.uuid4())
+        sid_path.write_text(sid + "\n", encoding="utf-8")
+        return sid
+    env = (os.environ.get("VOICE_SESSION_ID") or "").strip()
+    if env:
+        sid_path.write_text(env + "\n", encoding="utf-8")
+        return env
+    if sid_path.is_file():
+        existing = sid_path.read_text(encoding="utf-8").strip()
+        if existing:
+            return existing
+    sid = str(uuid.uuid4())
+    sid_path.write_text(sid + "\n", encoding="utf-8")
+    return sid
+
+
 EDGE = Path(__file__).resolve().parent
 ROOT = EDGE.parents[1]
 DEFAULT_OUT = EDGE / ".generated"
@@ -49,6 +76,9 @@ def ensure_out(out: Path) -> Path:
 
 
 def write_run(out: Path, payload: dict) -> Path:
+    # Sticky multi-turn session (T-0091)
+    payload = dict(payload)
+    payload.setdefault("session_id", resolve_session_id())
     path = out / "last-run.json"
     payload = {**payload, "updated": utc_now()}
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
