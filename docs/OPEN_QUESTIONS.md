@@ -3,6 +3,16 @@
 **Purpose:** Central index of open questions, TBDs, and parked decisions for multithreaded work.  
 Agents: scan this file at the start of multi-step work. Promote architectural answers via `/adr`.
 
+## GitHub issues (synced 2026-07-30)
+
+| OQ | Issue | Status |
+|----|-------|--------|
+| OQ-0003 | [#17](https://github.com/themark-net/pfy-mentat/issues/17) | tbd |
+| OQ-0004 | [#18](https://github.com/themark-net/pfy-mentat/issues/18) | open |
+| OQ-0007 | [#19](https://github.com/themark-net/pfy-mentat/issues/19) | tbd |
+| OQ-0008 | [#20](https://github.com/themark-net/pfy-mentat/issues/20) | tbd |
+| **OQ-BATCH** | [#29](https://github.com/themark-net/pfy-mentat/issues/29) | answer all 4 in one pass |
+
 ## Qualification model
 
 | Field | Values | Meaning |
@@ -25,10 +35,10 @@ Related work queue: [TODO.md](TODO.md)
 | [OQ-0002](open-questions/OQ-0002-eval-harness-shape.md) | **P1** | answered | Eval harness = tier0 smokes + tier1 scored task (opt 5); DSPy later | — | ADR-0002; T-0003 |
 | [OQ-0005](open-questions/OQ-0005-grok-in-cage-strategy.md) | **P1** | answered | Dual path: host-Grok default + optional grok-in-image (T-0022) | — | ADR-0002; overlays/grok |
 | [OQ-0006](open-questions/OQ-0006-skill-port-strategy.md) | **P1** | promoted-to-adr | Skill port strategy: hybrid first-party + paths snapshots | — | [ADR-0009](adr/0009-skill-port-hybrid-strategy.md) |
-| [OQ-0003](open-questions/OQ-0003-first-subtree-candidate.md) | P2 | tbd | First subtree/submodule candidate (if any) | T-0005 | SUBTREES.md, ADR-0003 |
-| [OQ-0004](open-questions/OQ-0004-atg-prototype-relationship.md) | P2 | open | How ATG prototype relates to this catalog | T-0004 | atg-framework, TOOLS.md |
-| [OQ-0007](open-questions/OQ-0007-antigravity-need.md) | P2 | tbd | Do we need Antigravity-Manager multi-account relay? | T-0015 | LiteLLM, hybrid accounts |
-| [OQ-0008](open-questions/OQ-0008-colibri-weights-ok.md) | P2 | tbd | OK to download colibri model weights on this machine? | T-0016 | disk/RAM, colibri pin |
+| [OQ-0003](open-questions/OQ-0003-first-subtree-candidate.md) | P2 | tbd | First subtree/submodule candidate (if any) | T-0005 | [#17](https://github.com/themark-net/pfy-mentat/issues/17) · SUBTREES.md, ADR-0003 |
+| [OQ-0004](open-questions/OQ-0004-atg-prototype-relationship.md) | P2 | open | How ATG prototype relates to this catalog | T-0004 | [#18](https://github.com/themark-net/pfy-mentat/issues/18) · atg-framework, TOOLS.md |
+| [OQ-0007](open-questions/OQ-0007-antigravity-need.md) | P2 | tbd | Do we need Antigravity-Manager multi-account relay? | T-0015 | [#19](https://github.com/themark-net/pfy-mentat/issues/19) · LiteLLM |
+| [OQ-0008](open-questions/OQ-0008-colibri-weights-ok.md) | P2 | tbd | OK to download colibri model weights on this machine? | T-0016 | [#20](https://github.com/themark-net/pfy-mentat/issues/20) · disk/RAM |
 | [OQ-0009](open-questions/OQ-0009-write-guard-default-mode.md) | P1 | answered | Default WRITE_GUARD_MODE for new envs (audit vs enforce) | T-0031 | ADR-0007; default **audit** |
 | [OQ-0001](open-questions/OQ-0001-seed-x-post-content.md) | P3 | answered | Seed X post content extraction | — | Superseded by Entries 001–010 processed |
 | [OQ-0010](open-questions/OQ-0010-voice-agent-channel.md) | P2 | **resolved** | Voice half-duplex local-first (not cloud duplex) | T-0091 | [ADR-0012](adr/0012-voice-half-duplex-local-first.md) |
@@ -38,6 +48,11 @@ Related work queue: [TODO.md](TODO.md)
 ## Needs operator input soon (P1)
 
 *No open P1 OQs.* Remaining active OQs are P2 (subtree, ATG, Antigravity, colibri). **OQ-0010 voice resolved** → ADR-0012.
+
+**Batch answer (one comment on [#29](https://github.com/themark-net/pfy-mentat/issues/29)):**
+```text
+OQ-BATCH: 0003=no 0004=catalog 0007=no 0008=no
+```
 
 Recently closed:
 
@@ -49,4 +64,4 @@ Recently closed:
 ## Hygiene
 
 - Re-scan this table when starting a milestone; close or re-prioritize stale P0/P1s.
-- When answering: append dated **Resolution notes** in the detail file; set Status; promote architecture to `/adr`.
+- When answering: append dated **Resolution notes** in the detail file; set Status; promote architecture to `/adr`; close linked GitHub issue.
