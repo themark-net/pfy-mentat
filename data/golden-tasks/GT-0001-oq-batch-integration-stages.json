@@ -1,0 +1,64 @@
+{
+  "id": "GT-0001",
+  "title": "Resolve OQ batch: integration stages, ATG, Antigravity, model eval policy",
+  "created": "2026-07-30",
+  "scale": "orchestration",
+  "human_request": "Continue repo work; file todos/OQs as GitHub issues. How many pending questions? Ask each OQ one at a time. Answers: (1) Wait on first subtree — define value/modularity thresholds and integration stages including staged eval and lightweight probe <50MB. (2) ATG submodule later, still in development; remind in a week. (3) Skip Antigravity for now, low priority eval; why was this an OQ not rubric? (4) Models interesting — pre-eval suitability, X-post models may eval directly, 250GB storage OK, concurrent minis, score models on proximity to tasks already done building this repo; document sample human+agent work; queue capture tooling.",
+  "agent_tasks": [
+    "Create GitHub issues for all active TODOs and open OQs",
+    "Walk OQ-0003..0008 with operator one at a time",
+    "Write docs/ops/integration-stages.md (I0–I4); update SUBTREES.md; resolve OQ-0003",
+    "Resolve OQ-0004 submodule later; schedule 2026-08-06 ATG review",
+    "Resolve OQ-0007 skip; document OQ promotion criteria (process fix)",
+    "Resolve OQ-0008 via model storage + golden-task policy; seed GT-0001"
+  ],
+  "artifacts": [
+    {
+      "kind": "doc",
+      "ref": "docs/ops/integration-stages.md",
+      "note": "I0–I4 lifecycle"
+    },
+    {
+      "kind": "doc",
+      "ref": "docs/ops/local-model-storage-and-eval.md",
+      "note": "250GB pool + golden eval"
+    },
+    {
+      "kind": "doc",
+      "ref": "docs/ops/human-decision-inventory.md",
+      "note": "When to open an OQ"
+    },
+    {
+      "kind": "issue",
+      "ref": "https://github.com/themark-net/pfy-mentat/issues/17",
+      "note": "OQ-0003 closed answered"
+    },
+    {
+      "kind": "issue",
+      "ref": "https://github.com/themark-net/pfy-mentat/issues/18",
+      "note": "OQ-0004 closed answered"
+    },
+    {
+      "kind": "issue",
+      "ref": "https://github.com/themark-net/pfy-mentat/issues/19",
+      "note": "OQ-0007 closed answered"
+    },
+    {
+      "kind": "issue",
+      "ref": "https://github.com/themark-net/pfy-mentat/issues/30",
+      "note": "ATG one-week reminder"
+    }
+  ],
+  "acceptance_checks": [
+    "File docs/ops/integration-stages.md exists and mentions I1 staged evaluation and I2 <50 MB",
+    "File docs/ops/local-model-storage-and-eval.md exists and mentions 250 GB",
+    "docs/open-questions/OQ-0003-first-subtree-candidate.md Status answered",
+    "docs/open-questions/OQ-0004-atg-prototype-relationship.md Status answered",
+    "docs/open-questions/OQ-0007-antigravity-need.md Status answered",
+    "docs/open-questions/OQ-0008-colibri-weights-ok.md Status answered",
+    "data/golden-tasks/GT-0001-oq-batch-integration-stages.json exists"
+  ],
+  "source_session": "2026-07-30 Grok OQ batch walkthrough",
+  "replay_prompt": "You maintain themark-net/pfy-mentat. Operator wants pending open questions resolved interactively, then: wait on first subtree with an integration-stage rubric (staged eval + optional lightweight probe); ATG as submodule later with a one-week reminder; skip Antigravity and fix process so optional tools are not blocking OQs; allow model downloads within 250GB with golden-task eval from repo history. Produce the same class of docs and issue updates without inventing architecture outside ADRs.",
+  "notes": "High-signal orchestration sample: multi-OQ resolution + process docs. Use for golden_replay lane when implemented."
+}
