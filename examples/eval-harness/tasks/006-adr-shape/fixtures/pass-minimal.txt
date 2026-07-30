@@ -1,0 +1,26 @@
+# ADR-0099: Example decision
+
+- **Date:** 2026-07-30
+- **Status:** Accepted
+
+## Context
+
+We need a durable choice for the lab.
+
+## Decision
+
+Use pins + shallow clone by default.
+
+## Rationale
+
+Keeps the catalog lean.
+
+Rejected alternatives:
+
+1. **Subtree everything** — unbounded growth.
+2. **Floating main only** — non-reproducible.
+
+## Consequences
+
+- Pipelines clone at pin.
+- Embed remains rare.
