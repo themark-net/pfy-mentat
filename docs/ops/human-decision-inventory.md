@@ -3,19 +3,40 @@
 **Purpose:** Map branching decisions so agents **batch** operator input and build automation loops instead of asking one question at a time.  
 **Rule:** Prefer defaults + reversible experiments. Only escalate when blast radius is high or OQ is P0/P1.
 
+## When to open an OQ (vs catalog / TODO only)
+
+| Open an **OQ** (may block work) when… | Do **not** open an OQ when… |
+|--------------------------------------|-----------------------------|
+| No safe reversible default | Safe default exists (e.g. skip install, pin only, LiteLLM) |
+| Blast radius high (weights disk, primary runtime, security default) | Optional catalog tool / niche desktop app |
+| Architecture fork (ADR-class) | Priority/scheduling only (“do this later”) |
+| Operator must choose among mutually exclusive product paths | Evaluation pipeline can hold I1 notes forever |
+| P0/P1 critical path cannot proceed | P2/P3 “nice to eval someday” |
+
+**Antigravity lesson (OQ-0007, 2026-07-30):** “Do we need multi-account relay?” had a safe default (**no / LiteLLM**). It belonged in the **evaluation rubric + I1 catalog** (low priority), not a blocked OQ + blocked TODO. Process gap was **over-promotion of optional tool adopt to OQ**.
+
+**Fix agents must apply:**
+
+1. Optional tool → **I1 staged evaluation** (uses / features / potential / non-goals) + catalog tier.  
+2. Default = **no runtime install** unless smoke path is cheap and already green.  
+3. TODO may exist at **P3** (“eval if pain appears”); **do not** set Status=`blocked` on an OQ that is only preference.  
+4. OQ only if install/weights/embed would change disk, security, or primary stack — or operator explicitly escalates pain.
+
+Related: [integration-stages.md](integration-stages.md) · [evaluation-framework.md](../evaluation-framework.md) Phase 3.
+
 ## Pending decisions (estimate)
 
 | Bucket | Count | Automation loop (instead of N chats) |
 |--------|------:|--------------------------------------|
-| **Blocked OQs (P2)** | **4** | Single “OQ batch” form: subtree / ATG / Antigravity / colibri weights |
-| **Optional tool adopt** (MUE-X, LEANN, Memvid, Laguna weights, Bumblebee install) | **0 now** — defaults below | Default = **pattern/docs + structural eval only**; promote only if structural green + smoke exists |
-| **Cage/env polish** (auth dir mount, write-guard mcp-host) | **0 for this track** | Parked; not design/coding assist focus |
+| **Blocked OQs (P2)** | **1** remaining in batch | OQ-0008 colibri weights only (0003/0004/0007 answered 2026-07-30) |
+| **Optional tool adopt** | defaults below | **I1 + skip install**; lower priority in eval pipeline — **not** OQ |
+| **Cage/env polish** | **0 for this track** | Parked |
 | **Product forks needing ADR** | **0 open P1** | None until architecture pivot |
-| **Hybrid surfaces (ADR-0011)** | **0** | Defaults: Grok primary hard tasks; OpenCode+Ollama bulk; no Hermes runtime |
-| **Voice channel (OQ-0010)** | **0** | **Resolved** ADR-0012: half-duplex local-first; OpenCode default; no cloud duplex |
-| **Total decisions needed from you this week** | **0 required** | Optional OQ-BATCH (4) only |
+| **Hybrid surfaces (ADR-0011)** | **0** | Defaults set |
+| **Voice channel (OQ-0010)** | **0** | ADR-0012 |
+| **Total decisions needed from you** | **0–1** | Only colibri weights if you care |
 
-**Bottom line:** You can ignore human input for the design/coding assist track; agents should keep shipping skills, structural evals, and pattern docs. **4 deferred P2 OQs** remain when you want a single batch review.
+**Bottom line:** Design/coding track needs **no** human input. Optional tools stay in catalog eval at appropriate priority. Do not recreate Antigravity-style blocking OQs.
 
 ---
 
@@ -26,17 +47,19 @@
 ```text
 Phase0 gate: open-source + local + coding/design assist?
   NO → catalog C/awareness only; stop
-  YES → Structural lane green? (make eval-structural)
+  YES → Record I1 (uses, features, potential, non-goals)
+         Structural lane green? (make eval-structural)
           NO → fix structural; stop
           YES → Fits existing skill/smoke path?
                   YES → implement skill or smoke; no human
-                  NO → Default: docs/pattern extract + B-tier catalog
-                       Need runtime install/weights/subtree?
+                  NO → Default: docs/pattern extract + tier; priority by opportunity
+                       Need runtime install/weights/subtree with HIGH blast radius?
                          YES → add OQ row (batch later); do not ask ad hoc
-                         NO → done without human
+                         NO → P3 TODO or catalog note only; **no OQ**; no blocked TODO
 ```
 
-**Human decisions if runtime needed:** 1 (allow install/weights?) — add to OQ batch, not chat.
+**Human decisions if high-blast runtime needed:** 1 (allow install/weights?) — OQ batch, not chat.  
+**Not a human decision:** “should we maybe eval this later?” → lower priority in pipeline.
 
 ### B2 — New process skill (design/coding)
 
@@ -55,23 +78,18 @@ Ollama + gate model present?
   YES → make eval-suite; fail → model/prompt fix loop (agent); no human unless infra missing on purpose
 ```
 
-### B4 — Blocked OQ batch (4 items — single operator pass)
+### B4 — OQ batch (historical + remaining)
 
-| ID | Question | Default if unanswered | Reversible? |
-|----|----------|----------------------|-------------|
-| OQ-0003 | First subtree? | **No subtree** (ADR-0003 pins) | Yes |
-| OQ-0004 | ATG prototype relationship? | **Catalog link only** | Yes |
-| OQ-0007 | Antigravity multi-account? | **No** (single account / LiteLLM) | Yes |
-| OQ-0008 | Colibri weights download OK? | **No download** | Yes |
-
-**Automation loop:** Agent never asks these individually. When you want them answered, reply once:
+| ID | Question | Status 2026-07-30 | Default if unanswered |
+|----|----------|-------------------|----------------------|
+| OQ-0003 | First subtree? | **answered** wait + integration stages | No subtree |
+| OQ-0004 | ATG relationship? | **answered** submodule later | Catalog / I1 |
+| OQ-0007 | Antigravity? | **answered** skip; stay low-pri eval | No |
+| OQ-0008 | Colibri weights? | open | No download |
 
 ```text
-OQ-BATCH: 0003=no 0004=catalog 0007=no 0008=no
-# Voice resolved 2026-07-26 → ADR-0012 (no VOICE-BATCH required)
-# half-duplex + local OpenCode default; Grok escalate only; duplex deferred
+OQ-BATCH: 0003=wait 0004=submodule-later 0007=skip 0008=?
 ```
-
 
 ---
 
@@ -84,9 +102,11 @@ OQ-BATCH: 0003=no 0004=catalog 0007=no 0008=no
 | MUE-X | pattern extract only; no evolve in lab without pin+safety note |
 | Laguna | catalog + DoD only; no weights in-repo |
 | Bumblebee | design note; optional smoke when Go binary easy |
+| **Antigravity-Manager** | **skip install**; catalog I1 low priority; LiteLLM + keys |
 | AgenC | stay demoted (ADR-0010) |
 | Write-guard mode | audit (OQ-0009 answered) |
 | Eval without Ollama | structural PASS required; implement SKIP |
+| Optional tool with safe default | **no OQ**; I1 + P3 TODO max |
 
 ---
 
@@ -96,4 +116,5 @@ OQ-BATCH: 0003=no 0004=catalog 0007=no 0008=no
 2. **OQ-BATCH parser** — one message closes N OQs.  
 3. **Eval SKIP vs FAIL policy** — missing model = 2, not 1 (already for matrix cells).  
 4. **Night-shift TODO** — only pick rows with Open questions = `—`.  
-5. **`make cage-code-sync PUSH=1`** on host after any cage agent session (import commits + rsync).
+5. **`make cage-code-sync PUSH=1`** on host after any cage agent session (import commits + rsync).  
+6. **OQ gate check** — before creating OQ, confirm no safe default and blast radius real (see table above).
