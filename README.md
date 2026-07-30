@@ -209,26 +209,26 @@ pfy-mentat/
 │   └── one-shot/              # Guardrailed unattended-until-green mode
 ├── docs/
 │   ├── DESIGN.md              # Master design (goals + shape)
-│   ├── ARCHITECTURE.md        # Structural snapshot
-│   ├── TODO.md                # Central next steps → OQ links
-│   ├── OPEN_QUESTIONS.md      # Central TBD index
-│   ├── adr/                   # ADRs (decisions + rejected paths)
-│   ├── open-questions/        # OQ detail files
-│   ├── ops/                   # DEPLOY, plans, harness framework, one-shot DoDs
-│   ├── modules/               # First-party package maps (bootstrap, cage, smokes)
-│   └── automation/            # Standing monitors (e.g. tom-doer)
+│   ├── ARCHITECTURE.md              # Structural snapshot
+│   ├── TODO.md                    # Central next steps → OQ links
+│   ├── OPEN_QUESTIONS.md          # Central TBD index
+│   ├── adr/                       # ADRs (decisions + rejected paths)
+│   ├── open-questions/            # OQ detail files
+│   ├── ops/                       # DEPLOY, plans, harness framework, one-shot-workflow
+│   ├── modules/                   # First-party package maps (bootstrap, cage, smokes)
+│   └── automation/                # Standing monitors (e.g. tom-doer)
 ├── sources/
-│   ├── x-posts.md             # X/social seed log + receipts (Entries 001+)
+│   ├── x-posts.md                 # X/social seed log + receipts (Entries 001+)
 │   └── aggregates.md
 ├── data/
-│   └── tools.json             # Structured catalog (must stay valid JSON)
+│   └── tools.json                 # Structured catalog (must stay valid JSON)
 ├── bootstrap/
-│   ├── grok-cli/              # Operator env: skills + MCP + config
-│   └── project-process/       # Scaffold process into any repo
+│   ├── grok-cli/                  # Operator env: skills + MCP + config
+│   └── project-process/           # Scaffold process into any repo
 ├── harness/
-│   └── agent-cage/            # Container sandbox (PNNL) + Makefile lab
-├── examples/                  # Future integration patterns / smokes
-└── pipelines/                 # Future continuous eval & deploy
+│   └── agent-cage/                # Container sandbox (PNNL) + Makefile lab
+├── examples/                      # Future integration patterns / smokes
+└── pipelines/                     # Future continuous eval & deploy
 ```
 
 ## Catalog & scoring (summary)
@@ -266,3 +266,5 @@ MIT for the catalog and documentation in this repository. Individual tools carry
 ---
 
 *v0.4 — Phase 0 catalog sync, agent-cage harness, `/catalog-docs` skill, deploy runbook. Process backbone from v0.3 (DESIGN/ADR/TODO/OQ). Vision: receipts over vibes; beyond “it builds.”*
+
+test edit from Grok Voice
