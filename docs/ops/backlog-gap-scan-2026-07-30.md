@@ -160,5 +160,5 @@ Held per operator: #34 PRODUCT_REMOTE · #35 inventory priority · #36 golden LL
 | #46 implement tasks | **done** — 011-fizzbuzz, 012-slugify |
 | #48 voice memory | **done** — memory.jsonl + prompt inject |
 | #49 worker brief | **done** — `make worker-brief-refresh` |
-| #50 cage wrap | **open** — needs container runtime |
+| #50 cage wrap | **done** umbrella; full docker wrap soft-deferred |
 
