@@ -1,0 +1,15 @@
+Write exactly one Python function. Output only the function source code.
+No markdown fences, no comments outside the function, no explanation.
+
+Signature:
+def fizzbuzz(n: int) -> list[str]:
+
+Behavior:
+- Return a list of length n for values 1..n inclusive.
+- Multiples of 3 → "Fizz"
+- Multiples of 5 → "Buzz"
+- Multiples of both → "FizzBuzz"
+- Else the decimal string of the number (e.g. 1 → "1")
+- fizzbuzz(0) → []
+- fizzbuzz(1) → ["1"]
+- fizzbuzz(5) → ["1","2","Fizz","4","Buzz"]

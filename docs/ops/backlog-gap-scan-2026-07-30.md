@@ -157,3 +157,8 @@ Held per operator: #34 PRODUCT_REMOTE · #35 inventory priority · #36 golden LL
 | #47 pool inventory | **done** — `make model-pool-inventory` soft |
 | #51 external skills | **done** — structural `external_skills_paths` |
 | #52 TODO sync helper | **done** — `scripts/sync_todo_status.py` |
+| #46 implement tasks | **done** — 011-fizzbuzz, 012-slugify |
+| #48 voice memory | **done** — memory.jsonl + prompt inject |
+| #49 worker brief | **done** — `make worker-brief-refresh` |
+| #50 cage wrap | **open** — needs container runtime |
+

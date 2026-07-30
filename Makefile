@@ -465,3 +465,6 @@ model-pool-inventory:
 
 todo-github-sync:
 	@python3 scripts/sync_todo_status.py
+
+worker-brief-refresh:
+	@python3 scripts/worker_brief_refresh.py

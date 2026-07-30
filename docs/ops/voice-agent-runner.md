@@ -144,3 +144,10 @@ High tier (Grok) is the **tool-capable** path: filesystem MCP, write-guard, GitH
 | Orchestrator high-first | Coordinator may use MCP; delegates bulk to local |
 
 Smoke: `make smoke-voice-agent` (mock) + G1 soft voice-stt. Human UAT (G2) for real mic/MCP feel.
+
+## Cross-turn memory (GAP-17)
+
+- File: `.generated/memory.jsonl` (ring via `VOICE_MEMORY_TURNS`, default 5)
+- Default on (`VOICE_MEMORY=1`); set `0` to disable
+- Injected into agent prompts via `memory_prompt_block()`
+- `last-run.json` includes `memory_turns` count

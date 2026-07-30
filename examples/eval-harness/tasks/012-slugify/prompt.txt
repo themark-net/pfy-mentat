@@ -1,0 +1,17 @@
+Write exactly one Python function. Output only the function source code.
+No markdown fences, no comments outside the function, no explanation.
+
+Signature:
+def slugify(s: str) -> str:
+
+Behavior:
+- Lowercase ASCII letters
+- Replace runs of whitespace or underscore with a single hyphen
+- Remove characters that are not a-z, 0-9, or hyphen
+- Strip leading/trailing hyphens
+- Empty or only-junk input → ""
+
+Examples:
+- slugify("Hello World") → "hello-world"
+- slugify("  Foo__Bar!! ") → "foo-bar"
+- slugify("---") → ""

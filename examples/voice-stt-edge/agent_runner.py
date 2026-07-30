@@ -66,6 +66,58 @@ OPENCODE_GEN = ROOT / "examples" / "opencode-ollama" / ".generated"
 LOCK_NAME = "agent-runner.lock"
 
 
+def load_voice_memory(limit: int | None = None) -> list[dict]:
+    """Cross-turn transcript ring (GAP-17 / #48)."""
+    gen = _gen_dir()
+    path = gen / "memory.jsonl"
+    if not path.is_file():
+        return []
+    n = limit
+    if n is None:
+        n = int(os.environ.get("VOICE_MEMORY_TURNS", "5") or "5")
+    lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    rows = []
+    for ln in lines[-max(n, 0):]:
+        ln = ln.strip()
+        if not ln:
+            continue
+        try:
+            rows.append(json.loads(ln))
+        except json.JSONDecodeError:
+            continue
+    return rows
+
+
+def append_voice_memory(role: str, text: str, meta: dict | None = None) -> None:
+    if os.environ.get("VOICE_MEMORY", "1").strip().lower() in ("0", "false", "no"):
+        return
+    gen = _gen_dir()
+    gen.mkdir(parents=True, exist_ok=True)
+    path = gen / "memory.jsonl"
+    row = {
+        "ts": utc_now() if "utc_now" in globals() else __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat(),
+        "session_id": resolve_session_id(),
+        "role": role,
+        "text": (text or "")[:4000],
+    }
+    if meta:
+        row["meta"] = meta
+    with path.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(row, ensure_ascii=False) + "\n")
+
+
+def memory_prompt_block() -> str:
+    rows = load_voice_memory()
+    if not rows:
+        return ""
+    lines = ["## Prior voice turns (memory)", ""]
+    for r in rows:
+        lines.append(f"- ({r.get('role')}) {r.get('text', '')[:500]}")
+    lines.append("")
+    return "\n".join(lines)
+
+
+
 def utc_now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -79,6 +131,12 @@ def write_run(out: Path, payload: dict) -> Path:
     # Sticky multi-turn session (T-0091)
     payload = dict(payload)
     payload.setdefault("session_id", resolve_session_id())
+    # Cross-turn memory (GAP-17)
+    if payload.get("prompt"):
+        append_voice_memory("user", str(payload.get("prompt") or ""), {"run_id": payload.get("run_id")})
+    if payload.get("reply"):
+        append_voice_memory("assistant", str(payload.get("reply") or ""), {"status": payload.get("status")})
+    payload["memory_turns"] = len(load_voice_memory())
     path = out / "last-run.json"
     payload = {**payload, "updated": utc_now()}
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
@@ -164,6 +222,10 @@ def build_prompt(prompt_path: Path | None, transcript: str | None, target: str, 
         )
     else:
         raise ValueError("need --prompt-file or --transcript / --text")
+
+    mem = memory_prompt_block()
+    if mem:
+        base = mem + "\n" + base
 
     footer = (
         "\n\n---\n"
