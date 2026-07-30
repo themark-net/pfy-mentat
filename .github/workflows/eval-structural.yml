@@ -1,4 +1,4 @@
-# G0 gates — no LLM, no Ollama required (GAP-01 / #38)
+# G0 gates — no LLM required. Runs on GitHub-hosted AND self-hosted (nimo) when online.
 name: eval-structural
 
 on:
@@ -8,14 +8,15 @@ on:
   workflow_dispatch:
 
 jobs:
-  structural:
+  structural-github:
+    name: G0 (ubuntu-latest)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: G0 structural + golden
+      - name: Structural + golden
         run: |
           python3 examples/eval-harness/run_structural.py --write-md pipelines/eval/structural.latest.md
           python3 examples/eval-harness/run_golden.py --write-md pipelines/eval/golden.latest.md
@@ -23,8 +24,33 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: eval-g0-receipts
+          name: g0-github-${{ github.run_id }}
           path: |
             pipelines/eval/structural.latest.md
             pipelines/eval/golden.latest.md
+          if-no-files-found: ignore
+
+  structural-local:
+    name: G0 (self-hosted nimo)
+    runs-on: [self-hosted, Linux, X64, pfy-mentat]
+    # Don't block PR merge if lab machine is offline
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Structural + golden + catalog receipts
+        run: |
+          set -euo pipefail
+          python3 examples/eval-harness/run_structural.py --write-md pipelines/eval/structural.latest.md
+          python3 examples/eval-harness/run_golden.py --write-md pipelines/eval/golden.latest.md
+          python3 scripts/catalog_dashboard.py
+          python3 scripts/catalog_check.py
+          python3 scripts/smoke_contract_lint.py
+      - name: Upload local receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: g0-local-${{ github.run_id }}
+          path: |
+            pipelines/eval/*.md
+            pipelines/catalog/*.md
           if-no-files-found: ignore

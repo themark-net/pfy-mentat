@@ -1,0 +1,76 @@
+# Creative use of nimo: attempt implement-lane matrix against local Ollama models.
+# Soft-skips cleanly when Ollama is down (exit 0 with receipt).
+name: nightly-models
+
+on:
+  workflow_dispatch:
+    inputs:
+      models:
+        description: "Comma-separated Ollama models (empty = auto-select)"
+        required: false
+        default: ""
+  schedule:
+    # ~07:00 UTC daily after local-lab
+    - cron: "0 7 * * *"
+
+jobs:
+  matrix:
+    runs-on: [self-hosted, Linux, X64, pfy-mentat]
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Probe Ollama
+        id: ollama
+        run: |
+          if curl -sf --max-time 3 http://127.0.0.1:11434/api/tags >/dev/null; then
+            echo "up=true" >> "$GITHUB_OUTPUT"
+            curl -sf http://127.0.0.1:11434/api/tags | python3 -c "import sys,json; d=json.load(sys.stdin); print('models=', ','.join(m['name'] for m in d.get('models',[])[:20]))"
+          else
+            echo "up=false" >> "$GITHUB_OUTPUT"
+            mkdir -p pipelines/eval
+            echo "# nightly-models SKIP — Ollama down $(date -u +%Y-%m-%dT%H:%MZ)" > pipelines/eval/nightly-models.latest.md
+          fi
+
+      - name: Select models + run suite
+        if: steps.ollama.outputs.up == 'true'
+        env:
+          EVAL_MODELS: ${{ github.event.inputs.models }}
+        run: |
+          set -euo pipefail
+          mkdir -p pipelines/eval
+          if [[ -z "${EVAL_MODELS:-}" ]]; then
+            python3 examples/eval-harness/select_ollama_models.py --exports 2>/dev/null \
+              | grep -E '^(EVAL_|LITELLM_)' > /tmp/pfy-nightly-exports.sh || true
+            if [[ -f /tmp/pfy-nightly-exports.sh ]]; then
+              set -a; source /tmp/pfy-nightly-exports.sh; set +a
+            fi
+          fi
+          # Prefer small/fast for nightly; expand if set
+          MODELS="${EVAL_MODELS:-${EVAL_GATE_CANDIDATES:-deepseek-coder:6.7b,qwen2.5-coder:7b-instruct}}"
+          GATE="${EVAL_GATE_MODEL:-deepseek-coder:6.7b}"
+          # Soft: start gateway if script exists
+          ./examples/litellm-ollama/host-ollama-gateway.sh start 2>/dev/null || true
+          # Suite may fail gate — still write matrix; don't fail workflow hard for observational night run
+          set +e
+          python3 examples/eval-harness/run_suite.py \
+            --models "$MODELS" \
+            --gate-model "$GATE" \
+            --write-md pipelines/eval/nightly-models.latest.md
+          rc=$?
+          set -e
+          echo "suite_exit=$rc" | tee -a pipelines/eval/nightly-models.latest.md
+          # Nightly is observational unless gate fully green; always exit 0 for schedule
+          if [[ "${GITHUB_EVENT_NAME}" == "schedule" ]]; then
+            exit 0
+          fi
+          # workflow_dispatch: surface failure
+          exit $rc
+
+      - name: Upload matrix
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-models-${{ github.run_id }}
+          path: pipelines/eval/nightly-models.latest.md
+          if-no-files-found: ignore

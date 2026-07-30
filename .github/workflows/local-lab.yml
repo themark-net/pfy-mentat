@@ -1,0 +1,103 @@
+# Self-hosted lab: deploy-ready, eval-auto soft, model pool, product levers, integration umbrella.
+# Uses runner labels: self-hosted + pfy-mentat (machine: nimo).
+name: local-lab
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Which lab slice to run"
+        type: choice
+        default: full
+        options:
+          - full
+          - g1-only
+          - eval-auto
+          - inventory
+          - product
+          - integration
+  push:
+    branches: [main]
+    paths:
+      - "examples/eval-harness/**"
+      - "scripts/**"
+      - "data/**"
+      - "bootstrap/**"
+      - "Makefile"
+      - ".github/workflows/local-lab.yml"
+  schedule:
+    # Night-shift lab ~06:15 UTC daily
+    - cron: "15 6 * * *"
+
+concurrency:
+  group: local-lab-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lab:
+    name: lab (${{ github.event.inputs.mode || 'auto' }})
+    runs-on: [self-hosted, Linux, X64, pfy-mentat]
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Host fingerprint
+        run: |
+          set -euo pipefail
+          echo "host=$(hostname)"
+          echo "python=$(python3 --version 2>&1)"
+          echo "ollama=$(curl -sf --max-time 2 http://127.0.0.1:11434/api/tags >/dev/null && echo up || echo down)"
+          command -v docker >/dev/null && docker version --format 'docker={{.Server.Version}}' || echo "docker=absent"
+          free -h 2>/dev/null | head -2 || true
+          df -h . | tail -1 || true
+
+      - name: G0 structural
+        run: |
+          python3 examples/eval-harness/run_structural.py --write-md pipelines/eval/structural.latest.md
+          python3 examples/eval-harness/run_golden.py --write-md pipelines/eval/golden.latest.md
+
+      - name: Catalog dashboard + pool inventory
+        if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.mode == 'full' || github.event.inputs.mode == 'inventory' }}
+        run: |
+          python3 scripts/catalog_dashboard.py
+          python3 scripts/model_pool_inventory.py
+          python3 scripts/worker_brief_refresh.py || true
+
+      - name: G1 deploy-ready (soft smokes)
+        if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.mode == 'full' || github.event.inputs.mode == 'g1-only' }}
+        run: |
+          chmod +x scripts/eval-deploy-ready.sh
+          ./scripts/eval-deploy-ready.sh
+
+      - name: Product levers smoke
+        if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.mode == 'full' || github.event.inputs.mode == 'product' }}
+        run: |
+          chmod +x scripts/smoke-product-levers.sh
+          ./scripts/smoke-product-levers.sh
+
+      - name: smoke-integration umbrella
+        if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.mode == 'full' || github.event.inputs.mode == 'integration' }}
+        run: |
+          chmod +x scripts/smoke-integration.sh
+          ./scripts/smoke-integration.sh
+
+      - name: eval-auto (Ollama when present)
+        if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.mode == 'full' || github.event.inputs.mode == 'eval-auto' }}
+        env:
+          # Soft skip if Ollama down; set EVAL_AUTO_REQUIRE_OLLAMA=1 to hard-fail
+          EVAL_AUTO_REQUIRE_OLLAMA: "0"
+        run: |
+          chmod +x scripts/eval-auto.sh
+          ./scripts/eval-auto.sh
+
+      - name: Upload lab receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: local-lab-${{ github.run_id }}
+          path: |
+            pipelines/eval/**
+            pipelines/catalog/**
+            pipelines/smoke/**
+            pipelines/ops/**
+          if-no-files-found: ignore

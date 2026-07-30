@@ -1,0 +1,29 @@
+# After merge to main: refresh operator brief on nimo (git + receipts index).
+name: post-merge-brief
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  brief:
+    runs-on: [self-hosted, Linux, X64, pfy-mentat]
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 15
+      - name: Refresh monitor brief + pool snapshot
+        run: |
+          python3 scripts/worker_brief_refresh.py
+          python3 scripts/model_pool_inventory.py || true
+          python3 scripts/catalog_dashboard.py || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: operator-brief-${{ github.run_id }}
+          path: |
+            pipelines/ops/monitor-brief.latest.md
+            pipelines/eval/model-pool.latest.md
+            pipelines/catalog/dashboard.latest.md
+          if-no-files-found: ignore
