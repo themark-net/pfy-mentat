@@ -1,14 +1,14 @@
 {
-  "version": "1.1",
+  "version": "1.2",
   "last_updated": "2026-07-30",
-  "description": "Automated evaluation lanes for design/coding assist. Structural never requires LLM. Golden replay is repo-grounded model eval (OQ-0008).",
+  "description": "Automated evaluation lanes for design/coding assist. Structural never requires LLM. Golden validate is deterministic; LLM replay still optional later.",
   "lanes": [
     {
       "id": "structural",
       "requires_llm": false,
       "command": "make eval-structural",
       "artifacts": ["pipelines/eval/structural.latest.md"],
-      "purpose": "Skills, tools.json schema, text-scorer fixtures, design/coding SKILL.md presence"
+      "purpose": "Skills, tools.json schema, text-scorer fixtures, design/coding SKILL.md presence, golden-task cards"
     },
     {
       "id": "connectivity",
@@ -35,13 +35,12 @@
     },
     {
       "id": "golden_replay",
-      "requires_llm": true,
-      "requires_backend": "ollama",
-      "status": "planned",
+      "requires_llm": false,
+      "status": "active_deterministic",
       "command": "make eval-golden",
       "artifacts": ["data/golden-tasks/", "pipelines/eval/golden.latest.md"],
-      "purpose": "Score candidate models on proximity to sampled human→agent work already done on this repo (OQ-0008)",
-      "notes": "Cards in data/golden-tasks/*.json; deterministic acceptance_checks first; full agent replay later"
+      "purpose": "Validate golden-task cards (schema + acceptance_checks). LLM agent replay deferred.",
+      "notes": "Also invoked from eval-structural golden_tasks check"
     }
   ],
   "task_kinds": [
