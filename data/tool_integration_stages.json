@@ -9,8 +9,14 @@
       "intent": "submodule_later",
       "github": "https://github.com/themark-net/atg-framework",
       "notes_doc": "docs/ops/atg-coupling.md",
-      "issues": [22, 30],
-      "non_goals": ["pipeline hard dependency", "symbolic submodule now"]
+      "issues": [
+        22,
+        30
+      ],
+      "non_goals": [
+        "pipeline hard dependency",
+        "symbolic submodule now"
+      ]
     },
     "Antigravity-Manager": {
       "integration_stage": "I1",
@@ -18,28 +24,92 @@
       "priority": "low",
       "github": "https://github.com/lbjlaq/Antigravity-Manager",
       "notes_doc": "docs/ops/antigravity-catalog-posture.md",
-      "issues": [23],
-      "non_goals": ["default install", "make smoke requiring Tauri"]
+      "issues": [
+        23
+      ],
+      "non_goals": [
+        "default install",
+        "make smoke requiring Tauri"
+      ]
     },
     "adr-tools": {
       "integration_stage": "I1",
       "intent": "optional_pin",
       "notes_doc": "docs/ops/adr-tools-companion.md",
-      "issues": [15],
-      "non_goals": ["bootstrap hard dependency"]
+      "issues": [
+        15
+      ],
+      "non_goals": [
+        "bootstrap hard dependency"
+      ]
     },
     "colibri": {
       "integration_stage": "I1",
       "intent": "eval_under_250gb_pool",
       "notes_doc": "docs/ops/local-model-storage-and-eval.md",
-      "issues": [24],
-      "non_goals": ["weights in git"]
+      "issues": [
+        24
+      ],
+      "non_goals": [
+        "weights in git"
+      ]
     },
     "MUE-X": {
       "integration_stage": "I1",
       "intent": "pattern_only",
       "notes_doc": "docs/ops/mue-x-patterns.md",
-      "issues": [28]
+      "issues": [
+        28
+      ]
+    },
+    "Laguna S 2.1": {
+      "integration_stage": "I1",
+      "intent": "eval_under_250gb_pool",
+      "notes_doc": "docs/ops/laguna-local-dod.md",
+      "issues": [
+        13,
+        25
+      ]
+    },
+    "asm (agent-skill-manager)": {
+      "integration_stage": "I1",
+      "intent": "smoke_when_node",
+      "issues": [
+        26
+      ]
+    },
+    "claude-codex-settings": {
+      "integration_stage": "I1",
+      "intent": "pattern_only",
+      "notes_doc": "docs/ops/claude-codex-quality-hooks.md",
+      "issues": [
+        27
+      ]
+    },
+    "Pipecat": {
+      "integration_stage": "I0",
+      "intent": "ref_only",
+      "notes_doc": "docs/ops/voice-stack-stage0-ref.md",
+      "issues": [
+        10
+      ]
+    },
+    "LiveKit": {
+      "integration_stage": "I0",
+      "intent": "ref_only",
+      "notes_doc": "docs/ops/voice-stack-stage0-ref.md",
+      "issues": [
+        10
+      ]
+    },
+    "AgenC": {
+      "integration_stage": "I0",
+      "intent": "demoted_adr0010",
+      "notes_doc": "docs/ops/agenc-reeval-stance.md",
+      "issues": [
+        14
+      ]
     }
-  }
+  },
+  "probe_path": "tools/_probe/"
 }

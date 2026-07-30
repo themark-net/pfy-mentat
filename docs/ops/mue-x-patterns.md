@@ -22,3 +22,7 @@
 ## Structural hook
 
 Future: text scorer “mutation safety note” requiring immune/exit language before any self-mod plan. Not required for `eval-structural` today.
+
+## Deeper lab deferred (issue #28)
+
+Local-backend + mutation-safety eval remains **optional**. Default: pattern/docs only. Promote only with pin + safety note and I2/I3 gates. No evolve-in-lab by default.

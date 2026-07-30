@@ -136,3 +136,27 @@ Checker: `python3 bootstrap/setup-local-agent-env.py`. Catalog: T-0042 triple-wr
 - Implement one S-tier pattern as first-party Grok skill or eval harness extension.
 - Optional overlap matrices for Loop Engineering and Memory clusters.
 - **Company track:** flesh out Auto-Company pattern extraction ticket; keep Multica/gstack/paperclip as comparison set under Cluster 5.
+
+---
+
+## Aggregate synthesis rollup (2026-07-30) — T-0002
+
+**Diff vs prior (v0.4.x catalog):** Entries **073–076** absorbed (Laguna, Hyperframes cluster already in TOOLS; **asm**, **claude-codex-settings**). Process: integration stages I0–I4, golden-tasks, 250GB model pool.
+
+| Cluster | Priority now | Action state |
+|---------|--------------|--------------|
+| 1 Loop engineering | S | Ported (`/agent-loops`, `/hermes-feedback`); structural scorers live |
+| 2 Memory | S | CM primary; LEANN/Memvid pattern docs; no forced install |
+| 3 Skills/org | A | asm + quality hooks queued/extracted; ADR-0009 hybrid |
+| 4 Inference perf | A | ngram-mod still recommended; Laguna/colibri under pool policy |
+| 5 AI companies | S/A | Auto-Company patterns only; no company daemon primary |
+
+**Top priorities (updated):**
+
+1. Product levers onboard/stage/ship (T-0090) — **shipped MVP**  
+2. Local model pool discipline + golden proximity eval  
+3. Optional asm skill distribution (#26) when Node/lab ready  
+4. Keep structural always green; implement-lane when Ollama present  
+5. Do not promote duplex voice stacks (T-0095 Stage 0 only)
+
+Prior synthesis rows above remain historical context; this section is the 2026-07-30 rollup.

@@ -1,6 +1,6 @@
 # Product operator surface (end-user simplicity)
 
-**Status:** Direction / MVP debt  
+**Status:** Implemented 2026-07-30 (T-0090 MVP)  
 **Related:** ADR-0011 · [local-cloud-split.md](local-cloud-split.md) · TODO **T-0090**
 
 ## Two audiences
@@ -24,9 +24,9 @@ Suggested final names (implementation: T-0090):
 
 | Lever | Make (eventual) | Does |
 |-------|-----------------|------|
-| onboard | `make project-onboard DIR=…` | project-process scaffold + skill paths + `.env` profile |
-| stage | `make env-stage` | gateway + local smoke + `eval-structural` (+ optional cage) |
-| ship | `make product-ship` | product tests/smokes + git push **product** remote |
+| onboard | `make project-onboard DIR=…` | `scripts/product-onboard.sh` — project-process init + `.env` example |
+| stage | `make env-stage` | `scripts/env-stage.sh` — env-check + eval-structural; Ollama soft |
+| ship | `make product-ship` | structural + golden; push if `PRODUCT_REMOTE` set |
 
 Everything else is **platform development** (`make help` full list) and may stay advanced/docs-only.
 
@@ -73,3 +73,7 @@ Audit checkpoint: count public Make targets aimed at product users; goal **≤ 5
 - **T-0085** — Worker/monitor split: OpenCode+Ollama worker, Grok monitor recipe  
 - **T-0080** — OpenCode host smoke (required for real offload)  
 - **T-0090** — Collapse product surface; audit Make levers  
+
+## Implemented targets (2026-07-30)
+
+Public product Make targets: **project-onboard**, **env-stage**, **product-ship** (3 ≤ 5). Platform remains on `make help`.

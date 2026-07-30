@@ -249,3 +249,7 @@ Status:          DONE | STOPPED_EXIT | BLOCKED | NEEDS_HUMAN
 - Rubric eval loop (Entry 032); generate→test→update (Entry 031)  
 - Eight exits taxonomy — @hanakoxbt (Entry 068)  
 Skill text owned first-party under pfy-mentat (T-0050).
+
+## Quality filters (pattern)
+
+Before commit exits: see [claude-codex-quality-hooks.md](../../../../docs/ops/claude-codex-quality-hooks.md) (force-push ban, simplification, clarify-first).

@@ -100,6 +100,11 @@ help:
 	@echo "Catalog:"
 	@echo "  make catalog-json     Validate data/tools.json parses"
 	@echo ""
+	@echo "Product levers (end-user — T-0090):"
+	@echo "  make project-onboard DIR=path  # attach process + .env example"
+	@echo "  make env-stage                 # env-check + eval-structural (+ optional Ollama)"
+	@echo "  make product-ship              # verify; push if PRODUCT_REMOTE set"
+	@echo ""
 	@echo "Profiles: local-only | balanced | max-performance  (DEPLOY_PROFILE)"
 	@echo "  see config/profiles/ and docs/ops/deployment-profiles.md"
 
@@ -423,3 +428,17 @@ env-init:
 
 env-check:
 	@python3 bootstrap/env/check_env.py
+
+# --- Product levers (T-0090) — keep ≤5 public product targets ---
+project-onboard:
+	@chmod +x scripts/product-onboard.sh
+	@DIR="$(if $(DIR),$(DIR),.)" ./scripts/product-onboard.sh
+
+env-stage:
+	@chmod +x scripts/env-stage.sh
+	@./scripts/env-stage.sh
+
+product-ship:
+	@chmod +x scripts/product-ship.sh
+	@./scripts/product-ship.sh
+

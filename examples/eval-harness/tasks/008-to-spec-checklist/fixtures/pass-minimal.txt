@@ -1,0 +1,6 @@
+# Spec before implementation
+
+## Acceptance criteria
+1. User can run make env-stage and see structural PASS
+2. Done when eval-structural exits 0
+3. Verify no secrets in the diff
