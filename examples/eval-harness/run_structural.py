@@ -8,6 +8,7 @@ Checks:
   2. Deterministic text scorers under tasks/*/score.py with fixtures/
   3. data/tools.json parses and has required schema fields
   4. Key design/coding skill SKILL.md files exist (agent-loops, investigate, one-shot, adr)
+  5. Golden-task cards validate (validate_golden_tasks.py) when present
 
 Write summary to pipelines/eval/structural.latest.md when --write-md.
 """
@@ -25,6 +26,7 @@ HARNESS = Path(__file__).resolve().parent
 TASKS = HARNESS / "tasks"
 VERIFY = ROOT / "bootstrap/grok-cli/scripts/verify_skills.py"
 TOOLS_JSON = ROOT / "data/tools.json"
+VALIDATE_GOLDEN = HARNESS / "validate_golden_tasks.py"
 DESIGN_CODING_SKILLS = (
     "agent-loops",
     "investigate",
@@ -47,7 +49,10 @@ def check_skills() -> tuple[bool, str]:
         return False, "verify_skills.py missing"
     code, out = run([sys.executable, str(VERIFY)])
     lines = [ln for ln in out.splitlines() if ln.strip()]
-    summary = next((ln for ln in lines if ln.startswith("PASS") or ln.startswith("FAIL")), lines[-1] if lines else f"exit {code}")
+    summary = next(
+        (ln for ln in lines if ln.startswith("PASS") or ln.startswith("FAIL")),
+        lines[-1] if lines else f"exit {code}",
+    )
     return code == 0, summary
 
 
@@ -125,6 +130,20 @@ def check_text_scorers() -> tuple[bool, str]:
     return True, "ok all text scorer fixtures"
 
 
+def check_golden_tasks() -> tuple[bool, str]:
+    cards = list((ROOT / "data" / "golden-tasks").glob("GT-*.json"))
+    if not cards:
+        return True, "skip (no GT-*.json yet)"
+    if not VALIDATE_GOLDEN.is_file():
+        return False, "validate_golden_tasks.py missing"
+    code, out = run([sys.executable, str(VALIDATE_GOLDEN)])
+    summary = next(
+        (ln for ln in out.splitlines() if "PASS" in ln or "FAIL" in ln),
+        f"exit {code}",
+    )
+    return code == 0, summary.strip()
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--write-md", type=Path, default=None)
@@ -135,6 +154,7 @@ def main() -> int:
         ("tools_json_schema", check_tools_json),
         ("design_coding_skills", check_design_skill_files),
         ("text_scorer_fixtures", check_text_scorers),
+        ("golden_tasks", check_golden_tasks),
     ]
     rows: list[tuple[str, bool, str]] = []
     for name, fn in checks:
