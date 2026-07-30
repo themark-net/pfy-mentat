@@ -12,8 +12,8 @@ Agents: scan this file at the start of multi-step work. Promote architectural an
 | OQ-0003 | [#17](https://github.com/themark-net/pfy-mentat/issues/17) | **answered** (wait + integration stages) |
 | OQ-0004 | [#18](https://github.com/themark-net/pfy-mentat/issues/18) | **answered** (submodule later; still in dev) |
 | OQ-0007 | [#19](https://github.com/themark-net/pfy-mentat/issues/19) | **answered** (skip; low-pri eval) |
-| OQ-0008 | [#20](https://github.com/themark-net/pfy-mentat/issues/20) | tbd |
-| **OQ-BATCH** | [#29](https://github.com/themark-net/pfy-mentat/issues/29) | 3/4 done; remaining **0008** |
+| OQ-0008 | [#20](https://github.com/themark-net/pfy-mentat/issues/20) | **answered** (250GB pool + golden-tasks) |
+| **OQ-BATCH** | [#29](https://github.com/themark-net/pfy-mentat/issues/29) | **closed** 4/4 |
 
 ## Qualification model
 
@@ -39,8 +39,8 @@ Related work queue: [TODO.md](TODO.md)
 | [OQ-0006](open-questions/OQ-0006-skill-port-strategy.md) | **P1** | promoted-to-adr | Skill port strategy: hybrid first-party + paths snapshots | — | [ADR-0009](adr/0009-skill-port-hybrid-strategy.md) |
 | [OQ-0003](open-questions/OQ-0003-first-subtree-candidate.md) | P2 | **answered** | Wait — no first embed; integration stages I0–I4 | — | [#17](https://github.com/themark-net/pfy-mentat/issues/17) |
 | [OQ-0004](open-questions/OQ-0004-atg-prototype-relationship.md) | P2 | **answered** | ATG submodule later (still in dev); I1 now | — | [#18](https://github.com/themark-net/pfy-mentat/issues/18) · [#30](https://github.com/themark-net/pfy-mentat/issues/30) |
-| [OQ-0007](open-questions/OQ-0007-antigravity-need.md) | P2 | **answered** | Skip Antigravity; low-pri catalog eval | — | [#19](https://github.com/themark-net/pfy-mentat/issues/19) · process fix HDI |
-| [OQ-0008](open-questions/OQ-0008-colibri-weights-ok.md) | P2 | tbd | OK to download colibri model weights on this machine? | T-0016 | [#20](https://github.com/themark-net/pfy-mentat/issues/20) · disk/RAM |
+| [OQ-0007](open-questions/OQ-0007-antigravity-need.md) | P2 | **answered** | Skip Antigravity; low-pri catalog eval | — | [#19](https://github.com/themark-net/pfy-mentat/issues/19) |
+| [OQ-0008](open-questions/OQ-0008-colibri-weights-ok.md) | P2 | **answered** | 250GB model pool + golden-task proximity eval | — | [#20](https://github.com/themark-net/pfy-mentat/issues/20) · [local-model-storage-and-eval.md](ops/local-model-storage-and-eval.md) |
 | [OQ-0009](open-questions/OQ-0009-write-guard-default-mode.md) | P1 | answered | Default WRITE_GUARD_MODE for new envs (audit vs enforce) | T-0031 | ADR-0007; default **audit** |
 | [OQ-0001](open-questions/OQ-0001-seed-x-post-content.md) | P3 | answered | Seed X post content extraction | — | Superseded by Entries 001–010 processed |
 | [OQ-0010](open-questions/OQ-0010-voice-agent-channel.md) | P2 | **resolved** | Voice half-duplex local-first (not cloud duplex) | T-0091 | [ADR-0012](adr/0012-voice-half-duplex-local-first.md) |
@@ -49,7 +49,7 @@ Related work queue: [TODO.md](TODO.md)
 
 ## Needs operator input soon (P1)
 
-*No open P1 OQs.* Remaining batch item: **OQ-0008** (colibri weights — real blast radius: disk/RAM).
+*No open P0/P1/P2 OQs.* 2026-07-30 batch complete.
 
 Recently closed:
 
@@ -59,7 +59,8 @@ Recently closed:
 4. ~~**OQ-0009** — Write-guard default~~ → audit.  
 5. ~~**OQ-0003** — First subtree~~ → wait + integration stages.  
 6. ~~**OQ-0004** — ATG~~ → submodule later.  
-7. ~~**OQ-0007** — Antigravity~~ → skip; should have been catalog priority only.
+7. ~~**OQ-0007** — Antigravity~~ → skip; OQ promotion fix.  
+8. ~~**OQ-0008** — Weights / models~~ → 250GB pool + golden-tasks.
 
 ## Hygiene
 
