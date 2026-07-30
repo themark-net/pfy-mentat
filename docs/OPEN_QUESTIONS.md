@@ -7,11 +7,11 @@ Agents: scan this file at the start of multi-step work. Promote architectural an
 
 | OQ | Issue | Status |
 |----|-------|--------|
-| OQ-0003 | [#17](https://github.com/themark-net/pfy-mentat/issues/17) | tbd |
+| OQ-0003 | [#17](https://github.com/themark-net/pfy-mentat/issues/17) | **answered** (wait + integration stages) |
 | OQ-0004 | [#18](https://github.com/themark-net/pfy-mentat/issues/18) | open |
 | OQ-0007 | [#19](https://github.com/themark-net/pfy-mentat/issues/19) | tbd |
 | OQ-0008 | [#20](https://github.com/themark-net/pfy-mentat/issues/20) | tbd |
-| **OQ-BATCH** | [#29](https://github.com/themark-net/pfy-mentat/issues/29) | answer all 4 in one pass |
+| **OQ-BATCH** | [#29](https://github.com/themark-net/pfy-mentat/issues/29) | 1/4 done; remaining 0004, 0007, 0008 |
 
 ## Qualification model
 
@@ -35,7 +35,7 @@ Related work queue: [TODO.md](TODO.md)
 | [OQ-0002](open-questions/OQ-0002-eval-harness-shape.md) | **P1** | answered | Eval harness = tier0 smokes + tier1 scored task (opt 5); DSPy later | — | ADR-0002; T-0003 |
 | [OQ-0005](open-questions/OQ-0005-grok-in-cage-strategy.md) | **P1** | answered | Dual path: host-Grok default + optional grok-in-image (T-0022) | — | ADR-0002; overlays/grok |
 | [OQ-0006](open-questions/OQ-0006-skill-port-strategy.md) | **P1** | promoted-to-adr | Skill port strategy: hybrid first-party + paths snapshots | — | [ADR-0009](adr/0009-skill-port-hybrid-strategy.md) |
-| [OQ-0003](open-questions/OQ-0003-first-subtree-candidate.md) | P2 | tbd | First subtree/submodule candidate (if any) | T-0005 | [#17](https://github.com/themark-net/pfy-mentat/issues/17) · SUBTREES.md, ADR-0003 |
+| [OQ-0003](open-questions/OQ-0003-first-subtree-candidate.md) | P2 | **answered** | Wait — no first embed; integration stages I0–I4 | — | [#17](https://github.com/themark-net/pfy-mentat/issues/17) · [integration-stages.md](ops/integration-stages.md) |
 | [OQ-0004](open-questions/OQ-0004-atg-prototype-relationship.md) | P2 | open | How ATG prototype relates to this catalog | T-0004 | [#18](https://github.com/themark-net/pfy-mentat/issues/18) · atg-framework, TOOLS.md |
 | [OQ-0007](open-questions/OQ-0007-antigravity-need.md) | P2 | tbd | Do we need Antigravity-Manager multi-account relay? | T-0015 | [#19](https://github.com/themark-net/pfy-mentat/issues/19) · LiteLLM |
 | [OQ-0008](open-questions/OQ-0008-colibri-weights-ok.md) | P2 | tbd | OK to download colibri model weights on this machine? | T-0016 | [#20](https://github.com/themark-net/pfy-mentat/issues/20) · disk/RAM |
@@ -47,19 +47,15 @@ Related work queue: [TODO.md](TODO.md)
 
 ## Needs operator input soon (P1)
 
-*No open P1 OQs.* Remaining active OQs are P2 (subtree, ATG, Antigravity, colibri). **OQ-0010 voice resolved** → ADR-0012.
-
-**Batch answer (one comment on [#29](https://github.com/themark-net/pfy-mentat/issues/29)):**
-```text
-OQ-BATCH: 0003=no 0004=catalog 0007=no 0008=no
-```
+*No open P1 OQs.* Remaining: OQ-0004, OQ-0007, OQ-0008 (P2).
 
 Recently closed:
 
-1. ~~**OQ-0005** — Grok in-cage~~ → **answered: dual path** (host-Grok default + optional grok-in-image / T-0022).  
+1. ~~**OQ-0005** — Grok in-cage~~ → **answered: dual path**.  
 2. ~~**OQ-0006** — Skill port strategy~~ → **ADR-0009 hybrid**.  
-3. ~~**OQ-0002** — Eval harness shape~~ → **option 5** (tier0 smokes + tier1 scored task; DSPy later).  
-4. ~~**OQ-0009** — Write-guard default~~ → **answered: audit**.
+3. ~~**OQ-0002** — Eval harness shape~~ → **option 5**.  
+4. ~~**OQ-0009** — Write-guard default~~ → **answered: audit**.  
+5. ~~**OQ-0003** — First subtree~~ → **answered: wait** + [integration-stages.md](ops/integration-stages.md).
 
 ## Hygiene
 
