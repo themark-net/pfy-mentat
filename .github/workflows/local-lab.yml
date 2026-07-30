@@ -30,8 +30,9 @@ on:
     - cron: "15 6 * * *"
 
 concurrency:
-  group: local-lab-${{ github.ref }}
-  cancel-in-progress: true
+  # Separate manual modes from push so a re-push doesn't cancel a dispatch mid-flight
+  group: local-lab-${{ github.event_name }}-${{ github.event.inputs.mode || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'push' }}
 
 jobs:
   lab:

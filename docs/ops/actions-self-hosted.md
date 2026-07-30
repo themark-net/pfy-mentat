@@ -52,3 +52,15 @@ Download from the Actions run UI: `g0-*`, `local-lab-*`, `nightly-models-*`, `op
 ## Secrets
 
 None required for G0. Ollama is local on nimo (no cloud key). Optional later: `XAI_API_KEY` for cloud monitor jobs — do not put in logs.
+
+
+## Verified on nimo (2026-07-30)
+
+| Run | Result |
+|-----|--------|
+| `eval-structural` dual job | **PASS** github + self-hosted (~9s each) |
+| `post-merge-brief` | **PASS** |
+| `local-lab` mode=g1-only | **PASS** (~1m) |
+| `nightly-models` first dispatch | failed on CLI flag; fixed to `--matrix-md` |
+
+Use Actions → Artifacts for receipts after each run.
