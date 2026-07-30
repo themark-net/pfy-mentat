@@ -154,7 +154,11 @@ log "target: $TARGET"
 log "name:   $NAME"
 log "date:   $DATE"
 
-while IFS= read -r -d '' src; do
+# Portable file list (avoid /dev/fd process-substitution on some sandboxes)
+_TEMPLATE_LIST="$(mktemp)"
+find "$TEMPLATES" -type f | LC_ALL=C sort > "$_TEMPLATE_LIST"
+while IFS= read -r src; do
+  [[ -z "$src" ]] && continue
   rel="${src#"$TEMPLATES"/}"
   dest="$TARGET/$rel"
   if [[ "$(basename "$src")" == ".gitkeep" ]]; then
@@ -167,7 +171,8 @@ while IFS= read -r -d '' src; do
     continue
   fi
   render "$src" "$dest"
-done < <(find "$TEMPLATES" -type f -print0 | sort -z)
+done < "$_TEMPLATE_LIST"
+rm -f "$_TEMPLATE_LIST"
 
 if [[ "$INSTALL_SKILLS" -eq 1 ]]; then
   install_skills

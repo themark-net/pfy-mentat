@@ -64,7 +64,7 @@ def check_tools_json() -> tuple[bool, str]:
     tools = data.get("tools")
     if not isinstance(tools, list) or not tools:
         return False, "tools[] empty or missing"
-    required = {"name", "primary_category", "github", "scores", "tier"}
+    required = {"name", "primary_category", "github", "scores", "tier", "integration_stage"}
     bad = []
     for t in tools:
         missing = required - set(t.keys())
@@ -75,9 +75,12 @@ def check_tools_json() -> tuple[bool, str]:
         for k in ("s1", "s2", "s3", "s4", "overall"):
             if k not in sc:
                 bad.append(f"{t['name']}: scores.{k}")
+        st = t.get("integration_stage")
+        if st not in ("I0", "I1", "I2", "I3", "I4"):
+            bad.append(f"{t['name']}: bad integration_stage={st!r}")
     if bad:
-        return False, "; ".join(bad[:5])
-    return True, f"ok n={len(tools)} version={data.get('version')}"
+        return False, "; ".join(bad[:8])
+    return True, f"ok n={len(tools)} version={data.get('version')} stages=required"
 
 
 def check_design_skill_files() -> tuple[bool, str]:
@@ -144,6 +147,37 @@ def check_golden_tasks() -> tuple[bool, str]:
     return code == 0, summary.strip()
 
 
+
+def check_catalog_triple() -> tuple[bool, str]:
+    """GAP-03: tools.json names should appear in TOOLS.md (soft: warn-as-fail for S-tier only)."""
+    tools_md = ROOT / "TOOLS.md"
+    if not tools_md.is_file():
+        return False, "TOOLS.md missing"
+    md = tools_md.read_text(encoding="utf-8", errors="replace")
+    data = json.loads(TOOLS_JSON.read_text(encoding="utf-8"))
+    missing = []
+    for t in data.get("tools") or []:
+        name = t.get("name") or ""
+        if t.get("tier") == "S" and name and name not in md:
+            missing.append(name)
+    if missing:
+        return False, f"S-tier not in TOOLS.md: {missing[:5]}"
+    return True, f"ok S-tier names present in TOOLS.md n_tools={len(data.get('tools') or [])}"
+
+
+def check_external_skills() -> tuple[bool, str]:
+    """GAP-28: paths packs exist with SKILL.md."""
+    packs = [
+        ROOT / "bootstrap/grok-cli/skills-external/mattpocock/to-spec/SKILL.md",
+        ROOT / "bootstrap/grok-cli/skills-external/mattpocock/tdd/SKILL.md",
+        ROOT / "bootstrap/grok-cli/skills-external/ponytail/ponytail/SKILL.md",
+    ]
+    miss = [str(p.relative_to(ROOT)) for p in packs if not p.is_file()]
+    if miss:
+        return False, f"missing {miss}"
+    return True, f"ok external packs {len(packs)}"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--write-md", type=Path, default=None)
@@ -152,6 +186,8 @@ def main() -> int:
     checks = [
         ("skills_manifest", check_skills),
         ("tools_json_schema", check_tools_json),
+        ("catalog_triple_s_tier", check_catalog_triple),
+        ("external_skills_paths", check_external_skills),
         ("design_coding_skills", check_design_skill_files),
         ("text_scorer_fixtures", check_text_scorers),
         ("golden_tasks", check_golden_tasks),

@@ -91,7 +91,7 @@ One-line purpose: **Track · Categorize · Rank · Integrate** tools for robust 
 - Phase 0 catalog sync for mobile seeds 003–010 + **agent-cage** as primary container harness (`harness/agent-cage/`)
 - agent-cage baseline smoke green (policy tests); root `make cage-*` UX
 - **Deployment profiles** + env registry (`local-only` / `balanced` / `max-performance`) — ADR-0006
-- **Write-guard MCP design** (filesystem write mediation) — ADR-0007; implement next
+- **Write-guard MCP** (filesystem write mediation) — ADR-0007; **implemented** (T-0031)
 - **One-shot workflow** — minimize questions; cheap iteration; lab prerequisites — ADR-0008 · `/one-shot`
 
 ### Near-term (see TODO)
@@ -118,8 +118,8 @@ One-line purpose: **Track · Categorize · Rank · Integrate** tools for robust 
 
 ### Later / research
 
-- Automated scoring dashboard from `data/tools.json`
-- Continuous pipeline CI for agent evals
+- Automated scoring dashboard from `data/tools.json` — **started** (`make catalog-dashboard`, #41)
+- Continuous pipeline CI for agent evals — **G0 CI** (`.github/workflows/eval-structural.yml`, #38)
 - Hybrid local model routing defaults as scored recipes
 - DSPy + MCP scored tier (post eval MVP)
 

@@ -1,5 +1,5 @@
 {
-  "version": "1.0",
+  "version": "1.1",
   "last_updated": "2026-07-30",
   "policy": "docs/ops/integration-stages.md",
   "default_stage": "I1",
@@ -109,7 +109,236 @@
       "issues": [
         14
       ]
+    },
+    "Grok CLI bootstrap": {
+      "integration_stage": "I3",
+      "intent": "first_party",
+      "tier": "S",
+      "auto": true
+    },
+    "project-process bootstrap": {
+      "integration_stage": "I3",
+      "intent": "first_party",
+      "tier": "S",
+      "auto": true
+    },
+    "agent-cage (PNNL)": {
+      "integration_stage": "I3",
+      "intent": "primary_harness",
+      "tier": "S",
+      "auto": true
+    },
+    "codebase-memory-mcp": {
+      "integration_stage": "I2",
+      "intent": "smoke_path",
+      "tier": "S",
+      "auto": true
+    },
+    "Graphify": {
+      "integration_stage": "I0",
+      "intent": "watch",
+      "tier": "B",
+      "auto": true
+    },
+    "LiteLLM": {
+      "integration_stage": "I2",
+      "intent": "smoke_path",
+      "tier": "S",
+      "auto": true
+    },
+    "Ollama": {
+      "integration_stage": "I2",
+      "intent": "host_runtime",
+      "tier": "S",
+      "auto": true
+    },
+    "write-guard-mcp": {
+      "integration_stage": "I3",
+      "intent": "first_party",
+      "tier": "S",
+      "auto": true
+    },
+    "Continue.dev": {
+      "integration_stage": "I1",
+      "intent": "catalog_default",
+      "tier": "S",
+      "auto": true
+    },
+    "Hermes Agent (feedback loops)": {
+      "integration_stage": "I1",
+      "intent": "catalog_default",
+      "tier": "A",
+      "auto": true
+    },
+    "Multica": {
+      "integration_stage": "I1",
+      "intent": "catalog_default",
+      "tier": "A",
+      "auto": true
+    },
+    "gstack": {
+      "integration_stage": "I1",
+      "intent": "catalog_default",
+      "tier": "A",
+      "auto": true
+    },
+    "Auto-Company": {
+      "integration_stage": "I1",
+      "intent": "catalog_default",
+      "tier": "S",
+      "auto": true
+    },
+    "LEANN": {
+      "integration_stage": "I1",
+      "intent": "catalog_default",
+      "tier": "A",
+      "auto": true
+    },
+    "Memvid": {
+      "integration_stage": "I1",
+      "intent": "catalog_default",
+      "tier": "A",
+      "auto": true
+    },
+    "llama.cpp (server mode)": {
+      "integration_stage": "I1",
+      "intent": "catalog_default",
+      "tier": "A",
+      "auto": true
+    },
+    "repowise": {
+      "integration_stage": "I2",
+      "intent": "smoke_path",
+      "tier": "A",
+      "auto": true
+    },
+    "eval-harness (pfy)": {
+      "integration_stage": "I1",
+      "intent": "catalog_default",
+      "tier": "A",
+      "auto": true
+    },
+    "Finn Loop / eval-loop / 8-exits patterns": {
+      "integration_stage": "I1",
+      "intent": "catalog_default",
+      "tier": "A",
+      "auto": true
+    },
+    "awesome-hermes-skills": {
+      "integration_stage": "I1",
+      "intent": "catalog_default",
+      "tier": "A",
+      "auto": true
+    },
+    "destructive_command_guard": {
+      "integration_stage": "I1",
+      "intent": "catalog_default",
+      "tier": "A",
+      "auto": true
+    },
+    "OpenClaude-Portable": {
+      "integration_stage": "I1",
+      "intent": "catalog_default",
+      "tier": "A",
+      "auto": true
+    },
+    "opencode-mem": {
+      "integration_stage": "I1",
+      "intent": "catalog_default",
+      "tier": "A",
+      "auto": true
+    },
+    "Aider": {
+      "integration_stage": "I1",
+      "intent": "catalog_default",
+      "tier": "A",
+      "auto": true
+    },
+    "DSPy": {
+      "integration_stage": "I1",
+      "intent": "catalog_default",
+      "tier": "A",
+      "auto": true
+    },
+    "MLX + MLX-LM": {
+      "integration_stage": "I1",
+      "intent": "catalog_default",
+      "tier": "A",
+      "auto": true
+    },
+    "LangGraph (LangChain)": {
+      "integration_stage": "I1",
+      "intent": "catalog_default",
+      "tier": "A",
+      "auto": true
+    },
+    "Open WebUI": {
+      "integration_stage": "I1",
+      "intent": "catalog_default",
+      "tier": "A",
+      "auto": true
+    },
+    "Chroma (or LanceDB)": {
+      "integration_stage": "I0",
+      "intent": "watch",
+      "tier": "B",
+      "auto": true
+    },
+    "ponytail (skills pack)": {
+      "integration_stage": "I1",
+      "intent": "catalog_default",
+      "tier": "A",
+      "auto": true
+    },
+    "karpathy-guidelines": {
+      "integration_stage": "I1",
+      "intent": "catalog_default",
+      "tier": "A",
+      "auto": true
+    },
+    "mattpocock/skills": {
+      "integration_stage": "I1",
+      "intent": "catalog_default",
+      "tier": "A",
+      "auto": true
+    },
+    "marketing-skills (marketing-council)": {
+      "integration_stage": "I1",
+      "intent": "catalog_default",
+      "tier": "A",
+      "auto": true
+    },
+    "Jamon Holmgren agentic setup": {
+      "integration_stage": "I1",
+      "intent": "catalog_default",
+      "tier": "A",
+      "auto": true
+    },
+    "Ruben Hassid context/token hacks": {
+      "integration_stage": "I0",
+      "intent": "watch",
+      "tier": "B",
+      "auto": true
+    },
+    "Bumblebee": {
+      "integration_stage": "I1",
+      "intent": "catalog_default",
+      "tier": "A",
+      "auto": true
+    },
+    "Hyperframes": {
+      "integration_stage": "I1",
+      "intent": "catalog_default",
+      "tier": "S",
+      "auto": true
+    },
+    "Camofox Browser": {
+      "integration_stage": "I1",
+      "intent": "catalog_default",
+      "tier": "A",
+      "auto": true
     }
   },
-  "probe_path": "tools/_probe/"
+  "probe_path": "tools/_probe/",
+  "coverage": "49 tools registered"
 }

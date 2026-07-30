@@ -100,6 +100,11 @@ help:
 	@echo ""
 	@echo "Catalog:"
 	@echo "  make catalog-json     Validate data/tools.json parses"
+	@echo "  make catalog-check    S-tier names in TOOLS.md (GAP-03)"
+	@echo "  make catalog-dashboard  scoring dashboard MD (GAP-04)"
+	@echo "  make smoke-product-levers  dual-sided onboard (GAP-09)"
+	@echo "  make model-pool-inventory  soft 250GB probe (GAP-16)"
+	@echo "  make smoke-contract-lint   examples smoke contract (GAP-05)"
 	@echo ""
 	@echo "Product levers (end-user — T-0090):"
 	@echo "  make project-onboard DIR=path  # attach process + .env example"
@@ -441,3 +446,22 @@ smoke-voice-tts:
 smoke-asm:
 	@chmod +x examples/asm-smoke/smoke.sh
 	@./examples/asm-smoke/smoke.sh
+
+catalog-dashboard:
+	@python3 scripts/catalog_dashboard.py
+
+catalog-check:
+	@python3 scripts/catalog_check.py
+
+smoke-contract-lint:
+	@python3 scripts/smoke_contract_lint.py
+
+smoke-product-levers:
+	@chmod +x scripts/smoke-product-levers.sh
+	@./scripts/smoke-product-levers.sh
+
+model-pool-inventory:
+	@python3 scripts/model_pool_inventory.py
+
+todo-github-sync:
+	@python3 scripts/sync_todo_status.py

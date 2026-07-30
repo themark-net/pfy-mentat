@@ -25,3 +25,18 @@ Cage sessions (T-0047): export notes from `make cage-grok-sessions` / session fi
 ## Filter
 
 Do **not** log every chat turn. Prefer structured cards over raw transcripts.
+
+## Agent hook (GAP-06 / #43)
+
+When closing a **P0/P1** issue or resolving an OQ/ADR:
+
+```bash
+python3 scripts/draft_golden_task.py \
+  --id GT-NNNN \
+  --title "short" \
+  --human "…" \
+  --artifact path/to/file
+python3 examples/eval-harness/validate_golden_tasks.py
+```
+
+Do not draft for every close. Sample high-signal only.

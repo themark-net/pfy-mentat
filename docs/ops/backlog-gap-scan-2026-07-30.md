@@ -142,3 +142,18 @@ Held per operator: #34 PRODUCT_REMOTE · #35 inventory priority · #36 golden LL
 | `examples/eval-harness/tasks/001-002` only implement | model ladder thin |
 | `README.md` Current Status | operator confusion |
 
+## Progress 2026-07-30 evening
+
+| Issue | Status |
+|-------|--------|
+| #38 CI G0 | **done** — `.github/workflows/eval-structural.yml` |
+| #39 integration_stage bulk | **done** — all 48 tools + structural required |
+| #40 triple-write S-tier | **done** — `catalog_check` + structural check |
+| #41 dashboard | **done** — `make catalog-dashboard` |
+| #42 smoke contract | **done** — lint + thin smoke.sh wrappers |
+| #43 golden hook | **docs** — capture doc agent hook |
+| #44 surface sync | **partial** — DESIGN later + write-guard stale fixed |
+| #45 product levers smoke | **done** — `make smoke-product-levers` (+ init.sh portable fix) |
+| #47 pool inventory | **done** — `make model-pool-inventory` soft |
+| #51 external skills | **done** — structural `external_skills_paths` |
+| #52 TODO sync helper | **done** — `scripts/sync_todo_status.py` |

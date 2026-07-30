@@ -1,0 +1,30 @@
+# G0 gates — no LLM, no Ollama required (GAP-01 / #38)
+name: eval-structural
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  structural:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: G0 structural + golden
+        run: |
+          python3 examples/eval-harness/run_structural.py --write-md pipelines/eval/structural.latest.md
+          python3 examples/eval-harness/run_golden.py --write-md pipelines/eval/golden.latest.md
+      - name: Upload receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-g0-receipts
+          path: |
+            pipelines/eval/structural.latest.md
+            pipelines/eval/golden.latest.md
+          if-no-files-found: ignore

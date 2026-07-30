@@ -1,6 +1,6 @@
 {
   "version": "0.4.10",
-  "last_updated": "2026-07-30T05:36:00Z",
+  "last_updated": "2026-07-30",
   "description": "v0.4.10: integration_stage notes ATG/Antigravity/adr-tools; golden eval lane.",
   "schema_notes": {
     "required_for_all": [
@@ -20,7 +20,8 @@
       "company_scores": "For Autonomous AI Companies: c1_org, c2_cycle, c3_memory, c4_safety, c5_econ, c6_local, weighted",
       "integration_stage": "I0\u2013I4 from docs/ops/integration-stages.md; see also data/tool_integration_stages.json"
     },
-    "aggregates_array": "Top-level array for logged aggregates."
+    "aggregates_array": "Top-level array for logged aggregates.",
+    "integration_stage": "I0\u2013I4 required on every tool (GAP-02 #39)"
   },
   "tools": [
     {
@@ -43,7 +44,8 @@
         "local-first"
       ],
       "bootstrap_path": "bootstrap/grok-cli",
-      "notes": "Primary operator env (ADR-0002)."
+      "notes": "Primary operator env (ADR-0002).",
+      "integration_stage": "I3"
     },
     {
       "name": "project-process bootstrap",
@@ -64,7 +66,8 @@
         "agentic"
       ],
       "bootstrap_path": "bootstrap/project-process",
-      "notes": "Scaffold DESIGN/ADR/TODO/OQ/AGENTS."
+      "notes": "Scaffold DESIGN/ADR/TODO/OQ/AGENTS.",
+      "integration_stage": "I3"
     },
     {
       "name": "AgenC",
@@ -86,7 +89,8 @@
         "watch"
       ],
       "bootstrap_path": "bootstrap/agenc",
-      "notes": "REFERENCE ONLY \u2014 ADR-0010. Prefer Grok CLI + agent-cage."
+      "notes": "REFERENCE ONLY \u2014 ADR-0010. Prefer Grok CLI + agent-cage.",
+      "integration_stage": "I0"
     },
     {
       "name": "agent-cage (PNNL)",
@@ -110,7 +114,8 @@
       ],
       "pinned_commit": "ea0cdb328683",
       "bootstrap_path": "harness/agent-cage",
-      "notes": "PRIMARY container harness + Grok Build path."
+      "notes": "PRIMARY container harness + Grok Build path.",
+      "integration_stage": "I3"
     },
     {
       "name": "codebase-memory-mcp",
@@ -131,7 +136,8 @@
         "rag"
       ],
       "pinned_commit": "ee68144af5453addda995a27cce8142999f318fb",
-      "notes": "Primary Grok MCP code-graph. Decision vs Graphify: docs/evaluation/codebase-memory-vs-graphify.md. Smoke: make smoke-codebase-memory."
+      "notes": "Primary Grok MCP code-graph. Decision vs Graphify: docs/evaluation/codebase-memory-vs-graphify.md. Smoke: make smoke-codebase-memory.",
+      "integration_stage": "I2"
     },
     {
       "name": "Graphify",
@@ -153,7 +159,8 @@
         "local-first"
       ],
       "x_post_id": "2076092909372453048",
-      "notes": "Entry 017. Not integrated; CM primary. Re-open with cage smoke + head-to-head. See docs/evaluation/codebase-memory-vs-graphify.md."
+      "notes": "Entry 017. Not integrated; CM primary. Re-open with cage smoke + head-to-head. See docs/evaluation/codebase-memory-vs-graphify.md.",
+      "integration_stage": "I0"
     },
     {
       "name": "LiteLLM",
@@ -174,7 +181,8 @@
         "multi-llm",
         "proxy"
       ],
-      "notes": "Critical unification layer."
+      "notes": "Critical unification layer.",
+      "integration_stage": "I2"
     },
     {
       "name": "Ollama",
@@ -194,7 +202,8 @@
         "openai-shim",
         "tool-calling"
       ],
-      "notes": "Default local backend."
+      "notes": "Default local backend.",
+      "integration_stage": "I2"
     },
     {
       "name": "write-guard-mcp",
@@ -216,7 +225,8 @@
         "local-first"
       ],
       "bootstrap_path": "harness/write-guard-mcp",
-      "notes": "First-party write mediation. Default audit."
+      "notes": "First-party write mediation. Default audit.",
+      "integration_stage": "I3"
     },
     {
       "name": "Continue.dev",
@@ -236,7 +246,8 @@
         "local-first",
         "tool-calling"
       ],
-      "notes": "Best IDE surface."
+      "notes": "Best IDE surface.",
+      "integration_stage": "I1"
     },
     {
       "name": "Hermes Agent (feedback loops)",
@@ -258,7 +269,8 @@
         "feedback-loop"
       ],
       "x_post_id": "2077132507343134788",
-      "notes": "Entry 048. Ported as /hermes-feedback (T-0048, bootstrap/grok-cli/skills/hermes-feedback/). Pattern only; not Hermes runtime."
+      "notes": "Entry 048. Ported as /hermes-feedback (T-0048, bootstrap/grok-cli/skills/hermes-feedback/). Pattern only; not Hermes runtime.",
+      "integration_stage": "I1"
     },
     {
       "name": "Multica",
@@ -292,7 +304,8 @@
         "c6_local": 4,
         "weighted": 3.5
       },
-      "notes": "X Entry 012. Also company-rubric A for board/teammate use."
+      "notes": "X Entry 012. Also company-rubric A for board/teammate use.",
+      "integration_stage": "I1"
     },
     {
       "name": "gstack",
@@ -323,7 +336,8 @@
         "c6_local": 3,
         "weighted": 3.2
       },
-      "notes": "X Entry 010. Company comparison set B."
+      "notes": "X Entry 010. Company comparison set B.",
+      "integration_stage": "I1"
     },
     {
       "name": "Auto-Company",
@@ -357,7 +371,8 @@
         "c6_local": 5,
         "weighted": 4.7
       },
-      "notes": "X Entry 066. S-tier company. Extract patterns only."
+      "notes": "X Entry 066. S-tier company. Extract patterns only.",
+      "integration_stage": "I1"
     },
     {
       "name": "colibri",
@@ -379,7 +394,8 @@
         "local-first"
       ],
       "x_post_id": "2075731830477877612",
-      "notes": "Extreme low-resource MoE."
+      "notes": "Extreme low-resource MoE.",
+      "integration_stage": "I1"
     },
     {
       "name": "LEANN",
@@ -399,7 +415,8 @@
         "local-first"
       ],
       "x_post_id": "2077528059339817025",
-      "notes": "Entry 052."
+      "notes": "Entry 052.",
+      "integration_stage": "I1"
     },
     {
       "name": "Memvid",
@@ -419,7 +436,8 @@
         "local-first"
       ],
       "x_post_id": "2077064295209443504",
-      "notes": "Entry 044."
+      "notes": "Entry 044.",
+      "integration_stage": "I1"
     },
     {
       "name": "llama.cpp (server mode)",
@@ -439,7 +457,8 @@
         "local-first"
       ],
       "x_post_id": "2077718647905333549",
-      "notes": "Entry 051."
+      "notes": "Entry 051.",
+      "integration_stage": "I1"
     },
     {
       "name": "repowise",
@@ -459,7 +478,8 @@
         "coding-agent"
       ],
       "x_post_id": "2076117959958053084",
-      "notes": "Entry 006."
+      "notes": "Entry 006.",
+      "integration_stage": "I2"
     },
     {
       "name": "eval-harness (pfy)",
@@ -479,7 +499,8 @@
         "local-first"
       ],
       "bootstrap_path": "examples/eval-harness",
-      "notes": "First-party scored ladder."
+      "notes": "First-party scored ladder.",
+      "integration_stage": "I1"
     },
     {
       "name": "Finn Loop / eval-loop / 8-exits patterns",
@@ -503,7 +524,8 @@
       ],
       "bootstrap_path": "integration/agenc/skills/loop-engineering",
       "x_post_id": "2079325855155707941",
-      "notes": "Entries 024/027/031/032/068. Ported as /agent-loops (T-0050, bootstrap/grok-cli/skills/agent-loops/). Exit card + 4 types + Finn + rubric; pairs with /one-shot."
+      "notes": "Entries 024/027/031/032/068. Ported as /agent-loops (T-0050, bootstrap/grok-cli/skills/agent-loops/). Exit card + 4 types + Finn + rubric; pairs with /one-shot.",
+      "integration_stage": "I1"
     },
     {
       "name": "awesome-hermes-skills",
@@ -522,7 +544,8 @@
         "curated"
       ],
       "x_post_id": "2077738909778542896",
-      "notes": "Entry 053."
+      "notes": "Entry 053.",
+      "integration_stage": "I1"
     },
     {
       "name": "destructive_command_guard",
@@ -541,7 +564,8 @@
         "guardrail"
       ],
       "x_post_id": "2076855961189507099",
-      "notes": "Entry 041."
+      "notes": "Entry 041.",
+      "integration_stage": "I1"
     },
     {
       "name": "OpenClaude-Portable",
@@ -560,7 +584,8 @@
         "portable"
       ],
       "x_post_id": "2077768643128009110",
-      "notes": "Entry 054."
+      "notes": "Entry 054.",
+      "integration_stage": "I1"
     },
     {
       "name": "opencode-mem",
@@ -580,7 +605,8 @@
         "coding-agent"
       ],
       "x_post_id": "2077134466267394303",
-      "notes": "Entry 049."
+      "notes": "Entry 049.",
+      "integration_stage": "I1"
     },
     {
       "name": "MUE-X",
@@ -605,7 +631,8 @@
         "local-first"
       ],
       "x_post_id": "2079155411471503656",
-      "notes": "Entry 067. Self-rewriting via 6 AST strategies + autonomic drives + PAD + memory lattice + GitHub absorption. Standalone CLI. Deeper local eval queued."
+      "notes": "Entry 067. Self-rewriting via 6 AST strategies + autonomic drives + PAD + memory lattice + GitHub absorption. Standalone CLI. Deeper local eval queued.",
+      "integration_stage": "I1"
     },
     {
       "name": "adr-tools",
@@ -647,7 +674,8 @@
         "gguf",
         "mlx"
       ],
-      "notes": "**X Entry 073.** Poolside 118B total / 8B active MoE, 1M context, thinking modes. OpenMDW-1.1. Strong Terminal-Bench / DeepSWE scores. Day-one llama.cpp, Ollama, vLLM, SGLang, TRT-LLM, GGUF, MLX, DFlash. High priority for local/hybrid coding agents."
+      "notes": "**X Entry 073.** Poolside 118B total / 8B active MoE, 1M context, thinking modes. OpenMDW-1.1. Strong Terminal-Bench / DeepSWE scores. Day-one llama.cpp, Ollama, vLLM, SGLang, TRT-LLM, GGUF, MLX, DFlash. High priority for local/hybrid coding agents.",
+      "integration_stage": "I1"
     },
     {
       "name": "Aider",
@@ -668,7 +696,8 @@
         "local-first",
         "headless"
       ],
-      "notes": "Excellent terminal/git-aware coding agent. Works great with Ollama. Strong at iterative editing. Easy to script in pipelines. Lower IDE friction than Continue for some workflows. Good MCP target (repo as context)."
+      "notes": "Excellent terminal/git-aware coding agent. Works great with Ollama. Strong at iterative editing. Easy to script in pipelines. Lower IDE friction than Continue for some workflows. Good MCP target (repo as context).",
+      "integration_stage": "I1"
     },
     {
       "name": "DSPy",
@@ -689,7 +718,8 @@
         "litellm-ready",
         "reasoning"
       ],
-      "notes": "Systematic programming of LM pipelines. Optimizers (BootstrapFewShot, MIPRO) dramatically improve reliability. Pairs perfectly with LiteLLM for local + Grok. High value for gom-jobbar style agents. MCP memory can feed into DSPy modules."
+      "notes": "Systematic programming of LM pipelines. Optimizers (BootstrapFewShot, MIPRO) dramatically improve reliability. Pairs perfectly with LiteLLM for local + Grok. High value for gom-jobbar style agents. MCP memory can feed into DSPy modules.",
+      "integration_stage": "I1"
     },
     {
       "name": "llama.cpp (server mode)",
@@ -710,7 +740,8 @@
         "openai-shim",
         "cpu-gpu"
       ],
-      "notes": "Ultimate performance/quantization control. GGUF ecosystem is massive. Server has OpenAI compat. Slightly more setup than Ollama but unmatched speed/footprint on consumer HW. Good base for custom agents."
+      "notes": "Ultimate performance/quantization control. GGUF ecosystem is massive. Server has OpenAI compat. Slightly more setup than Ollama but unmatched speed/footprint on consumer HW. Good base for custom agents.",
+      "integration_stage": "I1"
     },
     {
       "name": "MLX + MLX-LM",
@@ -730,7 +761,8 @@
         "quantized",
         "local-first"
       ],
-      "notes": "Best-in-class on Apple Silicon (M-series). Fast unified memory, 4/8-bit native. mlx-lm provides server. Excellent for Mac-based dev pipelines. Tool calling via adapters."
+      "notes": "Best-in-class on Apple Silicon (M-series). Fast unified memory, 4/8-bit native. mlx-lm provides server. Excellent for Mac-based dev pipelines. Tool calling via adapters.",
+      "integration_stage": "I1"
     },
     {
       "name": "LangGraph (LangChain)",
@@ -751,7 +783,8 @@
         "tool-calling",
         "rag"
       ],
-      "notes": "Stateful multi-actor agent graphs. Excellent for complex pipelines. Can use local Ollama via LangChain integration. Strong RAG/memory support (can integrate MCP). More boilerplate than DSPy for simple cases."
+      "notes": "Stateful multi-actor agent graphs. Excellent for complex pipelines. Can use local Ollama via LangChain integration. Strong RAG/memory support (can integrate MCP). More boilerplate than DSPy for simple cases.",
+      "integration_stage": "I1"
     },
     {
       "name": "Open WebUI",
@@ -772,7 +805,8 @@
         "docker",
         "multi-model"
       ],
-      "notes": "Polished ChatGPT-like UI for local models (Ollama, llama.cpp, etc.). Supports tools in recent versions. Great for human-in-loop debugging of agents before headless pipeline use. Docker one-liner."
+      "notes": "Polished ChatGPT-like UI for local models (Ollama, llama.cpp, etc.). Supports tools in recent versions. Great for human-in-loop debugging of agents before headless pipeline use. Docker one-liner.",
+      "integration_stage": "I1"
     },
     {
       "name": "Chroma (or LanceDB)",
@@ -793,7 +827,8 @@
         "local-first",
         "embeddings"
       ],
-      "notes": "Solid local vector DB. Easy Python SDK. Good for code RAG (embed functions/classes). Can serve as foundation for MCP-style persistent code memory. Lightweight."
+      "notes": "Solid local vector DB. Easy Python SDK. Good for code RAG (embed functions/classes). Can serve as foundation for MCP-style persistent code memory. Lightweight.",
+      "integration_stage": "I0"
     },
     {
       "name": "Atomic Task Graph (ATG)",
@@ -838,7 +873,8 @@
         "local-first",
         "grok-cli"
       ],
-      "notes": "Minimalism / YAGNI skill pack. Pin `8e69b4a`."
+      "notes": "Minimalism / YAGNI skill pack. Pin `8e69b4a`.",
+      "integration_stage": "I1"
     },
     {
       "name": "karpathy-guidelines",
@@ -857,7 +893,8 @@
         "grok-cli",
         "local-first"
       ],
-      "notes": "MIT single skill; pin `2c60614`."
+      "notes": "MIT single skill; pin `2c60614`.",
+      "integration_stage": "I1"
     },
     {
       "name": "mattpocock/skills",
@@ -878,7 +915,8 @@
         "review",
         "composable"
       ],
-      "notes": "**X Entry 008.**"
+      "notes": "**X Entry 008.**",
+      "integration_stage": "I1"
     },
     {
       "name": "marketing-skills (marketing-council)",
@@ -898,7 +936,8 @@
         "council",
         "prompt-pack"
       ],
-      "notes": "**X Entry 004.** First-party port."
+      "notes": "**X Entry 004.** First-party port.",
+      "integration_stage": "I1"
     },
     {
       "name": "Antigravity-Manager",
@@ -940,7 +979,8 @@
         "process"
       ],
       "notes": "**X Entry 007.**",
-      "x_post_id": "2076001786700394610"
+      "x_post_id": "2076001786700394610",
+      "integration_stage": "I1"
     },
     {
       "name": "Ruben Hassid context/token hacks",
@@ -960,7 +1000,8 @@
         "workflow"
       ],
       "notes": "**X Entry 009.**",
-      "x_post_id": "2075807299638014212"
+      "x_post_id": "2075807299638014212",
+      "integration_stage": "I0"
     },
     {
       "name": "Bumblebee",
@@ -981,7 +1022,8 @@
         "local-first",
         "go"
       ],
-      "notes": "**X Entry 069.** Perplexity read-only scanner for packages, extensions, **MCP configs**. NDJSON, zero deps, baseline/project/deep profiles. Directly addresses MCP install trust gap. Pair with write-guard-mcp."
+      "notes": "**X Entry 069.** Perplexity read-only scanner for packages, extensions, **MCP configs**. NDJSON, zero deps, baseline/project/deep profiles. Directly addresses MCP install trust gap. Pair with write-guard-mcp.",
+      "integration_stage": "I1"
     },
     {
       "name": "Hyperframes",
@@ -1002,7 +1044,8 @@
         "agent-native",
         "html"
       ],
-      "notes": "**X Entry 070.** HeyGen open-source: agents write plain HTML \u2192 deterministic MP4. Ships skills (`npx skills add heygen-com/hyperframes`), CLI, catalog. Production use at HeyGen. Canonical agent-native video surface."
+      "notes": "**X Entry 070.** HeyGen open-source: agents write plain HTML \u2192 deterministic MP4. Ships skills (`npx skills add heygen-com/hyperframes`), CLI, catalog. Production use at HeyGen. Canonical agent-native video surface.",
+      "integration_stage": "I1"
     },
     {
       "name": "Camofox Browser",
@@ -1023,7 +1066,8 @@
         "agent-tool",
         "local-first"
       ],
-      "notes": "**X Entry 071.** Camoufox (C++ fingerprint spoofing) wrapped as REST API for agents. Production engine behind jo/askjo.ai. MCP variants exist. Default candidate for stealth web tools in agent-cage."
+      "notes": "**X Entry 071.** Camoufox (C++ fingerprint spoofing) wrapped as REST API for agents. Production engine behind jo/askjo.ai. MCP variants exist. Default candidate for stealth web tools in agent-cage.",
+      "integration_stage": "I1"
     },
     {
       "name": "asm (agent-skill-manager)",
@@ -1045,7 +1089,8 @@
         "local-first",
         "npm"
       ],
-      "notes": "**X Entry 075.** Universal skill manager across 19 agents (Claude Code, Codex, Cursor, Cline, Continue, Aider, Hermes, \u2026). Install/search/audit/organize; `--json` for agents; security scan; 4.3k+ skill catalog. MIT. \u201cnpm for AI agent skills.\u201d High priority for Grok CLI skill distribution."
+      "notes": "**X Entry 075.** Universal skill manager across 19 agents (Claude Code, Codex, Cursor, Cline, Continue, Aider, Hermes, \u2026). Install/search/audit/organize; `--json` for agents; security scan; 4.3k+ skill catalog. MIT. \u201cnpm for AI agent skills.\u201d High priority for Grok CLI skill distribution.",
+      "integration_stage": "I1"
     },
     {
       "name": "claude-codex-settings",
@@ -1068,7 +1113,8 @@
         "cursor",
         "quality"
       ],
-      "notes": "**X Entry 076.** Battle-tested plugins, hooks, agents & shared guidance for Claude Code, Codex, Cursor, Gemini CLI. Targets Karpathy-style pitfalls (overcomplication, no clarification). Complements asm. Extract hooks for Grok policy packs."
+      "notes": "**X Entry 076.** Battle-tested plugins, hooks, agents & shared guidance for Claude Code, Codex, Cursor, Gemini CLI. Targets Karpathy-style pitfalls (overcomplication, no clarification). Complements asm. Extract hooks for Grok policy packs.",
+      "integration_stage": "I1"
     }
   ],
   "aggregates": [],
