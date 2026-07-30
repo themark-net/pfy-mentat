@@ -1,0 +1,45 @@
+{
+  "version": "1.0",
+  "last_updated": "2026-07-30",
+  "policy": "docs/ops/integration-stages.md",
+  "default_stage": "I1",
+  "tools": {
+    "Atomic Task Graph (ATG)": {
+      "integration_stage": "I1",
+      "intent": "submodule_later",
+      "github": "https://github.com/themark-net/atg-framework",
+      "notes_doc": "docs/ops/atg-coupling.md",
+      "issues": [22, 30],
+      "non_goals": ["pipeline hard dependency", "symbolic submodule now"]
+    },
+    "Antigravity-Manager": {
+      "integration_stage": "I1",
+      "intent": "skip_install",
+      "priority": "low",
+      "github": "https://github.com/lbjlaq/Antigravity-Manager",
+      "notes_doc": "docs/ops/antigravity-catalog-posture.md",
+      "issues": [23],
+      "non_goals": ["default install", "make smoke requiring Tauri"]
+    },
+    "adr-tools": {
+      "integration_stage": "I1",
+      "intent": "optional_pin",
+      "notes_doc": "docs/ops/adr-tools-companion.md",
+      "issues": [15],
+      "non_goals": ["bootstrap hard dependency"]
+    },
+    "colibri": {
+      "integration_stage": "I1",
+      "intent": "eval_under_250gb_pool",
+      "notes_doc": "docs/ops/local-model-storage-and-eval.md",
+      "issues": [24],
+      "non_goals": ["weights in git"]
+    },
+    "MUE-X": {
+      "integration_stage": "I1",
+      "intent": "pattern_only",
+      "notes_doc": "docs/ops/mue-x-patterns.md",
+      "issues": [28]
+    }
+  }
+}
