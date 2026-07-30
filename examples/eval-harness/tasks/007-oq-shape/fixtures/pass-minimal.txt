@@ -1,0 +1,16 @@
+# OQ-0099: Example open question
+
+- **Priority:** P2
+- **Status:** open
+- **Blocks:** T-9999
+
+**Question:** Should we adopt the optional tool?
+
+**Options:**
+
+1. Skip for now
+2. Eval later
+
+**Resolution notes:**
+
+- (pending)
