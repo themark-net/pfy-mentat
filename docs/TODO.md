@@ -25,10 +25,13 @@ Active work is also tracked as issues: https://github.com/themark-net/pfy-mentat
 | T-0046 | [#14](https://github.com/themark-net/pfy-mentat/issues/14) | P3 |
 | T-0007 | [#15](https://github.com/themark-net/pfy-mentat/issues/15) | P3 |
 | T-0002 | [#16](https://github.com/themark-net/pfy-mentat/issues/16) | P3 |
-| T-0005 | [#21](https://github.com/themark-net/pfy-mentat/issues/21) | P2 blocked |
-| T-0004 | [#22](https://github.com/themark-net/pfy-mentat/issues/22) | P2 blocked |
-| T-0015 | [#23](https://github.com/themark-net/pfy-mentat/issues/23) | P2 blocked |
-| T-0016 | [#24](https://github.com/themark-net/pfy-mentat/issues/24) | P2 blocked |
+| T-0005 | [#21](https://github.com/themark-net/pfy-mentat/issues/21) | P2 todo |
+| T-0004 | [#22](https://github.com/themark-net/pfy-mentat/issues/22) | P2 **done** |
+| T-0015 | [#23](https://github.com/themark-net/pfy-mentat/issues/23) | P3 **done** |
+| T-0016 | [#24](https://github.com/themark-net/pfy-mentat/issues/24) | P2 todo |
+| T-0075 | [#5](https://github.com/themark-net/pfy-mentat/issues/5) | P2 **done** |
+| T-0007 | [#15](https://github.com/themark-net/pfy-mentat/issues/15) | P3 **done** |
+| golden_replay | [#31](https://github.com/themark-net/pfy-mentat/issues/31) | P1 **done** |
 
 **Catalog follow-ups:** [#25](https://github.com/themark-net/pfy-mentat/issues/25) Laguna · [#26](https://github.com/themark-net/pfy-mentat/issues/26) asm · [#27](https://github.com/themark-net/pfy-mentat/issues/27) claude-codex-settings · [#28](https://github.com/themark-net/pfy-mentat/issues/28) MUE-X  
 **OQ batch:** [#29](https://github.com/themark-net/pfy-mentat/issues/29)
@@ -69,7 +72,7 @@ Active work is also tracked as issues: https://github.com/themark-net/pfy-mentat
 | T-0095 | P3 | todo | Catalog Stage 0: Pipecat / LiveKit / freeapp (ref only) | — | ADR-0012 | [#10](https://github.com/themark-net/pfy-mentat/issues/10) · No primary install |
 | T-0070 | P1 | doing | Grow design/coding **skills + structural eval** (more text scorers) | — | T-0065 | [#3](https://github.com/themark-net/pfy-mentat/issues/3) · Keep `eval-structural` green |
 | T-0074 | P1 | doing | Implement-lane via `make eval-auto` (fit-select + candidates) | — | — | [#4](https://github.com/themark-net/pfy-mentat/issues/4) · deepseek-coder:6.7b lab-proven |
-| T-0075 | P2 | todo | More structural scorers: ADR shape, open-question row shape | — | T-0070 | [#5](https://github.com/themark-net/pfy-mentat/issues/5) |
+| T-0075 | P2 | done | More structural scorers: ADR shape, open-question row shape | — | T-0070 | [#5](https://github.com/themark-net/pfy-mentat/issues/5) **done** |
 | T-0076 | P2 | todo | Wire mattpocock to-spec/tdd checklist into structural or skill cross-links | — | — | [#6](https://github.com/themark-net/pfy-mentat/issues/6) · paths pack already installed |
 | T-0081 | P2 | todo | Optional OpenCode-in-cage smoke | — | T-0080 | [#7](https://github.com/themark-net/pfy-mentat/issues/7) · After host smoke green |
 | T-0040 | P2 | todo | Broader multi-CLI parity notes (Claude Code) | — | T-0080 | [#8](https://github.com/themark-net/pfy-mentat/issues/8) · OpenCode first |
@@ -85,14 +88,12 @@ Active work is also tracked as issues: https://github.com/themark-net/pfy-mentat
 | T-0007 | P3 | todo | adr-tools companion docs | — | — | [#15](https://github.com/themark-net/pfy-mentat/issues/15) |
 | T-0002 | P3 | todo | Aggregate synthesis | — | — | [#16](https://github.com/themark-net/pfy-mentat/issues/16) |
 
-### Active — blocked (batch OQs only — do not ask ad hoc)
+### Active — follow-ups (OQs answered; not blocked)
 
 | ID | Priority | Status | Item | Open questions | Depends | Notes |
 |----|----------|--------|------|----------------|---------|-------|
-| T-0015 | P2 | blocked | Antigravity-Manager eval | [OQ-0007](open-questions/OQ-0007-antigravity-need.md) | — | [#23](https://github.com/themark-net/pfy-mentat/issues/23) · OQ-BATCH [#29](https://github.com/themark-net/pfy-mentat/issues/29) |
-| T-0016 | P2 | blocked | colibri build+serve | [OQ-0008](open-questions/OQ-0008-colibri-weights-ok.md) | — | [#24](https://github.com/themark-net/pfy-mentat/issues/24) · OQ-BATCH |
-| T-0004 | P2 | blocked | ATG prototype coupling | [OQ-0004](open-questions/OQ-0004-atg-prototype-relationship.md) | — | [#22](https://github.com/themark-net/pfy-mentat/issues/22) · OQ-BATCH |
-| T-0005 | P2 | blocked | First subtree | [OQ-0003](open-questions/OQ-0003-first-subtree-candidate.md) | — | [#21](https://github.com/themark-net/pfy-mentat/issues/21) · OQ-BATCH |
+| T-0016 | P2 | todo | colibri/large model lab under 250GB pool | — | OQ-0008 | [#24](https://github.com/themark-net/pfy-mentat/issues/24) |
+| T-0005 | P2 | todo | Apply integration-stages broadly | — | OQ-0003 | [#21](https://github.com/themark-net/pfy-mentat/issues/21) · partial |
 
 ---
 
@@ -100,6 +101,11 @@ Active work is also tracked as issues: https://github.com/themark-net/pfy-mentat
 
 | ID | Priority | Status | Item | Notes |
 |----|----------|--------|------|-------|
+| T-0075 | P2 | done | ADR + OQ structural scorers | #5; tasks 006/007 |
+| T-0007 | P3 | done | adr-tools companion docs | #15; docs/ops/adr-tools-companion.md |
+| T-0004 | P2 | done | ATG coupling I1 submodule-later | #22; docs/ops/atg-coupling.md |
+| T-0015 | P3 | done | Antigravity catalog-only skip install | #23; antigravity-catalog-posture.md |
+| — | P1 | done | golden_replay deterministic lane | #31; make eval-golden |
 | T-0050 | P2 | done | First-party `/agent-loops` skill (8 exits + 4 types + Finn + rubric) | `bootstrap/grok-cli/skills/agent-loops/`; Entries 024/027/031/032/068; pairs with `/one-shot` |
 | T-0048 | P2 | done | Hermes feedback loops as first-party Grok skill | `bootstrap/grok-cli/skills/hermes-feedback/`; Entry 048 pattern port; not Hermes runtime |
 | T-0051 | P2 | done | First-party skill structural smoke + verification docs | `make smoke-grok-skills`; `bootstrap/grok-cli/scripts/verify_skills.py`; `docs/ops/skill-verification.md` |
