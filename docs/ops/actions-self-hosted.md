@@ -71,3 +71,16 @@ Use Actions → Artifacts for receipts after each run.
 - **Nightly matrix** tracks implement-lane pass rates over time (artifacts); also exit 0.
 - Single runner serializes jobs — prefer one `workflow_dispatch` at a time for long eval-auto.
 - First real eval-auto on nimo: deepseek-coder:6.7b-instruct **3/4** (failed 012-slugify); qwen 14b not installed.
+
+
+## Host vs cage base URL
+
+On **nimo** (self-hosted job, not inside agent-cage):
+
+```bash
+export OPENAI_BASE_URL=http://127.0.0.1:11435/v1   # host-ollama-gateway
+# or direct Ollama:
+# export OPENAI_BASE_URL=http://127.0.0.1:11434/v1
+```
+
+Default in eval scripts is `host.docker.internal:11435` for **in-cage** smokes — wrong for bare runner processes.

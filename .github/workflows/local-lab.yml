@@ -86,6 +86,7 @@ jobs:
         env:
           EVAL_AUTO_REQUIRE_OLLAMA: "0"
           EVAL_GATE_CANDIDATES: "deepseek-coder:6.7b-instruct,deepseek-coder:6.7b"
+          OPENAI_BASE_URL: http://127.0.0.1:11435/v1
         run: |
           chmod +x scripts/eval-auto.sh
           set +e
