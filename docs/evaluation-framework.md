@@ -69,6 +69,8 @@ Do not collapse these into Stage 1–4 tool scores alone.
 ## Alignment notes
 
 - Prefer pins + smokes over subtrees ([ADR-0003](adr/0003-default-pinned-commit-tracking.md)).
+- Integration depth: [ops/integration-stages.md](ops/integration-stages.md) (I0–I4) · registry `data/tool_integration_stages.json`.
+- Golden-task model eval: [ops/local-model-storage-and-eval.md](ops/local-model-storage-and-eval.md) · `make eval-golden`.
 - Skill ports: hybrid first-party + paths ([ADR-0009](adr/0009-skill-port-hybrid-strategy.md)).
 - Empirical lab receipts beat X hype: `pipelines/smoke/*`, `pipelines/eval/*`.
 

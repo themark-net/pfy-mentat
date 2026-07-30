@@ -1,7 +1,7 @@
 {
-  "version": "0.4.9",
-  "last_updated": "2026-07-29T14:48:54Z",
-  "description": "Structured catalog. v0.4.9: sync TOOLS.md Active Catalog missing rows (incl. Entries 075\u2013076 asm, claude-codex-settings); fix triple-write drift.",
+  "version": "0.4.10",
+  "last_updated": "2026-07-30T05:36:00Z",
+  "description": "v0.4.10: integration_stage notes ATG/Antigravity/adr-tools; golden eval lane.",
   "schema_notes": {
     "required_for_all": [
       "name",
@@ -17,7 +17,8 @@
       "bootstrap_path": "Path under this repo for first-party packages",
       "source_aggregate": "Slug from sources/aggregates.md",
       "x_post_id": "Status ID if from X seed",
-      "company_scores": "For Autonomous AI Companies: c1_org, c2_cycle, c3_memory, c4_safety, c5_econ, c6_local, weighted"
+      "company_scores": "For Autonomous AI Companies: c1_org, c2_cycle, c3_memory, c4_safety, c5_econ, c6_local, weighted",
+      "integration_stage": "I0\u2013I4 from docs/ops/integration-stages.md; see also data/tool_integration_stages.json"
     },
     "aggregates_array": "Top-level array for logged aggregates."
   },
@@ -622,7 +623,8 @@
         "pipeline",
         "local-first"
       ],
-      "notes": "Classic CLI for ADR create/supersede numbering. Complements our skills; **not required** \u2014 skills + templates cover agent workflows. Pin if a team wants shell automation."
+      "notes": "Optional shell ADR CLI. Skills+templates default. Companion docs/ops/adr-tools-companion.md. No hard dependency.",
+      "integration_stage": "I1"
     },
     {
       "name": "Laguna S 2.1",
@@ -796,7 +798,7 @@
     {
       "name": "Atomic Task Graph (ATG)",
       "primary_category": "Agent Frameworks & Orchestration",
-      "github": "https://github.com/themark-net/pfy-mentat",
+      "github": "https://github.com/themark-net/atg-framework",
       "scores": {
         "s1": 88,
         "s2": 75,
@@ -815,7 +817,8 @@
         "paper-based",
         "prototype"
       ],
-      "notes": "Research framework using explicit DAGs for task decomposition instead of linear chains. See full notes in prior revisions / atg-framework repo."
+      "notes": "I1 staged evaluation; intended submodule later (OQ-0004). Still in development. No pipeline hard dependency. See docs/ops/atg-coupling.md. Review #30 2026-08-06.",
+      "integration_stage": "I1"
     },
     {
       "name": "ponytail (skills pack)",
@@ -915,7 +918,8 @@
         "tauri",
         "openai-shim"
       ],
-      "notes": "**X Entry 005.**"
+      "notes": "X Entry 005. Skip install (OQ-0007). Low opportunity; LiteLLM+keys default. No smoke requiring Tauri. docs/ops/antigravity-catalog-posture.md.",
+      "integration_stage": "I1"
     },
     {
       "name": "Jamon Holmgren agentic setup",

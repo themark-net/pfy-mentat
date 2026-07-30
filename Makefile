@@ -87,6 +87,7 @@ help:
 	@echo "  make smoke-voice-orchestrate # T-0096 dual-tier mock smoke (no cloud)"
 	@echo "  make worker-stage           # T-0085: smoke worker + write monitor brief / worker.env"
 	@echo "  make eval-structural           # design/coding gates, NO LLM (always run)"
+	@echo "  make eval-golden               # golden-task cards validate (no LLM)"
 	@echo "  make eval-select-models        # pick gate/matrix models that FIT RAM/disk (may pull)"
 	@echo "  make eval-select-tools-model   # T-0093: probe tools-capable Ollama tag + tool-split"
 	@echo "  make smoke-tools-model         # T-0093 smoke (Ollama optional soft-skip)"
@@ -367,6 +368,10 @@ eval-v02:
 # Design/coding structural gates (skills, tools.json, text scorers) — no LLM/Ollama
 eval-structural:
 	@python3 examples/eval-harness/run_structural.py --write-md pipelines/eval/structural.latest.md
+
+# Golden-task cards (deterministic; OQ-0008 / #31) — no LLM
+eval-golden:
+	@python3 examples/eval-harness/run_golden.py --write-md pipelines/eval/golden.latest.md
 
 # Hardware-fit model pick (not limited to already-pulled). Host: ollama tags on :11434.
 # EVAL_PULL_GATE=0 to only list; default pulls gate if missing and ollama CLI present.
