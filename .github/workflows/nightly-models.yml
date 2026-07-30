@@ -30,12 +30,28 @@ jobs:
             echo "# nightly-models SKIP — Ollama down" > pipelines/eval/nightly-models.latest.md
           fi
 
+      - name: Preflight chat path
+        if: steps.ollama.outputs.up == 'true'
+        run: |
+          set -euo pipefail
+          # Prefer Ollama native OpenAI API; gateway optional
+          if curl -sf --max-time 3 http://127.0.0.1:11434/v1/models >/dev/null; then
+            echo "openai_path=http://127.0.0.1:11434/v1"
+            echo "OPENAI_BASE_URL=http://127.0.0.1:11434/v1" >> "$GITHUB_ENV"
+          elif curl -sf --max-time 3 http://127.0.0.1:11435/v1/models >/dev/null; then
+            echo "openai_path=http://127.0.0.1:11435/v1"
+            echo "OPENAI_BASE_URL=http://127.0.0.1:11435/v1" >> "$GITHUB_ENV"
+          else
+            echo "openai_path=ollama-generate-only"
+            echo "OPENAI_BASE_URL=http://127.0.0.1:11434/v1" >> "$GITHUB_ENV"
+          fi
+          python3 -c "import urllib.request; print('stdlib urllib ok')"
+
       - name: Select models + run suite
         if: steps.ollama.outputs.up == 'true'
         env:
           EVAL_MODELS: ${{ github.event.inputs.models }}
-          # Host runner: LiteLLM/Ollama gateway on nimo (not in-cage DNS)
-          OPENAI_BASE_URL: http://127.0.0.1:11435/v1
+          # OPENAI_BASE_URL set by preflight (11434 preferred, 11435 fallback)
         run: |
           set -euo pipefail
           mkdir -p pipelines/eval

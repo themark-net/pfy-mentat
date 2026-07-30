@@ -81,6 +81,88 @@ def resolve_model() -> str:
     )
 
 
+
+def _chat_completion(
+    *,
+    model_name: str,
+    base: str,
+    api_key: str,
+    prompt: str,
+    max_tokens: int = 512,
+) -> str:
+    """OpenAI-compatible chat; litellm optional (self-hosted runners often lack it)."""
+    try:
+        from litellm import completion  # type: ignore
+
+        resp = completion(
+            model=f"openai/{model_name}",
+            api_base=base.rstrip("/"),
+            api_key=api_key,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=max_tokens,
+            temperature=0,
+        )
+        return (resp.choices[0].message.content or "").strip()
+    except ImportError:
+        pass
+    except Exception:
+        # misconfigured litellm → try raw HTTP
+        pass
+
+    import json
+    import urllib.request
+
+    url = base.rstrip("/") + "/chat/completions"
+    body = json.dumps(
+        {
+            "model": model_name,
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": max_tokens,
+            "temperature": 0,
+            "stream": False,
+        }
+    ).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=body,
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=120) as resp:  # noqa: S310
+            data = json.loads(resp.read().decode("utf-8"))
+        return (data["choices"][0]["message"]["content"] or "").strip()
+    except Exception as e:  # noqa: BLE001
+        # Ollama native generate fallback
+        host = base.rstrip("/").removesuffix("/v1")
+        if ":11435" in host:
+            host = host.replace(":11435", ":11434")
+        gen_url = host + "/api/generate"
+        gbody = json.dumps(
+            {
+                "model": model_name,
+                "prompt": prompt,
+                "stream": False,
+                "options": {"temperature": 0, "num_predict": max_tokens},
+            }
+        ).encode("utf-8")
+        greq = urllib.request.Request(
+            gen_url,
+            data=gbody,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(greq, timeout=180) as resp:  # noqa: S310
+                gdata = json.loads(resp.read().decode("utf-8"))
+            return (gdata.get("response") or "").strip()
+        except Exception as e2:  # noqa: BLE001
+            raise RuntimeError(f"chat failed openai={e!r} ollama={e2!r}") from e2
+
+
 def score_task(
     task: str,
     tasks_root: Path,
@@ -111,27 +193,14 @@ def score_task(
     api_key = api_key or os.environ.get("OLLAMA_API_KEY", "ollama")
     litellm_model = f"openai/{model_name}"
 
-    try:
-        from litellm import completion
-    except ImportError:
-        return {
-            "task": task,
-            "model": litellm_model,
-            "pass": False,
-            "failures": ["litellm not installed"],
-            "error": "import",
-            "skip": False,
-        }
-
     prompt = prompt_path.read_text(encoding="utf-8")
     try:
-        resp = completion(
-            model=litellm_model,
-            api_base=base,
+        raw = _chat_completion(
+            model_name=model_name,
+            base=base,
             api_key=api_key,
-            messages=[{"role": "user", "content": prompt}],
+            prompt=prompt,
             max_tokens=max_tokens,
-            temperature=0,
         )
     except Exception as e:  # noqa: BLE001
         return {
@@ -142,8 +211,6 @@ def score_task(
             "error": "completion",
             "skip": False,
         }
-
-    raw = (resp.choices[0].message.content or "").strip()
     code = extract_python(raw)
     if not code:
         return {

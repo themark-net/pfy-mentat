@@ -100,6 +100,7 @@ help:
 	@echo ""
 	@echo "Catalog:"
 	@echo "  make catalog-json     Validate data/tools.json parses"
+	@echo "  # Self-hosted lab (nimo): docs/ops/self-hosted-runner-nimo.md"
 	@echo "  make catalog-check    S-tier names in TOOLS.md (GAP-03)"
 	@echo "  make catalog-dashboard  scoring dashboard MD (GAP-04)"
 	@echo "  make smoke-product-levers  dual-sided onboard (GAP-09)"
