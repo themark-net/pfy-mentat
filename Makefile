@@ -468,3 +468,7 @@ todo-github-sync:
 
 worker-brief-refresh:
 	@python3 scripts/worker_brief_refresh.py
+
+smoke-integration:
+	@chmod +x scripts/smoke-integration.sh
+	@./scripts/smoke-integration.sh
