@@ -1,0 +1,7 @@
+{
+  "task_id": "007-oq-shape",
+  "lane": "structural",
+  "kind": "text_scorer",
+  "assist_domain": ["design", "process"],
+  "related": ["T-0075", "OPEN_QUESTIONS"]
+}
