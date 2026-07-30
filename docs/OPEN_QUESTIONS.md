@@ -8,10 +8,10 @@ Agents: scan this file at the start of multi-step work. Promote architectural an
 | OQ | Issue | Status |
 |----|-------|--------|
 | OQ-0003 | [#17](https://github.com/themark-net/pfy-mentat/issues/17) | **answered** (wait + integration stages) |
-| OQ-0004 | [#18](https://github.com/themark-net/pfy-mentat/issues/18) | open |
+| OQ-0004 | [#18](https://github.com/themark-net/pfy-mentat/issues/18) | **answered** (submodule later; still in dev) |
 | OQ-0007 | [#19](https://github.com/themark-net/pfy-mentat/issues/19) | tbd |
 | OQ-0008 | [#20](https://github.com/themark-net/pfy-mentat/issues/20) | tbd |
-| **OQ-BATCH** | [#29](https://github.com/themark-net/pfy-mentat/issues/29) | 1/4 done; remaining 0004, 0007, 0008 |
+| **OQ-BATCH** | [#29](https://github.com/themark-net/pfy-mentat/issues/29) | 2/4 done; remaining 0007, 0008 |
 
 ## Qualification model
 
@@ -36,7 +36,7 @@ Related work queue: [TODO.md](TODO.md)
 | [OQ-0005](open-questions/OQ-0005-grok-in-cage-strategy.md) | **P1** | answered | Dual path: host-Grok default + optional grok-in-image (T-0022) | — | ADR-0002; overlays/grok |
 | [OQ-0006](open-questions/OQ-0006-skill-port-strategy.md) | **P1** | promoted-to-adr | Skill port strategy: hybrid first-party + paths snapshots | — | [ADR-0009](adr/0009-skill-port-hybrid-strategy.md) |
 | [OQ-0003](open-questions/OQ-0003-first-subtree-candidate.md) | P2 | **answered** | Wait — no first embed; integration stages I0–I4 | — | [#17](https://github.com/themark-net/pfy-mentat/issues/17) · [integration-stages.md](ops/integration-stages.md) |
-| [OQ-0004](open-questions/OQ-0004-atg-prototype-relationship.md) | P2 | open | How ATG prototype relates to this catalog | T-0004 | [#18](https://github.com/themark-net/pfy-mentat/issues/18) · atg-framework, TOOLS.md |
+| [OQ-0004](open-questions/OQ-0004-atg-prototype-relationship.md) | P2 | **answered** | ATG submodule later (still in dev); I1 now | — | [#18](https://github.com/themark-net/pfy-mentat/issues/18) · [#30](https://github.com/themark-net/pfy-mentat/issues/30) 2026-08-06 review |
 | [OQ-0007](open-questions/OQ-0007-antigravity-need.md) | P2 | tbd | Do we need Antigravity-Manager multi-account relay? | T-0015 | [#19](https://github.com/themark-net/pfy-mentat/issues/19) · LiteLLM |
 | [OQ-0008](open-questions/OQ-0008-colibri-weights-ok.md) | P2 | tbd | OK to download colibri model weights on this machine? | T-0016 | [#20](https://github.com/themark-net/pfy-mentat/issues/20) · disk/RAM |
 | [OQ-0009](open-questions/OQ-0009-write-guard-default-mode.md) | P1 | answered | Default WRITE_GUARD_MODE for new envs (audit vs enforce) | T-0031 | ADR-0007; default **audit** |
@@ -47,7 +47,7 @@ Related work queue: [TODO.md](TODO.md)
 
 ## Needs operator input soon (P1)
 
-*No open P1 OQs.* Remaining: OQ-0004, OQ-0007, OQ-0008 (P2).
+*No open P1 OQs.* Remaining: OQ-0007, OQ-0008 (P2).
 
 Recently closed:
 
@@ -55,7 +55,8 @@ Recently closed:
 2. ~~**OQ-0006** — Skill port strategy~~ → **ADR-0009 hybrid**.  
 3. ~~**OQ-0002** — Eval harness shape~~ → **option 5**.  
 4. ~~**OQ-0009** — Write-guard default~~ → **answered: audit**.  
-5. ~~**OQ-0003** — First subtree~~ → **answered: wait** + [integration-stages.md](ops/integration-stages.md).
+5. ~~**OQ-0003** — First subtree~~ → **answered: wait** + integration stages.  
+6. ~~**OQ-0004** — ATG relationship~~ → **answered: submodule later** (still in dev; review 2026-08-06).
 
 ## Hygiene
 
