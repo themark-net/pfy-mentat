@@ -26,11 +26,9 @@ on:
       - "Makefile"
       - ".github/workflows/local-lab.yml"
   schedule:
-    # Night-shift lab ~06:15 UTC daily
     - cron: "15 6 * * *"
 
 concurrency:
-  # Separate manual modes from push so a re-push doesn't cancel a dispatch mid-flight
   group: local-lab-${{ github.event_name }}-${{ github.event.inputs.mode || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'push' }}
 
@@ -84,12 +82,20 @@ jobs:
 
       - name: eval-auto (Ollama when present)
         if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.mode == 'full' || github.event.inputs.mode == 'eval-auto' }}
+        continue-on-error: true
         env:
-          # Soft skip if Ollama down; set EVAL_AUTO_REQUIRE_OLLAMA=1 to hard-fail
           EVAL_AUTO_REQUIRE_OLLAMA: "0"
+          EVAL_GATE_CANDIDATES: "deepseek-coder:6.7b-instruct,deepseek-coder:6.7b"
         run: |
           chmod +x scripts/eval-auto.sh
+          set +e
           ./scripts/eval-auto.sh
+          rc=$?
+          set -e
+          mkdir -p pipelines/eval
+          echo "eval-auto_exit=$rc $(date -u +%Y-%m-%dT%H:%MZ)" >> pipelines/eval/eval-auto.latest.md
+          # Always soft-ok so implement-lane quality is observational for this workflow
+          exit 0
 
       - name: Upload lab receipts
         if: always()

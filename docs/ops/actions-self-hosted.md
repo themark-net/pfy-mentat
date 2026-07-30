@@ -64,3 +64,10 @@ None required for G0. Ollama is local on nimo (no cloud key). Optional later: `X
 | `nightly-models` first dispatch | failed on CLI flag; fixed to `--matrix-md` |
 
 Use Actions → Artifacts for receipts after each run.
+
+## Design notes (nimo)
+
+- **eval-auto is observational** on `local-lab` (always exit 0 after run): model quality must not red-X lab G0/G1.
+- **Nightly matrix** tracks implement-lane pass rates over time (artifacts); also exit 0.
+- Single runner serializes jobs — prefer one `workflow_dispatch` at a time for long eval-auto.
+- First real eval-auto on nimo: deepseek-coder:6.7b-instruct **3/4** (failed 012-slugify); qwen 14b not installed.
