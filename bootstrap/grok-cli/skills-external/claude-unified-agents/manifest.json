@@ -1,0 +1,26 @@
+{
+  "name": "claude-unified-agents",
+  "upstream": "https://github.com/stretchcloud/claude-code-unified-agents",
+  "pin": "b026de60c0fc5438f53faffb5cd7f43f84ed3267",
+  "x_post": "2082997925014053075",
+  "skills": [
+    "accessibility-auditor",
+    "ai-engineer",
+    "api-designer",
+    "backend-architect",
+    "code-reviewer",
+    "database-specialist",
+    "devops-engineer",
+    "e2e-test-specialist",
+    "error-detective",
+    "incident-responder",
+    "monitoring-specialist",
+    "orchestrator",
+    "performance-engineer",
+    "prompt-engineer",
+    "security-auditor",
+    "ux-designer"
+  ],
+  "integration_stage": "I1",
+  "eval_receipt": "pipelines/eval/unified-agents-eval.latest.md"
+}

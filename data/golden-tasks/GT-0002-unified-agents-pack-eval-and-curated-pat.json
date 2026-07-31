@@ -1,0 +1,36 @@
+{
+  "id": "GT-0002",
+  "title": "unified-agents-pack-eval-and-curated-paths",
+  "created": "2026-07-31",
+  "scale": "multi_file",
+  "human_request": "Eval stretchcloud claude-code-unified-agents from X post and integrate if pass",
+  "agent_tasks": [
+    "Run scripts/eval_unified_agents_pack.py",
+    "Curate 16 paths skills + catalog triple-write"
+  ],
+  "artifacts": [
+    {
+      "kind": "file",
+      "ref": "pipelines/eval/unified-agents-eval.latest.md",
+      "note": "artifact"
+    },
+    {
+      "kind": "file",
+      "ref": "bootstrap/grok-cli/skills-external/claude-unified-agents/PORT.md",
+      "note": "artifact"
+    },
+    {
+      "kind": "file",
+      "ref": "docs/ops/unified-agents-recipes.md",
+      "note": "artifact"
+    }
+  ],
+  "acceptance_checks": [
+    "Eval receipt exists with pack_decision PASS",
+    "At least 10 curated SKILL.md under claude-unified-agents",
+    "tools.json contains claude-code-unified-agents"
+  ],
+  "source_session": "2026-07-31",
+  "replay_prompt": "Eval stretchcloud claude-code-unified-agents from X post and integrate if pass",
+  "notes": "draft via scripts/draft_golden_task.py \u2014 edit before relying on scores"
+}

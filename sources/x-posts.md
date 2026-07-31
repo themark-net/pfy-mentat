@@ -873,3 +873,16 @@ When adding new X-sourced tools or papers:
 ```
 
 *This log ensures the catalog remains grounded in primary social signals while allowing rigorous, staged evaluation separate from viral claims.*
+
+---
+
+### Entry — Unified Claude Code agents (2026-07-31)
+
+- **X status:** https://x.com/i/status/2082997925014053075
+- **Author:** @tom_doerr
+- **Repo:** https://github.com/stretchcloud/claude-code-unified-agents
+- **Summary:** 54 production-oriented Claude Code sub-agents (dev/infra/quality/AI/business/domain) + orchestrator.
+- **Eval:** extensive pack loop `scripts/eval_unified_agents_pack.py` — **PASS** (98% gate, mean 4.06).
+- **Decision:** Curated I1 paths pack (16 skills); docs_map overlaps to first-party; no Claude primary.
+- **Pin:** b026de60c0fc5438f53faffb5cd7f43f84ed3267
+- **Status:** Integrated 2026-07-31

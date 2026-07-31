@@ -25,6 +25,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 SKILLS_SRC="$SCRIPT_DIR/skills"
 PONYTAIL_SRC="$SCRIPT_DIR/skills-external/ponytail"
 MATTPOCOCK_SRC="$SCRIPT_DIR/skills-external/mattpocock"
+CLAUDE_UA_SRC="$SCRIPT_DIR/skills-external/claude-unified-agents"
 PROJECT_PROCESS_SKILL="$SCRIPT_DIR/../project-process/skills/project-process"
 MERGE_PY="$SCRIPT_DIR/scripts/merge_config.py"
 
@@ -39,6 +40,7 @@ MCP_ONLY=0
 WITH_CODEBASE_MEMORY=0
 NO_PONYTAIL=0
 NO_MATTPOCOCK=0
+NO_CLAUDE_UA=0
 NO_PERMISSION_MODE=0
 FORCE=0
 VERIFY=0
@@ -62,6 +64,7 @@ while [[ $# -gt 0 ]]; do
     --with-codebase-memory) WITH_CODEBASE_MEMORY=1; shift ;;
     --no-ponytail) NO_PONYTAIL=1; shift ;;
     --no-mattpocock) NO_MATTPOCOCK=1; shift ;;
+    --no-claude-ua) NO_CLAUDE_UA=1; shift ;;
     --no-permission-mode) NO_PERMISSION_MODE=1; shift ;;
     --force) FORCE=1; shift ;;
     --verify) VERIFY=1; shift ;;
@@ -147,6 +150,22 @@ install_ponytail_path() {
   abs="$(cd "$PONYTAIL_SRC" && pwd)"
   SKILLS_PATH_ABS+=("$abs")
   log "Ponytail skills path: $abs"
+}
+
+
+install_claude_ua_path() {
+  if [[ "${NO_CLAUDE_UA:-0}" -eq 1 ]]; then
+    log "Skipping claude-unified-agents skills path (--no-claude-ua)"
+    return 0
+  fi
+  if [[ ! -d "$CLAUDE_UA_SRC" ]] || [[ ! -f "$CLAUDE_UA_SRC/security-auditor/SKILL.md" ]]; then
+    warn "claude-unified-agents snapshot missing: $CLAUDE_UA_SRC"
+    return 0
+  fi
+  local abs
+  abs="$(cd "$CLAUDE_UA_SRC" && pwd)"
+  SKILLS_PATH_ABS+=("$abs")
+  log "claude-unified-agents skills path: $abs (curated subset; PORT.md)"
 }
 
 install_mattpocock_path() {
@@ -287,6 +306,7 @@ if [[ "$MCP_ONLY" -eq 1 ]]; then
   install_codebase_memory
   install_ponytail_path
   install_mattpocock_path
+  install_claude_ua_path
   merge_config
   [[ "$VERIFY" -eq 1 ]] && verify
   log "Done (mcp-only)."
@@ -296,6 +316,7 @@ fi
 if [[ "$CONFIG_ONLY" -eq 1 ]]; then
   install_ponytail_path
   install_mattpocock_path
+  install_claude_ua_path
   merge_config
   [[ "$VERIFY" -eq 1 ]] && verify
   log "Done (config-only)."
@@ -306,6 +327,7 @@ if [[ "$SKILLS_ONLY" -eq 1 ]]; then
   install_first_party_skills
   install_ponytail_path
   install_mattpocock_path
+  install_claude_ua_path
   # still wire paths so external packs are discoverable
   merge_config
   [[ "$VERIFY" -eq 1 ]] && verify
@@ -317,6 +339,7 @@ fi
 install_first_party_skills
 install_ponytail_path
 install_mattpocock_path
+install_claude_ua_path
 install_codebase_memory
 merge_config
 verify

@@ -88,6 +88,7 @@ help:
 	@echo "  make worker-stage           # T-0085: smoke worker + write monitor brief / worker.env"
 	@echo "  make eval-structural           # design/coding gates, NO LLM (always run)"
 	@echo "  make eval-golden               # golden-task cards validate (no LLM)"
+	@echo "  make eval-unified-agents       # score claude-unified-agents pack"
 	@echo "  make eval-deploy-ready         # G1: structural+golden+soft smokes (HD #33)"
 	@echo "  make eval-select-models        # pick gate/matrix models that FIT RAM/disk (may pull)"
 	@echo "  make eval-select-tools-model   # T-0093: probe tools-capable Ollama tag + tool-split"
@@ -473,3 +474,7 @@ worker-brief-refresh:
 smoke-integration:
 	@chmod +x scripts/smoke-integration.sh
 	@./scripts/smoke-integration.sh
+
+eval-unified-agents:
+	@python3 scripts/eval_unified_agents_pack.py
+	@echo "see pipelines/eval/unified-agents-eval.latest.md"

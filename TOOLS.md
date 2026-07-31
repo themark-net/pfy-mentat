@@ -107,3 +107,15 @@ Full multi-agent simulated companies. **Do not** score with S1–S4 alone. Use [
 2. New **AI company** → company Stage 0 gate + C1–C6 rubric; Cluster 5 in scoring-summary.
 3. Integration experiment → empirical notes + score adjust.
 4. Major release → re-score.
+
+## claude-code-unified-agents (A-tier · I1)
+
+| Field | Value |
+|-------|-------|
+| Source | https://github.com/stretchcloud/claude-code-unified-agents |
+| X | https://x.com/i/status/2082997925014053075 |
+| Scores | R4 I3 Repro5 UV4 → **A** overall ~80 |
+| Integration | Curated **16** paths skills under `bootstrap/grok-cli/skills-external/claude-unified-agents/` |
+| Eval | `pipelines/eval/unified-agents-eval.latest.md` (98% gate pass, mean 4.06) |
+| Non-goal | Claude Code primary; full 54 first-party |
+| Ops | [unified-agents-recipes.md](docs/ops/unified-agents-recipes.md) |

@@ -1,6 +1,6 @@
 {
   "version": "1.1",
-  "last_updated": "2026-07-30",
+  "last_updated": "2026-07-31",
   "policy": "docs/ops/integration-stages.md",
   "default_stage": "I1",
   "tools": {
@@ -337,6 +337,14 @@
       "intent": "catalog_default",
       "tier": "A",
       "auto": true
+    },
+    "claude-code-unified-agents": {
+      "integration_stage": "I1",
+      "intent": "curated_paths_pack",
+      "pin": "b026de60c0fc5438f53faffb5cd7f43f84ed3267",
+      "notes_doc": "docs/ops/unified-agents-recipes.md",
+      "eval_receipt": "pipelines/eval/unified-agents-eval.latest.md",
+      "skills": 16
     }
   },
   "probe_path": "tools/_probe/",

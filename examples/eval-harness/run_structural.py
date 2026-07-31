@@ -171,11 +171,18 @@ def check_external_skills() -> tuple[bool, str]:
         ROOT / "bootstrap/grok-cli/skills-external/mattpocock/to-spec/SKILL.md",
         ROOT / "bootstrap/grok-cli/skills-external/mattpocock/tdd/SKILL.md",
         ROOT / "bootstrap/grok-cli/skills-external/ponytail/ponytail/SKILL.md",
+        ROOT / "bootstrap/grok-cli/skills-external/claude-unified-agents/security-auditor/SKILL.md",
+        ROOT / "bootstrap/grok-cli/skills-external/claude-unified-agents/PORT.md",
     ]
     miss = [str(p.relative_to(ROOT)) for p in packs if not p.is_file()]
     if miss:
         return False, f"missing {miss}"
-    return True, f"ok external packs {len(packs)}"
+    # curated pack integrity
+    ua = ROOT / "bootstrap/grok-cli/skills-external/claude-unified-agents"
+    n = len(list(ua.glob("*/SKILL.md"))) if ua.is_dir() else 0
+    if n < 10:
+        return False, f"claude-unified-agents too few skills: {n}"
+    return True, f"ok external packs {len(packs)} ua_skills={n}"
 
 
 def main() -> int:

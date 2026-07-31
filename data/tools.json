@@ -1,6 +1,6 @@
 {
-  "version": "0.4.10",
-  "last_updated": "2026-07-30",
+  "version": "0.4.11",
+  "last_updated": "2026-07-31",
   "description": "v0.4.10: integration_stage notes ATG/Antigravity/adr-tools; golden eval lane.",
   "schema_notes": {
     "required_for_all": [
@@ -1115,6 +1115,31 @@
       ],
       "notes": "**X Entry 076.** Battle-tested plugins, hooks, agents & shared guidance for Claude Code, Codex, Cursor, Gemini CLI. Targets Karpathy-style pitfalls (overcomplication, no clarification). Complements asm. Extract hooks for Grok policy packs.",
       "integration_stage": "I1"
+    },
+    {
+      "name": "claude-code-unified-agents",
+      "primary_category": "Skills & Org Structures",
+      "github": "https://github.com/stretchcloud/claude-code-unified-agents",
+      "scores": {
+        "s1": 80,
+        "s2": 70,
+        "s3": 90,
+        "s4": 78,
+        "overall": 80
+      },
+      "tier": "A",
+      "tags": [
+        "skills",
+        "claude-code",
+        "multi-agent",
+        "roles",
+        "paths-pack",
+        "local-first"
+      ],
+      "integration_stage": "I1",
+      "notes": "54 Claude sub-agents; eval PASS curated 16 paths pack (pin b026de60). Not primary runtime. X 2082997925014053075.",
+      "bootstrap_path": "bootstrap/grok-cli/skills-external/claude-unified-agents",
+      "eval_receipt": "pipelines/eval/unified-agents-eval.latest.md"
     }
   ],
   "aggregates": [],
