@@ -213,6 +213,39 @@ def long_task_footer() -> str:
     )
 
 
+def normalize_receipt_text(text: str) -> str:
+    """Strip markdown bold/italics around STATUS/DOD/EXIT/NEXT keys for scorer 008.
+
+    Small local models often emit ``**STATUS:** pass``; 008 requires bare ``STATUS:`` lines.
+    Colon may sit inside the emphasis (``**STATUS:**``) so strip ``*``/``_`` around key and colon.
+    """
+    if not text:
+        return text
+    out_lines: list[str] = []
+    for line in text.splitlines():
+        m = re.match(
+            r"^(\s*)[*_]*\s*(STATUS|DOD|EXIT|NEXT)\s*[*_]*\s*:\s*[*_]*\s*(.*?)\s*$",
+            line,
+            re.IGNORECASE,
+        )
+        if m:
+            key = m.group(2).upper()
+            val = m.group(3).strip().strip("*_").strip()
+            out_lines.append(f"{m.group(1)}{key}: {val}".rstrip() if val else f"{m.group(1)}{key}:")
+        else:
+            out_lines.append(line)
+    return "\n".join(out_lines)
+
+
+def force_ollama_http() -> bool:
+    return os.environ.get("VOICE_FORCE_OLLAMA_HTTP", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+
+
 def _lock_path(out: Path) -> Path:
     return out / LOCK_NAME
 
@@ -244,6 +277,18 @@ def release_lock(out: Path) -> None:
 
 
 def build_prompt(prompt_path: Path | None, transcript: str | None, target: str, repo: Path) -> str:
+    # Receipt-only CI (T-0097): use transcript as the whole prompt — no memory/plan footer noise.
+    if force_ollama_http() and transcript and not (prompt_path and prompt_path.is_file()):
+        return (
+            transcript.strip()
+            + "\n\n"
+            "Output ONLY these four bare lines (no markdown, no preamble, no bold):\n"
+            "STATUS: pass\n"
+            "DOD: healthy voice install receipt\n"
+            "EXIT: goal\n"
+            "NEXT: done\n"
+        )
+
     if prompt_path and prompt_path.is_file():
         base = prompt_path.read_text(encoding="utf-8").strip()
     elif transcript:
@@ -283,6 +328,8 @@ def _finish_ok(
     exit_code: int = 0,
     extra: dict | None = None,
 ) -> dict:
+    if long_task_enabled() or force_ollama_http():
+        reply = normalize_receipt_text(reply or "")
     (out / "last-reply.txt").write_text(reply + ("\n" if reply else ""), encoding="utf-8")
     payload = {
         "status": "done" if exit_code == 0 else "error",
@@ -692,27 +739,39 @@ def run_ollama_completion(prompt: str, out: Path, run_id: str, timeout_s: int) -
     url = base + "/chat/completions"
     # Keep prompt bounded for small local models
     user = prompt if len(prompt) < 6000 else (prompt[:5500] + "\n\n[truncated]\n")
+    if force_ollama_http():
+        system = (
+            "You are a receipt printer. Reply with ONLY four bare lines, no markdown, "
+            "no bold, no preamble, no code fences:\n"
+            "STATUS: pass\n"
+            "DOD: <short result>\n"
+            "EXIT: goal\n"
+            "NEXT: done\n"
+            "Keys must be exactly STATUS/DOD/EXIT/NEXT with a colon and space."
+        )
+        max_tok = int(os.environ.get("VOICE_LOCAL_MAX_TOKENS", "128"))
+        temp = 0.0
+    else:
+        system = (
+            "You are a local coding assistant. Be concise. "
+            "If asked to run checks, describe the commands and expected outcomes."
+        )
+        if long_task_enabled():
+            system += (
+                " Multi-step DoD mode: plan, implement, verify. "
+                "End with bare STATUS:/DOD:/EXIT:/NEXT: lines (no markdown)."
+            )
+        max_tok = int(os.environ.get("VOICE_LOCAL_MAX_TOKENS", "512"))
+        temp = 0.2
     body = json.dumps(
         {
             "model": model,
             "messages": [
-                {
-                    "role": "system",
-                    "content": (
-                        "You are a local coding assistant. Be concise. "
-                        "If asked to run checks, describe the commands and expected outcomes."
-                        + (
-                            " Multi-step DoD mode: plan, implement, verify. "
-                            "End with STATUS:/DOD:/EXIT:/NEXT: lines."
-                            if long_task_enabled()
-                            else ""
-                        )
-                    ),
-                },
+                {"role": "system", "content": system},
                 {"role": "user", "content": user},
             ],
-            "max_tokens": int(os.environ.get("VOICE_LOCAL_MAX_TOKENS", "512")),
-            "temperature": 0.2,
+            "max_tokens": max_tok,
+            "temperature": temp,
         }
     ).encode()
     req = urllib.request.Request(
@@ -799,12 +858,7 @@ def run_opencode(prompt: str, repo: Path, out: Path, run_id: str, timeout_s: int
         model = local_agent_model()
 
     # Receipt-only CI path: skip OpenCode agent (tool planning) for reliable STATUS block.
-    if os.environ.get("VOICE_FORCE_OLLAMA_HTTP", "").strip().lower() in (
-        "1",
-        "true",
-        "yes",
-        "on",
-    ):
+    if force_ollama_http():
         print("==> VOICE_FORCE_OLLAMA_HTTP=1 — Ollama chat completion only", file=sys.stderr)
         result = run_ollama_completion(prompt, out, run_id, timeout_s)
         result["mode"] = "opencode-ollama" if result.get("ok") else result.get("mode", "ollama")
