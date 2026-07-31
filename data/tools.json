@@ -1,5 +1,5 @@
 {
-  "version": "0.4.11",
+  "version": "0.4.12",
   "last_updated": "2026-07-31",
   "description": "v0.4.10: integration_stage notes ATG/Antigravity/adr-tools; golden eval lane.",
   "schema_notes": {
@@ -1140,6 +1140,37 @@
       "notes": "54 Claude sub-agents; eval PASS curated 16 paths pack (pin b026de60). Not primary runtime. X 2082997925014053075.",
       "bootstrap_path": "bootstrap/grok-cli/skills-external/claude-unified-agents",
       "eval_receipt": "pipelines/eval/unified-agents-eval.latest.md"
+    },
+    {
+      "name": "Exo (exoharness)",
+      "primary_category": "Coding & Dev Agents",
+      "github": "https://github.com/exoharness/exo",
+      "scores": {
+        "s1": 90,
+        "s2": 55,
+        "s3": 88,
+        "s4": 92,
+        "overall": 81
+      },
+      "tier": "A",
+      "tags": [
+        "agent-harness",
+        "recursive-self-improvement",
+        "sandbox",
+        "event-log",
+        "skills",
+        "self-mod",
+        "docker",
+        "orchestration",
+        "local-first"
+      ],
+      "integration_stage": "I1",
+      "notes": "Pin 372602d1b553. Full RSI agent harness (code mount, rebuild_and_restart_exo, canonical event log, sandbox snapshot/rewind, skills as artifacts). Self-verification is practice+primitives not numeric rubric (SELF-CONTROL \u00a78). Do not adopt as primary runtime (Grok+cage). Extract patterns: docs/ops/exo-self-mod-patterns.md + integration-self-mod-eval.md.",
+      "docs": [
+        "docs/ops/exo-self-mod-patterns.md",
+        "docs/ops/integration-self-mod-eval.md",
+        "docs/evaluation/exo-exoharness.md"
+      ]
     }
   ],
   "aggregates": [],

@@ -119,3 +119,16 @@ Full multi-agent simulated companies. **Do not** score with S1–S4 alone. Use [
 | Eval | `pipelines/eval/unified-agents-eval.latest.md` (98% gate pass, mean 4.06) |
 | Non-goal | Claude Code primary; full 54 first-party |
 | Ops | [unified-agents-recipes.md](docs/ops/unified-agents-recipes.md) |
+
+## Exo / exoharness (A-tier · I1)
+
+| Field | Value |
+|-------|-------|
+| Source | https://github.com/exoharness/exo |
+| Pin | `372602d1b553af06e9843e19f31fa8a7f749ab6e` |
+| Scores | R5 I2–3 Repro4–5 UV5 → **~81 A** |
+| Differentiator | Recursive self-mod + immutable event log + rebuild guardian |
+| Self-eval | Practice loop (SELF-CONTROL §8), **not** a numeric RSI rubric |
+| Our extract | [exo-self-mod-patterns.md](docs/ops/exo-self-mod-patterns.md) · [integration-self-mod-eval.md](docs/ops/integration-self-mod-eval.md) |
+| Automation | `make eval-integration-change` |
+| Non-goal | Primary runtime; unattended monorepo RSI |

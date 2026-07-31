@@ -886,3 +886,14 @@ When adding new X-sourced tools or papers:
 - **Decision:** Curated I1 paths pack (16 skills); docs_map overlaps to first-party; no Claude primary.
 - **Pin:** b026de60c0fc5438f53faffb5cd7f43f84ed3267
 - **Status:** Integrated 2026-07-31
+
+---
+
+### Entry — Exo harness (operator request 2026-07-31)
+
+- **Repo:** https://github.com/exoharness/exo
+- **Pin:** 372602d1b553af06e9843e19f31fa8a7f749ab6e
+- **Summary:** Complete agent harness optimized for recursive self-improvement: code mount, rebuild_and_restart_exo, canonical event log, sandbox snapshot/rewind, skills as durable artifacts.
+- **Self-change eval:** Operational §8 (snapshot → build → rebuild tool → event log → rollback); no formal numeric rubric; canary clone still a gap upstream.
+- **Decision:** Catalog **A / I1**; extract patterns into integration-self-mod-eval + make target. Not primary runtime.
+- **Status:** Cataloged 2026-07-31
