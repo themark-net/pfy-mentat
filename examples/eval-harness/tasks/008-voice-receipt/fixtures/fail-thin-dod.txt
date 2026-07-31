@@ -1,0 +1,4 @@
+STATUS: pass
+DOD: -
+EXIT: goal
+NEXT: done

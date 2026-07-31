@@ -2,7 +2,7 @@
   "name": "grok-cli-bootstrap",
   "version": "0.1.0",
   "description": "Replayable Grok CLI customizations for the pfy-mentat stack: portable agent skills, MCP code memory, and config fragments.",
-  "last_updated": "2026-07-11",
+  "last_updated": "2026-07-31",
   "fits_repo_goals": [
     "Grok CLI as primary interface",
     "MCP-style code memory",
@@ -84,11 +84,16 @@
         "name": "worker-monitor",
         "origin": "first-party dual-session recipe (T-0085)",
         "purpose": "Local Ollama OpenCode worker + Grok monitor protocol"
+      },
+      {
+        "name": "env-promote",
+        "origin": "user-authored 2026-07-31 (branch promotion ADR-0014)",
+        "purpose": "dev\u2192stage\u2192main environment promotion for smooth production releases"
       }
     ]
   },
   "related_packages": {
-    "project_process": "bootstrap/project-process/ — per-repo process scaffold (init.sh)"
+    "project_process": "bootstrap/project-process/ \u2014 per-repo process scaffold (init.sh)"
   },
   "external_skills": {
     "ponytail": {
@@ -138,7 +143,7 @@
     "Grok binary itself (install via https://x.ai/cli/install.sh)",
     "auth.json / API keys / browser session tokens",
     "Session history, memory indices, worktrees",
-    "Marketplace plugins (docx/pptx) — reinstall via Grok marketplace if needed",
+    "Marketplace plugins (docx/pptx) \u2014 reinstall via Grok marketplace if needed",
     "Built-in Grok.com GitHub remote tools (account-bound)"
   ]
 }

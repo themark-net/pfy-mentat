@@ -1,0 +1,6 @@
+{
+  "status": "error",
+  "ok": false,
+  "mode": "opencode",
+  "error": "Ollama completion failed: connection refused"
+}

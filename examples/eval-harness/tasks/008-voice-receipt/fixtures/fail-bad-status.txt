@@ -1,0 +1,4 @@
+STATUS: maybe
+DOD: unclear outcome
+EXIT: goal
+NEXT: retry later

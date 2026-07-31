@@ -1,0 +1,175 @@
+name: voice-clean
+
+# Installable voice agent path on self-hosted runner (nimo).
+# Required: no mic, no cloud. Structural rubric parallel.
+
+on:
+  workflow_dispatch:
+    inputs:
+      include_structural:
+        description: "Also run structural eval"
+        required: false
+        default: true
+        type: boolean
+      include_remote:
+        description: "Also run smoke-voice-remote"
+        required: false
+        default: true
+        type: boolean
+  push:
+    branches: [main, stage, dev]
+    paths:
+      - "examples/voice-stt-edge/**"
+      - "examples/eval-harness/tasks/**"
+      - ".github/workflows/voice-clean.yml"
+      - "Makefile"
+      - "make/voice.mk"
+
+concurrency:
+  group: voice-clean-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  voice:
+    name: voice interface
+    runs-on: [self-hosted, pfy-mentat]
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    env:
+      PFY_CI: "1"
+      CI: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Runner context
+        run: |
+          set -euo pipefail
+          echo "host=$(hostname) user=$(whoami)"
+          python3 --version
+          command -v ollama >/dev/null && ollama list 2>/dev/null | head -10 || echo "ollama=none"
+          command -v grok >/dev/null && echo "grok=present" || echo "grok=none"
+          command -v opencode >/dev/null && echo "opencode=present" || echo "opencode=none"
+
+      - name: Reserve free port for remote smoke
+        run: |
+          set -euo pipefail
+          PORT=$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1]); s.close()')
+          echo "VOICE_REMOTE_SMOKE_PORT=$PORT" >> "$GITHUB_ENV"
+          echo "remote smoke port=$PORT"
+
+      - name: install-voice-agent
+        run: |
+          set -euo pipefail
+          chmod +x examples/voice-stt-edge/install-voice-agent.sh \
+            examples/voice-stt-edge/smoke.sh \
+            examples/voice-stt-edge/smoke-agent.sh \
+            examples/voice-stt-edge/voice-repl.sh \
+            examples/voice-stt-edge/agent_runner.py \
+            examples/voice-stt-edge/python.sh || true
+          ./examples/voice-stt-edge/install-voice-agent.sh
+
+      - name: long-task receipt scored by 008
+        run: |
+          set -euo pipefail
+          export VOICE_LONG_TASK=1
+          OUT=examples/voice-stt-edge/.generated
+          mkdir -p "$OUT"
+          python3 examples/voice-stt-edge/agent_runner.py \
+            --mode mock --long-task \
+            --transcript "Multi-step DoD under rubric; keep voice-clean green" \
+            --target worker --timeout 60 \
+            --out-dir "$OUT" --repo "${GITHUB_WORKSPACE}"
+          python3 examples/eval-harness/tasks/008-voice-receipt/score.py "$OUT/last-reply.txt"
+          python3 examples/eval-harness/tasks/009-voice-last-run/score.py "$OUT/last-run.json"
+          python3 -c "import json; d=json.load(open('$OUT/last-run.json')); assert d.get('status')=='done' and d.get('ok'); print('long-task ok long_task=', d.get('long_task'))"
+
+      - name: deterministic e2e develop-loop (recipe)
+        run: |
+          set -euo pipefail
+          chmod +x examples/voice-stt-edge/e2e-develop-loop.sh || true
+          ./examples/voice-stt-edge/e2e-develop-loop.sh
+
+      - name: T-0097 hard local receipt when model present
+        run: |
+          set -euo pipefail
+          chmod +x examples/voice-stt-edge/ci-optional-local-long-task.sh \
+            examples/voice-stt-edge/lib-local-model.sh || true
+          ./examples/voice-stt-edge/ci-optional-local-long-task.sh
+
+      - name: T-0098 tool-use microtask when model present
+        run: |
+          set -euo pipefail
+          chmod +x examples/voice-stt-edge/tool-use-microtask.sh \
+            examples/voice-stt-edge/lib-local-model.sh || true
+          # Bounded; SKIP on timeout/infra; FAIL only if model present and no marker
+          VOICE_TOOL_MICROTASK_TIMEOUT="${VOICE_TOOL_MICROTASK_TIMEOUT:-240}" \
+            ./examples/voice-stt-edge/tool-use-microtask.sh
+
+      - name: smoke-voice-remote
+        if: github.event_name != 'workflow_dispatch' || inputs.include_remote
+        run: |
+          set -euo pipefail
+          chmod +x examples/voice-stt-edge/smoke-remote.sh \
+            examples/voice-stt-edge/remote_server.py || true
+          make smoke-voice-remote
+
+      - name: Write receipt
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p pipelines/smoke/voice-clean
+          {
+            echo "# voice-clean"
+            echo "- When: $(date -Iseconds 2>/dev/null || date)"
+            echo "- SHA: ${GITHUB_SHA}"
+            echo "- Runner: $(hostname)"
+            echo "- PORT: ${VOICE_REMOTE_SMOKE_PORT:-}"
+            ls -la examples/voice-stt-edge/.generated/ 2>/dev/null || true
+            if [ -f examples/voice-stt-edge/.generated/last-reply.txt ]; then
+              echo; echo "## last-reply"; head -c 1500 examples/voice-stt-edge/.generated/last-reply.txt; echo
+            fi
+            echo; echo "## local-eval receipts"
+            ls -la examples/voice-stt-edge/.generated/local-eval-*.md 2>/dev/null || echo "(none)"
+            for f in examples/voice-stt-edge/.generated/local-eval-*.md; do
+              [ -f "$f" ] || continue
+              echo; echo "### $f"; cat "$f"
+            done
+            if [ -f examples/voice-stt-edge/.generated/tool-microtask-marker.txt ]; then
+              echo; echo "## tool-microtask-marker"; cat examples/voice-stt-edge/.generated/tool-microtask-marker.txt
+            fi
+          } > pipelines/smoke/voice-clean/results.latest.md
+
+      - name: Upload receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: voice-clean-${{ github.run_id }}
+          path: |
+            pipelines/smoke/
+            pipelines/eval/
+            examples/voice-stt-edge/.generated/last-run.json
+            examples/voice-stt-edge/.generated/last-reply.txt
+          if-no-files-found: ignore
+
+  structural:
+    name: structural gates
+    if: github.event_name != 'workflow_dispatch' || inputs.include_structural
+    runs-on: [self-hosted, pfy-mentat]
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: eval-structural
+        run: |
+          set -euo pipefail
+          python3 examples/eval-harness/run_structural.py --write-md pipelines/eval/structural.latest.md
+          cat pipelines/eval/structural.latest.md
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: structural-from-voice-clean-${{ github.run_id }}
+          path: pipelines/eval/structural.latest.md
+          if-no-files-found: ignore

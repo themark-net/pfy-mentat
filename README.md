@@ -1,6 +1,8 @@
 # pfy-mentat
 
-**pfy-mentat — Your PFY, a Mentat. It gets sent out, finds the tools, applies the standards, and reports back with receipts.**
+**pfy-mentat — Your PFY, a Mentat. It gets sent out, finds the tools, applies the standards, and reports back with receipts.**[^pfy]
+
+[^pfy]: **PFY** = *Pimply Faced Youth* (classic sysadmin slang for the junior who actually gets work done). **Mentat** = Dune’s human computer — operator for a catalog + process system.
 
 pfy-mentat is both a high-standard catalog of local LLM development tools *and* an orientation toward building the software that actually deploys and runs them reliably.
 
@@ -126,6 +128,16 @@ One-shot design: [docs/ops/one-shot-workflow.md](docs/ops/one-shot-workflow.md) 
 
 Plans: [docs/ops/plan-mobile-seed-integration.md](docs/ops/plan-mobile-seed-integration.md), [docs/ops/harness-integration-framework.md](docs/ops/harness-integration-framework.md).
 
+## Branch promotion (dev → stage → main)
+
+| Branch | Role |
+|--------|------|
+| **dev** | Integration — all features and immediate work land here first |
+| **stage** | Upgrade rehearsal — starts as a copy of **main** (prod); receives candidate upgrades from **dev** so you see what production would change |
+| **main** | Release / production — only accepts **stage** after acceptance; fresh build; then **stage** is re-synced from **main** |
+
+Skill: `/env-promote` · ADR-0014 · [docs/ops/branch-promotion.md](docs/ops/branch-promotion.md)
+
 ## Deploy runbook
 
 Full new-machine path: **[docs/ops/DEPLOY.md](docs/ops/DEPLOY.md)**.
@@ -248,7 +260,8 @@ pfy-mentat/
 │   ├── x-posts.md                 # X/social seed log + receipts (Entries 001+)
 │   └── aggregates.md
 ├── data/
-│   └── tools.json                 # Structured catalog (must stay valid JSON)
+│   ├── tools.json                 # Structured catalog (must stay valid JSON)
+│   └── harnesses.json             # Multi-harness slots for ./pfy (G8)
 ├── bootstrap/
 │   ├── grok-cli/                  # Operator env: skills + MCP + config
 │   └── project-process/           # Scaffold process into any repo

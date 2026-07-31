@@ -492,3 +492,17 @@ pfy:
 
 setup-simple:
 	@./pfy setup $(PROFILE)
+
+# Voice agent operator targets (installable path + REPL)
+-include make/voice.mk
+
+# --- Branch promotion (ADR-0014) --------------------------------------------
+.PHONY: promote-status promote-to-stage promote-to-main promote-sync-stage
+promote-status:
+	@./scripts/env-promote.sh status
+promote-to-stage:
+	@./scripts/env-promote.sh to-stage
+promote-to-main:
+	@./scripts/env-promote.sh to-main $(if $(TAG),--tag $(TAG),)
+promote-sync-stage:
+	@./scripts/env-promote.sh sync-stage

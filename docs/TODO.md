@@ -4,6 +4,15 @@
 **Design:** [DESIGN.md](DESIGN.md) · **ADRs:** [adr/](adr/README.md) · **Open questions:** [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md)
 
 
+
+## Branch promotion (2026-07-31)
+
+| ID | Item | Status |
+|----|------|--------|
+| T-0110 | ADR-0014 + `/env-promote` + `scripts/env-promote.sh` | **done** on **dev** |
+| T-0111 | Delete fully-merged remote feature/* after ACK | open |
+| T-0112 | First stage acceptance of voice ports → main | open (human) |
+
 ## G8 — Simple harness-agnostic launch (2026-07-31)
 
 | ID | Item | Status |

@@ -1,0 +1,7 @@
+{
+  "status": "queued",
+  "ok": false,
+  "run_id": "deadbeef",
+  "mode": "opencode",
+  "message": "queued for agent runner"
+}

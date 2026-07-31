@@ -34,3 +34,4 @@
 
 `Proposed` → `Accepted` | `Rejected`  
 `Accepted` → `Superseded by NNNN` (new entry required; never silent overwrite)
+| [0014](0014-branch-promotion-dev-stage-main.md) | Branch promotion dev→stage→main | Accepted |
