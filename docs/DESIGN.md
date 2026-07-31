@@ -1,7 +1,7 @@
 # Design: pfy-mentat
 
 **Status:** Active  
-**Last updated:** 2026-07-11  
+**Last updated:** 2026-07-31  
 **Authority for *why*:** [docs/adr/](adr/README.md)  
 **Next work:** [docs/TODO.md](TODO.md) · open items [docs/OPEN_QUESTIONS.md](OPEN_QUESTIONS.md)
 
@@ -28,6 +28,26 @@ One-line purpose: **Track · Categorize · Rank · Integrate** tools for robust 
 | G5 | Grok-first interface | Operator env and agent skills bootstrapped from this repo; hybrid/fallback to other harnesses when scored higher for a task |
 | G6 | Lean tracking | Prefer pinned SHA + shallow clone; embed only when criteria in `SUBTREES.md` are met |
 | G7 | Durable process | Design + ADR + TODO + open questions keep multithreaded agents from re-litigating or losing TBDs |
+| **G8** | **Simple deploy path** | Bare clone → `./pfy setup` → `./pfy start` feels like Ollama→Hermes: inference up once, any harness attaches; stubs for unfinished adapters |
+
+### G8 detail — harness-agnostic simplicity
+
+**Inspiration:** Ollama (inference spine), Hermes/OpenCode integrated installers, Exo `setup.sh`, Claude Code / Codex / Gemini one-CLI auth, Grok Build login.
+
+**Shape:**
+
+```text
+./pfy setup     → env + skills + detect
+./pfy status    → ready | partial | stub
+./pfy start     → Ollama (if present) then active harness
+./pfy harness use <id>
+```
+
+**Harness slots** (see `data/harnesses.json`): ollama, grok, opencode, hermes, claude-code, codex, gemini, exo, continue, agent-cage.
+
+Grok stays **default** (ADR-0002); other harnesses are equal *options*, not second-class footnotes. Eval pipeline (G0/G1/G2, `pfy eval`) remains core for the catalog mission — it is not the first screen for newcomers.
+
+**Authority:** [ADR-0012](adr/0012-simple-harness-agnostic-launch.md) · [simple-launch.md](ops/simple-launch.md)
 
 ---
 
@@ -37,6 +57,7 @@ One-line purpose: **Track · Categorize · Rank · Integrate** tools for robust 
 - Auto-submitting external systems or holding user secrets in-repo
 - Replacing Grok’s own binary, auth, or marketplace plugins
 - Exhaustive “awesome list” coverage without scoring or pipeline value
+- Forcing a single commercial harness monoculture (G8: multi-slot, Grok default only)
 
 ---
 

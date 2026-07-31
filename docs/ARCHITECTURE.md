@@ -28,6 +28,7 @@ sources (X / aggregates / papers)
 | Catalog | `TOOLS.md`, `data/`, `sources/` | Source of truth for scores |
 | Bootstrap Grok | `bootstrap/grok-cli/` | Skills SoT + MCP + config merge |
 | Bootstrap OpenCode | `bootstrap/opencode/` | Thin adapter; no forked skills |
+| **Simple launch** | `./pfy`, `data/harnesses.json` | G8 / ADR-0012 multi-harness surface |
 | Inference recipes | `config/litellm/`, `examples/litellm-ollama/` | Profile routers + cage smoke |
 | Harness | `harness/agent-cage/` | Lab + Grok-in-cage |
 | Eval | `examples/eval-harness/`, `pipelines/eval/` | Structural + implement lanes |
@@ -40,6 +41,7 @@ sources (X / aggregates / papers)
 | LiteLLM profiles + Ollama cage smoke | Default always-on LiteLLM daemon |
 | Process docs + structural eval | Automated dashboard from JSON |
 | Hybrid ADR-0011 | OpenCode-in-cage parity (T-0081) |
+| `./pfy` MVP + harness stubs | Full Hermes/Codex/Gemini adapters |
 
 ## Extension points
 

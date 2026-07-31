@@ -14,6 +14,10 @@ MVP iteration may expose many targets. **Ship shape** collapses to the product l
 
 ## Absolute minimum levers (target)
 
+**Canonical CLI (G8 / ADR-0012):** `./pfy` — setup · status · start · harness · stage · ship · eval.
+
+
+
 ```text
 1. onboard   — attach this stack to a project (process + skills + profile)
 2. stage     — bring up local env (Ollama path + optional cage) green
@@ -76,7 +80,19 @@ Audit checkpoint: count public Make targets aimed at product users; goal **≤ 5
 
 ## Implemented targets (2026-07-30)
 
-Public product Make targets: **project-onboard**, **env-stage**, **product-ship** (3 ≤ 5). Platform remains on `make help`.
+Public product surface:
+
+| Lever | CLI | Make |
+|-------|-----|------|
+| setup / onboard | `./pfy setup` | `project-onboard` / env-init |
+| status | `./pfy status` | — |
+| start | `./pfy start` | harness-specific |
+| stage | `./pfy stage` | `env-stage` |
+| ship | `./pfy ship` | `product-ship` |
+| eval | `./pfy eval` | `eval-integration-change` |
+
+Platform remains on `make help`. Harness registry: `data/harnesses.json`.
+
 
 ## Eval gates (product relevance)
 

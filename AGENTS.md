@@ -32,6 +32,8 @@ Also use as needed: `CATEGORIZATION.md`, `SUBTREES.md`, `TOOLS.md`, `bootstrap/g
 ## Bootstrap environment
 
 ```bash
+# Preferred simple surface (G8 / ADR-0012):
+#   ./pfy setup && ./pfy status && ./pfy start
 ./bootstrap/grok-cli/install.sh
 # optional: --with-codebase-memory
 # operator lab (Grok Build in agent-cage — primary path, ADR-0002/0010/0011):

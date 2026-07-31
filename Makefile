@@ -110,6 +110,8 @@ help:
 	@echo "  make smoke-contract-lint   examples smoke contract (GAP-05)"
 	@echo ""
 	@echo "Product levers (end-user — T-0090):"
+	@echo "  ./pfy setup|status|start       # G8 simple surface (ADR-0012)"
+	@echo "  make pfy ARGS='status'         # same via make"
 	@echo "  make project-onboard DIR=path  # attach process + .env example"
 	@echo "  make env-stage                 # env-check + eval-structural (+ optional Ollama)"
 	@echo "  make product-ship              # verify; push if PRODUCT_REMOTE set"
@@ -482,3 +484,11 @@ eval-unified-agents:
 
 eval-integration-change:
 	@REASON="$(REASON)" python3 scripts/eval_integration_change.py
+
+# --- G8 simple surface (ADR-0012) -------------------------------------------
+.PHONY: pfy setup-simple
+pfy:
+	@./pfy $(ARGS)
+
+setup-simple:
+	@./pfy setup $(PROFILE)

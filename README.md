@@ -103,7 +103,11 @@ After `./bootstrap/grok-cli/install.sh`, these are available:
 Project skill source of truth: [`.grok/skills/`](.grok/skills/) (also vendored under `bootstrap/grok-cli/skills/` for reinstall).  
 One-shot design: [docs/ops/one-shot-workflow.md](docs/ops/one-shot-workflow.md) · ADR-0008.
 
-## Current status (v0.4)
+## Current status (v0.4 → G8 launch)
+
+- **`./pfy`** simple surface (ADR-0012): setup/status/start + harness registry with stubs
+- Catalog + eval pipeline remain first-class (`./pfy eval`, structural/golden)
+
 
 - Methodology: taxonomy, rubric, SUBTREES, aggregates intake.
 - Process layout: DESIGN + multi-file ADR + TODO + open questions (ADR-0001).
@@ -128,7 +132,30 @@ Full new-machine path: **[docs/ops/DEPLOY.md](docs/ops/DEPLOY.md)**.
 
 ## Bootstrap (new machine + new projects)
 
-### 1. Clone + environment profiles (do this first)
+### Simple path (recommended — G8)
+
+One launcher. Inference first, then any harness (Ollama → agent feel):
+
+```bash
+git clone https://github.com/themark-net/pfy-mentat.git
+cd pfy-mentat
+./pfy setup              # env + Grok skills if CLI present
+./pfy status             # ready | partial | stub
+./pfy start              # default: Grok (after: grok login)
+```
+
+| Command | Purpose |
+|---------|---------|
+| `./pfy harness list` | Grok, OpenCode, Hermes, Claude Code, Codex, Gemini, Exo, … |
+| `./pfy harness use opencode` | Switch active harness (stubs print next steps) |
+| `./pfy models pull deepseek-coder:6.7b` | Ollama pull |
+| `./pfy stage` / `./pfy eval` / `./pfy ship` | Green checks + catalog gates + product verify |
+
+Design: **G8** · [ADR-0012](docs/adr/0012-simple-harness-agnostic-launch.md) · [simple-launch.md](docs/ops/simple-launch.md).  
+Platform builders: full `make help`. Product surface still maps to onboard/stage/ship.
+
+### 1. Clone + environment profiles (advanced / same as before)
+
 
 ```bash
 git clone git@github.com:themark-net/pfy-mentat.git
