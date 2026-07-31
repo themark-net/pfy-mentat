@@ -87,5 +87,6 @@ This prevents low-value daily noise while still capturing the good signal @tom_d
 | 2026-07-29 | 2026-07-29 | 1 (asm post) | 1 | 1 (Entry 075) | asm / agent-skill-manager: universal CLI skill manager across 19 agents. MIT, ~750★, security audit, --json for agents, 4.3k+ catalog. A-tier. High value for skill distribution. |
 | 2026-07-29 | 2026-07-29 | 1 (claude-codex-settings) | 1 | 1 (Entry 076) | Battle-tested configs/plugins/hooks for Claude Code, Codex, Cursor, Gemini CLI. Apache-2.0, ~826★. Complements asm. Pattern source for quality hooks. |
 | 2026-07-29 | 2026-07-29 | 1 (ai-engineering-toolkit) | 0 (list only) | 1 examined/reference (Entry 077) | Curated 100+ LLM eng libraries (~3.3k★, MIT). Discovery resource; heavy catalog overlap. No TOOLS.md row. |
+| 2026-07-31 | 2026-07-31 | 1 (kanbots post) | 1 | 1 (Entry 078) | kanbots: unified Kanban for 11 parallel agent CLIs (incl OpenCode). Stage 0 pass, A-tier 81. Worktree isolation + MCP + autopilot. |
 
 *Maintained to support the 7-day review and schedule tuning.*

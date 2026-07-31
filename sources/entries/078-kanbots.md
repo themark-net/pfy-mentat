@@ -1,0 +1,10 @@
+### Entry 078: kanbots — Unified Kanban Board for 11 Parallel Agent CLIs
+
+- **URL**: https://x.com/i/status/2083287800959451146
+- **Date**: 2026-07-31
+- **Poster**: Tom Dörr (@tom_doerr)
+- **Summary / Key Claims**: Runs eleven distinct agent CLIs in parallel on a unified Kanban board, coordinating workflows for tools like Claude Code and Codex. Supports Claude Code, Codex, Gemini, Cursor, Copilot, Amp, OpenCode, Droid, CCR, Qwen, plus any ACP-compatible CLI. Local-first (SQLite issues) or GitHub mode. Each agent run isolated in its own git worktree with pre-push hook. Autopilot for multi-persona parallel slots. Live agent thread with decision prompts. Branch preview + promote to commit/PR. MCP server for external control. Sentry import.
+- **Extracted Repos / Tools**: https://github.com/leodavinci1/kanbots (MIT, TypeScript/Electron + packages, ~545 stars as of 2026-07-31, npx kanbots one-liner, Node 20+ / pnpm).
+- **TOOLS.md Link**: Added under Agent Frameworks & Orchestration (initial scores: S1=85 S2=70 S3=90 S4=78 overall 81 tier A). Tracking: proposed pin main or latest release.
+- **Notes**: Stage 0 gate PASS (npx <5 min, MIT permissive, clear hello-world: drop folder → board). High relevance for multi-CLI local agent coordination, especially OpenCode + Grok CLI surfaces. Worktree isolation + decision UI + autopilot fills a practical gap between single-agent CLIs and full company platforms (Multica, Auto-Company). Complements agent-cage (container isolation) by providing operator-facing parallel dispatch UI. Low redundancy with clawe or Multica (different focus: parallel CLI worktrees vs managed teammates). Recommend: (1) catalog done; (2) optional smoke with OpenCode in local mode + cage if deeper; (3) pattern extract for parallel dispatch / worktree containment if building custom multi-CLI harness. No deeper eval queued unless operator requests; initial scores sufficient for A-tier tracking.
+- **Status**: Quick-evaluated - cataloged (initial scores)
