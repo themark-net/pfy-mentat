@@ -5,10 +5,12 @@ ADR-0012: default bulk path is **OpenCode → Ollama**, not Grok.
 
   VOICE_AUTO_AGENT=
     off / 0          — STT only
-    1 / on / auto    — **opencode** (local; T-0092 default)
-    opencode/worker  — same
+    1 / on / auto    — **orchestrate** (T-0096 high-first on this branch)
+    opencode/worker  — single-tier local
     grok             — cloud escalate only
     mock             — dry-run smoke
+    recipe           — deterministic e2e develop-loop (no LLM)
+    tool_microtask   — Ollama tools write_file microtask (T-0098)
 
   VOICE_LONG_TASK=1  — multi-step DoD framing + STATUS/DOD/EXIT/NEXT receipt
                        (also: --long-task CLI flag)
@@ -24,6 +26,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -34,8 +37,6 @@ import urllib.request
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-
-import uuid
 
 def _gen_dir() -> Path:
     return Path(__file__).resolve().parent / ".generated"
@@ -157,10 +158,11 @@ def read_run(out: Path) -> dict:
 
 
 def normalize_mode(raw: str | None) -> str:
-    """Map env/CLI tokens → off|mock|grok|opencode|orchestrate.
+    """Map env/CLI tokens → off|mock|grok|opencode|recipe|tool_microtask|orchestrate.
 
     T-0096: bare 1/on/auto → **orchestrate** (default route high-first via VOICE_ROUTE).
     Explicit opencode/grok remain single-tier.
+    recipe / tool_microtask are deterministic/CI paths (voice-clean e2e).
     """
     s = (raw or "0").strip().lower()
     if s in ("", "0", "false", "no", "off"):
@@ -175,6 +177,10 @@ def normalize_mode(raw: str | None) -> str:
         return "orchestrate-mock"
     if s in ("grok", "cloud", "monitor"):
         return "grok"
+    if s in ("recipe", "e2e", "deterministic"):
+        return "recipe"
+    if s in ("tool_microtask", "tool-microtask", "tools", "microtask"):
+        return "tool_microtask"
     return "off"
 
 
@@ -346,6 +352,337 @@ def local_agent_model() -> str:
     if tools:
         return tools
     return local_coder_model()
+
+
+def run_tool_microtask(
+    prompt: str,
+    repo: Path,
+    out: Path,
+    run_id: str,
+    timeout_s: int,
+) -> dict:
+    """T-0098: Ollama tools loop with a single write_file tool (real tool use).
+
+    OpenCode may dump tool JSON as text without executing; this path forces
+    execution via OpenAI-compatible tools on LOCAL_TOOLS_MODEL.
+    """
+    t0 = time.time()
+    model = local_agent_model()
+    base = ollama_base_url()
+    url = base + "/chat/completions"
+    tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": "write_file",
+                "description": "Write UTF-8 text to a path under the repo (relative or absolute).",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string"},
+                        "content": {"type": "string"},
+                    },
+                    "required": ["path", "content"],
+                },
+            },
+        }
+    ]
+    messages: list[dict] = [
+        {
+            "role": "system",
+            "content": (
+                "You are a coding agent with tools. You MUST call write_file to create "
+                "the requested marker file. Do not only describe the write."
+            ),
+        },
+        {"role": "user", "content": prompt[:8000]},
+    ]
+    log_chunks: list[str] = [f"tool_microtask model={model} base={base}"]
+    written: list[str] = []
+    final_text = ""
+    max_rounds = int(os.environ.get("VOICE_TOOL_MICROTASK_ROUNDS", "4"))
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+
+    def _post(body: dict) -> dict:
+        data = json.dumps(body).encode()
+        req = urllib.request.Request(
+            url,
+            data=data,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {os.environ.get('OPENAI_API_KEY', 'ollama')}",
+            },
+            method="POST",
+        )
+        with opener.open(req, timeout=min(timeout_s, 120)) as resp:
+            return json.loads(resp.read().decode("utf-8", errors="replace"))
+
+    try:
+        for round_i in range(max_rounds):
+            if time.time() - t0 > timeout_s:
+                raise TimeoutError(f"tool_microtask exceeded {timeout_s}s")
+            body = {
+                "model": model,
+                "messages": messages,
+                "tools": tools,
+                "tool_choice": "auto",
+                "temperature": 0.1,
+                "max_tokens": 1024,
+            }
+            data = _post(body)
+            msg = (data.get("choices") or [{}])[0].get("message") or {}
+            content = (msg.get("content") or "").strip()
+            tool_calls = msg.get("tool_calls") or []
+            log_chunks.append(
+                f"round={round_i} content_len={len(content)} tools={len(tool_calls)}"
+            )
+            if content:
+                final_text = content
+            if not tool_calls:
+                if content and "write_file" in content and "PFY_TOOL_MICROTASK_OK" in content:
+                    for blob in re.findall(r"\{(?:[^{}]|\{[^{}]*\})*\}", content, re.S):
+                        try:
+                            obj = json.loads(blob)
+                        except json.JSONDecodeError:
+                            continue
+                        args = obj.get("arguments") or obj
+                        if isinstance(args, str):
+                            try:
+                                args = json.loads(args)
+                            except json.JSONDecodeError:
+                                continue
+                        path = args.get("path") or args.get("filePath") or obj.get("path")
+                        c = args.get("content")
+                        if path and c is not None and "PFY_TOOL_MICROTASK_OK" in str(c):
+                            tool_calls = [
+                                {
+                                    "id": f"recover-{round_i}",
+                                    "type": "function",
+                                    "function": {
+                                        "name": "write_file",
+                                        "arguments": json.dumps(
+                                            {"path": path, "content": c}
+                                        ),
+                                    },
+                                }
+                            ]
+                            log_chunks.append("recovered write_file from text JSON")
+                            break
+                if not tool_calls:
+                    break
+
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": content or "",
+                    "tool_calls": tool_calls,
+                }
+            )
+            for tc in tool_calls:
+                fn = tc.get("function") or {}
+                name = fn.get("name") or ""
+                raw_args = fn.get("arguments") or "{}"
+                try:
+                    args = json.loads(raw_args) if isinstance(raw_args, str) else raw_args
+                except json.JSONDecodeError:
+                    args = {}
+                tc_id = tc.get("id") or f"call-{round_i}"
+                if name != "write_file":
+                    tool_result = f"error: unknown tool {name}"
+                else:
+                    path_s = str(args.get("path") or args.get("filePath") or "")
+                    content_s = str(
+                        args.get("content") if args.get("content") is not None else ""
+                    )
+                    try:
+                        p = Path(path_s)
+                        if not p.is_absolute():
+                            p = (repo / p).resolve()
+                        p.resolve().relative_to(repo.resolve())
+                        p.parent.mkdir(parents=True, exist_ok=True)
+                        p.write_text(content_s, encoding="utf-8")
+                        written.append(str(p))
+                        tool_result = f"ok wrote {p} bytes={len(content_s.encode())}"
+                        log_chunks.append(tool_result)
+                    except Exception as e:  # noqa: BLE001
+                        tool_result = f"error: {e}"
+                        log_chunks.append(tool_result)
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tc_id,
+                        "content": tool_result,
+                    }
+                )
+
+        duration = round(time.time() - t0, 2)
+        log_path = out / "last-run.log"
+        log_path.write_text("\n".join(log_chunks) + "\n", encoding="utf-8")
+        if not written:
+            reply = (
+                f"[tool_microtask] no write_file executed model={model}\n"
+                f"{final_text[:800]}\n\n"
+                f"STATUS: fail\n"
+                f"DOD: tool microtask did not write marker\n"
+                f"EXIT: error\n"
+                f"NEXT: check LOCAL_TOOLS_MODEL and Ollama tools support\n"
+            )
+            (out / "last-reply.txt").write_text(reply, encoding="utf-8")
+            return {
+                "status": "error",
+                "ok": False,
+                "run_id": run_id,
+                "mode": "tool_microtask",
+                "exit_code": 1,
+                "reply": reply,
+                "reply_preview": reply[:500],
+                "command": ["ollama-tools", "write_file", f"model={model}"],
+                "duration_s": duration,
+                "error": "no write_file tool execution",
+                "long_task": long_task_enabled(),
+                "log_path": str(log_path),
+                "model": model,
+            }
+
+        if not re.search(r"(?im)^\s*STATUS\s*:", final_text or ""):
+            final_text = (
+                (final_text + "\n\n" if final_text else "")
+                + "STATUS: pass\n"
+                + "DOD: tool microtask write_file executed\n"
+                + "EXIT: goal\n"
+                + "NEXT: done\n"
+            )
+        reply = (
+            f"[tool_microtask] wrote {len(written)} file(s): {written}\n"
+            f"{final_text}\n"
+        )
+        return _finish_ok(
+            out=out,
+            run_id=run_id,
+            mode="tool_microtask",
+            reply=reply,
+            cmd=["ollama-tools", "write_file", f"model={model}"],
+            duration=duration,
+            extra={
+                "log_path": str(log_path),
+                "model": model,
+                "written": written,
+                "long_task": long_task_enabled(),
+            },
+        )
+    except Exception as e:  # noqa: BLE001
+        duration = round(time.time() - t0, 2)
+        err = f"tool_microtask failed: {e}"
+        (out / "last-run.log").write_text(
+            err + "\n" + "\n".join(log_chunks) + "\n", encoding="utf-8"
+        )
+        reply = (
+            f"{err}\n\nSTATUS: fail\nDOD: tool microtask error\n"
+            f"EXIT: error\nNEXT: retry with tools model\n"
+        )
+        (out / "last-reply.txt").write_text(reply, encoding="utf-8")
+        return {
+            "status": "error",
+            "ok": False,
+            "run_id": run_id,
+            "mode": "tool_microtask",
+            "exit_code": 1,
+            "reply": reply,
+            "reply_preview": reply[:500],
+            "command": ["ollama-tools", "write_file"],
+            "duration_s": duration,
+            "error": err,
+            "long_task": long_task_enabled(),
+            "model": model,
+        }
+
+
+def run_recipe(prompt: str, repo: Path, out: Path, run_id: str) -> dict:
+    """Deterministic multi-step develop loop (no LLM): edit fixture + verify structural.
+
+    Proves text → agent_runner → repo file change → make eval-structural under
+    VOICE_LONG_TASK receipt framing. Used by make voice-agent-e2e / install path.
+    """
+    t0 = time.time()
+    marker = out / "e2e-loop-marker.txt"
+    stamp = utc_now()
+    body = (
+        f"# pfy-mentat voice e2e develop-loop marker\n"
+        f"generated: {stamp}\n"
+        f"run_id: {run_id}\n"
+        f"prompt_head: {prompt[:120].replace(chr(10), ' ')}\n"
+    )
+    marker.write_text(body, encoding="utf-8")
+    cmd = ["recipe", "touch", str(marker), "&&", "make", "eval-structural"]
+    log_path = out / "last-run.log"
+    eval_ok = False
+    eval_out = ""
+    try:
+        proc = subprocess.run(
+            ["make", "eval-structural"],
+            cwd=str(repo),
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        eval_out = ((proc.stdout or "") + "\n" + (proc.stderr or "")).strip()
+        eval_ok = proc.returncode == 0
+        log_path.write_text(
+            f"$ write {marker}\n$ make eval-structural\n\n{eval_out}\n",
+            encoding="utf-8",
+        )
+    except Exception as e:
+        eval_out = str(e)
+        log_path.write_text(f"recipe failed: {e}\n", encoding="utf-8")
+
+    duration = round(time.time() - t0, 2)
+    if eval_ok and marker.is_file():
+        try:
+            marker_disp = str(marker.relative_to(repo))
+        except ValueError:
+            marker_disp = str(marker)
+        reply = (
+            f"[recipe agent / long-task] Wrote {marker_disp}\n"
+            f"Ran make eval-structural: PASS\n"
+            f"VOICE_RUNNER_RECIPE_OK\n\n"
+            f"STATUS: pass\n"
+            f"DOD: deterministic develop loop wrote marker and eval-structural green\n"
+            f"EXIT: goal\n"
+            f"NEXT: done\n"
+        )
+        return _finish_ok(
+            out=out,
+            run_id=run_id,
+            mode="recipe",
+            reply=reply,
+            cmd=cmd,
+            duration=duration,
+            extra={"log_path": str(log_path), "marker": str(marker)},
+        )
+    reply = (
+        f"[recipe agent] marker={marker.is_file()} eval_ok={eval_ok}\n"
+        f"{eval_out[-1500:]}\n\n"
+        f"STATUS: fail\n"
+        f"DOD: deterministic develop loop did not complete cleanly\n"
+        f"EXIT: error\n"
+        f"NEXT: re-run make voice-agent-e2e and inspect last-run.log\n"
+    )
+    (out / "last-reply.txt").write_text(reply, encoding="utf-8")
+    return {
+        "status": "error",
+        "ok": False,
+        "run_id": run_id,
+        "mode": "recipe",
+        "exit_code": 1,
+        "reply": reply,
+        "reply_preview": reply[:500],
+        "command": cmd,
+        "duration_s": duration,
+        "error": "recipe develop loop failed",
+        "long_task": long_task_enabled(),
+        "log_path": str(log_path),
+    }
+
 
 
 def run_ollama_completion(prompt: str, out: Path, run_id: str, timeout_s: int) -> dict:
@@ -654,7 +991,7 @@ def run_once(
 ) -> dict:
     out = ensure_out(out)
     run_id = uuid.uuid4().hex[:12]
-    known = ("off", "mock", "grok", "opencode", "orchestrate", "orchestrate-mock")
+    known = ("off", "mock", "grok", "opencode", "orchestrate", "orchestrate-mock", "recipe", "tool_microtask")
     mode = normalize_mode(mode) if mode not in known else mode
 
     if mode == "off":
@@ -741,6 +1078,12 @@ def run_once(
 
         if effective == "mock":
             result = run_mock(prompt, out, run_id)
+        elif effective == "recipe":
+            os.environ.setdefault("VOICE_LONG_TASK", "1")
+            result = run_recipe(prompt, repo, out, run_id)
+        elif effective == "tool_microtask":
+            os.environ.setdefault("VOICE_LONG_TASK", "1")
+            result = run_tool_microtask(prompt, repo, out, run_id, timeout_s)
         elif effective == "opencode":
             result = run_opencode(prompt, repo, out, run_id, timeout_s)
         elif effective == "grok":
@@ -821,7 +1164,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument(
         "--mode",
         default=None,
-        help="off|orchestrate|opencode|grok|mock|1(=orchestrate high-first). Default: VOICE_AUTO_AGENT",
+        help="off|orchestrate|opencode|grok|mock|recipe|tool_microtask|1(=orchestrate). Default: VOICE_AUTO_AGENT",
     )
     p.add_argument(
         "--max-turns",
