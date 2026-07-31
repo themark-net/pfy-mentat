@@ -10,6 +10,9 @@ ADR-0012: default bulk path is **OpenCode → Ollama**, not Grok.
     grok             — cloud escalate only
     mock             — dry-run smoke
 
+  VOICE_LONG_TASK=1  — multi-step DoD framing + STATUS/DOD/EXIT/NEXT receipt
+                       (also: --long-task CLI flag)
+
 Fallback when OpenCode CLI missing: OpenAI-compat chat to local Ollama
 (LOCAL_CODER_MODEL) so voice still lands on a local brain without cloud.
 
@@ -179,6 +182,31 @@ def auto_mode() -> str:
     return normalize_mode(os.environ.get("VOICE_AUTO_AGENT"))
 
 
+def long_task_enabled() -> bool:
+    return os.environ.get("VOICE_LONG_TASK", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+
+
+def long_task_footer() -> str:
+    return (
+        "\n\n---\n"
+        "**Long-running DoD mode (VOICE_LONG_TASK):** Treat the spoken intent as a "
+        "multi-step software task. Plan briefly, implement in the repo, verify with "
+        "make smoke-* / make eval-structural when relevant. Prefer local OpenCode/Ollama; "
+        "escalate to Grok tools only when the operator set VOICE_AUTO_AGENT=grok. "
+        "Do not stop after one tool call if work remains within turn budget.\n\n"
+        "End the **final** reply with exactly these four lines (008-voice-receipt):\n"
+        "STATUS: pass|fail|blocked\n"
+        "DOD: <one line success criteria result>\n"
+        "EXIT: goal|turn|budget|wall-clock|no-progress|human|error|external\n"
+        "NEXT: <concrete next step or done>\n"
+    )
+
+
 def _lock_path(out: Path) -> Path:
     return out / LOCK_NAME
 
@@ -233,6 +261,8 @@ def build_prompt(prompt_path: Path | None, transcript: str | None, target: str, 
         "default bulk path; keep replies concise. End with a short status "
         "(what ran, pass/fail, next step).\n"
     )
+    if long_task_enabled():
+        footer += long_task_footer()
     return base + footer
 
 
@@ -259,6 +289,7 @@ def _finish_ok(
         "command": cmd,
         "duration_s": duration,
         "error": None if exit_code == 0 else f"{mode} exit {exit_code}",
+        "long_task": long_task_enabled(),
     }
     if extra:
         payload.update(extra)
@@ -266,11 +297,22 @@ def _finish_ok(
 
 
 def run_mock(prompt: str, out: Path, run_id: str) -> dict:
-    reply = (
-        f"[mock agent / local-first] Would run OpenCode→Ollama on:\n"
-        f"{prompt[:400]}{'…' if len(prompt) > 400 else ''}\n"
-        f"VOICE_RUNNER_MOCK_OK"
-    )
+    if long_task_enabled():
+        reply = (
+            f"[mock agent / long-task] Would run OpenCode→Ollama on multi-step DoD.\n"
+            f"Prompt head:\n{prompt[:280]}{'…' if len(prompt) > 280 else ''}\n"
+            f"VOICE_RUNNER_MOCK_OK\n\n"
+            f"STATUS: pass\n"
+            f"DOD: mock long-task path exercised with receipt block\n"
+            f"EXIT: goal\n"
+            f"NEXT: done\n"
+        )
+    else:
+        reply = (
+            f"[mock agent / local-first] Would run OpenCode→Ollama on:\n"
+            f"{prompt[:400]}{'…' if len(prompt) > 400 else ''}\n"
+            f"VOICE_RUNNER_MOCK_OK"
+        )
     time.sleep(0.15)
     return _finish_ok(
         out=out,
@@ -322,6 +364,12 @@ def run_ollama_completion(prompt: str, out: Path, run_id: str, timeout_s: int) -
                     "content": (
                         "You are a local coding assistant. Be concise. "
                         "If asked to run checks, describe the commands and expected outcomes."
+                        + (
+                            " Multi-step DoD mode: plan, implement, verify. "
+                            "End with STATUS:/DOD:/EXIT:/NEXT: lines."
+                            if long_task_enabled()
+                            else ""
+                        )
                     ),
                 },
                 {"role": "user", "content": user},
@@ -679,13 +727,15 @@ def run_once(
                 "run_id": run_id,
                 "mode": effective,
                 "target": target,
+                "long_task": long_task_enabled(),
                 "started": utc_now(),
                 "transcript_preview": (transcript or "")[:200],
                 "message": f"agent running ({effective})…",
             },
         )
         print(
-            f"==> agent_runner mode={effective} run_id={run_id} target={target}",
+            f"==> agent_runner mode={effective} run_id={run_id} target={target} "
+            f"long_task={long_task_enabled()}",
             file=sys.stderr,
         )
 
@@ -783,9 +833,17 @@ def main(argv: list[str] | None = None) -> int:
         type=int,
         default=int(os.environ.get("VOICE_AGENT_TIMEOUT", "600")),
     )
+    p.add_argument(
+        "--long-task",
+        action="store_true",
+        help="Enable VOICE_LONG_TASK receipt framing (STATUS/DOD/EXIT/NEXT)",
+    )
     p.add_argument("--background", action="store_true")
     p.add_argument("--status", action="store_true")
     args = p.parse_args(argv)
+
+    if args.long_task:
+        os.environ["VOICE_LONG_TASK"] = "1"
 
     out = ensure_out(args.out_dir)
     if args.status:
@@ -826,7 +884,18 @@ def main(argv: list[str] | None = None) -> int:
             max_turns=args.max_turns,
             timeout_s=args.timeout,
         )
-        print(json.dumps({"queued": True, "run_id": rid, "mode": mode, "target": target}, indent=2))
+        print(
+            json.dumps(
+                {
+                    "queued": True,
+                    "run_id": rid,
+                    "mode": mode,
+                    "target": target,
+                    "long_task": long_task_enabled(),
+                },
+                indent=2,
+            )
+        )
         return 0
 
     result = run_once(
@@ -854,6 +923,7 @@ def main(argv: list[str] | None = None) -> int:
                     "reply_preview",
                     "fallback",
                     "model",
+                    "long_task",
                 )
             },
             indent=2,
