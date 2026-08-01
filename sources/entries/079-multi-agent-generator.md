@@ -1,0 +1,10 @@
+### Entry 079: multi-agent-generator — Plain-English Multi-Agent Team Generator (CrewAI/LangGraph/ReAct + LiteLLM/Ollama)
+
+- **URL**: https://x.com/i/status/2083359457795252433
+- **Date**: 2026-08-01
+- **Poster**: Tom Dörr (@tom_doerr)
+- **Summary / Key Claims**: Generates multi-agent AI teams from plain English with pre-built tools and orchestration patterns like supervisor and debate. Supports workflows in CrewAI, LangChain, and ReAct. (Repo: low-code/no-code Python lib + CLI + Streamlit UI; LiteLLM provider-agnostic including Ollama; auto tool discovery/generation from NL; 5 orchestration patterns; auto test suite + quality eval.)
+- **Extracted Repos / Tools**: https://github.com/aakriti1318/multi-agent-generator (MIT, Python, PyPI `multi-agent-generator`, ~200 stars as of 2026-08-01, last push same day; also supports Agno, CrewAI Flow, ReAct LCEL).
+- **TOOLS.md Link**: Added under Agent Frameworks & Orchestration (initial scores: S1=83 S2=68 S3=87 S4=74 overall 79 tier B). Tracking: proposed pin to current main SHA or latest PyPI.
+- **Notes**: Stage 0 gate PASS (pip install <1 min + Ollama one-liner path documented; MIT; clear CLI/Streamlit hello-worlds that exercise generation + orchestration). High relevance for rapid local multi-agent prototyping: generates ready CrewAI/LangGraph/ReAct code that runs against Ollama via LiteLLM, plus NL tool gen and supervisor/debate/voting/pipeline/mapreduce patterns. Complements existing LangGraph/DSPy entries by providing a generation layer rather than runtime. Low-moderate redundancy (focus is code/config emission, not a new orchestration engine). Caveat from thread reply: debate-pattern agents may default to agreeable base prompts without explicit critique behavior. Recommend: (1) catalog as B-tier generator utility; (2) smoke-test generation of Ollama-backed CrewAI supervisor team; (3) no deeper eval queued unless integration friction appears. Fits Grok CLI + MCP pipeline as a quick scaffolding tool.
+- **Status**: Quick-evaluated - cataloged (initial scores)
