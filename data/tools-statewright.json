@@ -1,0 +1,12 @@
+{
+  "name": "Statewright",
+  "primary_category": "Agent Frameworks & Orchestration",
+  "github": "https://github.com/statewright/statewright",
+  "scores": {"s1": 88, "s2": 70, "s3": 92, "s4": 82, "overall": 85},
+  "tier": "A",
+  "tags": ["agentic", "tool-calling", "mcp-compatible", "local-first", "opencode", "state-machine", "guardrails"],
+  "bootstrap_path": null,
+  "notes": "X Entry 056 (tom_doerr). Per-phase tool allow-lists via Rust state machine + MCP gateway. Hard enforcement Claude Code/Codex/Pi; opencode alpha; Cursor advisory. Self-host Docker Compose. Apache 2.0 engine/agent; gateway FSL\u2192Apache 2029. Pattern/guard layer over Grok CLI + OpenCode \u2014 not primary runtime. Optional local smoke queued.",
+  "integration_stage": "I1",
+  "x_post_id": "2084511054877380691"
+}
