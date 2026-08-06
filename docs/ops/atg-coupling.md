@@ -4,7 +4,7 @@
 **Prototype:** https://github.com/themark-net/atg-framework  
 **Paper:** https://arxiv.org/abs/2607.01942  
 **Integration stage:** **I1** (staged evaluation) — intended **submodule later** when mature  
-**Review:** 2026-08-06 → issue #30
+**Reviews:** 2026-08-06 → issue #30 (outcome: **stay I1**)
 
 ## Relationship to pfy-mentat
 
@@ -30,8 +30,10 @@
 | **Potential** | Medium — useful if prototype stabilizes as small, customizable package |
 | **Non-goals** | Primary runtime; immediate I4 |
 
-## Follow-up checklist (issue #30)
+## 2026-08-06 maturity snapshot (issue #30)
 
-1. Maturity / size / API of atg-framework  
-2. Stay I1 / I2 probe (<50 MB) / plan I3→I4 submodule  
-3. Update TOOLS.md + tools.json notes
+- atg-framework remains **docs-only**: ARCHITECTURE, DECISIONS 0001–0010, OPEN_QUESTIONS, TODO, attribution. No `src/atg/`, no pyproject, no tests, no examples.
+- Phase 0 complete; Phase 1 skeleton (graph/types/history/validation + green pytest) **not started**.
+- Working tree size trivial (≪ 50 MB). No open issues on the prototype repo.
+- **Decision:** stay **I1**. I2 probe has nothing executable to probe. Value + modularity gates for I3 unmet. Do not plan I4.
+- **Next trigger:** after Phase-1 runnable skeleton lands, or explicit re-request. No calendar auto-reminder required.
