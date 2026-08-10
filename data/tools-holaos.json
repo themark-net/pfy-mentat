@@ -1,0 +1,25 @@
+{
+  "name": "holaOS",
+  "primary_category": "Coding & Dev Agents",
+  "github": "https://github.com/holaboss-ai/holaOS",
+  "scores": {
+    "s1": 88,
+    "s2": 75,
+    "s3": 90,
+    "s4": 92,
+    "overall": 87
+  },
+  "tier": "A",
+  "tags": [
+    "local-first",
+    "multi-harness",
+    "mcp-compatible",
+    "shared-memory",
+    "desktop",
+    "electron"
+  ],
+  "bootstrap_path": null,
+  "notes": "X Entry 058 (tom_doerr). Local-first multi-harness workspace with shared plain-file memory. Modified Apache 2.0 — commercial/branding caveats. Not primary runtime; optional operator desktop. Compare stretchcloud/campfire.",
+  "integration_stage": "I1",
+  "x_post_id": "2086637717912223919"
+}
