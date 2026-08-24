@@ -1,20 +1,58 @@
 {
-  "version": "1.0",
-  "last_updated": "2026-07-31",
-  "philosophy": "One launcher (./pfy). Inference (Ollama) starts first; harnesses attach. Inspired by Ollama\u2192Hermes/OpenCode integrated installers and Exo setup.sh simplicity.",
+  "version": "1.1",
+  "last_updated": "2026-08-24",
+  "philosophy": "One launcher (./pfy). Local OpenAI-compat inference starts first (llama-swap / llama-server, Shimmy, Ollama); harnesses attach.",
   "default_harness": "grok",
-  "inference_default": "ollama",
+  "inference_default": "auto",
+  "inference_detect_order": ["llama-swap", "llama-server", "shimmy", "ollama"],
   "harnesses": [
+    {
+      "id": "llama-swap",
+      "name": "llama-swap",
+      "role": "inference",
+      "status": "partial",
+      "summary": "On-demand llama-server (or other OpenAI backends) hot-swap; preferred tok/s path",
+      "setup": "install llama-swap + llama-server; point config at GGUF; pfy start uses LOCAL_OPENAI_BASE_URL",
+      "detect": ["llama-swap"],
+      "github": "https://github.com/mostlygeek/llama-swap",
+      "catalog": "llama-swap",
+      "issue_stub": "Complete llama-swap adapter: health + default model in ./pfy start",
+      "github_issue": 76
+    },
+    {
+      "id": "llama-server",
+      "name": "llama.cpp llama-server",
+      "role": "inference",
+      "status": "partial",
+      "summary": "Raw llama.cpp HTTP server; one model until swapped",
+      "setup": "install llama.cpp; llama-server -hf <model>",
+      "detect": ["llama-server"],
+      "github": "https://github.com/ggml-org/llama.cpp",
+      "catalog": "llama.cpp",
+      "issue_stub": "Detect llama-server :8080 in pfy status/start",
+      "github_issue": 76
+    },
+    {
+      "id": "shimmy",
+      "name": "Shimmy",
+      "role": "inference",
+      "status": "partial",
+      "summary": "Tiny Rust OpenAI-compat server; FREE forever; auto-discovers GGUF",
+      "setup": "install shimmy; it auto-finds Ollama/HF/LM Studio models",
+      "detect": ["shimmy"],
+      "github": "https://github.com/Michael-A-Kuykendall/shimmy",
+      "catalog": "Shimmy",
+      "issue_stub": "Detect Shimmy :11435; keep as candidate not required",
+      "github_issue": 76
+    },
     {
       "id": "ollama",
       "name": "Ollama",
       "role": "inference",
       "status": "partial",
-      "summary": "Local model server; first-class inference spine",
+      "summary": "Local model server; first-class adapter, not the only spine",
       "setup": "install ollama; ollama serve; pull models via pfy models pull",
-      "detect": [
-        "ollama"
-      ],
+      "detect": ["ollama"],
       "github": "https://github.com/ollama/ollama",
       "catalog": "Ollama",
       "issue_stub": "Complete Ollama adapter: serve + pull + health in ./pfy start",
@@ -27,9 +65,7 @@
       "status": "ready",
       "summary": "Primary coding agent (subscription); skills via bootstrap/grok-cli",
       "setup": "./bootstrap/grok-cli/install.sh; grok login",
-      "detect": [
-        "grok"
-      ],
+      "detect": ["grok"],
       "github": "https://x.ai/cli",
       "catalog": "Grok CLI bootstrap",
       "issue_stub": null
@@ -39,15 +75,12 @@
       "name": "OpenCode",
       "role": "harness",
       "status": "partial",
-      "summary": "Local+cloud worker surface; skills SoT shared with Grok",
+      "summary": "Local+cloud worker surface; skills SoT shared with Grok; LOCAL_OPENAI_BASE_URL",
       "setup": "install opencode; point skills at bootstrap/grok-cli/skills",
-      "detect": [
-        "opencode",
-        "opencode-cli"
-      ],
+      "detect": ["opencode", "opencode-cli"],
       "github": null,
       "catalog": null,
-      "issue_stub": "OpenCode host adapter: detect, skill path, ollama base_url, pfy start opencode",
+      "issue_stub": "OpenCode host adapter: detect, skill path, local OpenAI base_url, pfy start opencode",
       "github_issue": 55
     },
     {
@@ -56,14 +89,11 @@
       "role": "harness",
       "status": "stub",
       "summary": "Feedback-loop agent; patterns ported as /hermes-feedback",
-      "setup": "STUB \u2014 install path TBD; use skill /hermes-feedback until adapter ships",
-      "detect": [
-        "hermes",
-        "hermes-agent"
-      ],
+      "setup": "STUB — install path TBD; use skill /hermes-feedback until adapter ships",
+      "detect": ["hermes", "hermes-agent"],
       "github": null,
       "catalog": "Hermes Agent (feedback loops)",
-      "issue_stub": "Hermes installer adapter + Ollama model bind like official integrated install",
+      "issue_stub": "Hermes installer adapter + local model bind like official integrated install",
       "github_issue": 56
     },
     {
@@ -72,10 +102,8 @@
       "role": "harness",
       "status": "stub",
       "summary": "Anthropic CLI agent; skills via paths packs",
-      "setup": "STUB \u2014 install claude; register skills-external paths",
-      "detect": [
-        "claude"
-      ],
+      "setup": "STUB — install claude; register skills-external paths",
+      "detect": ["claude"],
       "github": "https://docs.anthropic.com/en/docs/claude-code",
       "catalog": "claude-code-unified-agents",
       "issue_stub": "Claude Code adapter: skill install + pfy start claude-code",
@@ -87,13 +115,11 @@
       "role": "harness",
       "status": "stub",
       "summary": "OpenAI coding agent harness",
-      "setup": "STUB \u2014 install codex; document auth",
-      "detect": [
-        "codex"
-      ],
+      "setup": "STUB — install codex; document auth",
+      "detect": ["codex"],
       "github": null,
       "catalog": null,
-      "issue_stub": "Codex adapter stub \u2192 ready: detect, auth, pfy start codex",
+      "issue_stub": "Codex adapter stub → ready: detect, auth, pfy start codex",
       "github_issue": 58
     },
     {
@@ -102,11 +128,8 @@
       "role": "harness",
       "status": "stub",
       "summary": "Google agent harness (Gemini CLI / Antigravity-class tools)",
-      "setup": "STUB \u2014 detect gemini/gcloud agent CLIs when available",
-      "detect": [
-        "gemini",
-        "gemini-cli"
-      ],
+      "setup": "STUB — detect gemini/gcloud agent CLIs when available",
+      "detect": ["gemini", "gemini-cli"],
       "github": null,
       "catalog": null,
       "issue_stub": "Google harness adapter (Gemini CLI / Antigravity) for pfy harness list",
@@ -118,10 +141,8 @@
       "role": "harness",
       "status": "stub",
       "summary": "RSI self-mod harness; patterns extracted, full runtime optional",
-      "setup": "STUB \u2014 optional lab: curl setup.sh; not default primary",
-      "detect": [
-        "exo.sh"
-      ],
+      "setup": "STUB — optional lab: curl setup.sh; not default primary",
+      "detect": ["exo.sh"],
       "github": "https://github.com/exoharness/exo",
       "catalog": "Exo (exoharness)",
       "issue_stub": "Optional Exo lab path behind pfy harness use exo (Docker+rebuild guardian)",
@@ -133,11 +154,11 @@
       "role": "harness",
       "status": "stub",
       "summary": "IDE agent surface; catalog S-tier IDE",
-      "setup": "STUB \u2014 VS Code/JetBrains Continue + Ollama provider",
+      "setup": "STUB — VS Code/JetBrains Continue + local OpenAI provider",
       "detect": [],
       "github": "https://github.com/continuedev/continue",
       "catalog": "Continue.dev",
-      "issue_stub": "Continue + Ollama config recipe under pfy harness use continue",
+      "issue_stub": "Continue + local runtime config recipe under pfy harness use continue",
       "github_issue": 61
     },
     {
@@ -147,14 +168,13 @@
       "status": "partial",
       "summary": "Isolated container lab for integrations",
       "setup": "make cage-setup && make cage-up-mcp",
-      "detect": [
-        "docker"
-      ],
+      "detect": ["docker"],
       "github": "https://github.com/pnnl/agent-cage",
       "catalog": "agent-cage (PNNL)",
       "issue_stub": "Fold cage into pfy stage --lab without separate make memorization",
       "github_issue": 62
     }
   ],
-  "epic_issue": 53
+  "epic_issue": 53,
+  "local_runtime_issue": 76
 }
