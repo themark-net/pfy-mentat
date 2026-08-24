@@ -18,8 +18,48 @@ STATE_DIR="${PFY_STATE_DIR:-$HOME/.pfy-mentat}"
 ACTIVE_FILE="$STATE_DIR/active-harness"
 mkdir -p "$STATE_DIR"
 
+# Pluggable inference (ADR-0014). Default remains Ollama adapter.
+PFY_INFERENCE="${PFY_INFERENCE:-ollama}"
+
 die() { echo "error: $*" >&2; exit 1; }
 have() { command -v "$1" >/dev/null 2>&1; }
+
+inference_url() {
+  if [[ -n "${PFY_INFERENCE_URL:-}" ]]; then
+    echo "${PFY_INFERENCE_URL%/}"
+    return
+  fi
+  case "${PFY_INFERENCE:-ollama}" in
+    shimmy) echo "http://127.0.0.1:11435/v1" ;;
+    llama-swap) echo "http://127.0.0.1:8080/v1" ;;
+    ollama|*) echo "http://127.0.0.1:11434/v1" ;;
+  esac
+}
+
+# OpenAI-compat /v1/models (base URL may already include /v1)
+openai_models_up() {
+  local base="${1:-$(inference_url)}"
+  base="${base%/}"
+  curl -sf --max-time 2 "${base}/models" >/dev/null 2>&1
+}
+
+ollama_api_up() {
+  curl -sf --max-time 2 http://127.0.0.1:11434/api/tags >/dev/null 2>&1 \
+    || openai_models_up "http://127.0.0.1:11434/v1"
+}
+
+# Bounded wait (T-0101): a few seconds, not unbounded.
+wait_http() {
+  local n=0
+  local max="${2:-5}"
+  local check="$1"
+  while [[ "$n" -lt "$max" ]]; do
+    if $check; then return 0; fi
+    sleep 1
+    n=$((n + 1))
+  done
+  return 1
+}
 
 usage() {
   cat <<'U'
@@ -29,14 +69,15 @@ pfy — simple setup & launch for the pfy-mentat stack
       One-shot: env + skills + detect tools (Ollama-style bootstrap)
 
   pfy status
-      What is installed / ready / stub
+      What is installed / ready / stub; live inference backend
 
   pfy harness list
   pfy harness use <id>
   pfy harness show [id]
 
   pfy start [harness]
-      Ensure inference (Ollama) when possible, then launch active harness
+      Ensure selected inference (PFY_INFERENCE) when possible, then launch harness
+      Default harness = grok (monitor). Local worker = OpenAI-compat.
 
   pfy stage
       Green path: env-check + structural eval (+ soft Ollama)
@@ -52,14 +93,14 @@ pfy — simple setup & launch for the pfy-mentat stack
 
   pfy help
 
+Env: PFY_INFERENCE=ollama|shimmy|llama-swap  PFY_INFERENCE_URL  OPENAI_BASE_URL
 Philosophy: inference comes up once; harnesses (Grok, OpenCode, Hermes, …)
 attach to it. Unfinished harnesses are stubs with a clear next issue — not
-hidden Make targets.
+hidden Make targets. Engines are not vendored.
 U
 }
 
 json_field() {
-  # jq-free: python
   python3 - "$REG" "$1" "${2:-}" <<'PY'
 import json,sys
 reg=json.load(open(sys.argv[1]))
@@ -70,6 +111,8 @@ if cmd=="list":
         print(f"{h['id']}\t{h['status']}\t{h['role']}\t{h['name']}")
 elif cmd=="default":
     print(reg.get("default_harness","grok"))
+elif cmd=="inference_default":
+    print(reg.get("inference_default","ollama"))
 elif cmd=="get":
     for h in reg["harnesses"]:
         if h["id"]==arg:
@@ -102,10 +145,31 @@ detect_status() {
       fi
     done <<< "$bins"
   fi
-  # special: ollama
   if [[ "$id" == "ollama" ]]; then
-    if have ollama; then
-      if ollama list >/dev/null 2>&1; then echo "ready"; else echo "partial"; fi
+    if ollama_api_up; then
+      echo "ready"
+    elif have ollama; then
+      echo "partial"
+    else
+      echo "missing"
+    fi
+    return
+  fi
+  if [[ "$id" == "shimmy" ]]; then
+    if openai_models_up "http://127.0.0.1:11435/v1"; then
+      echo "ready"
+    elif have shimmy; then
+      echo "partial"
+    else
+      echo "missing"
+    fi
+    return
+  fi
+  if [[ "$id" == "llama-swap" ]]; then
+    if openai_models_up "http://127.0.0.1:8080/v1"; then
+      echo "ready"
+    elif have llama-swap; then
+      echo "partial"
     else
       echo "missing"
     fi
@@ -122,9 +186,19 @@ detect_status() {
 }
 
 cmd_status() {
+  local iurl
+  iurl="$(inference_url)"
   echo "pfy-mentat simple surface"
   echo "root: $ROOT"
   echo "active harness: $(cat "$ACTIVE_FILE" 2>/dev/null || json_field default)"
+  echo "inference: PFY_INFERENCE=${PFY_INFERENCE}  url=${iurl}"
+  if openai_models_up "$iurl"; then
+    echo "inference live: openai-compat /v1/models OK"
+  elif [[ "$PFY_INFERENCE" == "ollama" ]] && ollama_api_up; then
+    echo "inference live: ollama /api/tags OK"
+  else
+    echo "inference live: down (not ready — will not fake)"
+  fi
   echo ""
   printf "%-14s %-14s %-8s %s\n" "ID" "STATUS" "ROLE" "NAME"
   printf "%-14s %-14s %-8s %s\n" "----" "------" "----" "----"
@@ -156,17 +230,26 @@ cmd_setup() {
     echo "      then re-run: pfy setup"
   fi
   if have ollama; then
-    echo "==> Ollama present"
+    echo "==> Ollama present (adapter; not the only spine — ADR-0014)"
     ollama list 2>/dev/null | head -5 || true
   else
     echo "note: Ollama not installed — https://ollama.com (optional for local-only)"
+  fi
+  if have shimmy; then
+    echo "==> Shimmy present (OpenAI-compat adapter)"
+  else
+    echo "note: Shimmy not on PATH — https://github.com/Michael-A-Kuykendall/shimmy (optional)"
+  fi
+  if have llama-swap; then
+    echo "==> llama-swap present (pair with llama-server; do not vendor)"
+  else
+    echo "note: llama-swap not on PATH — https://github.com/mostlygeek/llama-swap (optional)"
   fi
   if have docker; then
     echo "==> Docker present (agent-cage lab available)"
   else
     echo "note: Docker not found — cage lab skipped"
   fi
-  # default active
   if [[ ! -f "$ACTIVE_FILE" ]]; then
     echo "$(json_field default)" > "$ACTIVE_FILE"
   fi
@@ -190,26 +273,112 @@ cmd_harness_use() {
   fi
 }
 
+ensure_inference() {
+  local eng="${PFY_INFERENCE:-ollama}"
+  local url
+  url="$(inference_url)"
+  echo "==> inference backend: ${eng}  ${url}"
+  case "$eng" in
+    ollama)
+      if have ollama; then
+        if ! ollama_api_up; then
+          echo "starting Ollama serve in background…"
+          (ollama serve >>"$STATE_DIR/ollama.log" 2>&1 &) || true
+        else
+          echo "Ollama already up"
+        fi
+        if ! wait_http ollama_api_up 5; then
+          echo "error: Ollama API did not respond on :11434 after retries (T-0101 / #54)"
+          echo "continuing so cloud harnesses (e.g. grok) can still start"
+        fi
+      else
+        echo "note: no Ollama — cloud-only harnesses may still work"
+      fi
+      if openai_models_up "$url"; then
+        echo "OpenAI-compat /v1/models OK at $url"
+      fi
+      ;;
+    shimmy)
+      if have shimmy; then
+        if ! openai_models_up "$url"; then
+          echo "starting shimmy in background…"
+          (shimmy serve >>"$STATE_DIR/shimmy.log" 2>&1 &) || true
+        else
+          echo "Shimmy already up"
+        fi
+        local n=0
+        while [[ $n -lt 5 ]]; do
+          openai_models_up "$url" && break
+          sleep 1
+          n=$((n + 1))
+        done
+        if ! openai_models_up "$url"; then
+          echo "error: Shimmy OpenAI API did not respond at $url"
+          echo "continuing so cloud harnesses can still start"
+        fi
+      else
+        echo "error: PFY_INFERENCE=shimmy but shimmy not on PATH — will not fake ready"
+        echo "Install: https://github.com/Michael-A-Kuykendall/shimmy  (do not vendor)"
+        echo "Track: epic #53 / T-0110"
+        return 2
+      fi
+      ;;
+    llama-swap)
+      if have llama-swap; then
+        if ! openai_models_up "$url"; then
+          echo "starting llama-swap in background…"
+          (llama-swap >>"$STATE_DIR/llama-swap.log" 2>&1 &) || true
+        else
+          echo "llama-swap already up"
+        fi
+        local n=0
+        while [[ $n -lt 5 ]]; do
+          openai_models_up "$url" && break
+          sleep 1
+          n=$((n + 1))
+        done
+        if ! openai_models_up "$url"; then
+          echo "error: llama-swap OpenAI API did not respond at $url"
+          echo "continuing so cloud harnesses can still start"
+        fi
+      else
+        echo "error: PFY_INFERENCE=llama-swap but llama-swap not on PATH — will not fake ready"
+        echo "Install: https://github.com/mostlygeek/llama-swap (+ llama-server). Do not vendor."
+        echo "Track: epic #53 / T-0110"
+        return 2
+      fi
+      ;;
+    *)
+      echo "note: unknown PFY_INFERENCE=$eng — expected ollama|shimmy|llama-swap"
+      ;;
+  esac
+  return 0
+}
+
 cmd_start() {
   local id="${1:-$(cat "$ACTIVE_FILE" 2>/dev/null || json_field default)}"
   echo "==> start harness: $id"
-  # Inference first (Ollama feel)
-  if have ollama; then
-    if ! curl -sf --max-time 1 http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
-      echo "starting Ollama serve in background…"
-      (ollama serve >>"$STATE_DIR/ollama.log" 2>&1 &) || true
-      sleep 1
-    else
-      echo "Ollama already up"
-    fi
-  else
-    echo "note: no Ollama — cloud-only harnesses may still work"
+  local inf_rc=0
+  ensure_inference || inf_rc=$?
+  if [[ "$inf_rc" -eq 2 ]]; then
+    case "$id" in
+      grok|opencode|hermes|claude-code|codex|gemini|exo|continue|agent-cage)
+        echo "note: selected inference missing; continuing for harness $id"
+        ;;
+      shimmy|llama-swap|ollama)
+        echo "STUB/PARTIAL: inference adapter $id not executable on PATH"
+        exit 2
+        ;;
+      *)
+        exit 2
+        ;;
+    esac
   fi
 
   case "$id" in
     grok)
       if have grok; then
-        echo "launch: grok  (skills from bootstrap/grok-cli)"
+        echo "launch: grok  (skills from bootstrap/grok-cli) — monitor, not local worker"
         echo "tip: from repo root, use Grok with this workspace"
         exec grok
       else
@@ -218,17 +387,52 @@ cmd_start() {
       ;;
     ollama)
       if have ollama; then
-        echo "Ollama is the inference spine. Pull a model: pfy models pull deepseek-coder:6.7b"
-        ollama list
+        echo "Ollama is an inference adapter (T-0101). Pull a model: pfy models pull deepseek-coder:6.7b"
+        if ollama_api_up; then
+          ollama list || true
+        else
+          echo "error: Ollama API not responding — not ready"
+          exit 2
+        fi
       else
-        die "ollama not installed"
+        echo "STUB/PARTIAL: ollama not on PATH"
+        echo "Install: https://ollama.com  Track: #54"
+        exit 2
+      fi
+      ;;
+    shimmy)
+      if have shimmy && openai_models_up "$(inference_url)"; then
+        echo "Shimmy OpenAI-compat up at $(inference_url)"
+      elif have shimmy; then
+        echo "PARTIAL: shimmy on PATH but /v1/models not responding — not ready"
+        exit 2
+      else
+        echo "STUB/PARTIAL: shimmy not on PATH"
+        echo "Install: https://github.com/Michael-A-Kuykendall/shimmy  (do not vendor)"
+        echo "Track: epic #53"
+        exit 2
+      fi
+      ;;
+    llama-swap)
+      if have llama-swap && openai_models_up "$(inference_url)"; then
+        echo "llama-swap OpenAI-compat up at $(inference_url)"
+      elif have llama-swap; then
+        echo "PARTIAL: llama-swap on PATH but /v1/models not responding — not ready"
+        exit 2
+      else
+        echo "STUB/PARTIAL: llama-swap not on PATH"
+        echo "Install: https://github.com/mostlygeek/llama-swap  (do not vendor llama.cpp)"
+        echo "Track: epic #53"
+        exit 2
       fi
       ;;
     opencode)
       if have opencode || have opencode-cli; then
         bin=$(have opencode && echo opencode || echo opencode-cli)
         echo "PARTIAL: launching $bin — ensure OPENCODE_SKILLS=$ROOT/bootstrap/grok-cli/skills"
+        echo "worker: OPENAI_BASE_URL=$(inference_url)  (Grok remains monitor)"
         export OPENCODE_SKILLS="${OPENCODE_SKILLS:-$ROOT/bootstrap/grok-cli/skills}"
+        export OPENAI_BASE_URL="${OPENAI_BASE_URL:-$(inference_url)}"
         exec "$bin"
       else
         echo "STUB/PARTIAL: OpenCode not on PATH"
@@ -241,7 +445,7 @@ cmd_start() {
       echo "STUB harness: $id"
       python3 -c "import json; d=json.load(open('$REG')); h=next(x for x in d['harnesses'] if x['id']=='$id'); print(h['summary']); print('setup:', h['setup']); print('todo:', h.get('issue_stub'))"
       echo ""
-      echo "Inference (Ollama) may still be up. Harness adapter is tracked as a GitHub issue."
+      echo "Inference adapter may still be up. Harness adapter is tracked as a GitHub issue."
       exit 2
       ;;
     *)
