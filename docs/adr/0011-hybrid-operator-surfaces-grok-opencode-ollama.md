@@ -1,7 +1,7 @@
 # ADR-0011: Hybrid operator surfaces (Grok + OpenCode + Ollama)
 
 - **Date:** 2026-07-25
-- **Status:** Accepted
+- **Status:** Accepted (operator surfaces). Inference fabric **superseded by [ADR-0014](0014-pluggable-local-inference-spine.md)**.
 - **Deciders:** operator (direction); agent (write-up)
 
 ## Context
@@ -19,11 +19,11 @@ ADR-0006 already defines **local-only / balanced / max-performance** profiles. T
 ## Decision
 
 1. **Primary surface (subscription / hard tasks):** Grok Build CLI + agent-cage (unchanged default path: `make cage-grok`, first-party skills under `bootstrap/grok-cli/`).
-2. **Secondary surface (local + flexible cloud split):** **OpenCode**, configured to talk to **Ollama** (and optionally cloud providers) via OpenAI-compatible endpoints / LiteLLM.
-3. **Inference fabric:** Ollama on the host; LiteLLM recipes under `config/litellm/` keyed by `DEPLOY_PROFILE` (T-0012). In-cage local smoke remains `make smoke-litellm-ollama` (+ host gateway).
+2. **Secondary surface (local + flexible cloud split):** **OpenCode**, configured to talk to a **local OpenAI-compatible endpoint** (and optionally cloud providers) via LiteLLM. Default local spine is **ADR-0014** (FreeToken → llama-swap/llama-server → Ollama adapter).
+3. **Inference fabric (superseded):** Ollama-on-host as *the* fabric is replaced by ADR-0014. LiteLLM recipes under `config/litellm/` keyed by `DEPLOY_PROFILE` (T-0012) still apply. In-cage local smoke remains `make smoke-litellm-ollama` (+ host gateway) when Ollama is the adapter.
 4. **Portability rule:** First-party **process skills** (ADR, OQ, docs, one-shot, investigate, agent-loops, hermes-feedback, …) are authored as **SKILL.md packs** with **portable procedure bodies**. Grok-specific paths (`~/.grok/`, install.sh) stay in `bootstrap/grok-cli/`; OpenCode (and others) load the **same skill content** via a thin adapter package (`bootstrap/opencode/`) that does **not** fork process meaning.
 5. **Task routing heuristic (balanced profile):**
-   - **Local Ollama:** structural checks, small edits, format/lint, simple generate/fix, eval-harness implement tasks when model fits, cheap loops.
+   - **Local worker (OpenAI-compat):** structural checks, small edits, format/lint, simple generate/fix, eval-harness implement tasks when model fits, cheap loops.
    - **Grok (or strong cloud):** architecture, ambiguous product forks, hard multi-file design, cage-net debugging, high-stakes review.
 6. **Hermes:** Keep **`/hermes-feedback` as pattern skill** (T-0048). Do **not** require Hermes Agent runtime or Ollama “Hermes plugin” for the stack. Optional host experiments are catalog/watch only.
 
@@ -43,16 +43,16 @@ Rejected alternatives:
 
 ## Consequences
 
-- Document operator paths: Grok daily, OpenCode+Ollama for local-heavy work, LiteLLM for routing.
+- Document operator paths: Grok daily, OpenCode + local OpenAI-compat for local-heavy work, LiteLLM for routing.
 - `bootstrap/opencode/` holds install/config notes and skill-path mapping — not a second process doctrine.
-- Eval: structural stays CLI-agnostic; implement-lane uses Ollama when present (`make eval-suite`).
-- Cage remains Grok-image primary; OpenCode-in-cage is a later smoke (T-0040/T-0080), not a blocker for host OpenCode+Ollama.
-- Supersedes nothing; **layers on** ADR-0002 / 0006 / 0009 / 0010.
+- Eval: structural stays CLI-agnostic; implement-lane uses the ADR-0014 spine when present (`make eval-suite`).
+- Cage remains Grok-image primary; OpenCode-in-cage is a later smoke (T-0040/T-0080), not a blocker for host OpenCode + local worker.
+- **Inference spine superseded by ADR-0014.** Surfaces (Grok monitor / OpenCode worker) still stand.
 
 ## References
 
-- ADR-0002, ADR-0006, ADR-0009, ADR-0010  
-- `config/litellm/`, `examples/litellm-ollama/`  
-- `docs/ops/local-cloud-split.md`  
-- `bootstrap/opencode/README.md`  
-- TODO T-0040, T-0074, T-0080  
+- ADR-0002, ADR-0006, ADR-0009, ADR-0010, **ADR-0014**
+- `config/litellm/`, `examples/litellm-ollama/`
+- `docs/ops/local-cloud-split.md`
+- `bootstrap/opencode/README.md`
+- TODO T-0040, T-0074, T-0080, #76

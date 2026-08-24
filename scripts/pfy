@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 # pfy — simple operator surface for pfy-mentat
-# Feel: Ollama then Hermes — one binary, inference first, harnesses attach.
+# Inference first (FreeToken / llama-swap / llama-server / Ollama), harnesses attach.
 set -euo pipefail
 SCRIPT_PATH="${BASH_SOURCE[0]:-$0}"
-# resolve symlink so ./pfy → scripts/pfy still finds repo root
 while [[ -L "$SCRIPT_PATH" ]]; do
   link="$(readlink "$SCRIPT_PATH")"
   if [[ "$link" != /* ]]; then
@@ -14,6 +13,7 @@ while [[ -L "$SCRIPT_PATH" ]]; do
 done
 ROOT="$(cd "$(dirname "$SCRIPT_PATH")/.." && pwd)"
 REG="$ROOT/data/harnesses.json"
+DETECT="$ROOT/scripts/detect-local-runtime.sh"
 STATE_DIR="${PFY_STATE_DIR:-$HOME/.pfy-mentat}"
 ACTIVE_FILE="$STATE_DIR/active-harness"
 mkdir -p "$STATE_DIR"
@@ -26,40 +26,20 @@ usage() {
 pfy — simple setup & launch for the pfy-mentat stack
 
   pfy setup [local-only|balanced|max-performance]
-      One-shot: env + skills + detect tools (Ollama-style bootstrap)
-
   pfy status
-      What is installed / ready / stub
-
-  pfy harness list
-  pfy harness use <id>
-  pfy harness show [id]
-
+  pfy harness list|use <id>|show [id]
   pfy start [harness]
-      Ensure inference (Ollama) when possible, then launch active harness
-
-  pfy stage
-      Green path: env-check + structural eval (+ soft Ollama)
-
-  pfy eval
-      Integration self-mod gates (catalog hygiene)
-
-  pfy ship
-      Product verify (+ optional push)
-
-  pfy models pull <name>
-      ollama pull wrapper
-
+  pfy stage | eval | ship
+  pfy models pull <name>   (Ollama adapter only)
   pfy help
 
-Philosophy: inference comes up once; harnesses (Grok, OpenCode, Hermes, …)
-attach to it. Unfinished harnesses are stubs with a clear next issue — not
-hidden Make targets.
+Inference detect: FreeToken (:1919) → llama-swap (:9292) → llama-server (:8080) → Ollama.
+Override: PFY_LOCAL_RUNTIME, LOCAL_OPENAI_BASE_URL.
+Detector is invoked with bash (no git +x required).
 U
 }
 
 json_field() {
-  # jq-free: python
   python3 - "$REG" "$1" "${2:-}" <<'PY'
 import json,sys
 reg=json.load(open(sys.argv[1]))
@@ -80,18 +60,22 @@ elif cmd=="detects":
     for h in reg["harnesses"]:
         if h["id"]==arg:
             print("\n".join(h.get("detect") or [])); break
-elif cmd=="all":
-    print(json.dumps(reg["harnesses"]))
 PY
+}
+
+local_runtime() {
+  if [[ -f "$DETECT" ]]; then
+    bash "$DETECT" --json
+  else
+    echo '{"engine":"none","status":"missing","base_url":""}'
+  fi
 }
 
 detect_status() {
   local id="$1"
-  local status_reg
+  local status_reg found=0 bins
   status_reg=$(python3 -c "import json; d=json.load(open('$REG')); print(next(h['status'] for h in d['harnesses'] if h['id']=='$id'))")
-  local bins
   bins=$(json_field detects "$id" || true)
-  local found=0
   if [[ -n "$bins" ]]; then
     while IFS= read -r b; do
       [[ -z "$b" ]] && continue
@@ -102,21 +86,26 @@ detect_status() {
       fi
     done <<< "$bins"
   fi
-  # special: ollama
-  if [[ "$id" == "ollama" ]]; then
-    if have ollama; then
-      if ollama list >/dev/null 2>&1; then echo "ready"; else echo "partial"; fi
-    else
-      echo "missing"
-    fi
-    return
-  fi
+  case "$id" in
+    freetoken|ollama|shimmy|llama-swap|llama-server|llama.cpp)
+      python3 - "$(local_runtime)" "$id" "$found" <<'PY'
+import json,sys
+rt=json.loads(sys.argv[1]); id=sys.argv[2]; found=int(sys.argv[3])
+eng=rt.get("engine","")
+alias={"llama.cpp":"llama-server","llama-server":"llama.cpp","ft":"freetoken","freetoken":"ft"}
+if eng==id or alias.get(eng)==id or alias.get(id)==eng:
+    print(rt.get("status","missing")); sys.exit(0)
+# Binary present but not the live engine: partial. No binary: missing — never registry-partial.
+print("partial" if found else "missing")
+PY
+      return
+      ;;
+  esac
   if [[ "$status_reg" == "stub" ]]; then
     if [[ "$found" -eq 1 ]]; then echo "detected-stub"; else echo "stub"; fi
     return
   fi
   if [[ "$found" -eq 1 ]]; then echo "ready"
-  elif [[ "$status_reg" == "partial" ]]; then echo "partial"
   else echo "missing"
   fi
 }
@@ -125,6 +114,8 @@ cmd_status() {
   echo "pfy-mentat simple surface"
   echo "root: $ROOT"
   echo "active harness: $(cat "$ACTIVE_FILE" 2>/dev/null || json_field default)"
+  rt=$(local_runtime)
+  python3 -c "import json,sys; d=json.loads(sys.argv[1]); print('local runtime: engine=%s status=%s base_url=%s'%(d.get('engine'),d.get('status'),d.get('base_url') or '(none)'))" "$rt"
   echo ""
   printf "%-14s %-14s %-8s %s\n" "ID" "STATUS" "ROLE" "NAME"
   printf "%-14s %-14s %-8s %s\n" "----" "------" "----" "----"
@@ -134,6 +125,7 @@ cmd_status() {
   done
   echo ""
   echo "next: pfy setup   |   pfy start   |   pfy harness list"
+  echo "override: PFY_LOCAL_RUNTIME=freetoken|llama-swap|llama-server|ollama"
 }
 
 cmd_setup() {
@@ -152,26 +144,17 @@ cmd_setup() {
     echo "==> Grok CLI found — installing skills"
     bash "$ROOT/bootstrap/grok-cli/install.sh" || echo "warn: grok install had issues"
   else
-    echo "note: Grok CLI not on PATH — install: curl -fsSL https://x.ai/cli/install.sh | bash"
-    echo "      then re-run: pfy setup"
+    echo "note: Grok CLI not on PATH — install then re-run: pfy setup"
   fi
-  if have ollama; then
-    echo "==> Ollama present"
-    ollama list 2>/dev/null | head -5 || true
-  else
-    echo "note: Ollama not installed — https://ollama.com (optional for local-only)"
-  fi
-  if have docker; then
-    echo "==> Docker present (agent-cage lab available)"
-  else
-    echo "note: Docker not found — cage lab skipped"
-  fi
-  # default active
+  for bin in ft freetoken llama-swap llama-server ollama shimmy; do
+    if have "$bin"; then echo "==> $bin present"; fi
+  done
+  have ft || have freetoken || echo "note: FreeToken not installed (uv pip install \"freetoken[accel]\")"
+  have docker && echo "==> Docker present" || echo "note: Docker not found — cage lab skipped"
   if [[ ! -f "$ACTIVE_FILE" ]]; then
     echo "$(json_field default)" > "$ACTIVE_FILE"
   fi
   echo ""
-  echo "setup complete. run: pfy status"
   cmd_status
 }
 
@@ -182,86 +165,67 @@ cmd_harness_use() {
     || die "unknown harness: $id"
   echo "$id" > "$ACTIVE_FILE"
   echo "active harness → $id"
-  st=$(detect_status "$id")
-  echo "live status: $st"
-  if [[ "$st" == "stub" || "$st" == "detected-stub" ]]; then
-    echo "STUB: adapter not fully implemented. See GitHub issues labeled harness-adapter."
-    python3 -c "import json; d=json.load(open('$REG')); h=next(x for x in d['harnesses'] if x['id']=='$id'); print('setup:', h.get('setup','')); print('todo:', h.get('issue_stub') or 'n/a')"
-  fi
+  echo "live status: $(detect_status "$id")"
 }
 
 cmd_start() {
   local id="${1:-$(cat "$ACTIVE_FILE" 2>/dev/null || json_field default)}"
   echo "==> start harness: $id"
-  # Inference first (Ollama feel)
-  if have ollama; then
-    if ! curl -sf --max-time 1 http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
-      echo "starting Ollama serve in background…"
-      (ollama serve >>"$STATE_DIR/ollama.log" 2>&1 &) || true
-      sleep 1
+  rt=$(local_runtime)
+  python3 -c "import json,sys; print('local runtime:', json.loads(sys.argv[1]))" "$rt"
+  engine=$(python3 -c "import json,sys; print(json.loads(sys.argv[1]).get('engine',''))" "$rt")
+  st=$(python3 -c "import json,sys; print(json.loads(sys.argv[1]).get('status',''))" "$rt")
+  base=$(python3 -c "import json,sys; print(json.loads(sys.argv[1]).get('base_url',''))" "$rt")
+  export LOCAL_OPENAI_BASE_URL="${LOCAL_OPENAI_BASE_URL:-$base}"
+
+  if [[ "$st" != "ready" ]]; then
+    if [[ "$engine" == "ollama" ]] && have ollama; then
+      if ! curl -sf --max-time 1 http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
+        echo "starting Ollama serve in background…"
+        (ollama serve >>"$STATE_DIR/ollama.log" 2>&1 &) || true
+        sleep 1
+        export LOCAL_OPENAI_BASE_URL="${LOCAL_OPENAI_BASE_URL:-http://127.0.0.1:11434/v1}"
+      fi
+    elif [[ "$engine" == "freetoken" ]]; then
+      echo "STUB: FreeToken not serving. ft serve --model <id>  (see #76)"
+    elif [[ "$engine" == "llama-swap" || "$engine" == "llama-server" || "$engine" == "llama.cpp" ]]; then
+      echo "STUB: $engine HTTP not up. See #76."
     else
-      echo "Ollama already up"
+      echo "note: no local runtime ready — install FreeToken, llama-swap, llama-server, or ollama (#76)"
     fi
   else
-    echo "note: no Ollama — cloud-only harnesses may still work"
+    echo "inference up: $engine at ${LOCAL_OPENAI_BASE_URL:-$base}"
   fi
 
   case "$id" in
     grok)
-      if have grok; then
-        echo "launch: grok  (skills from bootstrap/grok-cli)"
-        echo "tip: from repo root, use Grok with this workspace"
-        exec grok
-      else
-        die "grok not installed — pfy setup after installing Grok CLI"
-      fi
+      have grok || die "grok not installed"
+      exec grok
       ;;
-    ollama)
-      if have ollama; then
-        echo "Ollama is the inference spine. Pull a model: pfy models pull deepseek-coder:6.7b"
-        ollama list
-      else
-        die "ollama not installed"
-      fi
+    freetoken|ollama|shimmy|llama-swap|llama-server|llama.cpp)
+      echo "inference spine: $id  LOCAL_OPENAI_BASE_URL=${LOCAL_OPENAI_BASE_URL:-}"
+      if [[ "$st" != "ready" ]]; then echo "honest stub: $id not healthy (#76)"; exit 2; fi
       ;;
     opencode)
       if have opencode || have opencode-cli; then
         bin=$(have opencode && echo opencode || echo opencode-cli)
-        echo "PARTIAL: launching $bin — ensure OPENCODE_SKILLS=$ROOT/bootstrap/grok-cli/skills"
         export OPENCODE_SKILLS="${OPENCODE_SKILLS:-$ROOT/bootstrap/grok-cli/skills}"
         exec "$bin"
       else
-        echo "STUB/PARTIAL: OpenCode not on PATH"
-        echo "Install OpenCode, then: export OPENCODE_SKILLS=$ROOT/bootstrap/grok-cli/skills"
-        echo "Track: issue OpenCode host adapter"
-        exit 2
+        echo "STUB: OpenCode not on PATH (#55)"; exit 2
       fi
       ;;
     hermes|claude-code|codex|gemini|exo|continue|agent-cage)
       echo "STUB harness: $id"
-      python3 -c "import json; d=json.load(open('$REG')); h=next(x for x in d['harnesses'] if x['id']=='$id'); print(h['summary']); print('setup:', h['setup']); print('todo:', h.get('issue_stub'))"
-      echo ""
-      echo "Inference (Ollama) may still be up. Harness adapter is tracked as a GitHub issue."
       exit 2
       ;;
-    *)
-      die "unknown harness: $id"
-      ;;
+    *) die "unknown harness: $id" ;;
   esac
 }
 
-cmd_stage() {
-  (cd "$ROOT" && make env-stage)
-}
-
-cmd_eval() {
-  (cd "$ROOT" && REASON="${REASON:-pfy eval}" make eval-integration-change)
-}
-
-cmd_ship() {
-  (cd "$ROOT" && make product-ship)
-}
-
+cmd_stage() { (cd "$ROOT" && make env-stage); }
+cmd_eval() { (cd "$ROOT" && REASON="${REASON:-pfy eval}" make eval-integration-change); }
+cmd_ship() { (cd "$ROOT" && make product-ship); }
 cmd_models_pull() {
   local m="${1:-}"
   [[ -n "$m" ]] || die "usage: pfy models pull <name>"
@@ -291,10 +255,7 @@ main() {
     ship) cmd_ship ;;
     models)
       local sub="${1:-}"; shift || true
-      case "$sub" in
-        pull) cmd_models_pull "$@" ;;
-        *) die "models subcommands: pull" ;;
-      esac
+      case "$sub" in pull) cmd_models_pull "$@" ;; *) die "models subcommands: pull" ;; esac
       ;;
     *) usage; die "unknown command: $cmd" ;;
   esac

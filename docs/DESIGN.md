@@ -1,7 +1,7 @@
 # Design: pfy-mentat
 
 **Status:** Active  
-**Last updated:** 2026-07-31  
+**Last updated:** 2026-08-24  
 **Authority for *why*:** [docs/adr/](adr/README.md)  
 **Next work:** [docs/TODO.md](TODO.md) · open items [docs/OPEN_QUESTIONS.md](OPEN_QUESTIONS.md)
 
@@ -15,6 +15,8 @@ Build a **living, scored catalog** of local-first LLM development tools and a **
 
 One-line purpose: **Track · Categorize · Rank · Integrate** tools for robust self-hosted agentic development.
 
+The **product you ship** is the operator stack (`./pfy` onboard / stage / ship). The catalog is how we choose pieces, not the end-user surface.
+
 ---
 
 ## 2. Primary goals
@@ -23,31 +25,33 @@ One-line purpose: **Track · Categorize · Rank · Integrate** tools for robust 
 |---|------|--------------------|
 | G1 | Living catalog | Scored tools in `TOOLS.md` + `data/tools.json`, sourced from X/community with rubric integrity |
 | G2 | Consistent evaluation | Stage 0 gate + weighted Stages 1–4 (see `CATEGORIZATION.md`); tiers S/A/B/C stay comparable over time |
-| G3 | Stack synergies | Clear recommended combos (e.g. Grok + LiteLLM + Ollama + MCP memory + DSPy) documented with integration notes |
+| G3 | Stack synergies | Clear recommended combos (Grok monitor + LiteLLM + **pluggable local inference** + MCP memory) documented with integration notes |
 | G4 | Rapid integration | Highest-value components installable/replayable without repo bloat (pins, rare subtree, bootstrap) |
 | G5 | Grok-first interface | Operator env and agent skills bootstrapped from this repo; hybrid/fallback to other harnesses when scored higher for a task |
 | G6 | Lean tracking | Prefer pinned SHA + shallow clone; embed only when criteria in `SUBTREES.md` are met |
 | G7 | Durable process | Design + ADR + TODO + open questions keep multithreaded agents from re-litigating or losing TBDs |
-| **G8** | **Simple deploy path** | Bare clone → `./pfy setup` → `./pfy start` feels like Ollama→Hermes: inference up once, any harness attaches; stubs for unfinished adapters |
+| **G8** | **Simple deploy path** | Bare clone → `./pfy setup` → `./pfy start` : **local inference up once** (FreeToken first, then llama-swap/llama-server, Ollama adapter), any harness attaches; stubs for unfinished adapters |
 
 ### G8 detail — harness-agnostic simplicity
 
-**Inspiration:** Ollama (inference spine), Hermes/OpenCode integrated installers, Exo `setup.sh`, Claude Code / Codex / Gemini one-CLI auth, Grok Build login.
+**Inspiration:** FreeToken / llama.cpp / Ollama as *inference*, Hermes/OpenCode integrated installers, Exo `setup.sh`, one-CLI auth, Grok Build login.
 
 **Shape:**
 
 ```text
-./pfy setup     → env + skills + detect
-./pfy status    → ready | partial | stub
-./pfy start     → Ollama (if present) then active harness
+./pfy setup     → env + skills + detect local runtime
+./pfy status    → ready | partial | stub | missing  (honest; missing ≠ partial)
+./pfy start     → local OpenAI-compat inference if present, then active harness
 ./pfy harness use <id>
 ```
 
-**Harness slots** (see `data/harnesses.json`): ollama, grok, opencode, hermes, claude-code, codex, gemini, exo, continue, agent-cage.
+**Inference detect order** (ADR-0014): FreeToken (`ft` :1919) → llama-swap (:9292) → llama-server (:8080) → Ollama (:11434). Shimmy optional.
 
-Grok stays **default** (ADR-0002); other harnesses are equal *options*, not second-class footnotes. Eval pipeline (G0/G1/G2, `pfy eval`) remains core for the catalog mission — it is not the first screen for newcomers.
+**Harness slots** (see `data/harnesses.json`): freetoken, llama-swap, llama.cpp, ollama, grok, opencode, hermes, claude-code, codex, gemini, exo, continue, agent-cage.
 
-**Authority:** [ADR-0012](adr/0012-simple-harness-agnostic-launch.md) · [simple-launch.md](ops/simple-launch.md)
+Grok stays **default harness** (ADR-0002). Local **worker** uses `LOCAL_OPENAI_BASE_URL`. Eval pipeline (`pfy eval`) remains core for the catalog mission — it is not the first screen for newcomers.
+
+**Authority:** [ADR-0012 simple launch](adr/0012-simple-harness-agnostic-launch.md) · [ADR-0014](adr/0014-pluggable-local-inference-spine.md) · [local-runtime.md](ops/local-runtime.md)
 
 ---
 
@@ -58,6 +62,7 @@ Grok stays **default** (ADR-0002); other harnesses are equal *options*, not seco
 - Replacing Grok’s own binary, auth, or marketplace plugins
 - Exhaustive “awesome list” coverage without scoring or pipeline value
 - Forcing a single commercial harness monoculture (G8: multi-slot, Grok default only)
+- Selling lab-IT / Entra Linux / MDM (PNNL/Battelle IP) from this repo
 
 ---
 
@@ -82,7 +87,7 @@ Grok stays **default** (ADR-0002); other harnesses are equal *options*, not seco
    skills · MCP · config    eval harnesses           compose / patterns
           │
           ▼
-   Operator machine: Grok CLI + codebase-memory + agent skills
+   Operator machine: Grok CLI (monitor) + local runtime (worker) + skills
           │
           ▼
    Downstream projects (e.g. gom-jobbar, ATG prototype) consume stack
@@ -108,40 +113,24 @@ Grok stays **default** (ADR-0002); other harnesses are equal *options*, not seco
 - Seeded scored tools + paper analysis workflow (ATG)
 - First-party **Grok CLI bootstrap** (`bootstrap/grok-cli/`)
 - Process docs layout (this file + ADR + TODO + OQ)
-- **project-process bootstrap** (`bootstrap/project-process/`) — replayable scaffold + `/project-process` skill for new repos
-- Phase 0 catalog sync for mobile seeds 003–010 + **agent-cage** as primary container harness (`harness/agent-cage/`)
-- agent-cage baseline smoke green (policy tests); root `make cage-*` UX
-- **Deployment profiles** + env registry (`local-only` / `balanced` / `max-performance`) — ADR-0006
-- **Write-guard MCP** (filesystem write mediation) — ADR-0007; **implemented** (T-0031)
-- **One-shot workflow** — minimize questions; cheap iteration; lab prerequisites — ADR-0008 · `/one-shot`
+- **project-process bootstrap** (`bootstrap/project-process/`)
+- Phase 0 catalog sync + **agent-cage** as primary container harness
+- **Deployment profiles** — ADR-0006
+- **Write-guard MCP** — ADR-0007; **implemented** (T-0031)
+- **One-shot workflow** — ADR-0008 · `/one-shot`
+- **`./pfy` simple surface** — ADR-0012 (G8)
 
 ### Near-term (see TODO)
 
-**Operator jump-off (ADR-0002 + ADR-0010 + T-0045 + T-0047):**
-
-- **Grok Build in agent-cage:** `make cage-grok` → `cage-grok-run` / `cage-grok-shell` / `cage-grok-resume`  
-- Catalog tree at `/workspace/pfy-mentat` · filesystem MCP · persisted sessions under `~/.agentcage/grok-state/sessions`  
-- Proxy gate: `make cage-grok-net-smoke`  
-- Not AgenC as primary ([ADR-0010](adr/0010-reject-agenc-as-primary-runtime.md))  
-- Env check helper: `python3 bootstrap/setup-local-agent-env.py` (Grok+cage oriented; does not install AgenC)
-
-**Near-term next (design/coding + local/cloud — ADR-0011):**
-
-- **T-0085** worker/monitor dual-session (**done** recipe; deepen automation later)  
-- **T-0090** product surface: onboard / stage / ship only for end users  
-- **T-0091** voice → tool-capable agent (p1 STT edge: `make smoke-voice-stt`) — [voice-agent-channel.md](ops/voice-agent-channel.md)  
-- Keep **`make eval-structural`** + local **`eval-suite`** green  
+- **T-0090** product surface: onboard / stage / ship only
+- **#76 / ADR-0014** pluggable local runtime (FreeToken preferred)
+- Keep **`make eval-structural`** + local **`eval-suite`** green
 - Platform Make complexity OK in MVP; product UX must stay ≤ ~3 levers
-
-### Delivered recently
-
-- Write-guard MCP · cage smokes · LiteLLM · skill ports · eval v0.2 · Grok-in-cage + MCP + sessions · AgenC demoted · **`/agent-loops`** · **`/hermes-feedback`** · **`smoke-grok-skills`** · cage **skills install** on `cage-grok` · CM-vs-Graphify decision · loop-engineering + Auto-Company pattern docs
 
 ### Later / research
 
-- Automated scoring dashboard from `data/tools.json` — **started** (`make catalog-dashboard`, #41)
-- Continuous pipeline CI for agent evals — **G0 CI** (`.github/workflows/eval-structural.yml`, #38)
-- Hybrid local model routing defaults as scored recipes
+- Automated scoring dashboard from `data/tools.json`
+- Continuous pipeline CI for agent evals
 - DSPy + MCP scored tier (post eval MVP)
 
 ---
@@ -154,18 +143,18 @@ Grok stays **default** (ADR-0002); other harnesses are equal *options*, not seco
 | **Architecture map** | `docs/ARCHITECTURE.md` | Current structural snapshot (keep short; link here) |
 | **ADR** | `docs/adr/` | Settled *why*, including **rejected** alternatives |
 | **TODO** | `docs/TODO.md` | Ordered next steps; links to OQs |
-| **Open questions** | `docs/OPEN_QUESTIONS.md` + optional `docs/open-questions/` | Unsettled TBDs; context may also live next to the code/doc that raised them |
-| **Operator/agent module docs** | `docs/modules/`, `docs/ops/` | How to run / navigate non-trivial modules (via `/docs` skill) |
+| **Open questions** | `docs/OPEN_QUESTIONS.md` | Unsettled TBDs |
+| **Operator/agent module docs** | `docs/modules/`, `docs/ops/` | How to run / navigate non-trivial modules |
 
 ### Rules
 
 1. **Read before design changes:** `docs/DESIGN.md` + open ADRs + relevant OQs.
-2. **Architecture pivots → ADR:** record decision, rationale, and **paths decided against** so they are not re-followed without re-examining context.
+2. **Architecture pivots → ADR:** record decision, rationale, and **paths decided against**.
 3. **Work items → TODO:** central next steps; each item may reference OQ IDs.
-4. **Uncertainty → Open Question:** when work raises a TBD, add/update an OQ (central index required). Prefer a **detail file** or a short note **in the module/doc context** that links back to the OQ ID—do not leave questions only in chat.
-5. **Answered architectural OQs → promote to ADR** (`promoted-to-adr`).
+4. **Uncertainty → Open Question.**
+5. **Answered architectural OQs → promote to ADR.**
 
-Skills (installed via bootstrap): `/adr`, `/open-questions` (`/oq`), `/docs`.
+Skills: `/adr`, `/open-questions` (`/oq`), `/docs`.
 
 ---
 
@@ -182,9 +171,10 @@ Skills (installed via bootstrap): `/adr`, `/open-questions` (`/oq`), `/docs`.
 
 ## 8. Related documents
 
-- [ARCHITECTURE.md](ARCHITECTURE.md) — structural snapshot
-- [adr/README.md](adr/README.md) — decision index
-- [TODO.md](TODO.md) — next steps
-- [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md) — parking lot
+- [ARCHITECTURE.md](ARCHITECTURE.md)
+- [adr/README.md](adr/README.md)
+- [TODO.md](TODO.md)
+- [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md)
+- [ops/local-runtime.md](ops/local-runtime.md)
 - Root: `README.md`, `CATEGORIZATION.md`, `SUBTREES.md`, `TOOLS.md`
 - Bootstrap: `bootstrap/grok-cli/README.md`
