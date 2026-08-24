@@ -18,8 +18,9 @@
 | T-0107 | Exo optional lab path | open · [#60](https://github.com/themark-net/pfy-mentat/issues/60) |
 | T-0108 | Continue + Ollama recipe | open · [#61](https://github.com/themark-net/pfy-mentat/issues/61) |
 | T-0109 | Fold agent-cage into `pfy stage --lab` | open · [#62](https://github.com/themark-net/pfy-mentat/issues/62) |
+| T-0110 | Pluggable local runtime (llama-swap / Shimmy / Ollama) | **doing** (partial) · [#76](https://github.com/themark-net/pfy-mentat/issues/76) |
 
-Authority: ADR-0012 · issues labeled `harness-adapter`.
+Authority: ADR-0012 · ADR-0014 · issues labeled `harness-adapter`.
 
 ## GitHub issues (synced 2026-07-30)
 
@@ -28,6 +29,7 @@ Active work is also tracked as issues: https://github.com/themark-net/pfy-mentat
 | TODO | Issue | Priority |
 |------|-------|----------|
 | T-0090 | [#1](https://github.com/themark-net/pfy-mentat/issues/1) | P0 |
+| T-0110 | [#76](https://github.com/themark-net/pfy-mentat/issues/76) | P1 doing/partial |
 | T-0091 | [#2](https://github.com/themark-net/pfy-mentat/issues/2) | P1 doing |
 | T-0070 | [#3](https://github.com/themark-net/pfy-mentat/issues/3) | P1 doing |
 | T-0074 | [#4](https://github.com/themark-net/pfy-mentat/issues/4) | P1 doing |
@@ -82,6 +84,7 @@ Active work is also tracked as issues: https://github.com/themark-net/pfy-mentat
 | ID | Priority | Status | Item | Open questions | Depends | Notes |
 |----|----------|--------|------|----------------|---------|-------|
 | T-0090 | P0 | todo | **Minimal product levers audit**: collapse end-user surface to onboard / stage / ship; cap public Make targets | — | — | [#1](https://github.com/themark-net/pfy-mentat/issues/1) · [product-operator-surface.md](ops/product-operator-surface.md) |
+| T-0110 | P1 | doing | **Pluggable local runtime** (OpenAI-compat: llama-swap / Shimmy / Ollama) | — | ADR-0014 | [#76](https://github.com/themark-net/pfy-mentat/issues/76) · partial: detector + registry; T-0101 Ollama adapter remains open |
 | T-0091 | P1 | doing | **Voice path** polish (session sticky / MCP deep) | — | ADR-0012 | [#2](https://github.com/themark-net/pfy-mentat/issues/2) · Orchestrator shipped; optional TTS |
 | T-0092 | P1 | done | Voice auto-agent local opencode path | — | T-0091 4b | still: `VOICE_AUTO_AGENT=opencode` |
 | T-0093 | P1 | done | Tools-capable Ollama select + tool-split | — | T-0080 | `eval-select-tools-model` |
