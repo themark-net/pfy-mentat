@@ -41,7 +41,7 @@ The **product you ship** is the operator stack (`./pfy` onboard / stage / ship).
 ```text
 ./pfy setup     → env + skills + detect local runtime
 ./pfy status    → ready | partial | stub | missing  (honest; missing ≠ partial)
-./pfy start     → local OpenAI-compat inference if present, then active harness
+./pfy start     → inference → env-stage → active harness (default grok)
 ./pfy harness use <id>
 ```
 
@@ -69,27 +69,27 @@ Grok stays **default harness** (ADR-0002). Local **worker** uses `LOCAL_OPENAI_B
 ## 4. System shape
 
 ```text
-                    ┌─────────────────────────────────────┐
+                    ┌────────────────────────────────────┐
   X posts / papers  │  Intake                             │
   aggregates        │  sources/x-posts.md                 │
                     │  sources/aggregates.md              │
-                    └──────────────┬──────────────────────┘
+                    └────────────────────────────┬─────────────────────┘
                                    │ score + synthesize
-                    ┌──────────────▼──────────────────────┐
+                    ┌────────────────────────────┴─────────────────────┐
                     │  Catalog                            │
                     │  TOOLS.md  ·  data/tools.json       │
                     │  CATEGORIZATION.md rubric           │
-                    └──────────────┬──────────────────────┘
+                    └────────────────────────────┬─────────────────────┘
                                    │ integrate
-          ┌────────────────────────┼────────────────────────┐
-          ▼                        ▼                        ▼
+          ┌───────────────────────┼────────────────────────┐
+          │                        │                        │
    bootstrap/grok-cli/      pipelines/ (future)      examples/ (future)
    skills · MCP · config    eval harnesses           compose / patterns
           │
-          ▼
+          │
    Operator machine: Grok CLI (monitor) + local runtime (worker) + skills
           │
-          ▼
+          │
    Downstream projects (e.g. gom-jobbar, ATG prototype) consume stack
 ```
 
