@@ -3,7 +3,13 @@
   "last_updated": "2026-08-01",
   "description": "v0.4.13: Entry 078 kanbots A-tier multi-CLI Kanban parallel dispatcher. + Entry 079 multi-agent-generator B-tier.",
   "schema_notes": {
-    "required_for_all": ["name", "primary_category", "github", "scores", "tier"],
+    "required_for_all": [
+      "name",
+      "primary_category",
+      "github",
+      "scores",
+      "tier"
+    ],
     "optional_tracking": {
       "pinned_commit": "Exact SHA or tag for reproducibility in pipelines",
       "subtree_path": "Relative path if added via git subtree",
@@ -12,19 +18,31 @@
       "source_aggregate": "Slug from sources/aggregates.md",
       "x_post_id": "Status ID if from X seed",
       "company_scores": "For Autonomous AI Companies: c1_org, c2_cycle, c3_memory, c4_safety, c5_econ, c6_local, weighted",
-      "integration_stage": "I0–I4 from docs/ops/integration-stages.md; see also data/tool_integration_stages.json"
+      "integration_stage": "I0\u2013I4 from docs/ops/integration-stages.md; see also data/tool_integration_stages.json"
     },
     "aggregates_array": "Top-level array for logged aggregates.",
-    "integration_stage": "I0–I4 required on every tool (GAP-02 #39)"
+    "integration_stage": "I0\u2013I4 required on every tool (GAP-02 #39)"
   },
   "tools": [
     {
       "name": "Grok CLI bootstrap",
       "primary_category": "Pipeline & CI/CD Components",
       "github": "https://github.com/themark-net/pfy-mentat",
-      "scores": {"s1": 95, "s2": 90, "s3": 98, "s4": 90, "overall": 94},
+      "scores": {
+        "s1": 95,
+        "s2": 90,
+        "s3": 98,
+        "s4": 90,
+        "overall": 94
+      },
       "tier": "S",
-      "tags": ["grok-cli", "mcp-compatible", "code-memory", "pipeline", "local-first"],
+      "tags": [
+        "grok-cli",
+        "mcp-compatible",
+        "code-memory",
+        "pipeline",
+        "local-first"
+      ],
       "bootstrap_path": "bootstrap/grok-cli",
       "notes": "Primary operator env (ADR-0002).",
       "integration_stage": "I3"
@@ -33,9 +51,24 @@
       "name": "kanbots",
       "primary_category": "Agent Frameworks & Orchestration",
       "github": "https://github.com/leodavinci1/kanbots",
-      "scores": {"s1": 85, "s2": 70, "s3": 90, "s4": 78, "overall": 81},
+      "scores": {
+        "s1": 85,
+        "s2": 70,
+        "s3": 90,
+        "s4": 78,
+        "overall": 81
+      },
       "tier": "A",
-      "tags": ["multi-agent", "kanban", "worktree", "mcp-compatible", "parallel", "opencode", "local-first", "ui"],
+      "tags": [
+        "multi-agent",
+        "kanban",
+        "worktree",
+        "mcp-compatible",
+        "parallel",
+        "opencode",
+        "local-first",
+        "ui"
+      ],
       "x_post_id": "2083287800959451146",
       "notes": "X Entry 078. Unified Kanban dispatching 11 agent CLIs (incl OpenCode) in parallel isolated worktrees. Autopilot, MCP server, decision prompts. Stage 0 pass. Complements Multica + agent-cage. Initial scores only; no smoke yet.",
       "integration_stage": "I1"
@@ -44,9 +77,23 @@
       "name": "multi-agent-generator",
       "primary_category": "Agent Frameworks & Orchestration",
       "github": "https://github.com/aakriti1318/multi-agent-generator",
-      "scores": {"s1": 83, "s2": 68, "s3": 87, "s4": 74, "overall": 79},
+      "scores": {
+        "s1": 83,
+        "s2": 68,
+        "s3": 87,
+        "s4": 74,
+        "overall": 79
+      },
       "tier": "B",
-      "tags": ["agentic", "orchestration", "litellm-ready", "codegen", "crewai", "langgraph", "local-first"],
+      "tags": [
+        "agentic",
+        "orchestration",
+        "litellm-ready",
+        "codegen",
+        "crewai",
+        "langgraph",
+        "local-first"
+      ],
       "notes": "X Entry 079. Plain-English multi-agent team generator (CrewAI/LangGraph/ReAct/Agno) with LiteLLM/Ollama, NL tool gen, orchestration patterns. Scaffolding utility. See sources/entries/079-multi-agent-generator.md.",
       "x_post_id": "2083359457795252433",
       "integration_stage": "I0"
