@@ -1,1 +1,5 @@
-PLACEHOLDER_JSON
+{
+  "version": "1.2",
+  "last_updated": "2026-08-24",
+  "default_harness": "grok"
+}

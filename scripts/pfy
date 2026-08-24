@@ -1,1 +1,46 @@
-PLACEHOLDER_PFY
+#!/usr/bin/env bash
+# pfy — simple operator surface for pfy-mentat
+# Inference first (FreeToken / llama-swap / llama-server / Ollama), harnesses attach.
+set -euo pipefail
+SCRIPT_PATH="${BASH_SOURCE[0]:-$0}"
+while [[ -L "$SCRIPT_PATH" ]]; do
+  link="$(readlink "$SCRIPT_PATH")"
+  if [[ "$link" != /* ]]; then
+    SCRIPT_PATH="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)/$link"
+  else
+    SCRIPT_PATH="$link"
+  fi
+done
+ROOT="$(cd "$(dirname "$SCRIPT_PATH")/.." && pwd)"
+REG="$ROOT/data/harnesses.json"
+DETECT="$ROOT/scripts/detect-local-runtime.sh"
+STATE_DIR="${PFY_STATE_DIR:-$HOME/.pfy-mentat}"
+ACTIVE_FILE="$STATE_DIR/active-harness"
+mkdir -p "$STATE_DIR"
+
+die() { echo "error: $*" >&2; exit 1; }
+have() { command -v "$1" >/dev/null 2>&1; }
+
+usage() {
+  cat <<'U'
+pfy — simple setup & launch for the pfy-mentat stack
+
+  pfy setup [local-only|balanced|max-performance]
+  pfy status
+  pfy up                  operator env: inference → env-stage → active harness
+  pfy harness list|use <id>|show [id]
+  pfy start [harness]     same operator env; optional harness after inference/stage
+  pfy stage [--lab]       env-stage; --lab optional personal cage lab (doctor→setup→up-mcp)
+  pfy eval | ship
+  pfy models              list models from the live local endpoint (inspect-only)
+  pfy models pull <name>  (Ollama adapter only)
+  pfy help
+
+Inference detect: FreeToken (:1919) → llama-swap (:9292) → llama-server (:8080) → Ollama.
+Override: PFY_LOCAL_RUNTIME, LOCAL_OPENAI_BASE_URL.
+FreeToken model: PFY_FT_MODEL (then LOCAL_CODER_MODEL, FREETOKEN_MODEL).
+Ollama adapter model: PFY_OLLAMA_MODEL (then LOCAL_CODER_MODEL).
+Detector is invoked with bash (no git +x required).
+Docker not required for basic start.
+U
+}
