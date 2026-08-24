@@ -1,7 +1,7 @@
 {
-  "version": "0.4.13",
-  "last_updated": "2026-08-01",
-  "description": "v0.4.13: Entry 078 kanbots A-tier multi-CLI Kanban parallel dispatcher. + Entry 079 multi-agent-generator B-tier.",
+  "version": "0.4.14",
+  "last_updated": "2026-08-24",
+  "description": "v0.4.14: ADR-0014 pluggable local inference — Shimmy, llama-swap, llama.cpp llama-server catalog rows (Stage 0 conceptual). Keep prior 078/079 entries.",
   "schema_notes": {
     "required_for_all": [
       "name",
@@ -18,10 +18,10 @@
       "source_aggregate": "Slug from sources/aggregates.md",
       "x_post_id": "Status ID if from X seed",
       "company_scores": "For Autonomous AI Companies: c1_org, c2_cycle, c3_memory, c4_safety, c5_econ, c6_local, weighted",
-      "integration_stage": "I0\u2013I4 from docs/ops/integration-stages.md; see also data/tool_integration_stages.json"
+      "integration_stage": "I0–I4 from docs/ops/integration-stages.md; see also data/tool_integration_stages.json"
     },
     "aggregates_array": "Top-level array for logged aggregates.",
-    "integration_stage": "I0\u2013I4 required on every tool (GAP-02 #39)"
+    "integration_stage": "I0–I4 required on every tool (GAP-02 #39)"
   },
   "tools": [
     {
@@ -97,6 +97,73 @@
       "notes": "X Entry 079. Plain-English multi-agent team generator (CrewAI/LangGraph/ReAct/Agno) with LiteLLM/Ollama, NL tool gen, orchestration patterns. Scaffolding utility. See sources/entries/079-multi-agent-generator.md.",
       "x_post_id": "2083359457795252433",
       "integration_stage": "I0"
+    },
+    {
+      "name": "Shimmy",
+      "primary_category": "Inference & Serving",
+      "github": "https://github.com/Michael-A-Kuykendall/shimmy",
+      "scores": {
+        "s1": 92,
+        "s2": 78,
+        "s3": 88,
+        "s4": 75,
+        "overall": 84
+      },
+      "tier": "A",
+      "tags": [
+        "local-first",
+        "openai-compat",
+        "gguf",
+        "rust",
+        "inference"
+      ],
+      "notes": "X-name lightweight OpenAI server; do not vendor; adapter in data/harnesses.json id=shimmy. Default ~http://127.0.0.1:11435/v1. Stage 0 conceptual scores (ADR-0014). No x_post_id until a real post is logged.",
+      "integration_stage": "I1"
+    },
+    {
+      "name": "llama-swap",
+      "primary_category": "Proxy & Routing",
+      "github": "https://github.com/mostlygeek/llama-swap",
+      "scores": {
+        "s1": 88,
+        "s2": 72,
+        "s3": 90,
+        "s4": 80,
+        "overall": 83
+      },
+      "tier": "A",
+      "tags": [
+        "local-first",
+        "openai-compat",
+        "llama.cpp",
+        "model-swap",
+        "inference"
+      ],
+      "notes": "Proxy in front of llama-server for hot swap / tok/s; pair with llama.cpp llama-server; do not vendor. Adapter id=llama-swap. Default ~http://127.0.0.1:8080/v1. Stage 0 conceptual (ADR-0014).",
+      "integration_stage": "I1"
+    },
+    {
+      "name": "llama.cpp llama-server",
+      "primary_category": "Inference & Serving",
+      "github": "https://github.com/ggml-org/llama.cpp",
+      "scores": {
+        "s1": 85,
+        "s2": 95,
+        "s3": 80,
+        "s4": 85,
+        "overall": 88
+      },
+      "tier": "A",
+      "tags": [
+        "local-first",
+        "openai-compat",
+        "gguf",
+        "high-perf",
+        "quantized",
+        "inference"
+      ],
+      "notes": "Engine behind llama-swap; OpenAI-compat llama-server. Do not vendor (ADR-0003 / ADR-0014). Catalog also lists llama.cpp (server mode) in TOOLS.md. Stage 0 conceptual; I1 detect/docs only.",
+      "integration_stage": "I1"
     }
   ],
   "aggregates": [],
