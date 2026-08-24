@@ -23,7 +23,7 @@ The **product you ship** is the operator stack (`./pfy` onboard / stage / ship).
 
 | # | Goal | Success looks like |
 |---|------|--------------------|
-| G1 | Living catalog | Scored tools in `TOOLS.md` + `data/tools.json`, sourced from X/community with rubric integrity |
+| G1 | Living catalog | `TOOLS.md` is the scored catalog (X/community + rubric). `data/tools.json` is a slim machine subset ([ADR-0015](adr/0015-catalog-json-slim-subset.md)), not a 1:1 dump of all ~79 rows |
 | G2 | Consistent evaluation | Stage 0 gate + weighted Stages 1–4 (see `CATEGORIZATION.md`); tiers S/A/B/C stay comparable over time |
 | G3 | Stack synergies | Clear recommended combos (Grok monitor + LiteLLM + **pluggable local inference** + MCP memory) documented with integration notes |
 | G4 | Rapid integration | Highest-value components installable/replayable without repo bloat (pins, rare subtree, bootstrap) |
@@ -99,7 +99,7 @@ Grok stays **default harness** (ADR-0002). Local **worker** uses `LOCAL_OPENAI_B
 |-------|----------|------|
 | Process | `docs/` | Design, ADR, TODO, open questions |
 | Catalog methodology | `CATEGORIZATION.md`, `SUBTREES.md` | How to score and track tools |
-| Catalog content | `TOOLS.md`, `data/tools.json`, `sources/` | What is scored and where it came from |
+| Catalog content | `TOOLS.md`, slim `data/tools.json`, `sources/` | Markdown catalog vs machine subset (ADR-0015) |
 | Integration packages | `bootstrap/`, later `pipelines/`, `examples/` | How to run / replay stack pieces |
 | External tools | pins / rare `tools/` embeds | Upstream code not owned here |
 
@@ -173,6 +173,7 @@ Skills: `/adr`, `/open-questions` (`/oq`), `/docs`.
 
 - [ARCHITECTURE.md](ARCHITECTURE.md)
 - [adr/README.md](adr/README.md)
+- [adr/0015-catalog-json-slim-subset.md](adr/0015-catalog-json-slim-subset.md)
 - [TODO.md](TODO.md)
 - [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md)
 - [ops/local-runtime.md](ops/local-runtime.md)
