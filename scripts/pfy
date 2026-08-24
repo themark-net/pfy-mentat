@@ -30,7 +30,8 @@ pfy — simple setup & launch for the pfy-mentat stack
   pfy up                  operator env: inference → env-stage → active harness
   pfy harness list|use <id>|show [id]
   pfy start [harness]     same operator env; optional harness after inference/stage
-  pfy stage | eval | ship
+  pfy stage [--lab]       env-stage; --lab optional personal cage lab (doctor→setup→up-mcp)
+  pfy eval | ship
   pfy models              list models from the live local endpoint (inspect-only)
   pfy models pull <name>  (Ollama adapter only)
   pfy help
@@ -40,6 +41,7 @@ Override: PFY_LOCAL_RUNTIME, LOCAL_OPENAI_BASE_URL.
 FreeToken model: PFY_FT_MODEL (then LOCAL_CODER_MODEL, FREETOKEN_MODEL).
 Ollama adapter model: PFY_OLLAMA_MODEL (then LOCAL_CODER_MODEL).
 Detector is invoked with bash (no git +x required).
+Docker not required for basic start.
 U
 }
 
@@ -744,7 +746,33 @@ operator_bring_up() {
 cmd_up() { operator_bring_up ""; }
 cmd_start() { operator_bring_up "${1:-}"; }
 
-cmd_stage() { (cd "$ROOT" && make env-stage); }
+lab_stage() {
+  echo "lab: optional personal cage lab (doctor → setup → up-mcp)"
+  echo "lab: not product-ready; do not sell cage"
+  if ! have docker; then
+    echo "lab: Docker is missing"
+    echo "lab: lab skipped (not product-ready)"
+    echo "lab: basic ./pfy setup and ./pfy start do not require Docker"
+    return 0
+  fi
+  local target
+  for target in cage-doctor cage-setup cage-up-mcp; do
+    echo "lab: running make $target"
+    if ! (cd "$ROOT" && make "$target"); then
+      echo "lab: step failed: $target (make $target) — not fake ready"
+      return 1
+    fi
+  done
+  echo "lab: make cage-doctor, cage-setup, cage-up-mcp completed"
+}
+
+cmd_stage() {
+  if [[ "${1:-}" == "--lab" ]]; then
+    lab_stage
+  else
+    (cd "$ROOT" && make env-stage)
+  fi
+}
 cmd_eval() { (cd "$ROOT" && REASON="${REASON:-pfy eval}" make eval-integration-change); }
 cmd_ship() { (cd "$ROOT" && make product-ship); }
 cmd_models_pull() {
@@ -783,7 +811,7 @@ main() {
       esac
       ;;
     start) cmd_start "$@" ;;
-    stage) cmd_stage ;;
+    stage) cmd_stage "$@" ;;
     eval) cmd_eval ;;
     ship) cmd_ship ;;
     models)

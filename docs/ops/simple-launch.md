@@ -21,6 +21,7 @@ cd pfy-mentat
 ./pfy models                # inspect-only (tag list is not success)
 ./pfy models pull deepseek-coder:6.7b
 ./pfy stage                 # re-run product stage
+./pfy stage --lab           # optional personal cage lab (doctor → setup → up-mcp)
 ./pfy eval                  # catalog self-mod gates
 ./pfy ship                  # product verify
 ```
@@ -36,6 +37,7 @@ When the detector selects Ollama (or `PFY_LOCAL_RUNTIME=ollama`), `./pfy start` 
 | `pfy setup` | `make env-init` + `bootstrap/grok-cli/install.sh` |
 | `pfy start` / `pfy up` | inference + `scripts/env-stage.sh` + active harness |
 | `pfy stage` | `make env-stage` |
+| `pfy stage --lab` | `make cage-doctor` then `cage-setup` then `cage-up-mcp` (missing Docker: honest skip) |
 | `pfy ship` | `make product-ship` |
 | `pfy eval` | `make eval-integration-change` |
 | Platform deep dives | `make help` (cage, smokes, matrix) |
@@ -54,7 +56,7 @@ Registry: [`data/harnesses.json`](../../data/harnesses.json).
 
 ## Stubs (honest)
 
-`agent-cage` stays stubbed. Docker on PATH is not ready.
+`agent-cage` stays stubbed for start (`./pfy start agent-cage` is STUB + issue #62, exit 2). Docker on PATH is not ready. Optional personal lab: `./pfy stage --lab` maps to `make cage-doctor`, `cage-setup`, `cage-up-mcp`. Missing Docker is honest skip, not product-ready. Do not sell cage.
 
 `exo` is an **optional lab** adapter when `exo.sh` is at `$ROOT/exo.sh`, `$HOME/exo/exo.sh`, or on PATH (`./pfy start exo` execs it; missing: STUB + issue #60 + official setup.sh one-liner, exit 2). Not the default harness. Not a Grok replacement. `./pfy harness use exo` does not change `default_harness` (stays grok). Do not vendor Exo. Personal lab-IT only.
 
