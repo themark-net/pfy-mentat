@@ -49,3 +49,8 @@ Package README: [bootstrap/grok-cli/README.md](../../bootstrap/grok-cli/README.m
 ls ~/.grok/skills/
 # optional: grok mcp list
 ```
+
+## Not yet
+
+- Replacing Grok’s binary, auth, or marketplace
+- Aborting `./pfy start` when grok is missing/unauth (env continues; next ready adapter may attach)
