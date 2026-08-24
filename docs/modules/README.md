@@ -13,6 +13,7 @@ Short structural maps for first-party packages in this repo. Deep design stays i
 | Hermes runtime adapter | `hermes` / `hermes-agent` | [hermes-adapter.md](hermes-adapter.md) |
 | Claude Code adapter | `claude` | [claude-code-adapter.md](claude-code-adapter.md) |
 | Codex adapter | `codex` | [codex-adapter.md](codex-adapter.md) |
+| Gemini adapter | `gemini` / `gemini-cli` | [gemini-adapter.md](gemini-adapter.md) |
 | project-process scaffold | `bootstrap/project-process/` | [bootstrap-project-process.md](bootstrap-project-process.md) |
 | agent-cage lab | `harness/agent-cage/` | [harness-agent-cage.md](harness-agent-cage.md) |
 | write-guard MCP | `harness/write-guard-mcp/` | [write-guard-mcp.md](write-guard-mcp.md) |
