@@ -10,14 +10,15 @@ Repository: https://github.com/themark-net/pfy-mentat
 
 ## Simple path
 
-One command starts the detected local runtime if it is only partial, then list what it is serving:
+Operator environment: local inference, then product stage (honest skip if a piece is missing), then the active harness if live status is ready (default grok; else next ready adapter such as opencode).
 
 ```bash
-./pfy up        # start FreeToken / Ollama / … if partial; print engine, base_url, models
-./pfy models    # live GET /v1/models (and Ollama /api/tags); usage if the engine exposes it
+./pfy start     # inference → env-stage → active harness (default grok)
+./pfy up        # same operator bring-up as start
+./pfy models    # inspect-only: live GET /v1/models (and Ollama /api/tags); usage if exposed
 ```
 
-`./pfy start` with no harness named does the same as `./pfy up`. FreeToken model env: **`PFY_FT_MODEL`** (then `LOCAL_CODER_MODEL` or `FREETOKEN_MODEL`).
+`./pfy start <harness>` runs inference and stage, then that harness. Listing model tags is not success. Empty `ollama ps` is OK. A missing harness process is not. FreeToken model env: **`PFY_FT_MODEL`** (then `LOCAL_CODER_MODEL` or `FREETOKEN_MODEL`).
 
 ## What it is
 
@@ -116,7 +117,7 @@ One-shot design: [docs/ops/one-shot-workflow.md](docs/ops/one-shot-workflow.md) 
 
 ## Current status (v0.4 → G8 launch)
 
-- **`./pfy`** simple surface (ADR-0012): `up` / `models` / setup/status/start + harness registry with stubs
+- **`./pfy`** simple surface (ADR-0012): `start`/`up` bring up the operator env (inference → stage → harness); `models` is inspect-only
 - Catalog + eval pipeline remain first-class (`./pfy eval`, structural/golden)
 
 
@@ -145,21 +146,23 @@ Full new-machine path: **[docs/ops/DEPLOY.md](docs/ops/DEPLOY.md)**.
 
 ### Simple path (recommended — G8)
 
-One launcher. Inference first, then any harness (Ollama → agent feel):
+One launcher. Inference first, then product stage, then the active harness:
 
 ```bash
 git clone https://github.com/themark-net/pfy-mentat.git
 cd pfy-mentat
 ./pfy setup              # env + Grok skills if CLI present
-./pfy up                 # start detected local runtime if partial; print engine, URL, models
-./pfy models             # list live local models (+ usage if exposed)
-./pfy start              # no harness: same as up; or ./pfy start grok after grok login
+./pfy start              # inference → env-stage → active harness (default grok)
+./pfy models             # inspect-only; listing tags is not success
+# or: ./pfy up            # same operator bring-up as start
+# or: ./pfy start grok    # named harness after inference/stage
 ```
 
 | Command | Purpose |
 |---------|---------|
-| `./pfy up` | Start detected local runtime if partial (Ollama `serve`; FreeToken `ft serve --model $PFY_FT_MODEL`) |
-| `./pfy models` | List models from the live endpoint (`GET /v1/models`, Ollama `/api/tags`) |
+| `./pfy start` / `./pfy up` | Inference, then env-stage, then active harness if live-ready (default grok) |
+| `./pfy start <harness>` | Same bring-up, then that harness (stubs: STUB + issue, exit 2) |
+| `./pfy models` | Inspect-only: list models from the live endpoint (`GET /v1/models`, Ollama `/api/tags`) |
 | `./pfy models pull deepseek-coder:6.7b` | Ollama pull (adapter subcommand) |
 | `./pfy harness list` | Grok, OpenCode, Hermes, Claude Code, Codex, Gemini, Exo, … |
 | `./pfy harness use opencode` | Switch active harness (stubs print next steps) |
