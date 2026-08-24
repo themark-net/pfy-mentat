@@ -264,7 +264,7 @@ detect_status() {
     done <<< "$bins"
   fi
   case "$id" in
-    gemini|exo|continue|agent-cage)
+    exo|continue|agent-cage)
       if [[ "$found" -eq 1 ]]; then echo "detected-stub"; else echo "stub"; fi
       return
       ;;
@@ -587,7 +587,26 @@ exec_harness() {
         exit 2
       fi
       ;;
-    gemini|exo|continue|agent-cage)
+    gemini)
+      if have gemini || have gemini-cli; then
+        local bin
+        bin=$(have gemini && echo gemini || echo gemini-cli)
+        if [[ "$st" == "ready" && -n "${LOCAL_OPENAI_BASE_URL:-}" ]]; then
+          export OPENAI_BASE_URL="${OPENAI_BASE_URL:-$LOCAL_OPENAI_BASE_URL}"
+          echo "model provider: OPENAI_BASE_URL=$OPENAI_BASE_URL (from local runtime)"
+        else
+          echo "note: local runtime not ready — Gemini starts without a local model provider"
+        fi
+        exec "$bin"
+      else
+        echo "STUB harness: gemini"
+        echo "  https://github.com/themark-net/pfy-mentat/issues/59"
+        echo "  npm install -g @google/gemini-cli"
+        echo "  gemini   # login in the CLI; credentials/2FA are owner-only"
+        exit 2
+      fi
+      ;;
+    exo|continue|agent-cage)
       stub_harness "$id"
       ;;
     *) die "unknown harness: $id" ;;
@@ -609,8 +628,14 @@ attach_operator_harness() {
       exec_harness "$preferred"
       return 0
       ;;
-    gemini|exo|continue|agent-cage)
+    exo|continue|agent-cage)
       stub_harness "$preferred"
+      ;;
+    gemini)
+      if [[ -n "$requested" ]]; then
+        exec_harness gemini || exit 2
+        return 0
+      fi
       ;;
     codex)
       if [[ -n "$requested" ]]; then

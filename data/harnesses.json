@@ -168,16 +168,16 @@
       "id": "gemini",
       "name": "Gemini CLI / Google Antigravity family",
       "role": "harness",
-      "status": "stub",
-      "summary": "Google agent harness",
-      "setup": "STUB",
+      "status": "partial",
+      "summary": "Runtime adapter: exec gemini/gemini-cli",
+      "setup": "npm install -g @google/gemini-cli; gemini (login owner-only)",
       "detect": [
         "gemini",
         "gemini-cli"
       ],
-      "github": null,
+      "github": "https://github.com/google-gemini/gemini-cli",
       "catalog": null,
-      "issue_stub": "Google harness adapter",
+      "issue_stub": "Gemini runtime adapter",
       "github_issue": 59
     },
     {
