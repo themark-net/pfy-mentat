@@ -73,7 +73,7 @@ Detect order (ADR-0014, first live wins): **FreeToken :1919 → llama-swap :9292
 | codex | harness | **ready** if `codex` on PATH; else **missing**. json may stay `partial` | Named start: `exec codex`; `OPENAI_BASE_URL` from `LOCAL_OPENAI_BASE_URL` when runtime ready. No binary: STUB + issue #58 + `curl -fsSL https://chatgpt.com/codex/install.sh | sh`, exit 2. Login/credentials/2FA are owner-only |
 | gemini | harness | **ready** if `gemini` or `gemini-cli` on PATH; else **missing**. json may stay `partial` | Named start: `exec` binary; `OPENAI_BASE_URL` from `LOCAL_OPENAI_BASE_URL` when runtime ready. No binary: STUB + issue #59 + `npm install -g @google/gemini-cli`, exit 2. Login/credentials/2FA are owner-only |
 | exo | harness | stub / detected-stub (`exo.sh` in repo or `~/exo/`) | Always STUB exit 2 + issue #60 |
-| continue | harness | stub (no detect bins) | Always STUB exit 2 + issue #61 |
+| continue | harness | json may be partial; live status stays stub (no detect bins). Recipe at bootstrap/continue/. | Always STUB exit 2 + issue #61. Do not exec the IDE. Docker/binary is not ready. |
 | agent-cage | lab | stub / detected-stub. **Docker present is not ready** | Always STUB exit 2 + issue #62. Lab is `make cage-*`, not `./pfy start` |
 
 ## Eval without assuming cage

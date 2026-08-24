@@ -199,13 +199,13 @@
       "id": "continue",
       "name": "Continue.dev",
       "role": "harness",
-      "status": "stub",
-      "summary": "IDE agent surface",
-      "setup": "STUB",
+      "status": "partial",
+      "summary": "IDE config recipe only (not a CLI harness). Point Continue at LOCAL_OPENAI_BASE_URL.",
+      "setup": "copy bootstrap/continue/config.json; set apiBase from LOCAL_OPENAI_BASE_URL (FreeToken :1919 first, Ollama last). Recipe: bootstrap/continue/README.md. ./pfy start continue stays STUB exit 2.",
       "detect": [],
       "github": "https://github.com/continuedev/continue",
       "catalog": "Continue.dev",
-      "issue_stub": "Continue + local-openai recipe",
+      "issue_stub": "Continue local-openai recipe",
       "github_issue": 61
     },
     {
