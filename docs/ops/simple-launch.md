@@ -54,7 +54,9 @@ Registry: [`data/harnesses.json`](../../data/harnesses.json).
 
 ## Stubs (honest)
 
-`codex`, `gemini`, `exo`, `continue`, `agent-cage` stay stubbed.
+`gemini`, `exo`, `continue`, `agent-cage` stay stubbed.
+
+`codex` is a live adapter when `codex` is on PATH (`./pfy start codex` execs it; missing: STUB + issue #58 + official install one-liner, exit 2). Login/credentials/2FA are owner-only.
 
 `claude-code` is a live adapter when `claude` is on PATH (`./pfy start claude-code` execs it; missing: STUB + issue #57 + official install one-liner, exit 2). Login/credentials/2FA are owner-only. Optional skills-external path is documentation only.
 
