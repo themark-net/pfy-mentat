@@ -322,7 +322,7 @@ ensure_inference() {
         ;;
       llama-swap)
         echo "STUB: llama-swap HTTP not up. One-liner:"
-        echo "  llama-swap"
+          echo "  llama-swap"
         ;;
       llama-server|llama.cpp)
         echo "STUB: llama-server HTTP not up. One-liner:"
