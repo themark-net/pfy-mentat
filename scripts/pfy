@@ -264,7 +264,7 @@ detect_status() {
     done <<< "$bins"
   fi
   case "$id" in
-    codex|gemini|exo|continue|agent-cage)
+    gemini|exo|continue|agent-cage)
       if [[ "$found" -eq 1 ]]; then echo "detected-stub"; else echo "stub"; fi
       return
       ;;
@@ -570,7 +570,24 @@ exec_harness() {
         exit 2
       fi
       ;;
-    codex|gemini|exo|continue|agent-cage)
+    codex)
+      if have codex; then
+        if [[ "$st" == "ready" && -n "${LOCAL_OPENAI_BASE_URL:-}" ]]; then
+          export OPENAI_BASE_URL="${OPENAI_BASE_URL:-$LOCAL_OPENAI_BASE_URL}"
+          echo "model provider: OPENAI_BASE_URL=$OPENAI_BASE_URL (from local runtime)"
+        else
+          echo "note: local runtime not ready — Codex starts without a local model provider"
+        fi
+        exec codex
+      else
+        echo "STUB harness: codex"
+        echo "  https://github.com/themark-net/pfy-mentat/issues/58"
+        echo "  curl -fsSL https://chatgpt.com/codex/install.sh | sh"
+        echo "  codex   # login in the CLI; credentials/2FA are owner-only"
+        exit 2
+      fi
+      ;;
+    gemini|exo|continue|agent-cage)
       stub_harness "$id"
       ;;
     *) die "unknown harness: $id" ;;
@@ -592,8 +609,14 @@ attach_operator_harness() {
       exec_harness "$preferred"
       return 0
       ;;
-    codex|gemini|exo|continue|agent-cage)
+    gemini|exo|continue|agent-cage)
       stub_harness "$preferred"
+      ;;
+    codex)
+      if [[ -n "$requested" ]]; then
+        exec_harness codex || exit 2
+        return 0
+      fi
       ;;
     claude-code)
       if [[ -n "$requested" ]]; then
