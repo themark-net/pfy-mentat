@@ -43,7 +43,7 @@ Public CLI must agree: README Simple path, this file, [simple-launch.md](simple-
 | **Honest stub** | `STUB harness: <id>` + issue URL, **exit 2**. Binary on PATH is `detected-stub`, still not ready |
 | **Catalog-only** | Scored in `TOOLS.md` / slim `data/tools.json` ([ADR-0015](../adr/0015-catalog-json-slim-subset.md)). A catalog row is not an installer |
 
-Live path today: **Grok** (monitor, default) + **OpenCode** (host adapter) + **Hermes** (runtime, if binary on PATH) + **Claude Code** (if `claude` on PATH) + **Codex** (if `codex` on PATH) + **Gemini** (if binary on PATH) + **Exo** (optional lab, if `exo.sh` found) + **detected inference**. Remaining harness ids are stubs. Do not implement those adapters from this pack.
+Live path today: **Grok** (monitor, default) + **OpenCode** (host adapter) + **Hermes** (runtime, if binary on PATH) + **Claude Code** (if `claude` on PATH) + **Codex** (if `codex` on PATH) + **Gemini** (if binary on PATH) + **Exo** (optional lab if `exo.sh` present; not default) + **detected inference**. Remaining harness ids are stubs. Do not implement those adapters from this pack. `default_harness` stays grok. Docker on PATH is not ready.
 
 ## Honesty matrix (every `data/harnesses.json` id)
 
@@ -72,7 +72,7 @@ Detect order (ADR-0014, first live wins): **FreeToken :1919 → llama-swap :9292
 | claude-code | harness | **ready** if `claude` on PATH; else **missing**. json may stay `partial` | Named start: `exec claude`; `OPENAI_BASE_URL` from `LOCAL_OPENAI_BASE_URL` when runtime ready. No binary: STUB + issue #57 + `curl -fsSL https://claude.ai/install.sh | bash`, exit 2. Login/credentials/2FA are owner-only |
 | codex | harness | **ready** if `codex` on PATH; else **missing**. json may stay `partial` | Named start: `exec codex`; `OPENAI_BASE_URL` from `LOCAL_OPENAI_BASE_URL` when runtime ready. No binary: STUB + issue #58 + `curl -fsSL https://chatgpt.com/codex/install.sh | sh`, exit 2. Login/credentials/2FA are owner-only |
 | gemini | harness | **ready** if `gemini` or `gemini-cli` on PATH; else **missing**. json may stay `partial` | Named start: `exec` binary; `OPENAI_BASE_URL` from `LOCAL_OPENAI_BASE_URL` when runtime ready. No binary: STUB + issue #59 + `npm install -g @google/gemini-cli`, exit 2. Login/credentials/2FA are owner-only |
-| exo | harness | **ready** if `exo.sh` found (`$ROOT/exo.sh`, `$HOME/exo/exo.sh`, or `command -v exo.sh`); else **missing**. json may stay `partial` | Named start: `exec` that script; `OPENAI_BASE_URL` from `LOCAL_OPENAI_BASE_URL` when runtime ready. Missing: STUB + issue #60 + official `setup.sh` one-liner, exit 2. Docker on PATH is **not** ready. Not the default harness |
+| exo | harness | **ready** if `$ROOT/exo.sh`, `$HOME/exo/exo.sh`, or `exo.sh` on PATH; else **missing**. json may stay `partial`. Docker on PATH is not ready. | Named start: `exec` that script; `OPENAI_BASE_URL` from `LOCAL_OPENAI_BASE_URL` when runtime ready. No invented Exo flags. Missing: STUB + issue #60 + official `setup.sh` one-liner, exit 2. Optional lab only — `./pfy harness use exo` does not change `default_harness` |
 | continue | harness | json may be partial; live status stays stub (no detect bins). Recipe at bootstrap/continue/. | Always STUB exit 2 + issue #61. Do not exec the IDE. Docker/binary is not ready. |
 | agent-cage | lab | stub / detected-stub. **Docker present is not ready** | Always STUB exit 2 + issue #62. Lab is `make cage-*`, not `./pfy start` |
 
