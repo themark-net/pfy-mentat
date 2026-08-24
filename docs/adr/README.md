@@ -19,13 +19,15 @@
 | [0010](0010-reject-agenc-as-primary-runtime.md) | Reject AgenC as primary; Grok CLI + agent-cage; revisit if UX matures | Superseded by 0013 | 2026-07-12 |
 | [0011](0011-hybrid-operator-surfaces-grok-opencode-ollama.md) | Hybrid surfaces: Grok primary + OpenCode/Ollama local-cloud split | Accepted | 2026-07-25 |
 | [0012](0012-voice-half-duplex-local-first.md) | Voice half-duplex local-first; no cloud full-duplex primary | Accepted | 2026-07-26 |
-| [0012](0012-simple-harness-agnostic-launch.md) | Simple harness-agnostic `./pfy` launch (G8) | Accepted | 2026-07-31 |
+| [0012*](0012-simple-harness-agnostic-launch.md) | Simple harness-agnostic `./pfy` launch (G8) | Accepted | 2026-07-31 |
 | [0013](0013-optional-operator-tuis-empirical-preference.md) | Treat operator TUIs (incl. AgenC) as optional scored components; empirical preference dimension | Accepted | 2026-07-27 |
-| [0014](0014-pluggable-local-inference-spine.md) | Pluggable local inference spine (llama-swap / Shimmy / Ollama) | Accepted | 2026-08-24 |
+| [0014](0014-pluggable-local-inference-spine.md) | Pluggable local inference spine (FreeToken / llama-swap / Ollama) | Accepted | 2026-08-24 |
+
+\* **Numbering collision (pre-existing):** two files share ID `0012`. Do not reuse `0012`. Next ID is `0015`. Files are not renamed in this PR to avoid breaking links.
 
 ## How to add
 
-1. Next free `NNNN` (never reuse).
+1. Next free `NNNN` (never reuse). After 0014 that is **0015** (0012 is already doubled).
 2. Create `docs/adr/NNNN-slug.md` from the skill template.
 3. **Required:** rejected alternatives with concrete reasons.
 4. Add a row to this index.
