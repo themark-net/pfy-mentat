@@ -264,7 +264,7 @@ detect_status() {
     done <<< "$bins"
   fi
   case "$id" in
-    claude-code|codex|gemini|exo|continue|agent-cage)
+    codex|gemini|exo|continue|agent-cage)
       if [[ "$found" -eq 1 ]]; then echo "detected-stub"; else echo "stub"; fi
       return
       ;;
@@ -552,7 +552,25 @@ exec_harness() {
         exit 2
       fi
       ;;
-    claude-code|codex|gemini|exo|continue|agent-cage)
+    claude-code)
+      if have claude; then
+        if [[ "$st" == "ready" && -n "${LOCAL_OPENAI_BASE_URL:-}" ]]; then
+          export OPENAI_BASE_URL="${OPENAI_BASE_URL:-$LOCAL_OPENAI_BASE_URL}"
+          echo "model provider: OPENAI_BASE_URL=$OPENAI_BASE_URL (from local runtime)"
+        else
+          echo "note: local runtime not ready — Claude Code starts without a local model provider"
+        fi
+        echo "note: skills-external/claude-unified-agents is documentation only (not vendored)"
+        exec claude
+      else
+        echo "STUB harness: claude-code"
+        echo "  https://github.com/themark-net/pfy-mentat/issues/57"
+        echo "  curl -fsSL https://claude.ai/install.sh | bash"
+        echo "  claude   # login in the CLI; credentials/2FA are owner-only"
+        exit 2
+      fi
+      ;;
+    codex|gemini|exo|continue|agent-cage)
       stub_harness "$id"
       ;;
     *) die "unknown harness: $id" ;;
@@ -574,8 +592,14 @@ attach_operator_harness() {
       exec_harness "$preferred"
       return 0
       ;;
-    claude-code|codex|gemini|exo|continue|agent-cage)
+    codex|gemini|exo|continue|agent-cage)
       stub_harness "$preferred"
+      ;;
+    claude-code)
+      if [[ -n "$requested" ]]; then
+        exec_harness claude-code || exit 2
+        return 0
+      fi
       ;;
     hermes)
       if [[ -n "$requested" ]]; then

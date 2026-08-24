@@ -11,6 +11,7 @@ Short structural maps for first-party packages in this repo. Deep design stays i
 | Grok CLI bootstrap | `bootstrap/grok-cli/` | [bootstrap-grok-cli.md](bootstrap-grok-cli.md) |
 | OpenCode host adapter | `bootstrap/opencode/` | [opencode-adapter.md](opencode-adapter.md) |
 | Hermes runtime adapter | `hermes` / `hermes-agent` | [hermes-adapter.md](hermes-adapter.md) |
+| Claude Code adapter | `claude` | [claude-code-adapter.md](claude-code-adapter.md) |
 | project-process scaffold | `bootstrap/project-process/` | [bootstrap-project-process.md](bootstrap-project-process.md) |
 | agent-cage lab | `harness/agent-cage/` | [harness-agent-cage.md](harness-agent-cage.md) |
 | write-guard MCP | `harness/write-guard-mcp/` | [write-guard-mcp.md](write-guard-mcp.md) |
