@@ -138,15 +138,15 @@
       "id": "claude-code",
       "name": "Claude Code",
       "role": "harness",
-      "status": "stub",
-      "summary": "Anthropic CLI agent",
-      "setup": "STUB",
+      "status": "partial",
+      "summary": "Runtime adapter: exec claude; optional skills-external is docs-only",
+      "setup": "curl -fsSL https://claude.ai/install.sh | bash; claude (login owner-only)",
       "detect": [
         "claude"
       ],
       "github": "https://docs.anthropic.com/en/docs/claude-code",
       "catalog": "claude-code-unified-agents",
-      "issue_stub": "Claude Code adapter",
+      "issue_stub": "Claude Code runtime adapter",
       "github_issue": 57
     },
     {
