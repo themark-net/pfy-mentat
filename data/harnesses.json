@@ -153,15 +153,15 @@
       "id": "codex",
       "name": "OpenAI Codex CLI",
       "role": "harness",
-      "status": "stub",
-      "summary": "OpenAI coding agent harness",
-      "setup": "STUB",
+      "status": "partial",
+      "summary": "Runtime adapter: exec codex; OpenAI Codex CLI",
+      "setup": "curl -fsSL https://chatgpt.com/codex/install.sh | sh; codex (login owner-only)",
       "detect": [
         "codex"
       ],
-      "github": null,
+      "github": "https://github.com/openai/codex",
       "catalog": null,
-      "issue_stub": "Codex adapter",
+      "issue_stub": "Codex runtime adapter",
       "github_issue": 58
     },
     {
