@@ -1,16 +1,18 @@
 {
   "name": "opencode-adapter",
-  "version": "0.1.0",
-  "description": "Thin adapter: reuse first-party SKILL.md packs with OpenCode + Ollama; Grok remains primary bootstrap (ADR-0011).",
+  "version": "0.2.0",
+  "description": "Thin adapter: reuse first-party SKILL.md packs with OpenCode; Grok remains primary. Local worker is LOCAL_OPENAI_BASE_URL (ADR-0014).",
   "primary_cli": "grok",
   "secondary_cli": "opencode",
   "skills_source_of_truth": "bootstrap/grok-cli/skills/",
   "skills_external": "bootstrap/grok-cli/skills-external/",
   "inference": {
-    "local": "ollama",
+    "local": "LOCAL_OPENAI_BASE_URL",
+    "detect_order": ["freetoken", "llama-swap", "llama-server", "ollama"],
     "router": "config/litellm/",
     "profiles": ["local-only", "balanced", "max-performance"]
   },
+  "command_path": ["./pfy harness use opencode", "./pfy start opencode"],
   "not_included": [
     "OpenCode binary",
     "Hermes Agent runtime",

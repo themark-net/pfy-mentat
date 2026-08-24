@@ -1,82 +1,46 @@
 # OpenCode adapter (secondary operator surface)
 
-**Policy:** [ADR-0011](../../docs/adr/0011-hybrid-operator-surfaces-grok-opencode-ollama.md)  
-**Primary remains:** Grok (`bootstrap/grok-cli/`)  
-**Goal:** Same process skills and local Ollama path without forking doctrine.
+**Primary remains:** Grok (`bootstrap/grok-cli/`)
+**Inference:** `LOCAL_OPENAI_BASE_URL` from the ADR-0014 detector (FreeToken first, then llama-swap, llama-server, Ollama adapter). Not Ollama-only.
+**Skills SoT:** `bootstrap/grok-cli/skills/` via `OPENCODE_SKILLS`. Do not fork a second skill tree here.
 
-## Why this package exists
+## Command path (T-0102)
 
-OpenCode is flexible for **local + cloud** model splits. Our Grok customizations that matter for **design/coding quality** are mostly:
+```bash
+./pfy harness use opencode
+./pfy start opencode
+```
 
-1. **SKILL.md procedures** (portable markdown)  
-2. **Process layout** (DESIGN/ADR/TODO/OQ)  
-3. **Lab smokes** (agent-cage + LiteLLM→Ollama)  
+That:
 
-They should not be Grok-only forever. This package documents the **thin adapter** — not a second skill monorepo.
+1. Sets the active harness to `opencode`.
+2. Brings up local inference (detect order unchanged) and product env-stage.
+3. Detects `opencode` or `opencode-cli`.
+4. Exports `OPENCODE_SKILLS` → `bootstrap/grok-cli/skills`.
+5. When the local runtime is ready, points the model provider at `LOCAL_OPENAI_BASE_URL` (`OPENAI_BASE_URL` defaults to that).
 
-## Skill portability map
-
-| First-party skill (SoT) | Portable? | OpenCode note |
-|-------------------------|-----------|---------------|
-| `adr`, `docs`, `open-questions`, `project-process` | Yes | Point OpenCode skills path at `bootstrap/grok-cli/skills/<name>` or copy into OpenCode skill dir |
-| `one-shot`, `agent-loops`, `investigate`, `hermes-feedback` | Yes | Same; references to `make …` stay valid from repo root |
-| `catalog-docs` | Yes (this repo) | Project-specific |
-| `marketing-council` | Yes | Large; optional |
-| Grok `install.sh` / `~/.grok/config.toml` | **No** | Grok-only; OpenCode uses its own config |
-| Cage `make cage-grok` image | **No** | Grok-in-image; OpenCode-in-cage is later (T-0080) |
-| mattpocock / ponytail via `skills.paths` | Yes | Same directories under `skills-external/` |
-
-**Source of truth for skill text:** `bootstrap/grok-cli/skills/` (and sibling `project-process`).  
-**Do not** maintain a divergent copy under `bootstrap/opencode/skills/` unless a CLI-specific glue file is required (prefer a 10-line README pointer).
+Missing binary: honest STUB + https://github.com/themark-net/pfy-mentat/issues/55, exit 2. No fake ready.
 
 ## Suggested host layout
 
 ```bash
-# Example — adjust to OpenCode’s current skill discovery docs
 export OPENCODE_SKILLS="$PWD/bootstrap/grok-cli/skills"
-# or symlink individual skills into OpenCode’s user skill directory
+# model provider is set by ./pfy start opencode from the live detector
 ```
 
-Configure OpenCode model provider:
-
-| Use | Endpoint / model |
-|-----|------------------|
-| Local bulk | Ollama OpenAI-compat `http://127.0.0.1:11434/v1` · e.g. `deepseek-coder`, `qwen2.5-coder` |
-| Hard tasks | Cloud provider keys in env **or** keep hard tasks on Grok CLI |
-| Router | Optional LiteLLM proxy with `config/litellm/balanced.yaml` |
-
-## Shared commands (CLI-agnostic)
-
-```bash
-make eval-structural          # always
-make smoke-litellm-ollama     # local path proof (cage)
-make env-check                # DEPLOY_PROFILE
-```
+| Use | Endpoint |
+|-----|----------|
+| Local worker | `$LOCAL_OPENAI_BASE_URL` (FreeToken :1919 / llama-swap :9292 / llama-server :8080 / Ollama :11434) |
+| Hard tasks | Keep on Grok CLI |
 
 ## Non-goals
 
-- Replacing Grok cage auth/OIDC with OpenCode  
-- Vendoring OpenCode or Hermes upstream into git  
-- Full parity of Grok TUI features inside OpenCode  
-
-## Smoke (T-0080)
-
-```bash
-export LOCAL_CODER_MODEL=deepseek-coder:6.7b
-make smoke-opencode-ollama
-# details: examples/opencode-ollama/README.md
-```
-
-## Next implementation slices
-
-| ID | Item |
-|----|------|
-| T-0080 | ~~Host OpenCode + Ollama smoke~~ **done** (`make smoke-opencode-ollama`) |
-| T-0085 | Worker/monitor dual-session automation |
-| T-0081 | Optional OpenCode-in-cage smoke |
-| T-0074 | `eval-auto` / suite on selected gate |
+- Replacing Grok as the default harness
+- Vendoring OpenCode into git
+- Rewriting the inference detect order
 
 ## Related
 
-- [docs/ops/local-cloud-split.md](../../docs/ops/local-cloud-split.md)  
-- [examples/litellm-ollama/](../../examples/litellm-ollama/)  
+- [ADR-0012 simple launch](../../docs/adr/0012-simple-harness-agnostic-launch.md)
+- [ADR-0014 local inference](../../docs/adr/0014-pluggable-local-inference-spine.md)
+- [ADR-0011 hybrid surfaces](../../docs/adr/0011-hybrid-operator-surfaces-grok-opencode-ollama.md)

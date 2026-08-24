@@ -461,11 +461,16 @@ exec_harness() {
         local bin
         bin=$(have opencode && echo opencode || echo opencode-cli)
         export OPENCODE_SKILLS="${OPENCODE_SKILLS:-$ROOT/bootstrap/grok-cli/skills}"
+        echo "OPENCODE_SKILLS=$OPENCODE_SKILLS"
+        if [[ "$st" == "ready" && -n "${LOCAL_OPENAI_BASE_URL:-}" ]]; then
+          export OPENAI_BASE_URL="${OPENAI_BASE_URL:-$LOCAL_OPENAI_BASE_URL}"
+          echo "model provider: OPENAI_BASE_URL=$OPENAI_BASE_URL (from local runtime)"
+        else
+          echo "note: local runtime not ready — OpenCode starts without a local model provider"
+        fi
         exec "$bin"
       else
-        echo "STUB: OpenCode not on PATH"
-        echo "  https://github.com/themark-net/pfy-mentat/issues/55"
-        return 1
+        stub_harness opencode
       fi
       ;;
     hermes|claude-code|codex|gemini|exo|continue|agent-cage)
