@@ -12,7 +12,7 @@
 | [0003](0003-default-pinned-commit-tracking.md) | Default tool tracking = pinned commit | Accepted | 2026-07-11 |
 | [0004](0004-first-party-grok-bootstrap-package.md) | First-party Grok bootstrap under `bootstrap/grok-cli/` | Accepted | 2026-07-11 |
 | [0005](0005-light-process-framework-not-heavy-tools.md) | Keep light DESIGN/ADR/TODO/OQ framework; do not replace with heavy tools | Accepted | 2026-07-11 |
-| [0006](0006-deployment-profiles.md) | Deployment profiles local-only → max-performance + env registry | Accepted | 2026-07-12 |
+| [0006](0006-deployment-profiles.md) | Deployment profiles local-only to max-performance + env registry | Accepted | 2026-07-12 |
 | [0007](0007-write-guard-mcp-layer.md) | Write-guard MCP as filesystem write mediation layer | Accepted (design) | 2026-07-12 |
 | [0008](0008-one-shot-workflow.md) | One-shot workflow: min questions, cheap iteration, lab prerequisites | Accepted | 2026-07-12 |
 | [0009](0009-skill-port-hybrid-strategy.md) | Hybrid skill ports: first-party core + skills.paths snapshots | Accepted | 2026-07-12 |
@@ -20,6 +20,9 @@
 | [0011](0011-hybrid-operator-surfaces-grok-opencode-ollama.md) | Hybrid surfaces: Grok primary + OpenCode/Ollama local-cloud split | Accepted | 2026-07-25 |
 | [0012](0012-voice-half-duplex-local-first.md) | Voice half-duplex local-first; no cloud full-duplex primary | Accepted | 2026-07-26 |
 | [0013](0013-optional-operator-tuis-empirical-preference.md) | Treat operator TUIs (incl. AgenC) as optional scored components; empirical preference dimension | Accepted | 2026-07-27 |
+| [0014](0014-pluggable-local-inference-runtime.md) | Pluggable local inference runtime (OpenAI-compat) | Accepted | 2026-08-24 |
+
+Footnote: `0012-simple-harness-agnostic-launch.md` also exists (G8 `./pfy` launcher ADR). Duplicate number with voice ADR-0012 — **do not renumber**; both remain valid.
 
 ## How to add
 
@@ -32,5 +35,5 @@
 
 ## Lifecycle
 
-`Proposed` → `Accepted` | `Rejected`  
-`Accepted` → `Superseded by NNNN` (new entry required; never silent overwrite)
+`Proposed` to `Accepted` or `Rejected`  
+`Accepted` to `Superseded by NNNN` (new entry required; never silent overwrite)
