@@ -38,6 +38,7 @@ pfy — simple setup & launch for the pfy-mentat stack
 Inference detect: FreeToken (:1919) → llama-swap (:9292) → llama-server (:8080) → Ollama.
 Override: PFY_LOCAL_RUNTIME, LOCAL_OPENAI_BASE_URL.
 FreeToken model: PFY_FT_MODEL (then LOCAL_CODER_MODEL, FREETOKEN_MODEL).
+Ollama adapter model: PFY_OLLAMA_MODEL (then LOCAL_CODER_MODEL).
 Detector is invoked with bash (no git +x required).
 U
 }
@@ -101,6 +102,71 @@ ft_default_model() {
   # Prefer PFY_FT_MODEL, then LOCAL_CODER_MODEL, then FREETOKEN_MODEL.
   echo "${PFY_FT_MODEL:-${LOCAL_CODER_MODEL:-${FREETOKEN_MODEL:-}}}"
 }
+
+
+ollama_health() {
+  curl -sf --max-time 2 http://127.0.0.1:11434/api/tags >/dev/null 2>&1 \
+    || curl -sf --max-time 2 http://127.0.0.1:11434/v1/models >/dev/null 2>&1
+}
+
+wait_ollama_health() {
+  local i
+  for i in $(seq 1 12); do
+    ollama_health && return 0
+    sleep 0.5
+  done
+  return 1
+}
+
+ollama_default_model() {
+  echo "${PFY_OLLAMA_MODEL:-${LOCAL_CODER_MODEL:-${OLLAMA_MODEL:-}}}"
+}
+
+ollama_has_model() {
+  local name="${1:-}"
+  [[ -z "$name" ]] && return 1
+  ollama show "$name" >/dev/null 2>&1 && return 0
+  ollama list 2>/dev/null | awk -v n="$name" 'NR>1 && $1!="" && index($1,n)==1 { found=1 } END { exit !found }'
+}
+
+ollama_any_model() {
+  ollama list 2>/dev/null | awk 'NR>1 && $1!="" { found=1 } END { exit !found }'
+}
+
+ensure_ollama_adapter() {
+  if ! have ollama; then
+    echo "STUB: ollama not on PATH. One-liner:"
+    echo "  ollama serve"
+    return 0
+  fi
+  if ollama_health; then
+    echo "ollama API healthy"
+  else
+    echo "starting Ollama serve (wait for /api/tags or /v1/models)…"
+    (ollama serve >>"$STATE_DIR/ollama.log" 2>&1 &) || true
+    if wait_ollama_health; then
+      echo "ollama API healthy"
+    else
+      echo "note: ollama serve launched but API not healthy (partial) — not fake ready"
+      return 0
+    fi
+  fi
+  local model
+  model="$(ollama_default_model)"
+  if [[ -n "$model" ]]; then
+    if ollama_has_model "$model"; then
+      echo "default model present: $model"
+    else
+      echo "pulling default model: $model"
+      ollama pull "$model" || echo "note: ollama pull failed — honest skip"
+    fi
+  elif ollama_any_model; then
+    echo "note: no PFY_OLLAMA_MODEL / LOCAL_CODER_MODEL — using already-installed tags"
+  else
+    echo "note: no PFY_OLLAMA_MODEL / LOCAL_CODER_MODEL and no models installed — honest skip"
+  fi
+}
+
 
 print_live_models() {
   local base="${1:-}"
@@ -300,16 +366,7 @@ ensure_inference() {
   else
     case "$engine" in
       ollama)
-        if have ollama; then
-          if ! curl -sf --max-time 1 http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
-            echo "starting Ollama serve in background…"
-            (ollama serve >>"$STATE_DIR/ollama.log" 2>&1 &) || true
-            sleep 1
-          fi
-        else
-          echo "STUB: ollama not on PATH. One-liner:"
-          echo "  ollama serve"
-        fi
+        ensure_ollama_adapter
         ;;
       freetoken|ft)
         model="$(ft_default_model)"
