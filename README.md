@@ -307,5 +307,3 @@ MIT for the catalog and documentation in this repository. Individual tools carry
 ---
 
 *v0.4 — Phase 0 catalog sync, agent-cage harness, `/catalog-docs` skill, deploy runbook. Process backbone from v0.3 (DESIGN/ADR/TODO/OQ). Vision: receipts over vibes; beyond “it builds.”*
-
-test edit from Grok Voice
