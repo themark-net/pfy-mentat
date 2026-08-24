@@ -257,7 +257,8 @@ detect_status() {
     while IFS= read -r b; do
       [[ -z "$b" ]] && continue
       if [[ "$b" == "exo.sh" ]]; then
-        exo_bin >/dev/null && found=1
+        [[ -x "$ROOT/exo.sh" || -x "$HOME/exo/exo.sh" ]] && found=1
+        have exo.sh && found=1
       elif have "$b"; then
         found=1
       fi
@@ -615,16 +616,16 @@ exec_harness() {
       fi
       ;;
     exo)
-      local bin
-      bin="$(exo_bin || true)"
-      if [[ -n "$bin" ]]; then
+      local ebin
+      ebin="$(exo_bin || true)"
+      if [[ -n "$ebin" ]]; then
         if [[ "$st" == "ready" && -n "${LOCAL_OPENAI_BASE_URL:-}" ]]; then
           export OPENAI_BASE_URL="${OPENAI_BASE_URL:-$LOCAL_OPENAI_BASE_URL}"
           echo "model provider: OPENAI_BASE_URL=$OPENAI_BASE_URL (from local runtime)"
         else
           echo "note: local runtime not ready — Exo starts without a local model provider"
         fi
-        exec "$bin"
+        exec "$ebin"
       else
         echo "STUB harness: exo"
         echo "  https://github.com/themark-net/pfy-mentat/issues/60"
@@ -655,14 +656,14 @@ attach_operator_harness() {
       exec_harness "$preferred"
       return 0
       ;;
-    continue|agent-cage)
-      stub_harness "$preferred"
-      ;;
     exo)
       if [[ -n "$requested" ]]; then
         exec_harness exo || exit 2
         return 0
       fi
+      ;;
+    continue|agent-cage)
+      stub_harness "$preferred"
       ;;
     gemini)
       if [[ -n "$requested" ]]; then
