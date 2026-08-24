@@ -2,28 +2,27 @@
 
 **ADR:** [0014](../adr/0014-pluggable-local-inference-spine.md) · **Issue:** [#76](https://github.com/themark-net/pfy-mentat/issues/76)
 
-Product door is still `./pfy setup && ./pfy status && ./pfy start` (onboard / stage / ship). This page is how the **local worker** gets a model.
+Product door is still `./pfy setup && ./pfy status && ./pfy start`.
 
-## Pick order
+## Preferred: FreeToken
 
-`scripts/detect-local-runtime.sh` (used by `./pfy status` / `start`):
+[FreeToken](https://github.com/FlashML-org/FreeToken) (`uv pip install "freetoken[accel]"`, then `ft serve --model <hf-or-path>`).
+OpenAI + Anthropic APIs on **:1919**. Desktop: [flashml.ai](https://www.flashml.ai/).
 
-1. **llama-swap** (fronts llama-server) — tok/s + hot-swap
-2. **llama-server** — one model, raw llama.cpp
-3. **Shimmy** — tiny Rust OpenAI-compat; “free forever”; candidate, not required
-4. **Ollama** — first-class adapter (T-0101), never removed
+## Fallback order
 
-Override:
+`scripts/detect-local-runtime.sh`:
+
+1. **freetoken** (`ft` / `freetoken`) — :1919
+2. **llama-swap** / **llama-server** — GGUF :8080
+3. **Ollama** — :11434 adapter
+4. **Shimmy** — optional, not preferred
 
 ```bash
-export PFY_LOCAL_RUNTIME=shimmy          # or llama-swap | llama-server | ollama
-export LOCAL_OPENAI_BASE_URL=http://127.0.0.1:11435/v1
+export PFY_LOCAL_RUNTIME=freetoken
+export LOCAL_OPENAI_BASE_URL=http://127.0.0.1:1919/v1
 ```
 
-Workers (OpenCode, LiteLLM, eval) should use `LOCAL_OPENAI_BASE_URL`. Grok stays the monitor.
+Workers (OpenCode, LiteLLM, eval) use `LOCAL_OPENAI_BASE_URL`. Grok stays the monitor.
 
-## Honest stubs
-
-If a binary is on PATH but not serving, `./pfy start` says **STUB/partial** and points at #76. Missing is `missing`, not a fake healthy status.
-
-Do not vendor llama.cpp / Shimmy / llama-swap into this repo.
+Missing binaries are `missing` / `partial`, never fake-healthy. Do not vendor engines.
