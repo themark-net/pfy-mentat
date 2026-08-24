@@ -85,11 +85,23 @@ PY
 }
 
 local_runtime() {
-  if [[ -x "$DETECT" ]]; then
+  # GitHub blob may lack +x; invoke via bash.
+  if [[ -f "$DETECT" ]]; then
     bash "$DETECT" --json
   else
     echo '{"engine":"none","status":"missing","base_url":""}'
   fi
+}
+
+engine_matches() {
+  python3 - "$1" "$2" <<'PY'
+import json,sys
+rt=json.loads(sys.argv[1]); want=sys.argv[2]
+eng=rt.get("engine","")
+aliases={"llama.cpp":"llama-server","llama-server":"llama.cpp"}
+ok = eng==want or aliases.get(eng)==want or aliases.get(want)==eng
+print("yes" if ok else "no")
+PY
 }
 
 detect_status() {
@@ -110,14 +122,15 @@ detect_status() {
     done <<< "$bins"
   fi
   case "$id" in
-    ollama|shimmy|llama-swap|llama-server)
-      python3 -c "import json,sys; d=json.loads(sys.argv[1]); print(d.get('status','missing') if d.get('engine')==sys.argv[2] else ('ready' if False else 'missing'))" "$(local_runtime)" "$id" 2>/dev/null || true
+    ollama|shimmy|llama-swap|llama-server|llama.cpp)
       local rt
       rt=$(local_runtime)
       python3 - "$rt" "$id" "$found" "$status_reg" <<'PY'
 import json,sys
 rt=json.loads(sys.argv[1]); id=sys.argv[2]; found=int(sys.argv[3]); reg=sys.argv[4]
-if rt.get("engine")==id:
+eng=rt.get("engine","")
+alias={"llama.cpp":"llama-server","llama-server":"llama.cpp"}
+if eng==id or alias.get(eng)==id or alias.get(id)==eng:
     print(rt.get("status","missing")); sys.exit(0)
 print("ready" if found else ("partial" if reg=="partial" else ("stub" if reg=="stub" else "missing")))
 PY
@@ -149,7 +162,7 @@ cmd_status() {
   done
   echo ""
   echo "next: pfy setup   |   pfy start   |   pfy harness list"
-  echo "override: PFY_LOCAL_RUNTIME=llama-swap|llama-server|shimmy|ollama"
+  echo "override: PFY_LOCAL_RUNTIME=llama-swap|llama.cpp|shimmy|ollama"
 }
 
 cmd_setup() {
@@ -197,8 +210,8 @@ cmd_harness_use() {
   st=$(detect_status "$id")
   echo "live status: $st"
   if [[ "$st" == "stub" || "$st" == "detected-stub" ]]; then
-    echo "STUB: adapter not fully implemented. See GitHub issues labeled harness-adapter."
-    python3 -c "import json; d=json.load(open('$REG')); h=next(x for x in d['harnesses'] if x['id']=='$id'); print('setup:', h.get('setup','')); print('todo:', h.get('issue_stub') or 'n/a')"
+    echo "STUB: adapter not fully implemented. See GitHub issues labeled harness-adapter (#76)."
+    python3 -c "import json; d=json.load(open('$REG')); h=next(x for x in d['harnesses'] if x['id']=='$id'); print('setup:', h.get('setup','')); print('todo:', h.get('issue_stub') or 'n/a'); print('issue:', h.get('github_issue') or 'n/a')"
   fi
 }
 
@@ -222,8 +235,8 @@ cmd_start() {
       fi
     elif [[ "$engine" == "shimmy" ]] && have shimmy; then
       echo "STUB: Shimmy on PATH but not serving. Start it, then re-run pfy start. See #76."
-    elif [[ "$engine" == "llama-swap" || "$engine" == "llama-server" ]]; then
-      echo "STUB: $engine on PATH but not serving. Start llama-swap/llama-server, then re-run. See #76."
+    elif [[ "$engine" == "llama-swap" || "$engine" == "llama-server" || "$engine" == "llama.cpp" ]]; then
+      echo "STUB: $engine detected but HTTP not up. Start llama-swap/llama-server, then re-run. See #76."
     else
       echo "note: no local runtime ready — cloud-only harnesses may still work"
       echo "      install one of: llama-swap, llama-server, shimmy, ollama  (#76)"
@@ -241,9 +254,13 @@ cmd_start() {
         die "grok not installed — pfy setup after installing Grok CLI"
       fi
       ;;
-    ollama|shimmy|llama-swap|llama-server)
+    ollama|shimmy|llama-swap|llama-server|llama.cpp)
       echo "inference spine: $id  LOCAL_OPENAI_BASE_URL=${LOCAL_OPENAI_BASE_URL:-}"
       if [[ "$id" == "ollama" ]] && have ollama; then ollama list || true; fi
+      if [[ "$st" != "ready" && "$id" != "ollama" ]]; then
+        echo "honest stub: $id not healthy. Track #76 — not fake-ready."
+        exit 2
+      fi
       ;;
     opencode)
       if have opencode || have opencode-cli; then
