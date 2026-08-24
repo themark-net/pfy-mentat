@@ -75,13 +75,13 @@ Grok stays **default harness** (ADR-0002). Local **worker** uses `LOCAL_OPENAI_B
                     │  sources/aggregates.md              │
                     └──────────────┬──────────────────────┘
                                    │ score + synthesize
-                    ┌──────────────├──────────────────────┐
+                    ┌──────────────▼──────────────────────┐
                     │  Catalog                            │
                     │  TOOLS.md  ·  data/tools.json       │
                     │  CATEGORIZATION.md rubric           │
                     └──────────────┬──────────────────────┘
                                    │ integrate
-          ┌───────────────────────┬────────────────────────┐
+          ┌────────────────────────┼────────────────────────┐
           ▼                        ▼                        ▼
    bootstrap/grok-cli/      pipelines/ (future)      examples/ (future)
    skills · MCP · config    eval harnesses           compose / patterns
