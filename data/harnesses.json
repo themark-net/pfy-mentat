@@ -122,16 +122,16 @@
       "id": "hermes",
       "name": "Hermes Agent",
       "role": "harness",
-      "status": "stub",
-      "summary": "Feedback-loop agent; patterns ported as /hermes-feedback",
-      "setup": "STUB",
+      "status": "partial",
+      "summary": "Runtime adapter: exec hermes/hermes-agent; /hermes-feedback skill stays process-only",
+      "setup": "curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash",
       "detect": [
         "hermes",
         "hermes-agent"
       ],
-      "github": null,
+      "github": "https://github.com/NousResearch/hermes-agent",
       "catalog": "Hermes Agent (feedback loops)",
-      "issue_stub": "Hermes installer adapter",
+      "issue_stub": "Hermes runtime adapter",
       "github_issue": 56
     },
     {

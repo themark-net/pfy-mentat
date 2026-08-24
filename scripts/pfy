@@ -264,7 +264,7 @@ detect_status() {
     done <<< "$bins"
   fi
   case "$id" in
-    hermes|claude-code|codex|gemini|exo|continue|agent-cage)
+    claude-code|codex|gemini|exo|continue|agent-cage)
       if [[ "$found" -eq 1 ]]; then echo "detected-stub"; else echo "stub"; fi
       return
       ;;
@@ -533,7 +533,26 @@ exec_harness() {
         stub_harness opencode
       fi
       ;;
-    hermes|claude-code|codex|gemini|exo|continue|agent-cage)
+    hermes)
+      if have hermes || have hermes-agent; then
+        local bin
+        bin=$(have hermes && echo hermes || echo hermes-agent)
+        if [[ "$st" == "ready" && -n "${LOCAL_OPENAI_BASE_URL:-}" ]]; then
+          export OPENAI_BASE_URL="${OPENAI_BASE_URL:-$LOCAL_OPENAI_BASE_URL}"
+          echo "model provider: OPENAI_BASE_URL=$OPENAI_BASE_URL (from local runtime)"
+        else
+          echo "note: local runtime not ready — Hermes starts without a local model provider"
+        fi
+        echo "note: /hermes-feedback skill stays process-only (not this runtime)"
+        exec "$bin"
+      else
+        echo "STUB harness: hermes"
+        echo "  https://github.com/themark-net/pfy-mentat/issues/56"
+        echo "  curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash"
+        exit 2
+      fi
+      ;;
+    claude-code|codex|gemini|exo|continue|agent-cage)
       stub_harness "$id"
       ;;
     *) die "unknown harness: $id" ;;
@@ -555,8 +574,14 @@ attach_operator_harness() {
       exec_harness "$preferred"
       return 0
       ;;
-    hermes|claude-code|codex|gemini|exo|continue|agent-cage)
+    claude-code|codex|gemini|exo|continue|agent-cage)
       stub_harness "$preferred"
+      ;;
+    hermes)
+      if [[ -n "$requested" ]]; then
+        exec_harness hermes || exit 2
+        return 0
+      fi
       ;;
     opencode)
       if [[ -n "$requested" ]]; then

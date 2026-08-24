@@ -38,12 +38,12 @@ Public CLI must agree: README Simple path, this file, [simple-launch.md](simple-
 
 | Kind | Meaning |
 |------|---------|
-| **Live harness** | `./pfy start <id>` execs a binary (grok, opencode) |
+| **Live harness** | `./pfy start <id>` execs a binary (grok, opencode, hermes) |
 | **Inference adapter** | Detector / `ensure_inference`; `./pfy start <engine>` is not a coding agent |
 | **Honest stub** | `STUB harness: <id>` + issue URL, **exit 2**. Binary on PATH is `detected-stub`, still not ready |
 | **Catalog-only** | Scored in `TOOLS.md` / slim `data/tools.json` ([ADR-0015](../adr/0015-catalog-json-slim-subset.md)). A catalog row is not an installer |
 
-Live path today: **Grok** (monitor, default) + **OpenCode** (host adapter) + **detected inference**. Remaining harness ids are stubs. Do not implement those adapters from this pack.
+Live path today: **Grok** (monitor, default) + **OpenCode** (host adapter) + **Hermes** (runtime, if binary on PATH) + **detected inference**. Remaining harness ids are stubs. Do not implement those adapters from this pack.
 
 ## Honesty matrix (every `data/harnesses.json` id)
 
@@ -64,11 +64,11 @@ Detect order (ADR-0014, first live wins): **FreeToken :1919 → llama-swap :9292
 | freetoken | inference | Detector if this engine: ready/partial. Else PATH → partial, else missing | Bring-up then spine: if API not ready, honest stub exit 2. Partial start may launch `ft serve` when `PFY_FT_MODEL` (or `LOCAL_CODER_MODEL` / `FREETOKEN_MODEL`) is set |
 | llama-swap | inference | Same (port **:9292**) | If HTTP down: print one-liner, no fake ready. Named start exit 2 unless detector ready |
 | llama.cpp | inference | Same as llama-server (port **:8080**) | Same as llama-server |
-| ollama | inference | Same (port **:11434**). Registry still says adapter incomplete | If binary and API down: fire-and-forget `ollama serve` + `sleep 1` (health wait is **not** shipped). Named start exit 2 unless API ready. `./pfy models pull <name>` still works |
+| ollama | inference | Same (port **:11434**). **ready** only when API responds (`GET /api/tags` or `/v1/models`); binary + API down = **partial**; no binary = **missing**. json may stay `partial` | Detector-selected or `PFY_LOCAL_RUNTIME=ollama`: start/up wait for real health (`GET /api/tags` or `/v1/models`). Default model `PFY_OLLAMA_MODEL` then `LOCAL_CODER_MODEL`; pull/select if missing; honest skip if no name and none installed. Named start exit 2 unless API ready. `./pfy models pull <name>` still works |
 | shimmy | inference | Optional last; PATH-only is partial | HTTP down: STUB one-liner. Named start exit 2 unless ready |
 | grok | harness | **ready** if `grok` on PATH; else **missing**. Attach also needs `grok login` / `XAI_API_KEY` | `exec grok` when authenticated. Missing/unauth: print install/login, **do not abort the env**; try next ready adapter (opencode) |
 | opencode | harness | **ready** if `opencode` or `opencode-cli` on PATH; else **missing**. json may still say `partial` | Named start: `exec` binary, `OPENCODE_SKILLS` → `bootstrap/grok-cli/skills`, `OPENAI_BASE_URL` from `LOCAL_OPENAI_BASE_URL` when runtime ready. No binary: STUB + issue #55, exit 2 |
-| hermes | harness | stub / detected-stub | Always STUB exit 2 + issue #56 |
+| hermes | harness | **ready** if `hermes` or `hermes-agent` on PATH; else **missing**. json may stay `partial` | Named start: `exec` binary; `OPENAI_BASE_URL` from `LOCAL_OPENAI_BASE_URL` when runtime ready. No binary: STUB + issue #56 + `curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash`, exit 2. `/hermes-feedback` is process-only |
 | claude-code | harness | stub / detected-stub | Always STUB exit 2 + issue #57 |
 | codex | harness | stub / detected-stub | Always STUB exit 2 + issue #58 |
 | gemini | harness | stub / detected-stub | Always STUB exit 2 + issue #59 |

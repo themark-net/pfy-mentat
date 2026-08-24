@@ -54,7 +54,9 @@ Registry: [`data/harnesses.json`](../../data/harnesses.json).
 
 ## Stubs (honest)
 
-`hermes`, `claude-code`, `codex`, `gemini`, `exo`, `continue`, `agent-cage` stay stubbed. `./pfy start <id>` prints `STUB harness: <id>`, the GitHub issue URL from `data/harnesses.json` when set, and **exits 2**. `./pfy status` / `harness list` show `stub` (or `detected-stub` if a binary is on PATH). A binary or Docker on PATH is **not** ready.
+`claude-code`, `codex`, `gemini`, `exo`, `continue`, `agent-cage` stay stubbed.
+
+`hermes` is a live adapter when `hermes` or `hermes-agent` is on PATH (`./pfy start hermes` execs it; missing: STUB + issue #56 + install one-liner, exit 2). `/hermes-feedback` stays process-only. `./pfy start <id>` prints `STUB harness: <id>`, the GitHub issue URL from `data/harnesses.json` when set, and **exits 2**. `./pfy status` / `harness list` show `stub` (or `detected-stub` if a binary is on PATH). A binary or Docker on PATH is **not** ready.
 
 Patterns may already exist as skills/docs; the unified installer path does not. Progress tracked on GitHub under label `harness-adapter`.
 
