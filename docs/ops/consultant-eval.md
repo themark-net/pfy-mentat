@@ -38,12 +38,12 @@ Public CLI must agree: README Simple path, this file, [simple-launch.md](simple-
 
 | Kind | Meaning |
 |------|---------|
-| **Live harness** | `./pfy start <id>` execs a binary (grok, opencode, hermes) |
+| **Live harness** | `./pfy start <id>` execs a binary (grok, opencode, hermes, claude-code) |
 | **Inference adapter** | Detector / `ensure_inference`; `./pfy start <engine>` is not a coding agent |
 | **Honest stub** | `STUB harness: <id>` + issue URL, **exit 2**. Binary on PATH is `detected-stub`, still not ready |
 | **Catalog-only** | Scored in `TOOLS.md` / slim `data/tools.json` ([ADR-0015](../adr/0015-catalog-json-slim-subset.md)). A catalog row is not an installer |
 
-Live path today: **Grok** (monitor, default) + **OpenCode** (host adapter) + **Hermes** (runtime, if binary on PATH) + **detected inference**. Remaining harness ids are stubs. Do not implement those adapters from this pack.
+Live path today: **Grok** (monitor, default) + **OpenCode** (host adapter) + **Hermes** (runtime, if binary on PATH) + **Claude Code** (if `claude` on PATH) + **detected inference**. Remaining harness ids are stubs. Do not implement those adapters from this pack.
 
 ## Honesty matrix (every `data/harnesses.json` id)
 
@@ -69,7 +69,7 @@ Detect order (ADR-0014, first live wins): **FreeToken :1919 → llama-swap :9292
 | grok | harness | **ready** if `grok` on PATH; else **missing**. Attach also needs `grok login` / `XAI_API_KEY` | `exec grok` when authenticated. Missing/unauth: print install/login, **do not abort the env**; try next ready adapter (opencode) |
 | opencode | harness | **ready** if `opencode` or `opencode-cli` on PATH; else **missing**. json may still say `partial` | Named start: `exec` binary, `OPENCODE_SKILLS` → `bootstrap/grok-cli/skills`, `OPENAI_BASE_URL` from `LOCAL_OPENAI_BASE_URL` when runtime ready. No binary: STUB + issue #55, exit 2 |
 | hermes | harness | **ready** if `hermes` or `hermes-agent` on PATH; else **missing**. json may stay `partial` | Named start: `exec` binary; `OPENAI_BASE_URL` from `LOCAL_OPENAI_BASE_URL` when runtime ready. No binary: STUB + issue #56 + `curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash`, exit 2. `/hermes-feedback` is process-only |
-| claude-code | harness | stub / detected-stub | Always STUB exit 2 + issue #57 |
+| claude-code | harness | **ready** if `claude` on PATH; else **missing**. json may stay `partial` | Named start: `exec claude`; `OPENAI_BASE_URL` from `LOCAL_OPENAI_BASE_URL` when runtime ready. No binary: STUB + issue #57 + `curl -fsSL https://claude.ai/install.sh | bash`, exit 2. Login/credentials/2FA are owner-only |
 | codex | harness | stub / detected-stub | Always STUB exit 2 + issue #58 |
 | gemini | harness | stub / detected-stub | Always STUB exit 2 + issue #59 |
 | exo | harness | stub / detected-stub (`exo.sh` in repo or `~/exo/`) | Always STUB exit 2 + issue #60 |
