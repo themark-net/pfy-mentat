@@ -54,9 +54,11 @@ Registry: [`data/harnesses.json`](../../data/harnesses.json).
 
 ## Stubs (honest)
 
-`exo`, `agent-cage` stay stubbed.
+`agent-cage` stay stubbed.
 
 Continue is a **config recipe** at `bootstrap/continue/` (`LOCAL_OPENAI_BASE_URL`, not Ollama-only). `./pfy start continue` stays STUB exit 2.
+
+`exo` is an optional lab when `exo.sh` is in the repo or `~/exo/` (also `command -v exo.sh`). `./pfy start exo` execs it; missing: STUB + issue #60 + official `setup.sh` one-liner, exit 2. Docker on PATH is **not** ready. Not the default harness.
 
 `gemini` is a live adapter when `gemini` or `gemini-cli` is on PATH (`./pfy start gemini` execs it; missing: STUB + issue #59 + official install one-liner, exit 2). Login/credentials/2FA are owner-only.
 
