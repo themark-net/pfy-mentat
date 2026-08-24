@@ -7,6 +7,10 @@
 From **catalog repo root**:
 
 ```bash
+./pfy stage --lab          # make cage-doctor → cage-setup → cage-up-mcp
+# Missing Docker: honest skip (lab skipped, not product-ready). Exit 0 on skip.
+# Docker present but a make step fails: non-zero; prints which step / target.
+
 export PATH="$HOME/.local/bin:$PATH"
 make cage-doctor
 make cage-setup          # CLI + optional pin clone
@@ -65,4 +69,4 @@ make smoke-write-guard         # optional tool smokes
 ## Not yet
 
 - `./pfy start agent-cage` (always STUB exit 2). Docker on PATH is **not** ready.
-- Folding cage into `pfy stage --lab` (queued separately). Use `make cage-*` for the lab.
+- Treating cage as product-ready. Optional personal lab is `./pfy stage --lab` / `make cage-*` (doctor → setup → up-mcp). Missing Docker is honest skip. Do not sell cage.
