@@ -198,6 +198,10 @@ detect_status() {
     done <<< "$bins"
   fi
   case "$id" in
+    hermes|claude-code|codex|gemini|exo|continue|agent-cage)
+      if [[ "$found" -eq 1 ]]; then echo "detected-stub"; else echo "stub"; fi
+      return
+      ;;
     freetoken|ollama|shimmy|llama-swap|llama-server|llama.cpp)
       python3 - "$(local_runtime)" "$id" "$found" <<'PY'
 import json,sys
