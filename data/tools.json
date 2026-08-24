@@ -1,7 +1,7 @@
 {
-  "version": "0.4.13",
-  "last_updated": "2026-08-01",
-  "description": "v0.4.13: Entry 078 kanbots A-tier multi-CLI Kanban parallel dispatcher. + Entry 079 multi-agent-generator B-tier.",
+  "version": "0.4.14",
+  "last_updated": "2026-08-24",
+  "description": "v0.4.14: Shimmy + llama-swap catalog rows (2026 X/community Ollama migration; ADR-0014 pluggable local spine). Prior: Entry 078 kanbots; Entry 079 multi-agent-generator.",
   "schema_notes": {
     "required_for_all": [
       "name",
@@ -18,12 +18,56 @@
       "source_aggregate": "Slug from sources/aggregates.md",
       "x_post_id": "Status ID if from X seed",
       "company_scores": "For Autonomous AI Companies: c1_org, c2_cycle, c3_memory, c4_safety, c5_econ, c6_local, weighted",
-      "integration_stage": "I0\u2013I4 from docs/ops/integration-stages.md; see also data/tool_integration_stages.json"
+      "integration_stage": "I0–I4 from docs/ops/integration-stages.md; see also data/tool_integration_stages.json"
     },
     "aggregates_array": "Top-level array for logged aggregates.",
-    "integration_stage": "I0\u2013I4 required on every tool (GAP-02 #39)"
+    "integration_stage": "I0–I4 required on every tool (GAP-02 #39)"
   },
   "tools": [
+    {
+      "name": "Shimmy",
+      "primary_category": "Inference & Serving",
+      "github": "https://github.com/Michael-A-Kuykendall/shimmy",
+      "scores": {
+        "s1": 82,
+        "s2": 88,
+        "s3": 80,
+        "s4": 78,
+        "overall": 82
+      },
+      "tier": "A",
+      "tags": [
+        "local-first",
+        "openai-shim",
+        "rust",
+        "gguf",
+        "free-forever"
+      ],
+      "notes": "X/community 2026 Ollama migration. Tiny Rust OpenAI-compat local server (slogan FREE forever). Candidate drop-in for ./pfy local spine (ADR-0014). Detect often :11435. Do not vendor. Honest stub until adapter ships (#76).",
+      "integration_stage": "I1"
+    },
+    {
+      "name": "llama-swap",
+      "primary_category": "Inference & Serving",
+      "github": "https://github.com/mostlygeek/llama-swap",
+      "scores": {
+        "s1": 85,
+        "s2": 92,
+        "s3": 88,
+        "s4": 80,
+        "overall": 87
+      },
+      "tier": "A",
+      "tags": [
+        "local-first",
+        "openai-shim",
+        "llama-cpp",
+        "hot-swap",
+        "high-perf"
+      ],
+      "notes": "X/community 2026 Ollama migration. Hot-swap + TTL in front of llama.cpp llama-server. Preferred tok/s path (ADR-0014 detect order #1). Do not vendor. Probe via scripts/detect-local-runtime.sh.",
+      "integration_stage": "I1"
+    },
     {
       "name": "Grok CLI bootstrap",
       "primary_category": "Pipeline & CI/CD Components",
