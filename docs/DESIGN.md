@@ -41,7 +41,7 @@ The **product you ship** is the operator stack (`./pfy` onboard / stage / ship).
 ```text
 ./pfy setup     → env + skills + detect local runtime
 ./pfy status    → ready | partial | stub | missing  (honest; missing ≠ partial)
-./pfy start     → local OpenAI-compat inference if present, then active harness
+./pfy start     → inference → env-stage → active harness (default grok)
 ./pfy harness use <id>
 ```
 

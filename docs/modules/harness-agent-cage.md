@@ -61,3 +61,8 @@ make cage-status
 make cage-test                 # policy tests (stack up)
 make smoke-write-guard         # optional tool smokes
 ```
+
+## Not yet
+
+- `./pfy start agent-cage` (always STUB exit 2). Docker on PATH is **not** ready.
+- Folding cage into `pfy stage --lab` (queued separately). Use `make cage-*` for the lab.

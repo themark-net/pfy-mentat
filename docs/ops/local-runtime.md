@@ -1,8 +1,8 @@
 # Local inference runtime (pluggable)
 
-**ADR:** [0014](../adr/0014-pluggable-local-inference-spine.md) · **Issue:** [#76](https://github.com/themark-net/pfy-mentat/issues/76)
+**ADR:** [0014](../adr/0014-pluggable-local-inference-spine.md)
 
-Owner bar: `./pfy up` then `./pfy models`. Product door is still `./pfy setup && ./pfy status && ./pfy start`.
+Owner bar: `./pfy start` / `./pfy up` = inference + env-stage + active harness. `./pfy models` is inspect-only.
 
 ## Preferred: FreeToken
 
@@ -11,12 +11,13 @@ OpenAI + Anthropic APIs on **:1919**. Desktop: [flashml.ai](https://www.flashml.
 
 ## Fallback order
 
-`scripts/detect-local-runtime.sh`:
+`scripts/detect-local-runtime.sh` (first live wins):
 
 1. **freetoken** (`ft` / `freetoken`) — :1919
-2. **llama-swap** / **llama-server** — GGUF :8080
-3. **Ollama** — :11434 adapter
-4. **Shimmy** — optional, not preferred
+2. **llama-swap** — :9292
+3. **llama-server** — :8080
+4. **Ollama** — :11434 adapter (not the spine)
+5. **Shimmy** — optional last, not preferred
 
 ```bash
 export PFY_LOCAL_RUNTIME=freetoken

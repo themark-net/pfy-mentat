@@ -50,3 +50,7 @@ Design: [docs/ops/write-guard-mcp-design.md](../ops/write-guard-mcp-design.md)
 make smoke-write-guard
 PYTHONPATH=harness/write-guard-mcp/src python3 -m unittest discover -s harness/write-guard-mcp/tests -v
 ```
+
+## Not yet
+
+- Enabling the mcp-host overlay by default (T-0043 parked)

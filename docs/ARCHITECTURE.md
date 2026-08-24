@@ -55,11 +55,12 @@ sources (X / aggregates / papers)
 
 | Delivered | Not yet |
 |-----------|---------|
-| Methodology + catalog + Grok bootstrap | Honest harness stubs T-0102–T-0109 |
-| LiteLLM profiles + Ollama cage smoke | T-0110 leftover (partial) |
+| Methodology + catalog + Grok bootstrap | Honest harness stubs T-0103–T-0109 |
+| LiteLLM profiles + Ollama cage smoke | Ollama adapter complete (T-0101 health/default model) |
 | Process docs + structural eval | Automated dashboard from JSON |
 | ADR-0014 spine + `./pfy` start/up operator env | Default always-on LiteLLM daemon |
-| `./pfy` MVP + harness registry | OpenCode-in-cage parity (T-0081) |
+| `./pfy` MVP + harness registry + OpenCode host adapter | OpenCode-in-cage parity (T-0081) |
+| Leftover harness ids honest-stub (`./pfy start` exit 2) | Remaining adapter implementations |
 
 ## Extension points
 
