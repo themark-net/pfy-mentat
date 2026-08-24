@@ -212,9 +212,9 @@
       "id": "agent-cage",
       "name": "agent-cage lab",
       "role": "lab",
-      "status": "stub",
-      "summary": "Isolated container lab for integrations",
-      "setup": "STUB \\u2014 lab later; docker present is not ready",
+      "status": "partial",
+      "summary": "Optional lab via pfy stage --lab / make cage-*",
+      "setup": "Personal lab only: ./pfy stage --lab runs make cage-doctor then cage-setup then cage-up-mcp. Missing Docker is honest skip, not product-ready. ./pfy start agent-cage stays STUB exit 2. Docker on PATH is not ready. Do not sell cage.",
       "detect": [
         "docker"
       ],
