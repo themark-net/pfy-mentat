@@ -4,7 +4,13 @@
   "philosophy": "One launcher (./pfy). Inference starts first as a pluggable OpenAI-compatible local endpoint (ADR-0014). Preferred: FreeToken (ft serve :1919), then llama-swap/llama-server, Ollama adapter. Harnesses attach.",
   "default_harness": "grok",
   "inference_default": "local-openai",
-  "inference_detect_order": ["freetoken", "llama-swap", "llama.cpp", "ollama", "shimmy"],
+  "inference_detect_order": [
+    "freetoken",
+    "llama-swap",
+    "llama.cpp",
+    "ollama",
+    "shimmy"
+  ],
   "harnesses": [
     {
       "id": "freetoken",
@@ -13,7 +19,10 @@
       "status": "partial",
       "summary": "Edge-native MoE serving (FlashML); OpenAI+Anthropic on :1919; preferred local spine",
       "setup": "uv pip install \"freetoken[accel]\"; ft serve --model <hf-or-path>. Override PFY_LOCAL_RUNTIME=freetoken",
-      "detect": ["ft", "freetoken"],
+      "detect": [
+        "ft",
+        "freetoken"
+      ],
       "github": "https://github.com/FlashML-org/FreeToken",
       "catalog": "FreeToken",
       "issue_stub": "Detect ft on :1919; LOCAL_OPENAI_BASE_URL for OpenCode/LiteLLM",
@@ -26,7 +35,9 @@
       "status": "partial",
       "summary": "Hot-swap + TTL in front of llama.cpp llama-server; GGUF tok/s path",
       "setup": "install llama-swap + llama-server; serve OpenAI /v1 (often :8080)",
-      "detect": ["llama-swap"],
+      "detect": [
+        "llama-swap"
+      ],
       "github": "https://github.com/mostlygeek/llama-swap",
       "catalog": "llama-swap",
       "issue_stub": "Complete llama-swap adapter",
@@ -39,7 +50,9 @@
       "status": "partial",
       "summary": "llama.cpp OpenAI-compat server; GGUF without hot-swap",
       "setup": "install llama-server; listen :8080 /v1",
-      "detect": ["llama-server"],
+      "detect": [
+        "llama-server"
+      ],
       "github": "https://github.com/ggerganov/llama.cpp",
       "catalog": "llama.cpp (server mode)",
       "issue_stub": "llama-server health; do not vendor sources",
@@ -52,7 +65,9 @@
       "status": "partial",
       "summary": "Local model server; first-class adapter (T-0101), not the only runtime",
       "setup": "install ollama; ollama serve; pull models via pfy models pull",
-      "detect": ["ollama"],
+      "detect": [
+        "ollama"
+      ],
       "github": "https://github.com/ollama/ollama",
       "catalog": "Ollama",
       "issue_stub": "Complete Ollama adapter",
@@ -64,8 +79,10 @@
       "role": "inference",
       "status": "stub",
       "summary": "Tiny Rust OpenAI-compat server; optional, not the X engine",
-      "setup": "STUB — optional detect only",
-      "detect": ["shimmy"],
+      "setup": "STUB \u2014 optional detect only",
+      "detect": [
+        "shimmy"
+      ],
       "github": "https://github.com/Michael-A-Kuykendall/shimmy",
       "catalog": "Shimmy",
       "issue_stub": "Keep optional; do not prefer over FreeToken",
@@ -78,7 +95,9 @@
       "status": "ready",
       "summary": "Primary coding agent (subscription); skills via bootstrap/grok-cli",
       "setup": "./bootstrap/grok-cli/install.sh; grok login",
-      "detect": ["grok"],
+      "detect": [
+        "grok"
+      ],
       "github": "https://x.ai/cli",
       "catalog": "Grok CLI bootstrap",
       "issue_stub": null
@@ -90,7 +109,10 @@
       "status": "partial",
       "summary": "Local+cloud worker surface; skills SoT shared with Grok",
       "setup": "install opencode; point skills at bootstrap/grok-cli/skills; LOCAL_OPENAI_BASE_URL",
-      "detect": ["opencode", "opencode-cli"],
+      "detect": [
+        "opencode",
+        "opencode-cli"
+      ],
       "github": null,
       "catalog": null,
       "issue_stub": "OpenCode host adapter",
@@ -103,7 +125,10 @@
       "status": "stub",
       "summary": "Feedback-loop agent; patterns ported as /hermes-feedback",
       "setup": "STUB",
-      "detect": ["hermes", "hermes-agent"],
+      "detect": [
+        "hermes",
+        "hermes-agent"
+      ],
       "github": null,
       "catalog": "Hermes Agent (feedback loops)",
       "issue_stub": "Hermes installer adapter",
@@ -116,7 +141,9 @@
       "status": "stub",
       "summary": "Anthropic CLI agent",
       "setup": "STUB",
-      "detect": ["claude"],
+      "detect": [
+        "claude"
+      ],
       "github": "https://docs.anthropic.com/en/docs/claude-code",
       "catalog": "claude-code-unified-agents",
       "issue_stub": "Claude Code adapter",
@@ -129,7 +156,9 @@
       "status": "stub",
       "summary": "OpenAI coding agent harness",
       "setup": "STUB",
-      "detect": ["codex"],
+      "detect": [
+        "codex"
+      ],
       "github": null,
       "catalog": null,
       "issue_stub": "Codex adapter",
@@ -142,7 +171,10 @@
       "status": "stub",
       "summary": "Google agent harness",
       "setup": "STUB",
-      "detect": ["gemini", "gemini-cli"],
+      "detect": [
+        "gemini",
+        "gemini-cli"
+      ],
       "github": null,
       "catalog": null,
       "issue_stub": "Google harness adapter",
@@ -155,7 +187,9 @@
       "status": "stub",
       "summary": "RSI self-mod harness; optional lab",
       "setup": "STUB",
-      "detect": ["exo.sh"],
+      "detect": [
+        "exo.sh"
+      ],
       "github": "https://github.com/exoharness/exo",
       "catalog": "Exo (exoharness)",
       "issue_stub": "Optional Exo lab path",
@@ -178,10 +212,12 @@
       "id": "agent-cage",
       "name": "agent-cage lab",
       "role": "lab",
-      "status": "partial",
+      "status": "stub",
       "summary": "Isolated container lab for integrations",
-      "setup": "make cage-setup && make cage-up-mcp",
-      "detect": ["docker"],
+      "setup": "STUB \u2014 lab later; docker present is not ready",
+      "detect": [
+        "docker"
+      ],
       "github": "https://github.com/pnnl/agent-cage",
       "catalog": "agent-cage (PNNL)",
       "issue_stub": "Fold cage into pfy stage --lab",

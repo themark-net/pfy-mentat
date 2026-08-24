@@ -51,7 +51,9 @@ Registry: [`data/harnesses.json`](../../data/harnesses.json).
 
 ## Stubs (honest)
 
-Hermes, Claude Code, Codex, Gemini/Antigravity-class, Exo full runtime, Continue — **stubbed**. Patterns may already exist as skills/docs; the **unified installer path** does not. Progress tracked on GitHub under label `harness-adapter`.
+`hermes`, `claude-code`, `codex`, `gemini`, `exo`, `continue`, `agent-cage` stay stubbed. `./pfy start <id>` prints `STUB harness: <id>`, the GitHub issue URL from `data/harnesses.json` when set, and **exits 2**. `./pfy status` / `harness list` show `stub` (or `detected-stub` if a binary is on PATH). A binary or Docker on PATH is **not** ready.
+
+Patterns may already exist as skills/docs; the unified installer path does not. Progress tracked on GitHub under label `harness-adapter`.
 
 ## Why not Make-only?
 
