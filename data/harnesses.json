@@ -79,7 +79,7 @@
       "role": "inference",
       "status": "stub",
       "summary": "Tiny Rust OpenAI-compat server; optional, not the X engine",
-      "setup": "STUB \u2014 optional detect only",
+      "setup": "STUB \\u2014 optional detect only",
       "detect": [
         "shimmy"
       ],
@@ -185,8 +185,8 @@
       "name": "Exo (exoharness)",
       "role": "harness",
       "status": "partial",
-      "summary": "Optional lab: exec exo.sh if present; not default harness.",
-      "setup": "curl -fsSL https://raw.githubusercontent.com/exoharness/exo/main/setup.sh -o setup.sh; bash setup.sh (git+Docker). Then ./exo.sh. See bootstrap/exo/README.md and docs/ops/exo-self-mod-patterns.md.",
+      "summary": "Optional lab: exec exo.sh when present (not default; not Grok replacement)",
+      "setup": "curl -fsSL https://raw.githubusercontent.com/exoharness/exo/main/setup.sh -o setup.sh; bash setup.sh. git+Docker required. Day-to-day ./exo.sh. Pin https://github.com/exoharness/exo. Docker on PATH is not ready.",
       "detect": [
         "exo.sh"
       ],
@@ -214,7 +214,7 @@
       "role": "lab",
       "status": "stub",
       "summary": "Isolated container lab for integrations",
-      "setup": "STUB \u2014 lab later; docker present is not ready",
+      "setup": "STUB \\u2014 lab later; docker present is not ready",
       "detect": [
         "docker"
       ],
