@@ -1,31 +1,32 @@
-# Exo optional lab
+# Exo optional lab (exoharness)
 
-Optional lab path for [exoharness/exo](https://github.com/exoharness/exo). Not the default harness (grok stays default). Do **not** vendor Exo into this repo.
+Optional **lab** only. Not the default harness. Not a Grok replacement. Do not vendor Exo into this repo. Personal lab-IT — not a commercial cage product.
 
-## Docker / `setup.sh`
+Pin: [exoharness/exo](https://github.com/exoharness/exo)
 
-Requires **git** and **Docker** (`setup.sh` may offer to install). Official one-liner (no extra flags):
+## First-time setup (official one-liner, no extra flags)
+
+git and Docker are required. Docker on PATH by itself is **not** ready.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/exoharness/exo/main/setup.sh -o setup.sh
 bash setup.sh
 ```
 
-Day-to-day: `./exo.sh` in the checkout (typically `~/exo/`).
+Day-to-day: `./exo.sh` in the Exo checkout (often `~/exo/` or this repo root if you keep a local copy untracked).
 
-Pin / catalog: https://github.com/exoharness/exo
-
-Pattern extract (already on main): [docs/ops/exo-self-mod-patterns.md](../../docs/ops/exo-self-mod-patterns.md)
-
-## `./pfy`
-
-Detects `$ROOT/exo.sh`, `$HOME/exo/exo.sh`, or `command -v exo.sh`.
+## pfy
 
 ```bash
-./pfy harness use exo   # sets active file only; default_harness stays grok
 ./pfy start exo
 ```
 
-When present, start **execs** that script. Exports `LOCAL_OPENAI_BASE_URL` / `OPENAI_BASE_URL` when the ADR-0014 runtime is ready (no invented Exo flags).
+Detects `$ROOT/exo.sh`, `$HOME/exo/exo.sh`, or `exo.sh` on PATH. If present, execs that script and passes `LOCAL_OPENAI_BASE_URL` / `OPENAI_BASE_URL` when the local detector is ready. No invented Exo flags.
 
-Missing: `STUB harness: exo`, [issue #60](https://github.com/themark-net/pfy-mentat/issues/60), the two-line `setup.sh` one-liner above, exit 2. Docker on PATH is **not** ready by itself.
+If missing: `STUB harness: exo`, [issue #60](https://github.com/themark-net/pfy-mentat/issues/60), the setup one-liner above, exit 2.
+
+`./pfy harness use exo` does **not** change `default_harness` (stays grok).
+
+## Patterns
+
+See [docs/ops/exo-self-mod-patterns.md](../../docs/ops/exo-self-mod-patterns.md).
