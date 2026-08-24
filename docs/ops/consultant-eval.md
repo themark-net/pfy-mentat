@@ -74,7 +74,7 @@ Detect order (ADR-0014, first live wins): **FreeToken :1919 → llama-swap :9292
 | gemini | harness | **ready** if `gemini` or `gemini-cli` on PATH; else **missing**. json may stay `partial` | Named start: `exec` binary; `OPENAI_BASE_URL` from `LOCAL_OPENAI_BASE_URL` when runtime ready. No binary: STUB + issue #59 + `npm install -g @google/gemini-cli`, exit 2. Login/credentials/2FA are owner-only |
 | exo | harness | **ready** if `$ROOT/exo.sh`, `$HOME/exo/exo.sh`, or `exo.sh` on PATH; else **missing**. json may stay `partial`. Docker on PATH is not ready. | Named start: `exec` that script; `OPENAI_BASE_URL` from `LOCAL_OPENAI_BASE_URL` when runtime ready. No invented Exo flags. Missing: STUB + issue #60 + official `setup.sh` one-liner, exit 2. Optional lab only — `./pfy harness use exo` does not change `default_harness` |
 | continue | harness | json may be partial; live status stays stub (no detect bins). Recipe at bootstrap/continue/. | Always STUB exit 2 + issue #61. Do not exec the IDE. Docker/binary is not ready. |
-| agent-cage | lab | stub / detected-stub. **Docker present is not ready** | Always STUB exit 2 + issue #62. Lab is `make cage-*`, not `./pfy start` |
+| agent-cage | lab | live **stub** / **detected-stub** (Docker on PATH is **not** ready) | Always STUB exit 2 + issue #62. Lab is `./pfy stage --lab` / `make cage-*` (doctor → setup → up-mcp). Missing Docker is honest skip, not product-ready. Do not sell cage. |
 
 ## Eval without assuming cage
 
