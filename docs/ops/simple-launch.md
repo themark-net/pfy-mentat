@@ -43,7 +43,7 @@ When the detector selects Ollama (or `PFY_LOCAL_RUNTIME=ollama`), `./pfy start` 
 ## Harness status legend
 
 | Live status | Meaning |
-|-------------|---------|
+|-------------|---------| 
 | **ready** | Binary found; start should work |
 | **partial** | Installed or documented path incomplete |
 | **stub** | Slot reserved; `pfy start` prints setup + issue text |
@@ -54,7 +54,9 @@ Registry: [`data/harnesses.json`](../../data/harnesses.json).
 
 ## Stubs (honest)
 
-`exo`, `agent-cage` stay stubbed.
+`agent-cage` stays stubbed. Docker on PATH is not ready.
+
+`exo` is an **optional lab** adapter when `exo.sh` is at `$ROOT/exo.sh`, `$HOME/exo/exo.sh`, or on PATH (`./pfy start exo` execs it; missing: STUB + issue #60 + official setup.sh one-liner, exit 2). Not the default harness. Not a Grok replacement. `./pfy harness use exo` does not change `default_harness` (stays grok). Do not vendor Exo. Personal lab-IT only.
 
 Continue is a **config recipe** at `bootstrap/continue/` (`LOCAL_OPENAI_BASE_URL`, not Ollama-only). `./pfy start continue` stays STUB exit 2.
 

@@ -258,13 +258,14 @@ detect_status() {
       [[ -z "$b" ]] && continue
       if [[ "$b" == "exo.sh" ]]; then
         [[ -x "$ROOT/exo.sh" || -x "$HOME/exo/exo.sh" ]] && found=1
+        have exo.sh && found=1
       elif have "$b"; then
         found=1
       fi
     done <<< "$bins"
   fi
   case "$id" in
-    exo|continue|agent-cage)
+    continue|agent-cage)
       if [[ "$found" -eq 1 ]]; then echo "detected-stub"; else echo "stub"; fi
       return
       ;;
@@ -421,6 +422,14 @@ run_product_stage() {
 grok_bin() {
   if have grok; then command -v grok
   elif [[ -x "$HOME/.local/bin/grok" ]]; then echo "$HOME/.local/bin/grok"
+  else return 1
+  fi
+}
+
+exo_bin() {
+  if [[ -x "$ROOT/exo.sh" ]]; then echo "$ROOT/exo.sh"
+  elif [[ -x "$HOME/exo/exo.sh" ]]; then echo "$HOME/exo/exo.sh"
+  elif have exo.sh; then command -v exo.sh
   else return 1
   fi
 }
@@ -606,7 +615,26 @@ exec_harness() {
         exit 2
       fi
       ;;
-    exo|continue|agent-cage)
+    exo)
+      local ebin
+      ebin="$(exo_bin || true)"
+      if [[ -n "$ebin" ]]; then
+        if [[ "$st" == "ready" && -n "${LOCAL_OPENAI_BASE_URL:-}" ]]; then
+          export OPENAI_BASE_URL="${OPENAI_BASE_URL:-$LOCAL_OPENAI_BASE_URL}"
+          echo "model provider: OPENAI_BASE_URL=$OPENAI_BASE_URL (from local runtime)"
+        else
+          echo "note: local runtime not ready — Exo starts without a local model provider"
+        fi
+        exec "$ebin"
+      else
+        echo "STUB harness: exo"
+        echo "  https://github.com/themark-net/pfy-mentat/issues/60"
+        echo "  curl -fsSL https://raw.githubusercontent.com/exoharness/exo/main/setup.sh -o setup.sh"
+        echo "  bash setup.sh"
+        exit 2
+      fi
+      ;;
+    continue|agent-cage)
       stub_harness "$id"
       ;;
     *) die "unknown harness: $id" ;;
@@ -628,7 +656,13 @@ attach_operator_harness() {
       exec_harness "$preferred"
       return 0
       ;;
-    exo|continue|agent-cage)
+    exo)
+      if [[ -n "$requested" ]]; then
+        exec_harness exo || exit 2
+        return 0
+      fi
+      ;;
+    continue|agent-cage)
       stub_harness "$preferred"
       ;;
     gemini)

@@ -14,6 +14,7 @@ Short structural maps for first-party packages in this repo. Deep design stays i
 | Claude Code adapter | `claude` | [claude-code-adapter.md](claude-code-adapter.md) |
 | Codex adapter | `codex` | [codex-adapter.md](codex-adapter.md) |
 | Gemini adapter | `gemini` / `gemini-cli` | [gemini-adapter.md](gemini-adapter.md) |
+| Exo optional lab adapter | `bootstrap/exo/` + `exo.sh` | [exo-adapter.md](exo-adapter.md) |
 | Continue config recipe | `bootstrap/continue/` | [continue-recipe.md](continue-recipe.md) |
 | project-process scaffold | `bootstrap/project-process/` | [bootstrap-project-process.md](bootstrap-project-process.md) |
 | agent-cage lab | `harness/agent-cage/` | [harness-agent-cage.md](harness-agent-cage.md) |
