@@ -2,7 +2,7 @@
 
 **ADR:** [0014](../adr/0014-pluggable-local-inference-spine.md)
 
-Owner bar: `./pfy up` then `./pfy models`. Product door is still `./pfy setup && ./pfy status && ./pfy start`.
+Owner bar: `./pfy start` / `./pfy up` = inference + env-stage + active harness. `./pfy models` is inspect-only.
 
 ## Preferred: FreeToken
 
