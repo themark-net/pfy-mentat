@@ -27,11 +27,11 @@ pfy — simple setup & launch for the pfy-mentat stack
 
   pfy setup [local-only|balanced|max-performance]
   pfy status
-  pfy up                  start detected local runtime if partial; print engine, URL, models
+  pfy up                  operator env: inference → env-stage → active harness
   pfy harness list|use <id>|show [id]
-  pfy start [harness]     no harness: same as up; with name: up then launch harness
+  pfy start [harness]     same operator env; optional harness after inference/stage
   pfy stage | eval | ship
-  pfy models              list models from the live local endpoint
+  pfy models              list models from the live local endpoint (inspect-only)
   pfy models pull <name>  (Ollama adapter only)
   pfy help
 
@@ -63,6 +63,18 @@ elif cmd=="detects":
     for h in reg["harnesses"]:
         if h["id"]==arg:
             print("\n".join(h.get("detect") or [])); break
+elif cmd=="github_issue":
+    for h in reg["harnesses"]:
+        if h["id"]==arg:
+            gi=h.get("github_issue")
+            print("" if gi in (None,"") else gi)
+            break
+    else:
+        sys.exit(1)
+elif cmd=="adapter_ids":
+    for h in reg["harnesses"]:
+        if h.get("role")=="harness":
+            print(h["id"])
 PY
 }
 
@@ -268,7 +280,7 @@ cmd_harness_use() {
   echo "live status: $(detect_status "$id")"
 }
 
-cmd_up() {
+ensure_inference() {
   local rt engine st base model bin
   echo "==> pfy up"
   rt=$(local_runtime)
@@ -282,7 +294,6 @@ cmd_up() {
   elif [[ "$st" == "missing" || "$engine" == "none" || -z "$engine" ]]; then
     echo "note: no local runtime ready — install FreeToken, llama-swap, llama-server, or ollama (#76)"
   else
-    # partial: start if we have a real command; otherwise honest one-liner stub
     case "$engine" in
       ollama)
         if have ollama; then
@@ -338,17 +349,89 @@ cmd_up() {
   print_live_models "${LOCAL_OPENAI_BASE_URL:-$base}"
 }
 
-cmd_start() {
-  local id="${1:-}"
-  if [[ -z "$id" ]]; then
-    cmd_up
+run_product_stage() {
+  echo "==> env-stage (product; honest skip if a piece is missing)"
+  if [[ ! -f "$ROOT/scripts/env-stage.sh" ]]; then
+    echo "note: scripts/env-stage.sh missing — skip stage"
     return 0
   fi
-  cmd_up
-  echo "==> start harness: $id"
+  bash "$ROOT/scripts/env-stage.sh" || echo "note: env-stage incomplete — continuing (honest skip)"
+}
+
+grok_bin() {
+  if have grok; then command -v grok
+  elif [[ -x "$HOME/.local/bin/grok" ]]; then echo "$HOME/.local/bin/grok"
+  else return 1
+  fi
+}
+
+print_grok_oneliner() {
+  local why="${1:-missing}"
+  if [[ "$why" == "unauth" ]]; then
+    echo "Grok CLI present but not authenticated — not stopping the env."
+    echo "  grok login"
+    echo "  (or export XAI_API_KEY — credentials/2FA are owner-only)"
+  else
+    echo "Grok CLI missing — not stopping the env."
+    echo "  curl -fsSL https://x.ai/cli/install.sh | bash"
+    echo "  grok login"
+  fi
+}
+
+grok_unauth() {
+  local bin="${1:-}"
+  [[ -n "${XAI_API_KEY:-}" ]] && return 1
+  [[ -z "$bin" ]] && return 0
+  local out rc=0
+  out="$("$bin" whoami 2>&1)" || rc=$?
+  # failed or empty whoami without a key is unauth (not "ready")
+  [[ "$rc" -ne 0 ]] && return 0
+  [[ -z "${out// }" ]] && return 0
+  if printf '%s' "$out" | grep -qiE 'not (logged|authenticated)|please (log in|login)|grok login|unauthori[sz]ed'; then
+    return 0
+  fi
+  return 1
+}
+
+stub_harness() {
+  local id="$1"
+  local issue
+  issue="$(json_field github_issue "$id" 2>/dev/null || true)"
+  echo "STUB harness: $id"
+  if [[ -n "$issue" ]]; then
+    echo "  https://github.com/themark-net/pfy-mentat/issues/${issue}"
+  fi
+  exit 2
+}
+
+harness_attach_ready() {
+  local id="$1"
+  local live
+  live="$(detect_status "$id")"
+  [[ "$live" == "ready" ]] || return 1
+  if [[ "$id" == "grok" ]]; then
+    local gbin
+    gbin="$(grok_bin || true)"
+    if [[ -z "$gbin" ]]; then
+      print_grok_oneliner missing
+      return 1
+    fi
+    if grok_unauth "$gbin"; then
+      print_grok_oneliner unauth
+      return 1
+    fi
+  fi
+  return 0
+}
+
+exec_harness() {
+  local id="$1"
+  local live
+  live="$(detect_status "$id" 2>/dev/null || echo missing)"
+  echo "==> start harness: $id (live=$live)"
+  local rt engine st base
   rt=$(local_runtime)
   python3 -c "import json,sys; print('local runtime:', json.loads(sys.argv[1]))" "$rt"
-  local engine st base
   engine=$(rt_get "$rt" engine)
   st=$(rt_get "$rt" status)
   base=$(rt_get "$rt" base_url)
@@ -356,29 +439,114 @@ cmd_start() {
 
   case "$id" in
     grok)
-      have grok || die "grok not installed"
-      exec grok
+      local gbin
+      gbin="$(grok_bin || true)"
+      if [[ -z "$gbin" ]]; then
+        print_grok_oneliner missing
+        return 1
+      fi
+      if grok_unauth "$gbin"; then
+        print_grok_oneliner unauth
+        return 1
+      fi
+      exec "$gbin"
       ;;
     freetoken|ollama|shimmy|llama-swap|llama-server|llama.cpp)
       echo "inference spine: $id  LOCAL_OPENAI_BASE_URL=${LOCAL_OPENAI_BASE_URL:-}"
       if [[ "$st" != "ready" ]]; then echo "honest stub: $id not healthy (#76)"; exit 2; fi
+      return 0
       ;;
     opencode)
       if have opencode || have opencode-cli; then
+        local bin
         bin=$(have opencode && echo opencode || echo opencode-cli)
         export OPENCODE_SKILLS="${OPENCODE_SKILLS:-$ROOT/bootstrap/grok-cli/skills}"
         exec "$bin"
       else
-        echo "STUB: OpenCode not on PATH (#55)"; exit 2
+        echo "STUB: OpenCode not on PATH"
+        echo "  https://github.com/themark-net/pfy-mentat/issues/55"
+        return 1
       fi
       ;;
     hermes|claude-code|codex|gemini|exo|continue|agent-cage)
-      echo "STUB harness: $id"
-      exit 2
+      stub_harness "$id"
       ;;
     *) die "unknown harness: $id" ;;
   esac
 }
+
+attach_operator_harness() {
+  local requested="${1:-}"
+  local preferred tried="" id
+  if [[ -n "$requested" ]]; then
+    preferred="$requested"
+  else
+    preferred="$(cat "$ACTIVE_FILE" 2>/dev/null || json_field default)"
+    [[ -n "$preferred" ]] || preferred="grok"
+  fi
+
+  case "$preferred" in
+    freetoken|ollama|shimmy|llama-swap|llama-server|llama.cpp)
+      exec_harness "$preferred"
+      return 0
+      ;;
+    hermes|claude-code|codex|gemini|exo|continue|agent-cage)
+      stub_harness "$preferred"
+      ;;
+    opencode)
+      if [[ -n "$requested" ]]; then
+        exec_harness opencode || exit 2
+        return 0
+      fi
+      ;;
+  esac
+
+  if [[ -n "$preferred" ]]; then
+    if [[ "$preferred" == "grok" ]]; then
+      local gbin
+      gbin="$(grok_bin || true)"
+      if [[ -n "$gbin" ]] && ! grok_unauth "$gbin"; then
+        exec_harness grok
+      else
+        if [[ -z "$gbin" ]]; then
+          print_grok_oneliner missing
+        else
+          print_grok_oneliner unauth
+        fi
+        echo "note: preferred harness 'grok' not attached — trying next ready adapter"
+      fi
+    elif harness_attach_ready "$preferred"; then
+      exec_harness "$preferred"
+    else
+      echo "note: preferred harness '$preferred' not live-ready — trying next ready adapter"
+    fi
+    tried="$preferred"
+  fi
+
+  while IFS= read -r id; do
+    [[ -z "$id" ]] && continue
+    [[ "$id" == "$tried" ]] && continue
+    if harness_attach_ready "$id"; then
+      echo "attaching next ready adapter: $id"
+      exec_harness "$id"
+    fi
+  done < <(json_field adapter_ids)
+
+  echo "error: no ready harness to attach (missing harness process is not OK for start/up)"
+  echo "  install/login grok, or install opencode, then re-run: ./pfy start"
+  echo "  curl -fsSL https://x.ai/cli/install.sh | bash"
+  echo "  grok login"
+  exit 2
+}
+
+operator_bring_up() {
+  ensure_inference
+  run_product_stage
+  attach_operator_harness "${1:-}"
+}
+
+cmd_up() { operator_bring_up ""; }
+cmd_start() { operator_bring_up "${1:-}"; }
 
 cmd_stage() { (cd "$ROOT" && make env-stage); }
 cmd_eval() { (cd "$ROOT" && REASON="${REASON:-pfy eval}" make eval-integration-change); }

@@ -1,7 +1,7 @@
 # Simple launch surface (`./pfy`)
 
 **Goal G8 · ADR-0012**  
-**Feel:** install once → start inference → pick a harness (Ollama then Hermes/OpenCode style).
+**Feel:** install once → start inference → product stage → attach active harness (default grok).
 
 ## New machine (happy path)
 
@@ -10,17 +10,20 @@ git clone https://github.com/themark-net/pfy-mentat.git
 cd pfy-mentat
 ./pfy setup                 # or: ./pfy setup local-only
 ./pfy status                # ready | partial | stub
-./pfy start                 # default harness = grok
+./pfy start                 # inference → env-stage → active harness (default grok)
+./pfy up                    # same operator bring-up as start
 # optional:
 ./pfy harness use opencode
-./pfy start
+./pfy start                 # uses active harness if live-ready
+./pfy start grok            # named harness after inference/stage
+./pfy models                # inspect-only (tag list is not success)
 ./pfy models pull deepseek-coder:6.7b
-./pfy stage                 # green checks
+./pfy stage                 # re-run product stage
 ./pfy eval                  # catalog self-mod gates
 ./pfy ship                  # product verify
 ```
 
-Install Grok CLI once if missing: `curl -fsSL https://x.ai/cli/install.sh | bash` then re-run `./pfy setup`.  
+Install Grok CLI once if missing: `curl -fsSL https://x.ai/cli/install.sh | bash` then `grok login` (missing/unauth grok does not abort the env; another ready adapter such as opencode is attached if present).  
 Install Ollama for local models: https://ollama.com
 
 ## Map to old Make levers
@@ -28,6 +31,7 @@ Install Ollama for local models: https://ollama.com
 | Simple | Make / script |
 |--------|----------------|
 | `pfy setup` | `make env-init` + `bootstrap/grok-cli/install.sh` |
+| `pfy start` / `pfy up` | inference + `scripts/env-stage.sh` + active harness |
 | `pfy stage` | `make env-stage` |
 | `pfy ship` | `make product-ship` |
 | `pfy eval` | `make eval-integration-change` |
