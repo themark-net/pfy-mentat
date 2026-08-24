@@ -322,7 +322,7 @@ ensure_inference() {
         ;;
       llama-swap)
         echo "STUB: llama-swap HTTP not up. One-liner:"
-        echo "  llama-swap"
+          echo "  llama-swap"
         ;;
       llama-server|llama.cpp)
         echo "STUB: llama-server HTTP not up. One-liner:"
@@ -382,8 +382,11 @@ grok_unauth() {
   local bin="${1:-}"
   [[ -n "${XAI_API_KEY:-}" ]] && return 1
   [[ -z "$bin" ]] && return 0
-  local out
-  out="$("$bin" whoami 2>&1 || true)"
+  local out rc=0
+  out="$("$bin" whoami 2>&1)" || rc=$?
+  # failed or empty whoami without a key is unauth (not "ready")
+  [[ "$rc" -ne 0 ]] && return 0
+  [[ -z "${out// }" ]] && return 0
   if printf '%s' "$out" | grep -qiE 'not (logged|authenticated)|please (log in|login)|grok login|unauthori[sz]ed'; then
     return 0
   fi
@@ -499,7 +502,20 @@ attach_operator_harness() {
   esac
 
   if [[ -n "$preferred" ]]; then
-    if harness_attach_ready "$preferred"; then
+    if [[ "$preferred" == "grok" ]]; then
+      local gbin
+      gbin="$(grok_bin || true)"
+      if [[ -n "$gbin" ]] && ! grok_unauth "$gbin"; then
+        exec_harness grok
+      else
+        if [[ -z "$gbin" ]]; then
+          print_grok_oneliner missing
+        else
+          print_grok_oneliner unauth
+        fi
+        echo "note: preferred harness 'grok' not attached — trying next ready adapter"
+      fi
+    elif harness_attach_ready "$preferred"; then
       exec_harness "$preferred"
     else
       echo "note: preferred harness '$preferred' not live-ready — trying next ready adapter"
