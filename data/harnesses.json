@@ -184,9 +184,9 @@
       "id": "exo",
       "name": "Exo (exoharness)",
       "role": "harness",
-      "status": "stub",
-      "summary": "RSI self-mod harness; optional lab",
-      "setup": "STUB",
+      "status": "partial",
+      "summary": "Optional lab: exec exo.sh if present; not default harness.",
+      "setup": "curl -fsSL https://raw.githubusercontent.com/exoharness/exo/main/setup.sh -o setup.sh; bash setup.sh (git+Docker). Then ./exo.sh. See bootstrap/exo/README.md and docs/ops/exo-self-mod-patterns.md.",
       "detect": [
         "exo.sh"
       ],
