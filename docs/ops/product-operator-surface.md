@@ -1,7 +1,7 @@
 # Product operator surface (end-user simplicity)
 
-**Status:** Implemented 2026-07-30 (T-0090 MVP)  
-**Related:** ADR-0011 · [local-cloud-split.md](local-cloud-split.md) · TODO **T-0090**
+**Status:** Implemented 2026-07-30 (T-0090 MVP) · local runtime pluggable 2026-08-24 (ADR-0014 / T-0110)  
+**Related:** ADR-0011 · ADR-0014 · [local-cloud-split.md](local-cloud-split.md) · TODO **T-0090** (surface unchanged)
 
 ## Two audiences
 
@@ -20,7 +20,7 @@ MVP iteration may expose many targets. **Ship shape** collapses to the product l
 
 ```text
 1. onboard   — attach this stack to a project (process + skills + profile)
-2. stage     — bring up local env (Ollama path + optional cage) green
+2. stage     — bring up local env (pluggable local runtime + optional cage) green
 3. ship      — verify + push product code (not platform code)
 ```
 
@@ -29,7 +29,7 @@ Suggested final names (implementation: T-0090):
 | Lever | Make (eventual) | Does |
 |-------|-----------------|------|
 | onboard | `make project-onboard DIR=…` | `scripts/product-onboard.sh` — project-process init + `.env` example |
-| stage | `make env-stage` | `scripts/env-stage.sh` — env-check + eval-structural; Ollama soft |
+| stage | `make env-stage` | `scripts/env-stage.sh` — env-check + eval-structural; local runtime soft |
 | ship | `make product-ship` | structural + golden; push if `PRODUCT_REMOTE` set |
 
 Everything else is **platform development** (`make help` full list) and may stay advanced/docs-only.
@@ -37,7 +37,7 @@ Everything else is **platform development** (`make help` full list) and may stay
 ## Local bulk vs cloud monitor (target behavior)
 
 ```text
-Worker (local Ollama coder, e.g. deepseek-coder:6.7b)
+Worker (local OpenAI-compat coder — llama-swap / llama-server / Shimmy / Ollama)
   → implements, runs tests, cheap loops
 Monitor (Grok subscription / strong cloud)
   → sets DoD/exit card, reviews, escalates when worker stuck
@@ -45,14 +45,16 @@ Monitor (Grok subscription / strong cloud)
 
 **Today (honest):**
 
-| Path | Uses local `deepseek-coder:6.7b`? |
-|------|-----------------------------------|
+| Path | Uses local coder (e.g. `deepseek-coder:6.7b`)? |
+|------|-----------------------------------------------|
 | `make eval-suite` / `eval-auto` | **Yes** (when selected as gate) |
-| `make smoke-litellm-ollama` | Yes (smoke model, often `:latest`) |
-| Grok Build interactive agent | **No** — Grok cloud/subscription |
-| OpenCode pointed at Ollama | **Yes** if configured (T-0080) |
+| `make smoke-litellm-ollama` | Yes (Ollama adapter smoke) |
+| Grok Build interactive agent | **No** — Grok cloud/subscription (**monitor**) |
+| OpenCode pointed at `LOCAL_OPENAI_BASE_URL` | **Yes** if configured (T-0080) |
 | Dual session worker/monitor | **`make worker-stage`** + `/worker-monitor` (T-0085) — not a single daemon |
 | Voice → same agents (p1) | **`make smoke-voice-stt`** + `examples/voice-stt-edge/` (T-0091) — STT edge, not mobile-voice-stuck |
+
+Pick runtime: `./scripts/detect-local-runtime.sh` / `./pfy status` (ADR-0014). No new product CLI.
 
 ## Redeployable workflow (unchanged north star)
 
@@ -74,7 +76,9 @@ Audit checkpoint: count public Make targets aimed at product users; goal **≤ 5
 
 ## Related TODOs
 
-- **T-0085** — Worker/monitor split: OpenCode+Ollama worker, Grok monitor recipe  
+- **T-0110** — Pluggable local runtime (doing/partial) · [#76](https://github.com/themark-net/pfy-mentat/issues/76)  
+- **T-0101** — Ollama adapter complete (kept)  
+- **T-0085** — Worker/monitor split: local worker, Grok monitor recipe  
 - **T-0080** — OpenCode host smoke (required for real offload)  
 - **T-0090** — Collapse product surface; audit Make levers  
 
