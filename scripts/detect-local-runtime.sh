@@ -37,7 +37,11 @@ if [[ -n "${PFY_LOCAL_RUNTIME:-}" ]]; then
     llama-swap) bases=(http://127.0.0.1:9292) ;;
     llama-server|llama.cpp) bases=(http://127.0.0.1:8080) ;;
     shimmy) bases=(http://127.0.0.1:11435) ;;
-    ollama) bases=(http://127.0.0.1:11434) ;;
+    ollama)
+      if probe "http://127.0.0.1:11434"; then emit "ollama" "http://127.0.0.1:11434" "ready"; exit 0; fi
+      if have ollama; then emit "ollama" "http://127.0.0.1:11434" "partial"; else emit "ollama" "" "missing"; fi
+      exit 0
+      ;;
     *) bases=(http://127.0.0.1:1919) ;;
   esac
   for b in "${bases[@]}"; do
