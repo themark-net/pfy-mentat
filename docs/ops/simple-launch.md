@@ -54,7 +54,9 @@ Registry: [`data/harnesses.json`](../../data/harnesses.json).
 
 ## Stubs (honest)
 
-`exo`, `continue`, `agent-cage` stay stubbed.
+`exo`, `agent-cage` stay stubbed.
+
+Continue is a **config recipe** at `bootstrap/continue/` (`LOCAL_OPENAI_BASE_URL`, not Ollama-only). `./pfy start continue` stays STUB exit 2.
 
 `gemini` is a live adapter when `gemini` or `gemini-cli` is on PATH (`./pfy start gemini` execs it; missing: STUB + issue #59 + official install one-liner, exit 2). Login/credentials/2FA are owner-only.
 

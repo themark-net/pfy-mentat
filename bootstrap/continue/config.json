@@ -1,0 +1,11 @@
+{
+  "models": [
+    {
+      "title": "Local OpenAI-compat (ADR-0014)",
+      "provider": "openai",
+      "model": "local-coder",
+      "apiBase": "http://127.0.0.1:1919/v1",
+      "apiKey": "local"
+    }
+  ]
+}
