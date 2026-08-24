@@ -113,7 +113,7 @@
         "opencode",
         "opencode-cli"
       ],
-      "github": "https://github.com/FlashML-org/FreeToken",
+      "github": null,
       "catalog": null,
       "issue_stub": "OpenCode host adapter",
       "github_issue": 55
