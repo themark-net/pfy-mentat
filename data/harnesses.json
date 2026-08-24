@@ -1,5 +1,229 @@
 {
   "version": "1.2",
   "last_updated": "2026-08-24",
-  "default_harness": "grok"
+  "philosophy": "One launcher (./pfy). Inference starts first as a pluggable OpenAI-compatible local endpoint (ADR-0014). Preferred: FreeToken (ft serve :1919), then llama-swap/llama-server, Ollama adapter. Harnesses attach.",
+  "default_harness": "grok",
+  "inference_default": "local-openai",
+  "inference_detect_order": [
+    "freetoken",
+    "llama-swap",
+    "llama.cpp",
+    "ollama",
+    "shimmy"
+  ],
+  "harnesses": [
+    {
+      "id": "freetoken",
+      "name": "FreeToken",
+      "role": "inference",
+      "status": "partial",
+      "summary": "Edge-native MoE serving (FlashML); OpenAI+Anthropic on :1919; preferred local spine",
+      "setup": "uv pip install \"freetoken[accel]\"; ft serve --model <hf-or-path>. Override PFY_LOCAL_RUNTIME=freetoken",
+      "detect": [
+        "ft",
+        "freetoken"
+      ],
+      "github": "https://github.com/FlashML-org/FreeToken",
+      "catalog": "FreeToken",
+      "issue_stub": "Detect ft on :1919; LOCAL_OPENAI_BASE_URL for OpenCode/LiteLLM",
+      "github_issue": 76
+    },
+    {
+      "id": "llama-swap",
+      "name": "llama-swap",
+      "role": "inference",
+      "status": "partial",
+      "summary": "Hot-swap + TTL in front of llama.cpp llama-server; GGUF tok/s path",
+      "setup": "install llama-swap + llama-server; serve OpenAI /v1 (often :8080)",
+      "detect": [
+        "llama-swap"
+      ],
+      "github": "https://github.com/mostlygeek/llama-swap",
+      "catalog": "llama-swap",
+      "issue_stub": "Complete llama-swap adapter",
+      "github_issue": 76
+    },
+    {
+      "id": "llama.cpp",
+      "name": "llama.cpp (llama-server)",
+      "role": "inference",
+      "status": "partial",
+      "summary": "llama.cpp OpenAI-compat server; GGUF without hot-swap",
+      "setup": "install llama-server; listen :8080 /v1",
+      "detect": [
+        "llama-server"
+      ],
+      "github": "https://github.com/ggerganov/llama.cpp",
+      "catalog": "llama.cpp (server mode)",
+      "issue_stub": "llama-server health; do not vendor sources",
+      "github_issue": 76
+    },
+    {
+      "id": "ollama",
+      "name": "Ollama",
+      "role": "inference",
+      "status": "partial",
+      "summary": "Local model server; first-class adapter (T-0101), not the only runtime",
+      "setup": "install ollama; ollama serve; pull models via pfy models pull",
+      "detect": [
+        "ollama"
+      ],
+      "github": "https://github.com/ollama/ollama",
+      "catalog": "Ollama",
+      "issue_stub": "Complete Ollama adapter",
+      "github_issue": 54
+    },
+    {
+      "id": "shimmy",
+      "name": "Shimmy",
+      "role": "inference",
+      "status": "stub",
+      "summary": "Tiny Rust OpenAI-compat server; optional, not the X engine",
+      "setup": "STUB \u2014 optional detect only",
+      "detect": [
+        "shimmy"
+      ],
+      "github": "https://github.com/Michael-A-Kuykendall/shimmy",
+      "catalog": "Shimmy",
+      "issue_stub": "Keep optional; do not prefer over FreeToken",
+      "github_issue": 76
+    },
+    {
+      "id": "grok",
+      "name": "Grok Build / CLI",
+      "role": "harness",
+      "status": "ready",
+      "summary": "Primary coding agent (subscription); skills via bootstrap/grok-cli",
+      "setup": "./bootstrap/grok-cli/install.sh; grok login",
+      "detect": [
+        "grok"
+      ],
+      "github": "https://x.ai/cli",
+      "catalog": "Grok CLI bootstrap",
+      "issue_stub": null
+    },
+    {
+      "id": "opencode",
+      "name": "OpenCode",
+      "role": "harness",
+      "status": "partial",
+      "summary": "Local+cloud worker surface; skills SoT shared with Grok",
+      "setup": "install opencode; point skills at bootstrap/grok-cli/skills; LOCAL_OPENAI_BASE_URL",
+      "detect": [
+        "opencode",
+        "opencode-cli"
+      ],
+      "github": null,
+      "catalog": null,
+      "issue_stub": "OpenCode host adapter",
+      "github_issue": 55
+    },
+    {
+      "id": "hermes",
+      "name": "Hermes Agent",
+      "role": "harness",
+      "status": "partial",
+      "summary": "Runtime adapter: exec hermes/hermes-agent; /hermes-feedback skill stays process-only",
+      "setup": "curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash",
+      "detect": [
+        "hermes",
+        "hermes-agent"
+      ],
+      "github": "https://github.com/NousResearch/hermes-agent",
+      "catalog": "Hermes Agent (feedback loops)",
+      "issue_stub": "Hermes runtime adapter",
+      "github_issue": 56
+    },
+    {
+      "id": "claude-code",
+      "name": "Claude Code",
+      "role": "harness",
+      "status": "partial",
+      "summary": "Runtime adapter: exec claude; optional skills-external is docs-only",
+      "setup": "curl -fsSL https://claude.ai/install.sh | bash; claude (login owner-only)",
+      "detect": [
+        "claude"
+      ],
+      "github": "https://docs.anthropic.com/en/docs/claude-code",
+      "catalog": "claude-code-unified-agents",
+      "issue_stub": "Claude Code runtime adapter",
+      "github_issue": 57
+    },
+    {
+      "id": "codex",
+      "name": "OpenAI Codex CLI",
+      "role": "harness",
+      "status": "partial",
+      "summary": "Runtime adapter: exec codex; OpenAI Codex CLI",
+      "setup": "curl -fsSL https://chatgpt.com/codex/install.sh | sh; codex (login owner-only)",
+      "detect": [
+        "codex"
+      ],
+      "github": "https://github.com/openai/codex",
+      "catalog": null,
+      "issue_stub": "Codex runtime adapter",
+      "github_issue": 58
+    },
+    {
+      "id": "gemini",
+      "name": "Gemini CLI / Google Antigravity family",
+      "role": "harness",
+      "status": "partial",
+      "summary": "Runtime adapter: exec gemini/gemini-cli",
+      "setup": "npm install -g @google/gemini-cli; gemini (login owner-only)",
+      "detect": [
+        "gemini",
+        "gemini-cli"
+      ],
+      "github": "https://github.com/google-gemini/gemini-cli",
+      "catalog": null,
+      "issue_stub": "Gemini runtime adapter",
+      "github_issue": 59
+    },
+    {
+      "id": "exo",
+      "name": "Exo (exoharness)",
+      "role": "harness",
+      "status": "partial",
+      "summary": "Optional lab: exec exo.sh when present (not default; not Grok replacement)",
+      "setup": "curl -fsSL https://raw.githubusercontent.com/exoharness/exo/main/setup.sh -o setup.sh; bash setup.sh. git+Docker required. Day-to-day ./exo.sh. Pin https://github.com/exoharness/exo. Docker on PATH is not ready.",
+      "detect": [
+        "exo.sh"
+      ],
+      "github": "https://github.com/exoharness/exo",
+      "catalog": "Exo (exoharness)",
+      "issue_stub": "Optional Exo lab path",
+      "github_issue": 60
+    },
+    {
+      "id": "continue",
+      "name": "Continue.dev",
+      "role": "harness",
+      "status": "partial",
+      "summary": "IDE config recipe only (not a CLI harness). Point Continue at LOCAL_OPENAI_BASE_URL.",
+      "setup": "copy bootstrap/continue/config.json; set apiBase from LOCAL_OPENAI_BASE_URL (FreeToken :1919 first, Ollama last). Recipe: bootstrap/continue/README.md. ./pfy start continue stays STUB exit 2.",
+      "detect": [],
+      "github": "https://github.com/continuedev/continue",
+      "catalog": "Continue.dev",
+      "issue_stub": "Continue local-openai recipe",
+      "github_issue": 61
+    },
+    {
+      "id": "agent-cage",
+      "name": "agent-cage lab",
+      "role": "lab",
+      "status": "partial",
+      "summary": "Optional lab via pfy stage --lab / make cage-*",
+      "setup": "Personal lab only: ./pfy stage --lab runs make cage-doctor then cage-setup then cage-up-mcp. Missing Docker is honest skip, not product-ready. ./pfy start agent-cage stays STUB exit 2. Docker on PATH is not ready. Do not sell cage.",
+      "detect": [
+        "docker"
+      ],
+      "github": "https://github.com/pnnl/agent-cage",
+      "catalog": "agent-cage (PNNL)",
+      "issue_stub": "Fold cage into pfy stage --lab",
+      "github_issue": 62
+    }
+  ],
+  "epic_issue": 53,
+  "runtime_issue": 76
 }
