@@ -27,14 +27,17 @@ pfy — simple setup & launch for the pfy-mentat stack
 
   pfy setup [local-only|balanced|max-performance]
   pfy status
+  pfy up                  start detected local runtime if partial; print engine, URL, models
   pfy harness list|use <id>|show [id]
-  pfy start [harness]
+  pfy start [harness]     no harness: same as up; with name: up then launch harness
   pfy stage | eval | ship
-  pfy models pull <name>   (Ollama adapter only)
+  pfy models              list models from the live local endpoint
+  pfy models pull <name>  (Ollama adapter only)
   pfy help
 
 Inference detect: FreeToken (:1919) → llama-swap (:9292) → llama-server (:8080) → Ollama.
 Override: PFY_LOCAL_RUNTIME, LOCAL_OPENAI_BASE_URL.
+FreeToken model: PFY_FT_MODEL (then LOCAL_CODER_MODEL, FREETOKEN_MODEL).
 Detector is invoked with bash (no git +x required).
 U
 }
@@ -69,6 +72,102 @@ local_runtime() {
   else
     echo '{"engine":"none","status":"missing","base_url":""}'
   fi
+}
+
+rt_get() {
+  python3 -c "import json,sys; print(json.loads(sys.argv[1]).get(sys.argv[2],'') or '')" "$1" "$2"
+}
+
+ft_bin() {
+  if have ft; then echo ft
+  elif have freetoken; then echo freetoken
+  else echo ft
+  fi
+}
+
+ft_default_model() {
+  # Prefer PFY_FT_MODEL, then LOCAL_CODER_MODEL, then FREETOKEN_MODEL.
+  echo "${PFY_FT_MODEL:-${LOCAL_CODER_MODEL:-${FREETOKEN_MODEL:-}}}"
+}
+
+print_live_models() {
+  local base="${1:-}"
+  echo "models:"
+  if [[ -z "$base" ]]; then
+    echo "  (none — no base_url)"
+    return 0
+  fi
+  python3 - "$base" <<'PY'
+import json,sys,urllib.request
+base=sys.argv[1].rstrip("/")
+ids=[]
+seen=set()
+def add(x):
+    x=(x or "").strip()
+    if x and x not in seen:
+        seen.add(x); ids.append(x)
+for path in ("/v1/models", "/api/tags"):
+    try:
+        req=urllib.request.Request(base+path, method="GET")
+        with urllib.request.urlopen(req, timeout=2) as r:
+            d=json.loads(r.read().decode() or "{}")
+    except Exception:
+        continue
+    if not isinstance(d, dict):
+        continue
+    for m in d.get("data") or []:
+        if isinstance(m, dict):
+            add(m.get("id") or m.get("name"))
+        else:
+            add(str(m))
+    for m in d.get("models") or []:
+        if isinstance(m, dict):
+            add(m.get("name") or m.get("model") or m.get("id"))
+        else:
+            add(str(m))
+if ids:
+    for i in ids:
+        print("  "+i)
+else:
+    print("  (none — live endpoint not listing or not up)")
+PY
+}
+
+print_local_usage() {
+  local engine="${1:-}"
+  echo "usage:"
+  case "$engine" in
+    ollama)
+      if have ollama; then
+        out="$(ollama ps 2>/dev/null || true)"
+        if [[ -n "${out// }" ]]; then
+          echo "$out"
+        else
+          echo "  (empty)"
+        fi
+      else
+        echo "  (empty)"
+      fi
+      ;;
+    freetoken|ft)
+      local bin=""
+      have ft && bin=ft
+      [[ -z "$bin" ]] && have freetoken && bin=freetoken
+      if [[ -n "$bin" ]]; then
+        out="$("$bin" ctl 2>/dev/null || true)"
+        if [[ -n "${out// }" ]]; then
+          echo "$out"
+        else
+          echo "  (empty)"
+        fi
+      else
+        echo "  (empty)"
+      fi
+      ;;
+    *)
+      echo "  (empty — engine does not expose usage)"
+      ;;
+  esac
 }
 
 detect_status() {
@@ -116,6 +215,7 @@ cmd_status() {
   echo "active harness: $(cat "$ACTIVE_FILE" 2>/dev/null || json_field default)"
   rt=$(local_runtime)
   python3 -c "import json,sys; d=json.loads(sys.argv[1]); print('local runtime: engine=%s status=%s base_url=%s'%(d.get('engine'),d.get('status'),d.get('base_url') or '(none)'))" "$rt"
+  print_local_usage "$(rt_get "$rt" engine)"
   echo ""
   printf "%-14s %-14s %-8s %s\n" "ID" "STATUS" "ROLE" "NAME"
   printf "%-14s %-14s %-8s %s\n" "----" "------" "----" "----"
@@ -124,7 +224,7 @@ cmd_status() {
     printf "%-14s %-14s %-8s %s\n" "$id" "$live" "$role" "$name"
   done
   echo ""
-  echo "next: pfy setup   |   pfy start   |   pfy harness list"
+  echo "next: pfy setup   |   pfy up   |   pfy start   |   pfy harness list"
   echo "override: PFY_LOCAL_RUNTIME=freetoken|llama-swap|llama-server|ollama"
 }
 
@@ -168,34 +268,91 @@ cmd_harness_use() {
   echo "live status: $(detect_status "$id")"
 }
 
+cmd_up() {
+  local rt engine st base model bin
+  echo "==> pfy up"
+  rt=$(local_runtime)
+  engine=$(rt_get "$rt" engine)
+  st=$(rt_get "$rt" status)
+  base=$(rt_get "$rt" base_url)
+  echo "detected: engine=$engine status=$st base_url=${base:-(none)}"
+
+  if [[ "$st" == "ready" ]]; then
+    echo "inference already up"
+  elif [[ "$st" == "missing" || "$engine" == "none" || -z "$engine" ]]; then
+    echo "note: no local runtime ready — install FreeToken, llama-swap, llama-server, or ollama (#76)"
+  else
+    # partial: start if we have a real command; otherwise honest one-liner stub
+    case "$engine" in
+      ollama)
+        if have ollama; then
+          if ! curl -sf --max-time 1 http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
+            echo "starting Ollama serve in background…"
+            (ollama serve >>"$STATE_DIR/ollama.log" 2>&1 &) || true
+            sleep 1
+          fi
+        else
+          echo "STUB: ollama not on PATH. One-liner:"
+          echo "  ollama serve"
+        fi
+        ;;
+      freetoken|ft)
+        model="$(ft_default_model)"
+        bin="$(ft_bin)"
+        if [[ -n "$model" ]] && have "$bin"; then
+          echo "starting FreeToken in background: $bin serve --model $model"
+          ("$bin" serve --model "$model" >>"$STATE_DIR/freetoken.log" 2>&1 &) || true
+          sleep 1
+        else
+          echo "STUB: FreeToken not serving. One-liner:"
+          echo "  ft serve --model \$PFY_FT_MODEL"
+          echo "  (set PFY_FT_MODEL, or LOCAL_CODER_MODEL / FREETOKEN_MODEL)"
+        fi
+        ;;
+      llama-swap)
+        echo "STUB: llama-swap HTTP not up. One-liner:"
+        echo "  llama-swap"
+        ;;
+      llama-server|llama.cpp)
+        echo "STUB: llama-server HTTP not up. One-liner:"
+        echo "  llama-server"
+        ;;
+      shimmy)
+        echo "STUB: shimmy HTTP not up. One-liner:"
+        echo "  shimmy"
+        ;;
+      *)
+        echo "note: no local runtime ready — install FreeToken, llama-swap, llama-server, or ollama (#76)"
+        ;;
+    esac
+  fi
+
+  rt=$(local_runtime)
+  engine=$(rt_get "$rt" engine)
+  st=$(rt_get "$rt" status)
+  base=$(rt_get "$rt" base_url)
+  export LOCAL_OPENAI_BASE_URL="${LOCAL_OPENAI_BASE_URL:-$base}"
+  echo "engine: $engine"
+  echo "status: $st"
+  echo "base_url: ${LOCAL_OPENAI_BASE_URL:-${base:-(none)}}"
+  print_live_models "${LOCAL_OPENAI_BASE_URL:-$base}"
+}
+
 cmd_start() {
-  local id="${1:-$(cat "$ACTIVE_FILE" 2>/dev/null || json_field default)}"
+  local id="${1:-}"
+  if [[ -z "$id" ]]; then
+    cmd_up
+    return 0
+  fi
+  cmd_up
   echo "==> start harness: $id"
   rt=$(local_runtime)
   python3 -c "import json,sys; print('local runtime:', json.loads(sys.argv[1]))" "$rt"
-  engine=$(python3 -c "import json,sys; print(json.loads(sys.argv[1]).get('engine',''))" "$rt")
-  st=$(python3 -c "import json,sys; print(json.loads(sys.argv[1]).get('status',''))" "$rt")
-  base=$(python3 -c "import json,sys; print(json.loads(sys.argv[1]).get('base_url',''))" "$rt")
+  local engine st base
+  engine=$(rt_get "$rt" engine)
+  st=$(rt_get "$rt" status)
+  base=$(rt_get "$rt" base_url)
   export LOCAL_OPENAI_BASE_URL="${LOCAL_OPENAI_BASE_URL:-$base}"
-
-  if [[ "$st" != "ready" ]]; then
-    if [[ "$engine" == "ollama" ]] && have ollama; then
-      if ! curl -sf --max-time 1 http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
-        echo "starting Ollama serve in background…"
-        (ollama serve >>"$STATE_DIR/ollama.log" 2>&1 &) || true
-        sleep 1
-        export LOCAL_OPENAI_BASE_URL="${LOCAL_OPENAI_BASE_URL:-http://127.0.0.1:11434/v1}"
-      fi
-    elif [[ "$engine" == "freetoken" ]]; then
-      echo "STUB: FreeToken not serving. ft serve --model <id>  (see #76)"
-    elif [[ "$engine" == "llama-swap" || "$engine" == "llama-server" || "$engine" == "llama.cpp" ]]; then
-      echo "STUB: $engine HTTP not up. See #76."
-    else
-      echo "note: no local runtime ready — install FreeToken, llama-swap, llama-server, or ollama (#76)"
-    fi
-  else
-    echo "inference up: $engine at ${LOCAL_OPENAI_BASE_URL:-$base}"
-  fi
 
   case "$id" in
     grok)
@@ -233,6 +390,17 @@ cmd_models_pull() {
   ollama pull "$m"
 }
 
+cmd_models_list() {
+  local rt engine base
+  rt=$(local_runtime)
+  engine=$(rt_get "$rt" engine)
+  base=$(rt_get "$rt" base_url)
+  echo "engine: $engine"
+  echo "base_url: ${base:-(none)}"
+  print_live_models "$base"
+  print_local_usage "$engine"
+}
+
 main() {
   local cmd="${1:-help}"
   shift || true
@@ -240,6 +408,7 @@ main() {
     help|-h|--help) usage ;;
     setup) cmd_setup "${1:-balanced}" ;;
     status) cmd_status ;;
+    up) cmd_up ;;
     harness)
       local sub="${1:-list}"; shift || true
       case "$sub" in
@@ -254,8 +423,12 @@ main() {
     eval) cmd_eval ;;
     ship) cmd_ship ;;
     models)
-      local sub="${1:-}"; shift || true
-      case "$sub" in pull) cmd_models_pull "$@" ;; *) die "models subcommands: pull" ;; esac
+      local sub="${1:-list}"; shift || true
+      case "$sub" in
+        list|"") cmd_models_list ;;
+        pull) cmd_models_pull "$@" ;;
+        *) die "models subcommands: list|pull" ;;
+      esac
       ;;
     *) usage; die "unknown command: $cmd" ;;
   esac
