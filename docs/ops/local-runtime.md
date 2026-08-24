@@ -2,11 +2,11 @@
 
 **ADR:** [0014](../adr/0014-pluggable-local-inference-spine.md) · **Issue:** [#76](https://github.com/themark-net/pfy-mentat/issues/76)
 
-Product door is still `./pfy setup && ./pfy status && ./pfy start`.
+Owner bar: `./pfy up` then `./pfy models`. Product door is still `./pfy setup && ./pfy status && ./pfy start`.
 
 ## Preferred: FreeToken
 
-[FreeToken](https://github.com/FlashML-org/FreeToken) (`uv pip install "freetoken[accel]"`, then `ft serve --model <hf-or-path>`).
+[FreeToken](https://github.com/FlashML-org/FreeToken) (`uv pip install "freetoken[accel]"`, then `ft serve --model <hf-or-path>`; `./pfy up` uses **`PFY_FT_MODEL`**).
 OpenAI + Anthropic APIs on **:1919**. Desktop: [flashml.ai](https://www.flashml.ai/).
 
 ## Fallback order

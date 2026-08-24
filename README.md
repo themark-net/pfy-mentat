@@ -8,6 +8,17 @@ The system (the PFY) is sent out to discover candidates, apply strict local-firs
 
 Repository: https://github.com/themark-net/pfy-mentat
 
+## Simple path
+
+One command starts the detected local runtime if it is only partial, then list what it is serving:
+
+```bash
+./pfy up        # start FreeToken / Ollama / … if partial; print engine, base_url, models
+./pfy models    # live GET /v1/models (and Ollama /api/tags); usage if the engine exposes it
+```
+
+`./pfy start` with no harness named does the same as `./pfy up`. FreeToken model env: **`PFY_FT_MODEL`** (then `LOCAL_CODER_MODEL` or `FREETOKEN_MODEL`).
+
 ## What it is
 
 - A living, gate-checked catalog of local LLM dev tools, frameworks, patterns, and methods.
@@ -105,7 +116,7 @@ One-shot design: [docs/ops/one-shot-workflow.md](docs/ops/one-shot-workflow.md) 
 
 ## Current status (v0.4 → G8 launch)
 
-- **`./pfy`** simple surface (ADR-0012): setup/status/start + harness registry with stubs
+- **`./pfy`** simple surface (ADR-0012): `up` / `models` / setup/status/start + harness registry with stubs
 - Catalog + eval pipeline remain first-class (`./pfy eval`, structural/golden)
 
 
@@ -140,15 +151,18 @@ One launcher. Inference first, then any harness (Ollama → agent feel):
 git clone https://github.com/themark-net/pfy-mentat.git
 cd pfy-mentat
 ./pfy setup              # env + Grok skills if CLI present
-./pfy status             # ready | partial | stub
-./pfy start              # default: Grok (after: grok login)
+./pfy up                 # start detected local runtime if partial; print engine, URL, models
+./pfy models             # list live local models (+ usage if exposed)
+./pfy start              # no harness: same as up; or ./pfy start grok after grok login
 ```
 
 | Command | Purpose |
 |---------|---------|
+| `./pfy up` | Start detected local runtime if partial (Ollama `serve`; FreeToken `ft serve --model $PFY_FT_MODEL`) |
+| `./pfy models` | List models from the live endpoint (`GET /v1/models`, Ollama `/api/tags`) |
+| `./pfy models pull deepseek-coder:6.7b` | Ollama pull (adapter subcommand) |
 | `./pfy harness list` | Grok, OpenCode, Hermes, Claude Code, Codex, Gemini, Exo, … |
 | `./pfy harness use opencode` | Switch active harness (stubs print next steps) |
-| `./pfy models pull deepseek-coder:6.7b` | Ollama pull |
 | `./pfy stage` / `./pfy eval` / `./pfy ship` | Green checks + catalog gates + product verify |
 
 Design: **G8** · [ADR-0012](docs/adr/0012-simple-harness-agnostic-launch.md) · [simple-launch.md](docs/ops/simple-launch.md).  
@@ -293,5 +307,3 @@ MIT for the catalog and documentation in this repository. Individual tools carry
 ---
 
 *v0.4 — Phase 0 catalog sync, agent-cage harness, `/catalog-docs` skill, deploy runbook. Process backbone from v0.3 (DESIGN/ADR/TODO/OQ). Vision: receipts over vibes; beyond “it builds.”*
-
-test edit from Grok Voice
