@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 PFY = ROOT / "scripts" / "pfy"
@@ -14,8 +14,8 @@ DETECT = ROOT / "scripts" / "detect-local-runtime.sh"
 REG = ROOT / "data" / "harnesses.json"
 STATE = Path(os.environ.get("PFY_STATE_DIR", str(Path.home() / ".pfy-mentat")))
 HOST = os.environ.get("PFY_BOARD_HOST", "127.0.0.1")
-PORT = int(os.environ.get("PFY_BOARD_PORT", "3847"))
-REFRESH_MS = int(os.environ.get("PFY_BOARD_REFRESH_MS", "4000"))
+PORT = int(os.environ.get("PFY_BOARD_PORT", "8765"))
+REFRESH_MS = int(os.environ.get("PFY_BOARD_REFRESH_MS", "2000"))
 DETECT_ORDER = [
     ("freetoken", "FreeToken", ":1919"),
     ("llama-swap", "llama-swap", ":9292"),
@@ -346,7 +346,7 @@ def html_page():
         "document.getElementById('chips').innerHTML=(s.chips||[]).map(c=>{"
         "const issue=c.issue_url?'<a href=\"'+c.issue_url+'\">issue</a>':'';"
         "const copy='<code class=copy>'+(c.startable?('./pfy start '+c.id):c.one_liner)+'</code>';"
-        "const btn=c.startable?'<button data-start=\"'+c.id+'\">start</button>':'<button disabled>start disabled</button>';"
+        "const btn='<button disabled title=not-a-supervisor>start via CLI</button>';"
         "return '<div class=chip><b>'+c.id+'</b> <span class=\"live '+cls(c.live)+'\">'+c.live+'</span><div class=muted>'+c.role+' · '+c.name+' '+issue+'</div>'+copy+btn+'</div>';"
         "}).join('');"
         "document.getElementById('now').innerHTML='<h2>Now</h2>attached <b>'+s.active+'</b><br>last verb <b>'+(s.last_verb.verb||'(none)')+'</b> <span class=muted>'+(s.last_verb.when||'')+'</span><br>state <b>'+s.now+'</b> (blocked or running)<br><span class=muted>ps: '+(((s.processes||[]).map(p=>p.id+'#'+p.pid).join(', '))||'(none)')+'</span>';"
@@ -357,7 +357,6 @@ def html_page():
         "else {const rows=(s.org_messages||[]).map(m=>'<tr><td>'+m.from+' → '+m.to+'</td><td>'+(m.pr||m.issue||'')+'</td><td>'+(m.state||'')+'</td></tr>').join('');"
         "document.getElementById('agent').innerHTML='<h2>Agent lane</h2><p class=muted>CEO → PM → DevBot + Reviewer</p><table>'+rows+'</table>';}"
         "document.getElementById('notes').innerHTML='<p class=muted>No pfy daemon. Board polls detector JSON + status stdout + ps. Start execs harness. Continue is never detected-stub. Docker on PATH is cage detected-stub, not startable. Continue/agent-cage: STUB exit 2, copy <code>'+s.blocked_copy+'</code>.</p>';"
-        "document.querySelectorAll('button[data-start]').forEach(b=>{b.onclick=async()=>{await fetch('/start?id='+encodeURIComponent(b.getAttribute('data-start')),{method:'POST'});};});"
         "} tick(); setInterval(tick, REFRESH);</script></body></html>"
     )
 
@@ -379,16 +378,8 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, json.dumps(snapshot(), indent=2).encode("utf-8"), "application/json; charset=utf-8"); return
         self._send(404, b"not found\n", "text/plain; charset=utf-8")
     def do_POST(self):
-        parsed = urlparse(self.path)
-        if parsed.path != "/start":
-            self._send(404, b"not found\n", "text/plain; charset=utf-8"); return
-        hid = (parse_qs(parsed.query).get("id") or [""])[0].strip()
-        if hid in STUB_ALWAYS or not hid:
-            self._send(400, json.dumps({"ok": False, "stub": True, "exit": 2, "copy": GROK_USE, "id": hid or "(none)"}).encode(), "application/json; charset=utf-8"); return
-        if hid in NO_SPAWN:
-            self._send(400, json.dumps({"ok": False, "copy": one_liner(hid, {}), "note": "board does not spawn this engine"}).encode(), "application/json; charset=utf-8"); return
-        subprocess.Popen(["bash", str(PFY), "start", hid], cwd=str(ROOT), start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        self._send(200, json.dumps({"ok": True, "exec": f"./pfy start {hid}"}).encode(), "application/json; charset=utf-8")
+        # Board is a poller, not a supervisor. Start stays ./pfy start in the CLI.
+        self._send(405, b"POST disabled - board is not a supervisor\n", "text/plain; charset=utf-8")
 
 def main():
     if HOST not in ("127.0.0.1", "localhost"):
