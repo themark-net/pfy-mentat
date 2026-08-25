@@ -24,6 +24,7 @@ git clone https://github.com/themark-net/pfy-mentat.git
 cd pfy-mentat
 ./pfy setup                 # or: ./pfy setup local-only
 ./pfy status                # live column is authority, not json "status"
+./pfy board                 # local GUI; honesty chips == this live column
 ./pfy start                 # inference → env-stage → active harness (default grok)
 ./pfy up                    # same as start
 ./pfy models                # inspect-only (tag list is not success)
@@ -32,7 +33,9 @@ make eval-structural        # G0, no LLM, no cage required
 
 Bare `./pfy start` / `./pfy up` = local inference (if any) + `scripts/env-stage.sh` (honest skip) + attach active harness. `./pfy models` never means the stack is ready. `./pfy eval` is catalog self-mod (`make eval-integration-change`), not the consultant G0 lane.
 
-Public CLI must agree: README Simple path, this file, [simple-launch.md](simple-launch.md), and `scripts/pfy` `usage()`.
+Public CLI must agree: README Simple path, this file, [simple-launch.md](simple-launch.md), and `scripts/pfy` `usage()` (includes `pfy board`).
+
+There is **no** `pfy status --json` unless a later PR adds that real flag. The board parses `./pfy status` stdout. Do not invent JSON status. nimo is an Actions runner host with Ollama `:11434`, not a pfy profile.
 
 ## Real vs stub vs catalog-only
 
@@ -66,15 +69,21 @@ Detect order (ADR-0014, first live wins): **FreeToken :1919 → llama-swap :9292
 | llama.cpp | inference | Same as llama-server (port **:8080**) | Same as llama-server |
 | ollama | inference | Same (port **:11434**). **ready** only when API responds (`GET /api/tags` or `/v1/models`); binary + API down = **partial**; no binary = **missing**. json may stay `partial` | Detector-selected or `PFY_LOCAL_RUNTIME=ollama`: start/up wait for real health (`GET /api/tags` or `/v1/models`). Default model `PFY_OLLAMA_MODEL` then `LOCAL_CODER_MODEL`; pull/select if missing; honest skip if no name and none installed. Named start exit 2 unless API ready. `./pfy models pull <name>` still works |
 | shimmy | inference | Optional last; PATH-only is partial | HTTP down: STUB one-liner. Named start exit 2 unless ready |
-| grok | harness | **ready** if `grok` on PATH; else **missing**. Attach also needs `grok login` / `XAI_API_KEY` | `exec grok` when authenticated. Missing/unauth: print install/login, **do not abort the env**; try next ready adapter (opencode) |
+| grok | harness | **ready** if `grok` on PATH; else **missing** (PATH-only chip; no auth column). Attach also needs `grok login` / `XAI_API_KEY` | `exec grok` when authenticated (auth is attach-time only). Missing/unauth: print install/login, **do not abort the env**; try next ready adapter (opencode) |
 | opencode | harness | **ready** if `opencode` or `opencode-cli` on PATH; else **missing**. json may still say `partial` | Named start: `exec` binary, `OPENCODE_SKILLS` → `bootstrap/grok-cli/skills`, `OPENAI_BASE_URL` from `LOCAL_OPENAI_BASE_URL` when runtime ready. No binary: STUB + issue #55, exit 2 |
 | hermes | harness | **ready** if `hermes` or `hermes-agent` on PATH; else **missing**. json may stay `partial` | Named start: `exec` binary; `OPENAI_BASE_URL` from `LOCAL_OPENAI_BASE_URL` when runtime ready. No binary: STUB + issue #56 + `curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash`, exit 2. `/hermes-feedback` is process-only |
 | claude-code | harness | **ready** if `claude` on PATH; else **missing**. json may stay `partial` | Named start: `exec claude`; `OPENAI_BASE_URL` from `LOCAL_OPENAI_BASE_URL` when runtime ready. No binary: STUB + issue #57 + `curl -fsSL https://claude.ai/install.sh | bash`, exit 2. Login/credentials/2FA are owner-only |
 | codex | harness | **ready** if `codex` on PATH; else **missing**. json may stay `partial` | Named start: `exec codex`; `OPENAI_BASE_URL` from `LOCAL_OPENAI_BASE_URL` when runtime ready. No binary: STUB + issue #58 + `curl -fsSL https://chatgpt.com/codex/install.sh | sh`, exit 2. Login/credentials/2FA are owner-only |
 | gemini | harness | **ready** if `gemini` or `gemini-cli` on PATH; else **missing**. json may stay `partial` | Named start: `exec` binary; `OPENAI_BASE_URL` from `LOCAL_OPENAI_BASE_URL` when runtime ready. No binary: STUB + issue #59 + `npm install -g @google/gemini-cli`, exit 2. Login/credentials/2FA are owner-only |
 | exo | harness | **ready** if `$ROOT/exo.sh`, `$HOME/exo/exo.sh`, or `exo.sh` on PATH; else **missing**. json may stay `partial`. Docker on PATH is not ready. | Named start: `exec` that script; `OPENAI_BASE_URL` from `LOCAL_OPENAI_BASE_URL` when runtime ready. No invented Exo flags. Missing: STUB + issue #60 + official `setup.sh` one-liner, exit 2. Optional lab only — `./pfy harness use exo` does not change `default_harness` |
-| continue | harness | json may be partial; live status stays stub (no detect bins). Recipe at bootstrap/continue/. | Always STUB exit 2 + issue #61. Do not exec the IDE. Docker/binary is not ready. |
-| agent-cage | lab | live **stub** / **detected-stub** (Docker on PATH is **not** ready) | Always STUB exit 2 + issue #62. Lab is `./pfy stage --lab` / `make cage-*` (doctor → setup → up-mcp). Missing Docker is honest skip, not product-ready. Do not sell cage. |
+| continue | harness | json may be partial; live status is always **stub** (never detected-stub; no detect bins). Recipe at bootstrap/continue/. | Always STUB exit 2 + issue #61. Active continue: bare `./pfy start` is also STUB exit 2, **no** grok/opencode fallback; copy `pfy harness use grok`. Do not exec the IDE. |
+| agent-cage | lab | live **stub** / **detected-stub** (Docker on PATH = detected-stub, still **not** startable) | Always STUB exit 2 + issue #62; copy `pfy harness use grok`. Active agent-cage: bare start STUB exit 2, no fallback. Lab is `./pfy stage --lab` / `make cage-*` (doctor → setup → up-mcp). Missing Docker is honest skip, not product-ready. Do not sell cage. |
+
+## Operator board chips vs status
+
+`./pfy board` (`scripts/pfy-board.py`, `cmd_board`) is a local poller on `127.0.0.1`. No pfy daemon. Not a supervisor.
+
+DoD for consultants: **board chips == `./pfy status` live column** on (1) an Ollama-only host (empty `ollama ps` OK; Ollama is adapter not product) and (2) a host with no harness binary (start disabled, stub exit 2). Grok chip is PATH-only. Auth is attach-time only — no invented auth column. Grok usage is omitted (CLI does not expose it). `DEPLOY_PROFILE=local-only` never auto-calls cloud. Models drawer is inspect-only (tag list ≠ success). Ignore stale local-cloud-split.md ports.
 
 ## Eval without assuming cage
 
