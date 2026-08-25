@@ -241,28 +241,41 @@ def now_state(active, live, procs, verb):
     v = verb.get("verb") or ""
     return "blocked" if v.startswith("start") or v.startswith("up") else "idle"
 
-def env_stage_live(verb, usage):
+def rsf_inference(det):
+    st = (det.get("status") or "").strip().lower()
+    if st == "ready":
+        return "READY"
+    if st == "partial":
+        return "FAIL"
+    return "SKIP"
+
+def rsf_env_stage(verb, usage):
     blob = " ".join(usage).lower()
     v = (verb.get("verb") or "").strip()
+    if "fail" in blob or "error" in blob:
+        return "FAIL"
     if "honest skip" in blob or "skip: env-stage" in blob:
-        return "missing"
+        return "SKIP"
     if v.startswith(("start", "up", "stage")):
-        return "ready"
-    if v in ("", "(none)"):
-        return "idle"
-    return "idle"
+        return "READY"
+    return "SKIP"
+
+def rsf_attach(active, live_active):
+    if active in STUB_ALWAYS:
+        return "FAIL"
+    live = (live_active or "").lower()
+    if live == "ready":
+        return "READY"
+    if live in ("stub", "detected-stub"):
+        return "FAIL"
+    return "SKIP"
 
 def tape_steps(det, verb, usage, active, live_active):
-    inf = det.get("status") or "unknown"
-    if inf in ("", "none"):
-        inf = "unknown"
-    attach = "stub" if active in STUB_ALWAYS else (live_active or "unknown")
     return [
-        {"id": "inference", "label": "inference", "live": inf},
-        {"id": "env-stage", "label": "env-stage", "live": env_stage_live(verb, usage)},
-        {"id": "harness-attach", "label": "harness attach", "live": attach},
+        {"id": "inference", "label": "inference", "live": rsf_inference(det)},
+        {"id": "env-stage", "label": "env-stage", "live": rsf_env_stage(verb, usage)},
+        {"id": "harness-attach", "label": "harness attach", "live": rsf_attach(active, live_active)},
     ]
-
 def snapshot():
     reg = load_registry()
     harnesses = list(reg.get("harnesses") or [])
@@ -353,7 +366,7 @@ def html_page():
         ".cloud{background:#1a2740}"
         ".mid{background:#2a3344;writing-mode:vertical-rl;transform:rotate(180deg);display:flex;align-items:center;justify-content:center;font-size:11px}"
         ".chips{display:flex;flex-wrap:wrap;gap:8px}.chip{background:#18202c;border:1px solid #243041;border-radius:10px;padding:8px 10px;min-width:140px}"
-        ".ready{color:#3dd68c}.partial{color:#e6c15a}.stub{color:#e8875b}.detected-stub{color:#c984f0}.missing{color:#7d8796}.unknown{color:#7d8796}.idle{color:#6aa7d9}"
+        ".ready{color:#3dd68c}.partial{color:#e6c15a}.stub{color:#e8875b}.detected-stub{color:#c984f0}.missing{color:#7d8796}.unknown{color:#7d8796}.idle{color:#6aa7d9}.READY{color:#3dd68c}.SKIP{color:#7d8796}.FAIL{color:#e8875b}"
         ".copy{font-family:ui-monospace,monospace;font-size:12px;background:#111823;padding:4px 6px;border-radius:6px;display:block;margin-top:6px;user-select:all}"
         "button{background:#243041;color:#e8edf4;border:1px solid #243041;border-radius:8px;padding:6px 10px}button:disabled{opacity:.4}"
         ".muted{color:#8b97a8}.banner{background:#3a2a12;color:#f3d9a4}.live{font-weight:700;text-transform:uppercase;font-size:11px}"
@@ -391,8 +404,9 @@ def html_page():
         "const btn='<button disabled title=not-a-supervisor>start via CLI</button>';"
         "return '<div class=chip><b>'+c.id+'</b> <span class=\"live '+cls(c.live)+'\">'+c.live+'</span><div class=muted>'+c.role+' · '+c.name+' '+issue+'</div>'+copy+btn+'</div>';"
         "}).join('');"
-        "let nowHtml='<h2>Now</h2>attached <b>'+s.active+'</b><br>last verb <b>'+(s.last_verb.verb||'(none)')+'</b> <span class=muted>'+(s.last_verb.when||'')+'</span><br>state <b>'+s.now+'</b> (blocked or running)<br><span class=muted>ps: '+(((s.processes||[]).map(p=>p.id+'#'+p.pid).join(', '))||'(none)')+'</span>';"
-        "if(s.active_stub){nowHtml+='<br><code class=copy>'+s.blocked_copy+'</code> (bare start STUB, no fallback)';}"
+        "let nowHtml='<h2>Now</h2>';"
+        "if(s.active_stub){nowHtml+='<code class=copy>'+s.blocked_copy+'</code> (bare start STUB, no fallback)<br>';}"
+        "nowHtml+='attached <b>'+s.active+'</b><br>last verb <b>'+(s.last_verb.verb||'(none)')+'</b> <span class=muted>'+(s.last_verb.when||'')+'</span><br>state <b>'+s.now+'</b> (blocked or running)<br><span class=muted>ps: '+(((s.processes||[]).map(p=>p.id+'#'+p.pid).join(', '))||'(none)')+'</span>';"
         "document.getElementById('now').innerHTML=nowHtml;"
         "document.getElementById('order').innerHTML='<h2>Detect order</h2>'+(s.detect_order||[]).map(o=>'<div>'+(o.winner?'> ':'')+o.label+' '+o.port+' · <span class=\"live '+cls(o.live)+'\">'+o.live+'</span>'+(o.live==='partial'?' <code class=copy>'+o.one_liner+'</code>':'')+'</div>').join('');"
         "const tags=(s.models&&s.models.length)?s.models.map(m=>'<li>'+m+'</li>').join(''):'<li>(none — live endpoint not listing or not up)</li>';"
