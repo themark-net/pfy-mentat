@@ -11,8 +11,8 @@ Consultant map (real vs stub vs catalog): [consultant-eval.md](consultant-eval.m
 git clone https://github.com/themark-net/pfy-mentat.git
 cd pfy-mentat
 ./pfy setup                 # or: ./pfy setup local-only
-./pfy status                # live column is authority (ready | partial | stub | detected-stub | missing)
-./pfy board                 # local operator GUI; chips == status live column
+./pfy status                # ready | partial | stub
+./pfy board                 # local operator GUI; chips == live status column
 ./pfy start                 # inference → env-stage → active harness (default grok)
 ./pfy up                    # same operator bring-up as start
 # optional:
@@ -36,8 +36,8 @@ When the detector selects Ollama (or `PFY_LOCAL_RUNTIME=ollama`), `./pfy start` 
 | Simple | Make / script |
 |--------|----------------|
 | `pfy setup` | `make env-init` + `bootstrap/grok-cli/install.sh` |
+| `pfy board` | local GUI on 127.0.0.1 (polls detector JSON + `./pfy status` + process table; not a daemon) |
 | `pfy start` / `pfy up` | inference + `scripts/env-stage.sh` + active harness |
-| `pfy board` | local GUI on 127.0.0.1 — polls detector JSON + `./pfy status` stdout + process table (no pfy daemon) |
 | `pfy stage` | `make env-stage` |
 | `pfy stage --lab` | `make cage-doctor` then `cage-setup` then `cage-up-mcp` (missing Docker: honest skip) |
 | `pfy ship` | `make product-ship` |
@@ -52,20 +52,19 @@ When the detector selects Ollama (or `PFY_LOCAL_RUNTIME=ollama`), `./pfy start` 
 | **partial** | Installed or documented path incomplete |
 | **stub** | Slot reserved; `pfy start` prints setup + issue text |
 | **missing** | Not installed |
-| **detected-stub** | Binary found but adapter still stub (`agent-cage` + Docker on PATH). Continue is **never** detected-stub. |
-| **skip** | Honest skip (a stage piece missing); not a fake ready |
-
-Board chips on `./pfy board` **must equal** this live column. Ignore json `status`.
+| **detected-stub** | Binary found but adapter still stub |
 
 Registry: [`data/harnesses.json`](../../data/harnesses.json).
 
 ## Stubs (honest)
 
-`agent-cage` stays stubbed for start (`./pfy start agent-cage` is STUB + issue #62, exit 2, copy `pfy harness use grok`). Docker on PATH is **detected-stub**, still not startable. Active `agent-cage`: bare `./pfy start` is also STUB exit 2 with **no** grok/opencode fallback. Optional personal lab: `./pfy stage --lab` maps to `make cage-doctor`, `cage-setup`, `cage-up-mcp`. Missing Docker is honest skip, not product-ready. Do not sell cage.
+`agent-cage` stays stubbed for start (`./pfy start agent-cage` is STUB + issue #62, exit 2). Docker on PATH is not ready. Optional personal lab: `./pfy stage --lab` maps to `make cage-doctor`, `cage-setup`, `cage-up-mcp`. Missing Docker is honest skip, not product-ready. Do not sell cage.
 
 `exo` is an **optional lab** adapter when `exo.sh` is at `$ROOT/exo.sh`, `$HOME/exo/exo.sh`, or on PATH (`./pfy start exo` execs it; missing: STUB + issue #60 + official setup.sh one-liner, exit 2). Not the default harness. Not a Grok replacement. `./pfy harness use exo` does not change `default_harness` (stays grok). Do not vendor Exo. Personal lab-IT only.
 
-Continue is a **config recipe** at `bootstrap/continue/` (`LOCAL_OPENAI_BASE_URL`, not Ollama-only). Live status is always **stub** (never detected-stub). `./pfy start continue` stays STUB exit 2. Active continue: bare `./pfy start` is STUB exit 2, no fallback; copy `pfy harness use grok`.
+Continue is a **config recipe** at `bootstrap/continue/` (`LOCAL_OPENAI_BASE_URL`, not Ollama-only). `./pfy start continue` stays STUB exit 2. Continue is never detected-stub. If continue or agent-cage is the active harness, bare `./pfy start` is STUB exit 2 with no grok/opencode fallback; copy `pfy harness use grok`.
+
+`./pfy board` is a localhost operator GUI. Consultants should eval board chips against the `./pfy status` live column (same host). Grok chip is PATH-only. nimo is an Actions runner with Ollama, not a pfy profile.
 
 `gemini` is a live adapter when `gemini` or `gemini-cli` is on PATH (`./pfy start gemini` execs it; missing: STUB + issue #59 + official install one-liner, exit 2). Login/credentials/2FA are owner-only.
 
@@ -76,12 +75,6 @@ Continue is a **config recipe** at `bootstrap/continue/` (`LOCAL_OPENAI_BASE_URL
 `hermes` is a live adapter when `hermes` or `hermes-agent` is on PATH (`./pfy start hermes` execs it; missing: STUB + issue #56 + install one-liner, exit 2). `/hermes-feedback` stays process-only. `./pfy start <id>` prints `STUB harness: <id>`, the GitHub issue URL from `data/harnesses.json` when set, and **exits 2**. `./pfy status` / `harness list` show `stub` (or `detected-stub` if a binary is on PATH). A binary or Docker on PATH is **not** ready.
 
 Patterns may already exist as skills/docs; the unified installer path does not. Progress tracked on GitHub under label `harness-adapter`.
-
-## Operator board
-
-`./pfy board` serves a **local** GUI on `127.0.0.1` (default `:3847`, override `PFY_BOARD_PORT`). It is an independent poller of detector JSON, `./pfy status` stdout, and the process table. There is **no pfy daemon**. The board is not a supervisor; `./pfy start` still execs the harness.
-
-Honesty chips for every `data/harnesses.json` id match the live STATUS column. Consultants: eval board chips vs `./pfy status` on an Ollama-only host and on a host with no harness binary. nimo is an Actions runner with Ollama `:11434`, not a pfy profile. Empty `ollama ps` is OK. Grok chip is PATH-only (auth is attach-time; no invented auth column). `DEPLOY_PROFILE=local-only` never auto-calls cloud.
 
 ## Tracking
 
