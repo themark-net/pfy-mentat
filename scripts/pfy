@@ -1,1 +1,22 @@
-LOAD_LOCAL_SCRIPTS_PFY
+#!/usr/bin/env bash
+# pfy — simple operator surface for pfy-mentat
+# Inference first (FreeToken / llama-swap / llama-server / Ollama), harnesses attach.
+set -euo pipefail
+SCRIPT_PATH="${BASH_SOURCE[0]:-$0}"
+while [[ -L "$SCRIPT_PATH" ]]; do
+  link="$(readlink "$SCRIPT_PATH")"
+  if [[ "$link" != /* ]]; then
+    SCRIPT_PATH="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)/$link"
+  else
+    SCRIPT_PATH="$link"
+  fi
+done
+ROOT="$(cd "$(dirname "$SCRIPT_PATH")/.." && pwd)"
+REG="$ROOT/data/harnesses.json"
+DETECT="$ROOT/scripts/detect-local-runtime.sh"
+STATE_DIR="${PFY_STATE_DIR:-$HOME/.pfy-mentat}"
+ACTIVE_FILE="$STATE_DIR/active-harness"
+mkdir -p "$STATE_DIR"
+
+die() { echo "error: $*" >&2; exit 1; }
+have() { command -v "$1" >/dev/null 2>&1; }
