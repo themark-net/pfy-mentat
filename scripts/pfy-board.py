@@ -290,9 +290,9 @@ def snapshot():
         if not hid:
             continue
         parsed_row = parsed_chips.get(hid)
-        live = parsed_row.get("live") if parsed_row else "unknown"
+        live = parsed_row.get("live") if parsed_row else "missing"
         if not live:
-            live = "unknown"
+            live = "missing"
         issue = h.get("github_issue")
         rec = {
             "id": hid, "name": h.get("name") or hid, "role": h.get("role") or "",
@@ -307,7 +307,7 @@ def snapshot():
     procs = process_table()
     verb = last_verb()
     active = parsed.get("active") or active_harness(default)
-    live_active = next((c["live"] for c in chips if c["id"] == active), "unknown")
+    live_active = next((c["live"] for c in chips if c["id"] == active), "missing")
     host = socket.gethostname()
     is_nimo = "nimo" in host.lower()
     profile = deploy_profile()
@@ -326,13 +326,13 @@ def snapshot():
         modes.append("missing-harness-or-stub")
     order = []
     for hid, label, port in DETECT_ORDER:
-        live = next((c["live"] for c in chips if c["id"] == hid), "unknown")
+        live = next((c["live"] for c in chips if c["id"] == hid), "missing")
         order.append({"id": hid, "label": label, "port": port, "live": live, "winner": eng_norm == hid,
                       "one_liner": one_liner(hid, next((h for h in harnesses if h.get("id") == hid), {}))})
     winner = next((o for o in order if o["winner"]), None)
-    engine_live = (winner["live"] if winner else "") or det.get("status") or "unknown"
+    engine_live = (winner["live"] if winner else "") or det.get("status") or "missing"
     if engine_live in ("skip",):
-        engine_live = "unknown"
+        engine_live = "missing"
     msgs = org_messages()
     nimo_note = ""
     if is_nimo:
@@ -391,7 +391,7 @@ def html_page():
         "(s.honest.modes||[]).forEach(m=>b.push('honest state: '+m));"
         "document.getElementById('banners').innerHTML=b.map(x=>'<div>'+x+'</div>').join('');"
         "const d=s.detector||{}, r=s.status_runtime||{};"
-        "const engLive=s.engine_live||d.status||'unknown';"
+        "const engLive=s.engine_live||d.status||'missing';"
         "document.getElementById('localpane').className='pane local '+cls(engLive);"
         "document.getElementById('local').innerHTML='engine <b>'+(d.engine||r.engine||'none')+'</b> <span class=\"live '+cls(engLive)+'\">'+engLive+'</span><br>status <b>'+(d.status||r.status||'missing')+'</b><br>URL <code>'+(d.base_url||r.base_url||'(none)')+'</code><pre>'+((s.usage||[]).join('\\n')||'(empty)')+'</pre><p class=muted>Ollama is an adapter, not the product. Board does not spawn llama-swap / llama-server / shimmy.</p>';"
         "const g=(s.chips||[]).find(c=>c.id==='grok')||{};"
