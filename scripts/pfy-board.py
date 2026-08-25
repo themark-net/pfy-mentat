@@ -5,7 +5,6 @@ import json, os, socket, subprocess, sys, urllib.request
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any
 from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -39,6 +38,7 @@ ORG_CANDIDATES = (
     ROOT / "data" / "org-messages.jsonl", ROOT / "data" / "org-messages.json",
     ROOT / ".pfy" / "org-messages.jsonl", ROOT / ".pfy" / "org-messages.json",
 )
+ENGINE_ALIAS = {"ft": "freetoken", "llama-server": "llama.cpp", "freetoken": "freetoken"}
 
 def _run(argv, timeout=20.0):
     try:
@@ -241,6 +241,28 @@ def now_state(active, live, procs, verb):
     v = verb.get("verb") or ""
     return "blocked" if v.startswith("start") or v.startswith("up") else "idle"
 
+def env_stage_live(verb, usage):
+    blob = " ".join(usage).lower()
+    v = (verb.get("verb") or "").strip()
+    if "honest skip" in blob or "skip: env-stage" in blob:
+        return "missing"
+    if v.startswith(("start", "up", "stage")):
+        return "ready"
+    if v in ("", "(none)"):
+        return "idle"
+    return "idle"
+
+def tape_steps(det, verb, usage, active, live_active):
+    inf = det.get("status") or "unknown"
+    if inf in ("", "none"):
+        inf = "unknown"
+    attach = "stub" if active in STUB_ALWAYS else (live_active or "unknown")
+    return [
+        {"id": "inference", "label": "inference", "live": inf},
+        {"id": "env-stage", "label": "env-stage", "live": env_stage_live(verb, usage)},
+        {"id": "harness-attach", "label": "harness attach", "live": attach},
+    ]
+
 def snapshot():
     reg = load_registry()
     harnesses = list(reg.get("harnesses") or [])
@@ -254,7 +276,10 @@ def snapshot():
         hid = str(h.get("id") or "")
         if not hid:
             continue
-        live = (parsed_chips.get(hid) or {}).get("live") or "skip"
+        parsed_row = parsed_chips.get(hid)
+        live = parsed_row.get("live") if parsed_row else "unknown"
+        if not live:
+            live = "unknown"
         issue = h.get("github_issue")
         rec = {
             "id": hid, "name": h.get("name") or hid, "role": h.get("role") or "",
@@ -269,41 +294,52 @@ def snapshot():
     procs = process_table()
     verb = last_verb()
     active = parsed.get("active") or active_harness(default)
-    live_active = next((c["live"] for c in chips if c["id"] == active), "")
+    live_active = next((c["live"] for c in chips if c["id"] == active), "unknown")
     host = socket.gethostname()
+    is_nimo = "nimo" in host.lower()
     profile = deploy_profile()
     base = det.get("base_url") or (parsed.get("runtime") or {}).get("base_url") or ""
     if base == "(none)":
         base = ""
     eng = det.get("engine") or ""
-    alias = {"ft": "freetoken", "llama-server": "llama.cpp"}
-    eng_norm = alias.get(eng, eng)
+    eng_norm = ENGINE_ALIAS.get(eng, eng)
     ready_h = any(c["role"] == "harness" and c["live"] == "ready" for c in chips)
     modes = []
     if det.get("status") == "ready" and ready_h:
         modes.append("all-local-ready")
-    if eng_norm == "ollama" or "nimo" in host.lower():
+    if eng_norm == "ollama":
         modes.append("ollama-adapter-only")
     if not ready_h:
         modes.append("missing-harness-or-stub")
     order = []
     for hid, label, port in DETECT_ORDER:
-        live = next((c["live"] for c in chips if c["id"] == hid), "missing")
+        live = next((c["live"] for c in chips if c["id"] == hid), "unknown")
         order.append({"id": hid, "label": label, "port": port, "live": live, "winner": eng_norm == hid,
                       "one_liner": one_liner(hid, next((h for h in harnesses if h.get("id") == hid), {}))})
+    winner = next((o for o in order if o["winner"]), None)
+    engine_live = (winner["live"] if winner else "") or det.get("status") or "unknown"
+    if engine_live in ("skip",):
+        engine_live = "unknown"
     msgs = org_messages()
+    nimo_note = ""
+    if is_nimo:
+        nimo_note = "nimo is an Actions runner with Ollama :11434, not a pfy profile. Empty ollama ps is OK. Ollama is an adapter, not the product."
     return {
         "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "host": host, "root": str(ROOT), "profile": profile, "local_only": profile == "local-only",
+        "is_nimo": is_nimo,
         "detector": det, "status_runtime": parsed.get("runtime") or {}, "usage": parsed.get("usage") or [],
         "chips": chips, "active": active, "last_verb": verb, "now": now_state(active, live_active, procs, verb),
-        "processes": procs, "detect_order": order, "models": inspect_models(base) if base else [],
+        "processes": procs, "detect_order": order, "engine_live": engine_live,
+        "models": inspect_models(base) if base else [],
         "models_note": "inspect-only — tag list is not success",
         "org_messages": msgs, "agent_lane_collapsed": not msgs,
-        "honest": {"modes": modes, "note_nimo": "nimo is an Actions runner with Ollama :11434, not a pfy profile. Empty ollama ps is OK. Ollama is an adapter, not the product."},
+        "honest": {"modes": modes, "note_nimo": nimo_note},
         "grok_chip_note": "Grok chip is PATH-only. Auth is attach-time only. No auth column. Grok usage omitted.",
-        "midline": "local = bulk · Grok = DoD", "tape": ["inference", "env-stage", "harness attach"],
+        "midline": "local = bulk · Grok = DoD",
+        "tape": tape_steps(det, verb, parsed.get("usage") or [], active, live_active),
         "blocked_copy": GROK_USE, "status_stdout": status_text, "no_daemon": True,
+        "active_stub": active in STUB_ALWAYS,
     }
 
 def html_page():
@@ -311,17 +347,20 @@ def html_page():
         "<!DOCTYPE html><html lang=en><head><meta charset=utf-8/><title>pfy board</title>"
         "<style>body{margin:0;font:14px/1.4 ui-sans-serif,system-ui,sans-serif;background:#0e1116;color:#e8edf4}"
         "header,.pane,.rail,.now,.order,.models,.agent,.notes,.tape,.banner{padding:12px 18px;border-bottom:1px solid #243041}"
-        ".split{display:grid;grid-template-columns:1fr 8px 1fr}.local{background:#1a3d2f}.cloud{background:#1a2740}"
+        ".split{display:grid;grid-template-columns:1fr 8px 1fr}"
+        ".local{background:#151a22}.local.ready{background:#1a3d2f}.local.partial{background:#3d351a}"
+        ".local.missing,.local.unknown,.local.stub,.local.idle{background:#151a22}"
+        ".cloud{background:#1a2740}"
         ".mid{background:#2a3344;writing-mode:vertical-rl;transform:rotate(180deg);display:flex;align-items:center;justify-content:center;font-size:11px}"
         ".chips{display:flex;flex-wrap:wrap;gap:8px}.chip{background:#18202c;border:1px solid #243041;border-radius:10px;padding:8px 10px;min-width:140px}"
-        ".ready{color:#3dd68c}.partial{color:#e6c15a}.stub{color:#e8875b}.detected-stub{color:#c984f0}.missing{color:#7d8796}.skip{color:#6aa7d9}"
+        ".ready{color:#3dd68c}.partial{color:#e6c15a}.stub{color:#e8875b}.detected-stub{color:#c984f0}.missing{color:#7d8796}.unknown{color:#7d8796}.idle{color:#6aa7d9}"
         ".copy{font-family:ui-monospace,monospace;font-size:12px;background:#111823;padding:4px 6px;border-radius:6px;display:block;margin-top:6px;user-select:all}"
         "button{background:#243041;color:#e8edf4;border:1px solid #243041;border-radius:8px;padding:6px 10px}button:disabled{opacity:.4}"
         ".muted{color:#8b97a8}.banner{background:#3a2a12;color:#f3d9a4}.live{font-weight:700;text-transform:uppercase;font-size:11px}"
         "</style></head><body>"
-        "<header><b>pfy board</b> <span class=muted id=meta>polling...</span> <span class=muted>127.0.0.1 · no daemon · chips = status live column</span></header>"
+        "<header><b>pfy board</b> <span class=muted id=meta>polling...</span> <span class=muted>127.0.0.1:8765 · no daemon · chips = status live column</span></header>"
         "<div class=banner id=banners></div><div class=split>"
-        "<section class='pane local'><h2>LOCAL WORKER</h2><div id=local></div></section>"
+        "<section class='pane local' id=localpane><h2>LOCAL WORKER</h2><div id=local></div></section>"
         "<div class=mid id=mid>local = bulk · Grok = DoD</div>"
         "<section class='pane cloud'><h2>CLOUD MONITOR</h2><div id=cloud></div></section></div>"
         "<div class=tape id=tape></div>"
@@ -335,27 +374,32 @@ def html_page():
         "const s=await (await fetch('/snapshot',{cache:'no-store'})).json();"
         "document.getElementById('meta').textContent=s.ts+' · '+s.host+' · profile '+(s.profile||'(unset)');"
         "const b=[]; if(s.local_only) b.push('DEPLOY_PROFILE=local-only — never auto-calls cloud. Grok usage omitted.');"
-        "b.push(s.honest.note_nimo); (s.honest.modes||[]).forEach(m=>b.push('honest state: '+m));"
+        "if(s.honest && s.honest.note_nimo) b.push(s.honest.note_nimo);"
+        "(s.honest.modes||[]).forEach(m=>b.push('honest state: '+m));"
         "document.getElementById('banners').innerHTML=b.map(x=>'<div>'+x+'</div>').join('');"
         "const d=s.detector||{}, r=s.status_runtime||{};"
-        "document.getElementById('local').innerHTML='engine <b>'+(d.engine||r.engine||'none')+'</b><br>status <b>'+(d.status||r.status||'missing')+'</b><br>URL <code>'+(d.base_url||r.base_url||'(none)')+'</code><pre>'+((s.usage||[]).join('\\n')||'(empty)')+'</pre><p class=muted>Ollama is an adapter, not the product. Board does not spawn llama-swap / llama-server / shimmy.</p>';"
+        "const engLive=s.engine_live||d.status||'unknown';"
+        "document.getElementById('localpane').className='pane local '+cls(engLive);"
+        "document.getElementById('local').innerHTML='engine <b>'+(d.engine||r.engine||'none')+'</b> <span class=\"live '+cls(engLive)+'\">'+engLive+'</span><br>status <b>'+(d.status||r.status||'missing')+'</b><br>URL <code>'+(d.base_url||r.base_url||'(none)')+'</code><pre>'+((s.usage||[]).join('\\n')||'(empty)')+'</pre><p class=muted>Ollama is an adapter, not the product. Board does not spawn llama-swap / llama-server / shimmy.</p>';"
         "const g=(s.chips||[]).find(c=>c.id==='grok')||{};"
         "document.getElementById('cloud').innerHTML='grok chip (PATH-only): <span class=\"live '+cls(g.live)+'\">'+(g.live||'missing')+'</span><p>DoD: Grok reviews / sets exit card. Local does bulk.</p><p class=muted>'+s.grok_chip_note+'</p>';"
         "document.getElementById('mid').textContent=s.midline;"
-        "document.getElementById('tape').innerHTML=(s.tape||[]).map((t,i)=>'<span class=chip>'+(i+1)+'. '+t+'</span>').join(' ');"
+        "document.getElementById('tape').innerHTML=(s.tape||[]).map((t,i)=>'<span class=chip>'+(i+1)+'. '+t.label+' <span class=\"live '+cls(t.live)+'\">'+t.live+'</span></span>').join(' ');"
         "document.getElementById('chips').innerHTML=(s.chips||[]).map(c=>{"
         "const issue=c.issue_url?'<a href=\"'+c.issue_url+'\">issue</a>':'';"
         "const copy='<code class=copy>'+(c.startable?('./pfy start '+c.id):c.one_liner)+'</code>';"
         "const btn='<button disabled title=not-a-supervisor>start via CLI</button>';"
         "return '<div class=chip><b>'+c.id+'</b> <span class=\"live '+cls(c.live)+'\">'+c.live+'</span><div class=muted>'+c.role+' · '+c.name+' '+issue+'</div>'+copy+btn+'</div>';"
         "}).join('');"
-        "document.getElementById('now').innerHTML='<h2>Now</h2>attached <b>'+s.active+'</b><br>last verb <b>'+(s.last_verb.verb||'(none)')+'</b> <span class=muted>'+(s.last_verb.when||'')+'</span><br>state <b>'+s.now+'</b> (blocked or running)<br><span class=muted>ps: '+(((s.processes||[]).map(p=>p.id+'#'+p.pid).join(', '))||'(none)')+'</span>';"
+        "let nowHtml='<h2>Now</h2>attached <b>'+s.active+'</b><br>last verb <b>'+(s.last_verb.verb||'(none)')+'</b> <span class=muted>'+(s.last_verb.when||'')+'</span><br>state <b>'+s.now+'</b> (blocked or running)<br><span class=muted>ps: '+(((s.processes||[]).map(p=>p.id+'#'+p.pid).join(', '))||'(none)')+'</span>';"
+        "if(s.active_stub){nowHtml+='<br><code class=copy>'+s.blocked_copy+'</code> (bare start STUB, no fallback)';}"
+        "document.getElementById('now').innerHTML=nowHtml;"
         "document.getElementById('order').innerHTML='<h2>Detect order</h2>'+(s.detect_order||[]).map(o=>'<div>'+(o.winner?'> ':'')+o.label+' '+o.port+' · <span class=\"live '+cls(o.live)+'\">'+o.live+'</span>'+(o.live==='partial'?' <code class=copy>'+o.one_liner+'</code>':'')+'</div>').join('');"
         "const tags=(s.models&&s.models.length)?s.models.map(m=>'<li>'+m+'</li>').join(''):'<li>(none — live endpoint not listing or not up)</li>';"
         "document.getElementById('models').innerHTML='<p class=muted>'+s.models_note+'</p><ul>'+tags+'</ul>';"
-        "if(s.agent_lane_collapsed){document.getElementById('agent').innerHTML='<h2>Agent lane</h2><p class=muted>collapsed (no org messages). Seats: CEO → PM → DevBot + Reviewer.</p>';}"
+        "if(s.agent_lane_collapsed){document.getElementById('agent').innerHTML='no org loop';}"
         "else {const rows=(s.org_messages||[]).map(m=>'<tr><td>'+m.from+' → '+m.to+'</td><td>'+(m.pr||m.issue||'')+'</td><td>'+(m.state||'')+'</td></tr>').join('');"
-        "document.getElementById('agent').innerHTML='<h2>Agent lane</h2><p class=muted>CEO → PM → DevBot + Reviewer</p><table>'+rows+'</table>';}"
+        "document.getElementById('agent').innerHTML='<h2>Agent lane</h2><table>'+rows+'</table>';}"
         "document.getElementById('notes').innerHTML='<p class=muted>No pfy daemon. Board polls detector JSON + status stdout + ps. Start execs harness. Continue is never detected-stub. Docker on PATH is cage detected-stub, not startable. Continue/agent-cage: STUB exit 2, copy <code>'+s.blocked_copy+'</code>.</p>';"
         "} tick(); setInterval(tick, REFRESH);</script></body></html>"
     )
@@ -378,7 +422,6 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, json.dumps(snapshot(), indent=2).encode("utf-8"), "application/json; charset=utf-8"); return
         self._send(404, b"not found\n", "text/plain; charset=utf-8")
     def do_POST(self):
-        # Board is a poller, not a supervisor. Start stays ./pfy start in the CLI.
         self._send(405, b"POST disabled - board is not a supervisor\n", "text/plain; charset=utf-8")
 
 def main():
