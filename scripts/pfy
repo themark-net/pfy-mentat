@@ -41,6 +41,7 @@ Inference detect: FreeToken (:1919) → llama-swap (:9292) → llama-server (:80
 Override: PFY_LOCAL_RUNTIME, LOCAL_OPENAI_BASE_URL.
 FreeToken model: PFY_FT_MODEL (then LOCAL_CODER_MODEL, FREETOKEN_MODEL).
 Ollama adapter model: PFY_OLLAMA_MODEL (then LOCAL_CODER_MODEL).
+llama-server model path: PFY_LLAMA_MODEL (then LOCAL_CODER_MODEL as a GGUF path).
 Detector is invoked with bash (no git +x required).
 Docker not required for basic start.
 U
@@ -165,6 +166,84 @@ ensure_ollama_adapter() {
     echo "note: no PFY_OLLAMA_MODEL / LOCAL_CODER_MODEL — using already-installed tags"
   else
     echo "note: no PFY_OLLAMA_MODEL / LOCAL_CODER_MODEL and no models installed — honest skip"
+  fi
+}
+
+
+llama_swap_health() {
+  curl -sf --max-time 2 http://127.0.0.1:9292/v1/models >/dev/null 2>&1 \
+    || curl -sf --max-time 2 http://127.0.0.1:9292/health >/dev/null 2>&1
+}
+
+wait_llama_swap_health() {
+  local i
+  for i in $(seq 1 12); do
+    llama_swap_health && return 0
+    sleep 0.5
+  done
+  return 1
+}
+
+ensure_llama_swap() {
+  if ! have llama-swap; then
+    echo "STUB: llama-swap not on PATH. One-liner:"
+    echo "  llama-swap"
+    return 0
+  fi
+  if llama_swap_health; then
+    echo "llama-swap API healthy"
+    return 0
+  fi
+  echo "starting llama-swap in background (wait for /v1/models or /health on :9292)…"
+  (llama-swap >>"$STATE_DIR/llama-swap.log" 2>&1 &) || true
+  if wait_llama_swap_health; then
+    echo "llama-swap API healthy"
+  else
+    echo "note: llama-swap launched but API not healthy (partial) — not fake ready"
+  fi
+}
+
+llama_server_health() {
+  curl -sf --max-time 2 http://127.0.0.1:8080/v1/models >/dev/null 2>&1 \
+    || curl -sf --max-time 2 http://127.0.0.1:8080/health >/dev/null 2>&1
+}
+
+wait_llama_server_health() {
+  local i
+  for i in $(seq 1 12); do
+    llama_server_health && return 0
+    sleep 0.5
+  done
+  return 1
+}
+
+llama_server_model_path() {
+  echo "${PFY_LLAMA_MODEL:-${LOCAL_CODER_MODEL:-}}"
+}
+
+ensure_llama_server() {
+  if ! have llama-server; then
+    echo "STUB: llama-server not on PATH. One-liner:"
+    echo "  llama-server -m \$PFY_LLAMA_MODEL --port 8080 --host 127.0.0.1"
+    return 0
+  fi
+  if llama_server_health; then
+    echo "llama-server API healthy"
+    return 0
+  fi
+  local model
+  model="$(llama_server_model_path)"
+  if [[ -z "$model" || ! -f "$model" ]]; then
+    echo "note: llama-server has no GGUF path (set PFY_LLAMA_MODEL or LOCAL_CODER_MODEL to an existing file) — honest skip"
+    echo "  llama-server -m \$PFY_LLAMA_MODEL --port 8080 --host 127.0.0.1"
+    return 0
+  fi
+  echo "starting llama-server in background (wait for /v1/models or /health on :8080)…"
+  (llama-server -m "$model" --port 8080 --host 127.0.0.1 >>"$STATE_DIR/llama-server.log" 2>&1 &) || true
+  if wait_llama_server_health; then
+    echo "llama-server API healthy"
+  else
+    echo "note: llama-server launched but API not healthy (partial) — not fake ready"
   fi
 }
 
@@ -365,6 +444,10 @@ ensure_inference() {
 
   if [[ "$engine" == "ollama" ]]; then
     ensure_ollama_adapter
+  elif [[ "$engine" == "llama-swap" ]]; then
+    ensure_llama_swap
+  elif [[ "$engine" == "llama-server" || "$engine" == "llama.cpp" ]]; then
+    ensure_llama_server
   elif [[ "$st" == "ready" ]]; then
     echo "inference already up"
   elif [[ "$st" == "missing" || "$engine" == "none" || -z "$engine" ]]; then
@@ -383,14 +466,6 @@ ensure_inference() {
           echo "  ft serve --model \$PFY_FT_MODEL"
           echo "  (set PFY_FT_MODEL, or LOCAL_CODER_MODEL / FREETOKEN_MODEL)"
         fi
-        ;;
-      llama-swap)
-        echo "STUB: llama-swap HTTP not up. One-liner:"
-        echo "  llama-swap"
-        ;;
-      llama-server|llama.cpp)
-        echo "STUB: llama-server HTTP not up. One-liner:"
-        echo "  llama-server"
         ;;
       shimmy)
         echo "STUB: shimmy HTTP not up. One-liner:"

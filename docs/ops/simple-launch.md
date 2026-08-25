@@ -31,6 +31,10 @@ Install Grok CLI once if missing: `curl -fsSL https://x.ai/cli/install.sh | bash
 Install Ollama for the **adapter** path (not the spine): https://ollama.com
 When the detector selects Ollama (or `PFY_LOCAL_RUNTIME=ollama`), `./pfy start` / `./pfy up` wait for real health (`GET /api/tags` or `/v1/models`), then pull/select `PFY_OLLAMA_MODEL` (else `LOCAL_CODER_MODEL`). Honest skip if no name and none installed. Status is **ready** only when the API responds (binary + API down = partial; no binary = missing). `./pfy models pull <name>` still works.
 
+When the detector selects llama-swap (or `PFY_LOCAL_RUNTIME=llama-swap`), `./pfy start` / `./pfy up` start `llama-swap` in the background if `:9292` is not already healthy, then wait for `GET /v1/models` or `/health`. Missing binary is an honest skip (one-liner), not fake ready. Still down after wait = partial.
+
+When the detector selects llama-server (or `PFY_LOCAL_RUNTIME=llama-server`), same for `:8080` if a GGUF path is set (`PFY_LLAMA_MODEL`, then `LOCAL_CODER_MODEL` as an existing file). No path, missing binary, or API still down: honest skip / partial. Do not download weights. Shimmy stays an echo stub.
+
 ## Map to old Make levers
 
 | Simple | Make / script |
@@ -90,3 +94,4 @@ Patterns may already exist as skills/docs; the unified installer path does not. 
 | Exo | [#60](https://github.com/themark-net/pfy-mentat/issues/60) |
 | Continue | [#61](https://github.com/themark-net/pfy-mentat/issues/61) |
 | agent-cage lab | [#62](https://github.com/themark-net/pfy-mentat/issues/62) |
+| llama-swap / llama-server start | [#104](https://github.com/themark-net/pfy-mentat/issues/104) |
