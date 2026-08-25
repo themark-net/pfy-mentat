@@ -290,9 +290,9 @@ def snapshot():
         if not hid:
             continue
         parsed_row = parsed_chips.get(hid)
-        live = parsed_row.get("live") if parsed_row else "unknown"
+        live = parsed_row.get("live") if parsed_row else "missing"
         if not live:
-            live = "unknown"
+            live = "missing"
         issue = h.get("github_issue")
         rec = {
             "id": hid, "name": h.get("name") or hid, "role": h.get("role") or "",
@@ -307,7 +307,7 @@ def snapshot():
     procs = process_table()
     verb = last_verb()
     active = parsed.get("active") or active_harness(default)
-    live_active = next((c["live"] for c in chips if c["id"] == active), "unknown")
+    live_active = next((c["live"] for c in chips if c["id"] == active), "missing")
     host = socket.gethostname()
     is_nimo = "nimo" in host.lower()
     profile = deploy_profile()
@@ -326,13 +326,13 @@ def snapshot():
         modes.append("missing-harness-or-stub")
     order = []
     for hid, label, port in DETECT_ORDER:
-        live = next((c["live"] for c in chips if c["id"] == hid), "unknown")
+        live = next((c["live"] for c in chips if c["id"] == hid), "missing")
         order.append({"id": hid, "label": label, "port": port, "live": live, "winner": eng_norm == hid,
                       "one_liner": one_liner(hid, next((h for h in harnesses if h.get("id") == hid), {}))})
     winner = next((o for o in order if o["winner"]), None)
-    engine_live = (winner["live"] if winner else "") or det.get("status") or "unknown"
+    engine_live = (winner["live"] if winner else "") or det.get("status") or "missing"
     if engine_live in ("skip",):
-        engine_live = "unknown"
+        engine_live = "missing"
     msgs = org_messages()
     nimo_note = ""
     if is_nimo:
@@ -362,11 +362,11 @@ def html_page():
         "header,.pane,.rail,.now,.order,.models,.agent,.notes,.tape,.banner{padding:12px 18px;border-bottom:1px solid #243041}"
         ".split{display:grid;grid-template-columns:1fr 8px 1fr}"
         ".local{background:#151a22}.local.ready{background:#1a3d2f}.local.partial{background:#3d351a}"
-        ".local.missing,.local.unknown,.local.stub,.local.idle{background:#151a22}"
+        ".local.missing,.local.stub,.local.idle{background:#151a22}"
         ".cloud{background:#1a2740}"
         ".mid{background:#2a3344;writing-mode:vertical-rl;transform:rotate(180deg);display:flex;align-items:center;justify-content:center;font-size:11px}"
         ".chips{display:flex;flex-wrap:wrap;gap:8px}.chip{background:#18202c;border:1px solid #243041;border-radius:10px;padding:8px 10px;min-width:140px}"
-        ".ready{color:#3dd68c}.partial{color:#e6c15a}.stub{color:#e8875b}.detected-stub{color:#c984f0}.missing{color:#7d8796}.unknown{color:#7d8796}.idle{color:#6aa7d9}.READY{color:#3dd68c}.SKIP{color:#7d8796}.FAIL{color:#e8875b}"
+        ".ready{color:#3dd68c}.partial{color:#e6c15a}.stub{color:#e8875b}.detected-stub{color:#c984f0}.missing{color:#7d8796}.idle{color:#6aa7d9}.READY{color:#3dd68c}.SKIP{color:#7d8796}.FAIL{color:#e8875b}"
         ".copy{font-family:ui-monospace,monospace;font-size:12px;background:#111823;padding:4px 6px;border-radius:6px;display:block;margin-top:6px;user-select:all}"
         "button{background:#243041;color:#e8edf4;border:1px solid #243041;border-radius:8px;padding:6px 10px}button:disabled{opacity:.4}"
         ".muted{color:#8b97a8}.banner{background:#3a2a12;color:#f3d9a4}.live{font-weight:700;text-transform:uppercase;font-size:11px}"
@@ -391,7 +391,7 @@ def html_page():
         "(s.honest.modes||[]).forEach(m=>b.push('honest state: '+m));"
         "document.getElementById('banners').innerHTML=b.map(x=>'<div>'+x+'</div>').join('');"
         "const d=s.detector||{}, r=s.status_runtime||{};"
-        "const engLive=s.engine_live||d.status||'unknown';"
+        "const engLive=s.engine_live||d.status||'missing';"
         "document.getElementById('localpane').className='pane local '+cls(engLive);"
         "document.getElementById('local').innerHTML='engine <b>'+(d.engine||r.engine||'none')+'</b> <span class=\"live '+cls(engLive)+'\">'+engLive+'</span><br>status <b>'+(d.status||r.status||'missing')+'</b><br>URL <code>'+(d.base_url||r.base_url||'(none)')+'</code><pre>'+((s.usage||[]).join('\\n')||'(empty)')+'</pre><p class=muted>Ollama is an adapter, not the product. Board does not spawn llama-swap / llama-server / shimmy.</p>';"
         "const g=(s.chips||[]).find(c=>c.id==='grok')||{};"
