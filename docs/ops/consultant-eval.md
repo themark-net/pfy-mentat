@@ -24,6 +24,7 @@ git clone https://github.com/themark-net/pfy-mentat.git
 cd pfy-mentat
 ./pfy setup                 # or: ./pfy setup local-only
 ./pfy status                # live column is authority, not json "status"
+./pfy board                 # local GUI; chips must equal the live column
 ./pfy start                 # inference → env-stage → active harness (default grok)
 ./pfy up                    # same as start
 ./pfy models                # inspect-only (tag list is not success)
@@ -33,6 +34,14 @@ make eval-structural        # G0, no LLM, no cage required
 Bare `./pfy start` / `./pfy up` = local inference (if any) + `scripts/env-stage.sh` (honest skip) + attach active harness. `./pfy models` never means the stack is ready. `./pfy eval` is catalog self-mod (`make eval-integration-change`), not the consultant G0 lane.
 
 Public CLI must agree: README Simple path, this file, [simple-launch.md](simple-launch.md), and `scripts/pfy` `usage()`.
+
+## Operator board (`./pfy board`)
+
+Local GUI on `127.0.0.1` only (default `:8765`). Independent poller of detector JSON (`bash scripts/detect-local-runtime.sh --json`), `./pfy status` stdout, and the process table. **No pfy daemon.** `./pfy start` still execs the harness. Board is not a supervisor. No SaaS, no git console, no credential capture. Do not invent `pfy status --json` unless a real flag exists.
+
+**Consultant check:** every honesty-rail chip must equal the **live** column from `./pfy status` on the same host (Ollama-only host and a host with no harness binary). Ignore json `status`. Grok chip is PATH-only (no invented auth column; no Grok usage). Continue is never detected-stub. Docker on PATH is cage detected-stub, not startable. nimo is an Actions runner with Ollama `:11434`, not a pfy profile. Empty `ollama ps` is OK. `DEPLOY_PROFILE=local-only` never auto-calls cloud. Models drawer is inspect-only (tag list is not success).
+
+Active continue or agent-cage: bare `./pfy start` is STUB exit 2 with **no** grok/opencode fallback. Blocked copy: `pfy harness use grok`. Lab is `./pfy stage --lab`.
 
 ## Real vs stub vs catalog-only
 
@@ -73,8 +82,8 @@ Detect order (ADR-0014, first live wins): **FreeToken :1919 → llama-swap :9292
 | codex | harness | **ready** if `codex` on PATH; else **missing**. json may stay `partial` | Named start: `exec codex`; `OPENAI_BASE_URL` from `LOCAL_OPENAI_BASE_URL` when runtime ready. No binary: STUB + issue #58 + `curl -fsSL https://chatgpt.com/codex/install.sh | sh`, exit 2. Login/credentials/2FA are owner-only |
 | gemini | harness | **ready** if `gemini` or `gemini-cli` on PATH; else **missing**. json may stay `partial` | Named start: `exec` binary; `OPENAI_BASE_URL` from `LOCAL_OPENAI_BASE_URL` when runtime ready. No binary: STUB + issue #59 + `npm install -g @google/gemini-cli`, exit 2. Login/credentials/2FA are owner-only |
 | exo | harness | **ready** if `$ROOT/exo.sh`, `$HOME/exo/exo.sh`, or `exo.sh` on PATH; else **missing**. json may stay `partial`. Docker on PATH is not ready. | Named start: `exec` that script; `OPENAI_BASE_URL` from `LOCAL_OPENAI_BASE_URL` when runtime ready. No invented Exo flags. Missing: STUB + issue #60 + official `setup.sh` one-liner, exit 2. Optional lab only — `./pfy harness use exo` does not change `default_harness` |
-| continue | harness | json may be partial; live status stays stub (no detect bins). Recipe at bootstrap/continue/. | Always STUB exit 2 + issue #61. Do not exec the IDE. Docker/binary is not ready. |
-| agent-cage | lab | live **stub** / **detected-stub** (Docker on PATH is **not** ready) | Always STUB exit 2 + issue #62. Lab is `./pfy stage --lab` / `make cage-*` (doctor → setup → up-mcp). Missing Docker is honest skip, not product-ready. Do not sell cage. |
+| continue | harness | **always stub** (empty detect; never detected-stub even if continue is on PATH). Recipe at bootstrap/continue/. | Always STUB exit 2 + issue #61. Do not exec the IDE. If this id is active, bare `./pfy start` is STUB exit 2 with no grok/opencode fallback; copy `pfy harness use grok`. |
+| agent-cage | lab | live **stub** / **detected-stub** (Docker on PATH is **not** ready / not startable) | Always STUB exit 2 + issue #62. If this id is active, bare `./pfy start` is STUB exit 2 with no grok/opencode fallback; copy `pfy harness use grok`. Lab is `./pfy stage --lab` / `make cage-*` (doctor → setup → up-mcp). Missing Docker is honest skip, not product-ready. Do not sell cage. |
 
 ## Eval without assuming cage
 

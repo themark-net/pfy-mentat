@@ -34,6 +34,7 @@ pfy — simple setup & launch for the pfy-mentat stack
   pfy eval | ship
   pfy models              list models from the live local endpoint (inspect-only)
   pfy models pull <name>  (Ollama adapter only)
+  pfy board               local operator GUI (127.0.0.1; polls status + detector + ps)
   pfy help
 
 Inference detect: FreeToken (:1919) → llama-swap (:9292) → llama-server (:8080) → Ollama.
@@ -101,10 +102,8 @@ ft_bin() {
 }
 
 ft_default_model() {
-  # Prefer PFY_FT_MODEL, then LOCAL_CODER_MODEL, then FREETOKEN_MODEL.
   echo "${PFY_FT_MODEL:-${LOCAL_CODER_MODEL:-${FREETOKEN_MODEL:-}}}"
 }
-
 
 ollama_health() {
   curl -sf --max-time 2 http://127.0.0.1:11434/api/tags >/dev/null 2>&1 \
@@ -168,7 +167,6 @@ ensure_ollama_adapter() {
     echo "note: no PFY_OLLAMA_MODEL / LOCAL_CODER_MODEL and no models installed — honest skip"
   fi
 }
-
 
 print_live_models() {
   local base="${1:-}"
@@ -267,7 +265,11 @@ detect_status() {
     done <<< "$bins"
   fi
   case "$id" in
-    continue|agent-cage)
+    continue)
+      echo "stub"
+      return
+      ;;
+    agent-cage)
       if [[ "$found" -eq 1 ]]; then echo "detected-stub"; else echo "stub"; fi
       return
       ;;
@@ -279,7 +281,6 @@ eng=rt.get("engine","")
 alias={"llama.cpp":"llama-server","llama-server":"llama.cpp","ft":"freetoken","freetoken":"ft"}
 if eng==id or alias.get(eng)==id or alias.get(id)==eng:
     print(rt.get("status","missing")); sys.exit(0)
-# Binary present but not the live engine: partial. No binary: missing — never registry-partial.
 print("partial" if found else "missing")
 PY
       return
@@ -309,7 +310,7 @@ cmd_status() {
     printf "%-14s %-14s %-8s %s\n" "$id" "$live" "$role" "$name"
   done
   echo ""
-  echo "next: pfy setup   |   pfy up   |   pfy start   |   pfy harness list"
+  echo "next: pfy setup   |   pfy up   |   pfy start   |   pfy board   |   pfy harness list"
   echo "override: PFY_LOCAL_RUNTIME=freetoken|llama-swap|llama-server|ollama"
 }
 
@@ -455,7 +456,6 @@ grok_unauth() {
   [[ -z "$bin" ]] && return 0
   local out rc=0
   out="$("$bin" whoami 2>&1)" || rc=$?
-  # failed or empty whoami without a key is unauth (not "ready")
   [[ "$rc" -ne 0 ]] && return 0
   [[ -z "${out// }" ]] && return 0
   if printf '%s' "$out" | grep -qiE 'not (logged|authenticated)|please (log in|login)|grok login|unauthori[sz]ed'; then
@@ -472,6 +472,11 @@ stub_harness() {
   if [[ -n "$issue" ]]; then
     echo "  https://github.com/themark-net/pfy-mentat/issues/${issue}"
   fi
+  case "$id" in
+    continue|agent-cage)
+      echo "  pfy harness use grok"
+      ;;
+  esac
   exit 2
 }
 
@@ -793,13 +798,30 @@ cmd_models_list() {
   print_local_usage "$engine"
 }
 
+record_verb() {
+  mkdir -p "$STATE_DIR"
+  {
+    printf 'verb: %s\n' "$*"
+    printf 'when: %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  } > "$STATE_DIR/last-verb"
+}
+
+cmd_board() {
+  [[ -f "$ROOT/scripts/pfy-board.py" ]] || die "scripts/pfy-board.py missing"
+  exec python3 "$ROOT/scripts/pfy-board.py" "$@"
+}
+
 main() {
   local cmd="${1:-help}"
   shift || true
+  if [[ "$cmd" != "help" && "$cmd" != "-h" && "$cmd" != "--help" ]]; then
+    record_verb "$cmd" "$@"
+  fi
   case "$cmd" in
     help|-h|--help) usage ;;
     setup) cmd_setup "${1:-balanced}" ;;
     status) cmd_status ;;
+    board) cmd_board "$@" ;;
     up) cmd_up ;;
     harness)
       local sub="${1:-list}"; shift || true
