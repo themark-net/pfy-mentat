@@ -15,8 +15,11 @@ Operator environment: local inference, then product stage (honest skip if a piec
 ```bash
 ./pfy start     # inference → env-stage → active harness (default grok)
 ./pfy up        # same operator bring-up as start
+./pfy board     # local operator GUI (127.0.0.1:8765, or PFY_BOARD_PORT)
 ./pfy models    # inspect-only: live GET /v1/models (and Ollama /api/tags); usage if exposed
 ```
+
+`./pfy start` / `./pfy up` print `board: http://127.0.0.1:8765` (or `PFY_BOARD_PORT`) before harness exec; they do not auto-start the board. Optional `./pfy board --open` tries the default browser (honest skip if it fails). Board is not a supervisor.
 
 `./pfy start <harness>` runs inference and stage, then that harness. Listing model tags is not success. Empty `ollama ps` is OK. A missing harness process is not. FreeToken model env: **`PFY_FT_MODEL`** (then `LOCAL_CODER_MODEL` or `FREETOKEN_MODEL`).
 
@@ -154,15 +157,19 @@ git clone https://github.com/themark-net/pfy-mentat.git
 cd pfy-mentat
 ./pfy setup              # env + Grok skills if CLI present
 ./pfy start              # inference → env-stage → active harness (default grok)
+./pfy board              # local operator GUI (127.0.0.1:8765, or PFY_BOARD_PORT)
 ./pfy models             # inspect-only; listing tags is not success
 # or: ./pfy up            # same operator bring-up as start
 # or: ./pfy start grok    # named harness after inference/stage
 ```
 
+`./pfy start` / `./pfy up` print `board: http://127.0.0.1:8765` (or `PFY_BOARD_PORT`) before harness exec; they do not auto-start the board.
+
 | Command | Purpose |
 |---------|---------|
-| `./pfy start` / `./pfy up` | Inference, then env-stage, then active harness if live-ready (default grok) |
+| `./pfy start` / `./pfy up` | Inference, then env-stage, then active harness if live-ready (default grok). Print the board URL; do not auto-start the board. |
 | `./pfy start <harness>` | Same bring-up, then that harness (stubs: STUB + issue, exit 2) |
+| `./pfy board` / `./pfy board --open` | Local operator GUI on 127.0.0.1:8765 (or PFY_BOARD_PORT). --open tries the default browser (honest skip if it fails) |
 | `./pfy models` | Inspect-only: list models from the live endpoint (`GET /v1/models`, Ollama `/api/tags`) |
 | `./pfy models pull deepseek-coder:6.7b` | Ollama pull (adapter subcommand) |
 | `./pfy harness list` | Grok, OpenCode, Hermes, Claude Code, Codex, Gemini, Exo, … |
