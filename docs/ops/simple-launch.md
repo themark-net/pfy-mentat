@@ -35,6 +35,8 @@ When the detector selects llama-swap (or `PFY_LOCAL_RUNTIME=llama-swap`), `./pfy
 
 When the detector selects llama-server (or `PFY_LOCAL_RUNTIME=llama-server`), same for `:8080` if a GGUF path is set (`PFY_LLAMA_MODEL`, then `LOCAL_CODER_MODEL` as an existing file). No path, missing binary, or API still down: honest skip / partial. Do not download weights. Shimmy stays an echo stub.
 
+`./pfy start` / `./pfy up` print `board: http://127.0.0.1:<port>` (`PFY_BOARD_PORT` or 8765) before harness exec; they do not auto-start the board. Optional `./pfy board --open` opens the default browser; if open fails, print the URL and continue. Board is not a supervisor.
+
 ## Map to old Make levers
 
 | Simple | Make / script |
@@ -95,3 +97,4 @@ Patterns may already exist as skills/docs; the unified installer path does not. 
 | Continue | [#61](https://github.com/themark-net/pfy-mentat/issues/61) |
 | agent-cage lab | [#62](https://github.com/themark-net/pfy-mentat/issues/62) |
 | llama-swap / llama-server start | [#104](https://github.com/themark-net/pfy-mentat/issues/104) |
+| print board URL on start/up | [#106](https://github.com/themark-net/pfy-mentat/issues/106) |
