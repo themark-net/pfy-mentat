@@ -31,13 +31,13 @@ cd pfy-mentat
 make eval-structural        # G0, no LLM, no cage required
 ```
 
-Bare `./pfy start` / `./pfy up` = local inference (if any) + `scripts/env-stage.sh` (honest skip) + attach active harness. `./pfy models` never means the stack is ready. `./pfy eval` is catalog self-mod (`make eval-integration-change`), not the consultant G0 lane.
+Bare `./pfy start` / `./pfy up` = local inference (if any) + `scripts/env-stage.sh` (honest skip) + attach active harness. They print `board: http://127.0.0.1:<port>` (`PFY_BOARD_PORT` or 8765) before harness exec; they do not auto-start the board. Optional `./pfy board --open` tries the default browser (honest skip if it fails). `./pfy models` never means the stack is ready. `./pfy eval` is catalog self-mod (`make eval-integration-change`), not the consultant G0 lane.
 
 Public CLI must agree: README Simple path, this file, [simple-launch.md](simple-launch.md), and `scripts/pfy` `usage()`.
 
 ## Operator board (`./pfy board`)
 
-Local GUI on `127.0.0.1` only (default `:8765`). Independent poller of detector JSON (`bash scripts/detect-local-runtime.sh --json`), `./pfy status` stdout, and the process table. **No pfy daemon.** `./pfy start` still execs the harness. Board is not a supervisor. No SaaS, no git console, no credential capture. Do not invent `pfy status --json` unless a real flag exists.
+Local GUI on `127.0.0.1` only (default `:8765`). Independent poller of detector JSON (`bash scripts/detect-local-runtime.sh --json`), `./pfy status` stdout, and the process table. **No pfy daemon.** `./pfy start` still execs the harness. start/up print `board: http://127.0.0.1:<port>` before harness exec; they do not auto-start the board. Optional `./pfy board --open` tries the default browser (honest skip if it fails). Board is not a supervisor. No SaaS, no git console, no credential capture. Do not invent `pfy status --json` unless a real flag exists.
 
 **Consultant check:** every honesty-rail chip must equal the **live** column from `./pfy status` on the same host (Ollama-only host and a host with no harness binary). Ignore json `status`. Grok chip is PATH-only (no invented auth column; no Grok usage). Continue is never detected-stub. Docker on PATH is cage detected-stub, not startable. nimo is an Actions runner with Ollama `:11434`, not a pfy profile. Empty `ollama ps` is OK. `DEPLOY_PROFILE=local-only` never auto-calls cloud. Models drawer is inspect-only (tag list is not success).
 
