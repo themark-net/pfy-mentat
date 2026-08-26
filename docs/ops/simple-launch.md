@@ -12,7 +12,7 @@ git clone https://github.com/themark-net/pfy-mentat.git
 cd pfy-mentat
 ./pfy setup                 # or: ./pfy setup local-only
 ./pfy status                # ready | partial | stub
-./pfy board                 # local operator GUI; chips == live status column
+./pfy board                 # local operator GUI; chips == live status column; optional --open
 ./pfy start                 # inference → env-stage → active harness (default grok)
 ./pfy up                    # same operator bring-up as start
 # optional:
@@ -68,7 +68,7 @@ Registry: [`data/harnesses.json`](../../data/harnesses.json).
 
 Continue is a **config recipe** at `bootstrap/continue/` (`LOCAL_OPENAI_BASE_URL`, not Ollama-only). `./pfy start continue` stays STUB exit 2. Continue is never detected-stub. If continue or agent-cage is the active harness, bare `./pfy start` is STUB exit 2 with no grok/opencode fallback; copy `pfy harness use grok`.
 
-`./pfy board` is a localhost operator GUI on `127.0.0.1:8765`. Consultants should eval board chips against the `./pfy status` live column (same host). Grok chip is PATH-only. nimo is an Actions runner with Ollama, not a pfy profile.
+`./pfy board` is a localhost operator GUI on `127.0.0.1:8765` (`PFY_BOARD_PORT`). `./pfy start` / `./pfy up` print `board: http://127.0.0.1:<port>` before harness exec; they do not auto-start the board. Optional `./pfy board --open` tries the default browser (honest skip if it fails). Consultants should eval board chips against the `./pfy status` live column (same host). Grok chip is PATH-only. nimo is an Actions runner with Ollama, not a pfy profile. Board is not a supervisor.
 
 `gemini` is a live adapter when `gemini` or `gemini-cli` is on PATH (`./pfy start gemini` execs it; missing: STUB + issue #59 + official install one-liner, exit 2). Login/credentials/2FA are owner-only.
 
@@ -95,3 +95,4 @@ Patterns may already exist as skills/docs; the unified installer path does not. 
 | Continue | [#61](https://github.com/themark-net/pfy-mentat/issues/61) |
 | agent-cage lab | [#62](https://github.com/themark-net/pfy-mentat/issues/62) |
 | llama-swap / llama-server start | [#104](https://github.com/themark-net/pfy-mentat/issues/104) |
+| board URL on start/up | [#106](https://github.com/themark-net/pfy-mentat/issues/106) |

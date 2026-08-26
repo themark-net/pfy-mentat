@@ -21,6 +21,26 @@ mkdir -p "$STATE_DIR"
 die() { echo "error: $*" >&2; exit 1; }
 have() { command -v "$1" >/dev/null 2>&1; }
 
+board_url() {
+  echo "http://127.0.0.1:${PFY_BOARD_PORT:-8765}"
+}
+
+print_board_url() {
+  echo "board: $(board_url)"
+}
+
+open_board_url() {
+  local url
+  url="$(board_url)"
+  if have xdg-open; then
+    xdg-open "$url" >/dev/null 2>&1 && return 0
+  elif have open; then
+    open "$url" >/dev/null 2>&1 && return 0
+  fi
+  echo "note: could not open browser - $url"
+  return 0
+}
+
 usage() {
   cat <<'U'
 pfy — simple setup & launch for the pfy-mentat stack
@@ -34,8 +54,11 @@ pfy — simple setup & launch for the pfy-mentat stack
   pfy eval | ship
   pfy models              list models from the live local endpoint (inspect-only)
   pfy models pull <name>  (Ollama adapter only)
-  pfy board               local operator GUI (127.0.0.1; polls status + detector + ps)
+  pfy board [--open]      local operator GUI (127.0.0.1; polls status + detector + ps)
+                          --open tries the default browser (honest skip if it fails)
   pfy help
+
+Board URL: http://127.0.0.1:$PFY_BOARD_PORT (default 8765). start/up print it; do not auto-start board.
 
 Inference detect: FreeToken (:1919) → llama-swap (:9292) → llama-server (:8080) → Ollama.
 Override: PFY_LOCAL_RUNTIME, LOCAL_OPENAI_BASE_URL.
@@ -820,6 +843,7 @@ attach_operator_harness() {
 operator_bring_up() {
   ensure_inference
   run_product_stage
+  print_board_url
   attach_operator_harness "${1:-}"
 }
 
@@ -883,7 +907,24 @@ record_verb() {
 
 cmd_board() {
   [[ -f "$ROOT/scripts/pfy-board.py" ]] || die "scripts/pfy-board.py missing"
-  exec python3 "$ROOT/scripts/pfy-board.py" "$@"
+  local open_flag=0
+  local -a args=()
+  local a
+  for a in "$@"; do
+    if [[ "$a" == "--open" ]]; then
+      open_flag=1
+    else
+      args+=("$a")
+    fi
+  done
+  if [[ "$open_flag" -eq 1 ]]; then
+    open_board_url || true
+  fi
+  if [[ ${#args[@]} -gt 0 ]]; then
+    exec python3 "$ROOT/scripts/pfy-board.py" "${args[@]}"
+  else
+    exec python3 "$ROOT/scripts/pfy-board.py"
+  fi
 }
 
 main() {
