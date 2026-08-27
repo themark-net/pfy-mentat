@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang=en><head><meta charset=utf-8/><title>pfy board</title>
+<!DOCTYPE html><html lang=en><head><meta charset=utf-8/><title>pfy</title>
 <style>body{margin:0;font:14px/1.4 ui-sans-serif,system-ui,sans-serif;background:#0e1116;color:#e8edf4}
 header,.pane,.rail,.now,.order,.models,.agent,.notes,.tape,.banner{padding:12px 18px;border-bottom:1px solid #243041}
 .split{display:grid;grid-template-columns:1fr 8px 1fr}
@@ -12,7 +12,7 @@ header,.pane,.rail,.now,.order,.models,.agent,.notes,.tape,.banner{padding:12px 
 button{background:#243041;color:#e8edf4;border:1px solid #243041;border-radius:8px;padding:6px 10px}button:disabled{opacity:.4}
 .muted{color:#8b97a8}.banner{background:#3a2a12;color:#f3d9a4}.live{font-weight:700;text-transform:uppercase;font-size:11px}
 </style></head><body>
-<header><b>pfy board</b> <span class=muted id=meta>polling...</span> <span class=muted>native window · no daemon · chips = status live column</span></header>
+<header><b>pfy</b> <span class=muted id=meta>polling...</span> <span class=muted>native window · no daemon · chips = status live column</span></header>
 <div class=banner id=banners></div><div class=split>
 <section class='pane local' id=localpane><h2>LOCAL WORKER</h2><div id=local></div></section>
 <div class=mid id=mid>local = bulk · Grok = DoD</div>
@@ -67,7 +67,7 @@ async function tick(){
     const issue=c.issue_url?'<a href="'+c.issue_url+'">issue</a>':'';
     const copy='<code class=copy>'+(c.startable?('./pfy start '+c.id):c.one_liner)+'</code>';
     let btn='<button disabled title=not-a-supervisor>start via CLI</button>';
-    if(c.startable){btn='<button onclick="attach(\''+c.id+'\')">attach sidecar</button>';}
+    if(c.startable){btn='<button onclick="attach(\''+c.id+'\')">Attach '+c.id+'</button>';}
     else if(c.id==='continue'||c.id==='agent-cage'){btn='<button disabled>FAIL</button>';}
     return '<div class=chip><b>'+c.id+'</b> <span class="live '+cls(c.live)+'">'+c.live+'</span><div class=muted>'+c.role+' · '+c.name+' '+issue+'</div>'+copy+btn+'</div>';
   }).join('');
