@@ -60,12 +60,9 @@ def main() -> int:
 
         httpd = ThreadingHTTPServer((host, port), board.Handler)
         threading.Thread(target=httpd.serve_forever, daemon=True).start()
-        print("pfy native GUI (pywebview)")
-        print(f"  {url}")
-        print("  in-process poller · grok/opencode attach = sidecar · not a supervisor")
+        print("native window (pywebview)")
     else:
-        print("pfy native GUI (pywebview)")
-        print(f"  {url} (existing local board)")
+        print("native window (pywebview)")
     webview.create_window("pfy", url, width=1280, height=900)
     webview.start()
     if httpd is not None:
