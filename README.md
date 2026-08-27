@@ -10,18 +10,22 @@ Repository: https://github.com/themark-net/pfy-mentat
 
 ## Simple path
 
-Operator environment: local inference, then product stage (honest skip if a piece is missing), then the active harness if live status is ready (default grok; else next ready adapter such as opencode).
+Operator environment: local inference, then product stage (honest skip if a piece is missing), then the native operator window. Attach grok/opencode from the window as a sidecar. Do not exec a harness into the GUI process.
 
 ```bash
-./pfy start     # inference → env-stage → active harness (default grok)
-./pfy up        # same operator bring-up as start
-./pfy board     # local operator GUI (127.0.0.1:8765, or PFY_BOARD_PORT)
+./pfy           # inference → env-stage → native window (no harness exec)
+./pfy board     # same native window (Tauri if built, else pywebview)
+./pfy start grok  # named harness after inference/stage (still execs that harness)
 ./pfy models    # inspect-only: live GET /v1/models (and Ollama /api/tags); usage if exposed
 ```
 
-`./pfy start` / `./pfy up` print `board: http://127.0.0.1:8765` (or `PFY_BOARD_PORT`) before harness exec; they do not auto-start the board. Optional `./pfy board --open` tries the default browser (honest skip if it fails). Board is not a supervisor.
+Bare `./pfy` / `./pfy up` / `./pfy start` (no name) open the native window. `./pfy board` aliases it. Optional `./pfy board --open` is a browser hatch only (not the main path). Board is not a supervisor.
+
+If continue or agent-cage is the active harness: FAIL and copy `pfy harness use grok` (no grok/opencode fallback). Chips bind `./pfy status` **live** (`missing` not `unknown`).
 
 `./pfy start <harness>` runs inference and stage, then that harness. Listing model tags is not success. Empty `ollama ps` is OK. A missing harness process is not. FreeToken model env: **`PFY_FT_MODEL`** (then `LOCAL_CODER_MODEL` or `FREETOKEN_MODEL`).
+
+Tauri 2 is primary when built: `cd gui/operator/src-tauri && cargo build --release` then `gui/operator/src-tauri/target/release/pfy-operator`. Else pywebview (`scripts/pfy-gui.py`). Missing pywebview: install tip, exit 2.
 
 ## What it is
 
@@ -121,7 +125,7 @@ One-shot design: [docs/ops/one-shot-workflow.md](docs/ops/one-shot-workflow.md) 
 
 ## Current status (v0.4 → G8 launch)
 
-- **`./pfy`** simple surface (ADR-0012): `start`/`up` bring up the operator env (inference → stage → harness); `models` is inspect-only
+- **`./pfy`** simple surface (ADR-0012): bare `./pfy` / `up` / unnamed `start` bring up inference + stage + native operator window; named `start <harness>` still execs that harness; `models` is inspect-only
 - Catalog + eval pipeline remain first-class (`./pfy eval`, structural/golden)
 
 
@@ -150,26 +154,26 @@ Full new-machine path: **[docs/ops/DEPLOY.md](docs/ops/DEPLOY.md)**.
 
 ### Simple path (recommended — G8)
 
-One launcher. Inference first, then product stage, then the active harness:
+One launcher. Inference first, then product stage, then the native operator window:
 
 ```bash
 git clone https://github.com/themark-net/pfy-mentat.git
 cd pfy-mentat
 ./pfy setup              # env + Grok skills if CLI present
-./pfy start              # inference → env-stage → active harness (default grok)
-./pfy board              # local operator GUI (127.0.0.1:8765, or PFY_BOARD_PORT)
+./pfy                    # inference → env-stage → native operator window
+./pfy board              # same native window
 ./pfy models             # inspect-only; listing tags is not success
-# or: ./pfy up            # same operator bring-up as start
+# or: ./pfy up            # same as bare ./pfy
 # or: ./pfy start grok    # named harness after inference/stage
 ```
 
-`./pfy start` / `./pfy up` print `board: http://127.0.0.1:8765` (or `PFY_BOARD_PORT`) before harness exec; they do not auto-start the board.
+Bare `./pfy` opens the native window (Tauri if built, else pywebview). Browser `--open` is not the main path.
 
 | Command | Purpose |
 |---------|---------|
-| `./pfy start` / `./pfy up` | Inference, then env-stage, then active harness if live-ready (default grok). Print the board URL; do not auto-start the board. |
+| `./pfy` / `./pfy up` / unnamed `./pfy start` | Inference, then env-stage, then native operator window. Does **not** exec a harness into that process. |
 | `./pfy start <harness>` | Same bring-up, then that harness (stubs: STUB + issue, exit 2) |
-| `./pfy board` / `./pfy board --open` | Local operator GUI on 127.0.0.1:8765 (or PFY_BOARD_PORT). --open tries the default browser (honest skip if it fails) |
+| `./pfy board` / `./pfy board --open` | Same native window. --open is an optional browser hatch (honest skip if it fails) |
 | `./pfy models` | Inspect-only: list models from the live endpoint (`GET /v1/models`, Ollama `/api/tags`) |
 | `./pfy models pull deepseek-coder:6.7b` | Ollama pull (adapter subcommand) |
 | `./pfy harness list` | Grok, OpenCode, Hermes, Claude Code, Codex, Gemini, Exo, … |
@@ -279,6 +283,7 @@ pfy-mentat/
 │   └── project-process/           # Scaffold process into any repo
 ├── harness/
 │   └── agent-cage/                # Container sandbox (PNNL) + Makefile lab
+├── gui/operator/              # Native operator GUI (Tauri 2 + shared frontend)
 ├── examples/                      # Future integration patterns / smokes
 └── pipelines/                     # Future continuous eval & deploy
 ```

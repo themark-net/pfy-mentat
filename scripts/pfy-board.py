@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Local operator board. Independent poller — not a daemon, not a supervisor."""
+"""Local operator board. Independent poller — not a daemon, not a supervisor.
+
+Serves the shared GUI at gui/operator/frontend/index.html.
+POST /start spawns grok/opencode as a sidecar subprocess only.
+"""
 from __future__ import annotations
 import json, os, socket, subprocess, sys, urllib.request
 from datetime import datetime, timezone
@@ -31,8 +35,10 @@ PS_MATCH = {
 }
 STUB_ALWAYS = {"continue", "agent-cage"}
 NO_SPAWN = {"llama-swap", "llama.cpp", "llama-server", "shimmy"}
+SIDECAR_OK = {"grok", "opencode"}
 ISSUE_BASE = "https://github.com/themark-net/pfy-mentat/issues/"
 GROK_USE = "pfy harness use grok"
+FRONTEND = ROOT / "gui" / "operator" / "frontend" / "index.html"
 ORG_CANDIDATES = (
     STATE / "org-messages.jsonl", STATE / "org-messages.json",
     ROOT / "data" / "org-messages.jsonl", ROOT / "data" / "org-messages.json",
@@ -116,7 +122,7 @@ def process_table():
             continue
         pid, _, args = s.partition(" ")
         low = args.lower()
-        if "pfy-board.py" in low:
+        if "pfy-board.py" in low or "pfy-gui.py" in low or "pfy-operator" in low:
             continue
         hit = ""
         for hid, needles in PS_MATCH.items():
@@ -256,7 +262,7 @@ def rsf_env_stage(verb, usage):
         return "FAIL"
     if "honest skip" in blob or "skip: env-stage" in blob:
         return "SKIP"
-    if v.startswith(("start", "up", "stage")):
+    if v.startswith(("start", "up", "stage", "gui", "board")):
         return "READY"
     return "SKIP"
 
@@ -298,7 +304,7 @@ def snapshot():
             "id": hid, "name": h.get("name") or hid, "role": h.get("role") or "",
             "live": live, "issue_url": f"{ISSUE_BASE}{issue}" if issue not in (None, "") else "",
             "one_liner": one_liner(hid, h),
-            "startable": live == "ready" and hid not in STUB_ALWAYS and hid not in NO_SPAWN,
+            "startable": live == "ready" and hid in SIDECAR_OK,
         }
         if hid in STUB_ALWAYS:
             rec["startable"] = False
@@ -352,71 +358,45 @@ def snapshot():
         "midline": "local = bulk · Grok = DoD",
         "tape": tape_steps(det, verb, parsed.get("usage") or [], active, live_active),
         "blocked_copy": GROK_USE, "status_stdout": status_text, "no_daemon": True,
-        "active_stub": active in STUB_ALWAYS,
+        "active_stub": active in STUB_ALWAYS, "refresh_ms": REFRESH_MS,
+        "sidecar_ok": sorted(SIDECAR_OK),
     }
 
 def html_page():
+    if FRONTEND.is_file():
+        return FRONTEND.read_text(encoding="utf-8")
     return (
-        "<!DOCTYPE html><html lang=en><head><meta charset=utf-8/><title>pfy board</title>"
-        "<style>body{margin:0;font:14px/1.4 ui-sans-serif,system-ui,sans-serif;background:#0e1116;color:#e8edf4}"
-        "header,.pane,.rail,.now,.order,.models,.agent,.notes,.tape,.banner{padding:12px 18px;border-bottom:1px solid #243041}"
-        ".split{display:grid;grid-template-columns:1fr 8px 1fr}"
-        ".local{background:#151a22}.local.ready{background:#1a3d2f}.local.partial{background:#3d351a}"
-        ".local.missing,.local.stub,.local.idle{background:#151a22}"
-        ".cloud{background:#1a2740}"
-        ".mid{background:#2a3344;writing-mode:vertical-rl;transform:rotate(180deg);display:flex;align-items:center;justify-content:center;font-size:11px}"
-        ".chips{display:flex;flex-wrap:wrap;gap:8px}.chip{background:#18202c;border:1px solid #243041;border-radius:10px;padding:8px 10px;min-width:140px}"
-        ".ready{color:#3dd68c}.partial{color:#e6c15a}.stub{color:#e8875b}.detected-stub{color:#c984f0}.missing{color:#7d8796}.idle{color:#6aa7d9}.READY{color:#3dd68c}.SKIP{color:#7d8796}.FAIL{color:#e8875b}"
-        ".copy{font-family:ui-monospace,monospace;font-size:12px;background:#111823;padding:4px 6px;border-radius:6px;display:block;margin-top:6px;user-select:all}"
-        "button{background:#243041;color:#e8edf4;border:1px solid #243041;border-radius:8px;padding:6px 10px}button:disabled{opacity:.4}"
-        ".muted{color:#8b97a8}.banner{background:#3a2a12;color:#f3d9a4}.live{font-weight:700;text-transform:uppercase;font-size:11px}"
-        "</style></head><body>"
-        "<header><b>pfy board</b> <span class=muted id=meta>polling...</span> <span class=muted>127.0.0.1:8765 · no daemon · chips = status live column</span></header>"
-        "<div class=banner id=banners></div><div class=split>"
-        "<section class='pane local' id=localpane><h2>LOCAL WORKER</h2><div id=local></div></section>"
-        "<div class=mid id=mid>local = bulk · Grok = DoD</div>"
-        "<section class='pane cloud'><h2>CLOUD MONITOR</h2><div id=cloud></div></section></div>"
-        "<div class=tape id=tape></div>"
-        "<section class=rail><h2>Honesty rail</h2><p class=muted>Live chips from <code>./pfy status</code>. json status ignored.</p><div class=chips id=chips></div></section>"
-        "<section class=now id=now></section><section class=order id=order></section>"
-        "<details class=models open><summary>Models drawer (inspect-only — tag list is not success)</summary><div id=models></div></details>"
-        "<section class=agent id=agent></section><section class=notes id=notes></section>"
-        "<script>const REFRESH=" + str(REFRESH_MS) + ";"
-        "function cls(s){return (s||'').replace(/[^a-z-]/g,'');}"
-        "async function tick(){"
-        "const s=await (await fetch('/snapshot',{cache:'no-store'})).json();"
-        "document.getElementById('meta').textContent=s.ts+' · '+s.host+' · profile '+(s.profile||'(unset)');"
-        "const b=[]; if(s.local_only) b.push('DEPLOY_PROFILE=local-only — never auto-calls cloud. Grok usage omitted.');"
-        "if(s.honest && s.honest.note_nimo) b.push(s.honest.note_nimo);"
-        "(s.honest.modes||[]).forEach(m=>b.push('honest state: '+m));"
-        "document.getElementById('banners').innerHTML=b.map(x=>'<div>'+x+'</div>').join('');"
-        "const d=s.detector||{}, r=s.status_runtime||{};"
-        "const engLive=s.engine_live||d.status||'missing';"
-        "document.getElementById('localpane').className='pane local '+cls(engLive);"
-        "document.getElementById('local').innerHTML='engine <b>'+(d.engine||r.engine||'none')+'</b> <span class=\"live '+cls(engLive)+'\">'+engLive+'</span><br>status <b>'+(d.status||r.status||'missing')+'</b><br>URL <code>'+(d.base_url||r.base_url||'(none)')+'</code><pre>'+((s.usage||[]).join('\\n')||'(empty)')+'</pre><p class=muted>Ollama is an adapter, not the product. Board does not spawn llama-swap / llama-server / shimmy.</p>';"
-        "const g=(s.chips||[]).find(c=>c.id==='grok')||{};"
-        "document.getElementById('cloud').innerHTML='grok chip (PATH-only): <span class=\"live '+cls(g.live)+'\">'+(g.live||'missing')+'</span><p>DoD: Grok reviews / sets exit card. Local does bulk.</p><p class=muted>'+s.grok_chip_note+'</p>';"
-        "document.getElementById('mid').textContent=s.midline;"
-        "document.getElementById('tape').innerHTML=(s.tape||[]).map((t,i)=>'<span class=chip>'+(i+1)+'. '+t.label+' <span class=\"live '+cls(t.live)+'\">'+t.live+'</span></span>').join(' ');"
-        "document.getElementById('chips').innerHTML=(s.chips||[]).map(c=>{"
-        "const issue=c.issue_url?'<a href=\"'+c.issue_url+'\">issue</a>':'';"
-        "const copy='<code class=copy>'+(c.startable?('./pfy start '+c.id):c.one_liner)+'</code>';"
-        "const btn='<button disabled title=not-a-supervisor>start via CLI</button>';"
-        "return '<div class=chip><b>'+c.id+'</b> <span class=\"live '+cls(c.live)+'\">'+c.live+'</span><div class=muted>'+c.role+' · '+c.name+' '+issue+'</div>'+copy+btn+'</div>';"
-        "}).join('');"
-        "let nowHtml='<h2>Now</h2>';"
-        "if(s.active_stub){nowHtml+='<code class=copy>'+s.blocked_copy+'</code> (bare start STUB, no fallback)<br>';}"
-        "nowHtml+='attached <b>'+s.active+'</b><br>last verb <b>'+(s.last_verb.verb||'(none)')+'</b> <span class=muted>'+(s.last_verb.when||'')+'</span><br>state <b>'+s.now+'</b> (blocked or running)<br><span class=muted>ps: '+(((s.processes||[]).map(p=>p.id+'#'+p.pid).join(', '))||'(none)')+'</span>';"
-        "document.getElementById('now').innerHTML=nowHtml;"
-        "document.getElementById('order').innerHTML='<h2>Detect order</h2>'+(s.detect_order||[]).map(o=>'<div>'+(o.winner?'> ':'')+o.label+' '+o.port+' · <span class=\"live '+cls(o.live)+'\">'+o.live+'</span>'+(o.live==='partial'?' <code class=copy>'+o.one_liner+'</code>':'')+'</div>').join('');"
-        "const tags=(s.models&&s.models.length)?s.models.map(m=>'<li>'+m+'</li>').join(''):'<li>(none — live endpoint not listing or not up)</li>';"
-        "document.getElementById('models').innerHTML='<p class=muted>'+s.models_note+'</p><ul>'+tags+'</ul>';"
-        "if(s.agent_lane_collapsed){document.getElementById('agent').innerHTML='no org loop';}"
-        "else {const rows=(s.org_messages||[]).map(m=>'<tr><td>'+m.from+' → '+m.to+'</td><td>'+(m.pr||m.issue||'')+'</td><td>'+(m.state||'')+'</td></tr>').join('');"
-        "document.getElementById('agent').innerHTML='<h2>Agent lane</h2><table>'+rows+'</table>';}"
-        "document.getElementById('notes').innerHTML='<p class=muted>No pfy daemon. Board polls detector JSON + status stdout + ps. Start execs harness. Continue is never detected-stub. Docker on PATH is cage detected-stub, not startable. Continue/agent-cage: STUB exit 2, copy <code>'+s.blocked_copy+'</code>.</p>';"
-        "} tick(); setInterval(tick, REFRESH);</script></body></html>"
+        "<!DOCTYPE html><html><body>error: gui/operator/frontend/index.html missing</body></html>"
     )
+
+
+def start_sidecar(hid):
+    """Spawn grok/opencode as a separate process. Not a supervisor for other ids."""
+    hid = (hid or "").strip()
+    if not hid:
+        hid = active_harness("grok")
+    if hid in STUB_ALWAYS:
+        return {
+            "ok": False, "id": hid, "live": "FAIL", "copy": GROK_USE,
+            "error": f"{hid} is not startable from the board",
+        }
+    if hid not in SIDECAR_OK:
+        return {
+            "ok": False, "id": hid, "live": "FAIL", "copy": GROK_USE,
+            "error": f"board is not a supervisor for {hid}",
+        }
+    STATE.mkdir(parents=True, exist_ok=True)
+    log = STATE / f"sidecar-{hid}.log"
+    with log.open("ab") as f:
+        proc = subprocess.Popen(
+            ["bash", str(PFY), "start", hid],
+            cwd=str(ROOT),
+            stdout=f,
+            stderr=subprocess.STDOUT,
+            start_new_session=True,
+        )
+    return {"ok": True, "id": hid, "live": "READY", "pid": proc.pid, "sidecar": True, "log": str(log)}
+
 
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
@@ -436,16 +416,38 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, json.dumps(snapshot(), indent=2).encode("utf-8"), "application/json; charset=utf-8"); return
         self._send(404, b"not found\n", "text/plain; charset=utf-8")
     def do_POST(self):
-        self._send(405, b"POST disabled - board is not a supervisor\n", "text/plain; charset=utf-8")
+        path = urlparse(self.path).path
+        if path == "/start":
+            length = int(self.headers.get("Content-Length") or 0)
+            raw = self.rfile.read(length) if length else b"{}"
+            try:
+                body = json.loads(raw.decode() or "{}")
+            except json.JSONDecodeError:
+                body = {}
+            hid = str((body or {}).get("id") or "")
+            result = start_sidecar(hid)
+            code = 200 if result.get("ok") else 400
+            self._send(code, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
+            return
+        self._send(405, b"POST disabled for this path - board is not a supervisor\n", "text/plain; charset=utf-8")
 
 def main():
+    args = sys.argv[1:]
+    if args[:1] == ["--snapshot"]:
+        print(json.dumps(snapshot()))
+        return 0
+    if args[:1] == ["--start"]:
+        hid = args[1] if len(args) > 1 else ""
+        result = start_sidecar(hid)
+        print(json.dumps(result))
+        return 0 if result.get("ok") else 2
     if HOST not in ("127.0.0.1", "localhost"):
         print("error: pfy board binds 127.0.0.1 only", file=sys.stderr); return 2
     httpd = ThreadingHTTPServer((HOST, PORT), Handler)
-    print("pfy board (local operator GUI)")
+    print("pfy board (local operator GUI HTTP; native window is the main path)")
     print(f"  http://{HOST}:{PORT}/")
     print("  polls detector JSON + ./pfy status stdout + process table")
-    print("  no daemon · not a supervisor · chips == status live column")
+    print("  grok/opencode POST /start = sidecar · not a supervisor · chips == status live column")
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

@@ -1,0 +1,6 @@
+{
+  "identifier": "default",
+  "description": "pfy operator window",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}
