@@ -1,15 +1,17 @@
 # Module: `./pfy` (`scripts/pfy`)
 
-**Purpose:** Product door (G8 / ADR-0012). One CLI: setup, status, start/up (inference → env-stage → active harness), models inspect, harness select.
+**Purpose:** Product door (G8 / ADR-0012). One CLI: setup, status, bare start = native operator window (inference → env-stage → window; no harness exec), named start still execs a harness, models inspect, harness select.
 
 ## Entry
 
 ```bash
+./pfy                    # inference → env-stage → native window
 ./pfy help
 ./pfy setup [local-only|balanced|max-performance]
 ./pfy status
-./pfy start [harness]
-./pfy up
+./pfy start [harness]    # no name: native window; named: exec that harness
+./pfy up                 # same as bare ./pfy
+./pfy board [--open]     # alias of the native window; --open browser hatch only
 ./pfy harness list|use <id>|show [id]
 ./pfy models
 ./pfy models pull <name>    # Ollama adapter only
