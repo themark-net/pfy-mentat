@@ -24,3 +24,8 @@ examples/voice-stt-edge/.generated/
 # Local Whisper venv (make voice-stt-install) — never commit
 examples/voice-stt-edge/.venv/
 examples/voice-stt-edge/.venv-python-path
+
+# Native GUI (Tauri 2 build artifacts)
+gui/operator/src-tauri/target/
+gui/operator/node_modules/
+gui/operator/src-tauri/gen/
