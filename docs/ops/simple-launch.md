@@ -32,6 +32,8 @@ Install Grok CLI once if missing: `curl -fsSL https://x.ai/cli/install.sh | bash
 Install Ollama for the **adapter** path (not the spine): https://ollama.com
 When the detector selects Ollama (or `PFY_LOCAL_RUNTIME=ollama`), `./pfy start` / `./pfy up` wait for real health (`GET /api/tags` or `/v1/models`), then pull/select `PFY_OLLAMA_MODEL` (else `LOCAL_CODER_MODEL`). Honest skip if no name and none installed. Status is **ready** only when the API responds (binary + API down = partial; no binary = missing). `./pfy models pull <name>` still works.
 
+When the detector selects FreeToken (or `PFY_LOCAL_RUNTIME=freetoken`), `./pfy start` / `./pfy up` start `ft serve --model $model` in the background if `:1919` is not already healthy, then wait for `GET /v1/models` or `/health`. Model env: `PFY_FT_MODEL`, then `LOCAL_CODER_MODEL`, then `FREETOKEN_MODEL`. Missing binary or no model env is an honest skip (one-liner `ft serve --model $PFY_FT_MODEL`), not fake ready. Still down after wait = partial. Do not vendor FreeToken or invent `ft` flags.
+
 When the detector selects llama-swap (or `PFY_LOCAL_RUNTIME=llama-swap`), `./pfy start` / `./pfy up` start `llama-swap` in the background if `:9292` is not already healthy, then wait for `GET /v1/models` or `/health`. Missing binary is an honest skip (one-liner), not fake ready. Still down after wait = partial.
 
 When the detector selects llama-server (or `PFY_LOCAL_RUNTIME=llama-server`), same for `:8080` if a GGUF path is set (`PFY_LLAMA_MODEL`, then `LOCAL_CODER_MODEL` as an existing file). No path, missing binary, or API still down: honest skip / partial. Do not download weights. Shimmy stays an echo stub.
@@ -98,3 +100,4 @@ Patterns may already exist as skills/docs; the unified installer path does not. 
 | llama-swap / llama-server start | [#104](https://github.com/themark-net/pfy-mentat/issues/104) |
 | board URL on start/up | [#106](https://github.com/themark-net/pfy-mentat/issues/106) |
 | native operator GUI | [#108](https://github.com/themark-net/pfy-mentat/issues/108) |
+| FreeToken `ft serve` health wait | [#110](https://github.com/themark-net/pfy-mentat/issues/110) |
