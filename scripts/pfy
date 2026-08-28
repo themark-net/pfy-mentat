@@ -107,7 +107,7 @@ pfy — simple setup & launch for the pfy-mentat stack
   pfy stage [--lab]       env-stage; --lab optional personal cage lab (doctor→setup→up-mcp)
   pfy eval | ship
   pfy models              list models from the live local endpoint (inspect-only)
-  pfy models pull <name>  (Ollama adapter only)
+  pfy models pull <name>  live engine (FreeToken records name; Ollama pulls; llama skip)
   pfy board [--open]      alias of the native operator window (Tauri if built, else pywebview)
                           --open is an optional browser hatch (not the main path)
   pfy help
@@ -184,8 +184,27 @@ ft_bin() {
   fi
 }
 
+ft_recorded_model() {
+  local f="${STATE_DIR}/ft-model" line=""
+  [[ -f "$f" ]] || return 0
+  IFS= read -r line <"$f" || true
+  printf '%s' "$line"
+}
+
 ft_default_model() {
-  echo "${PFY_FT_MODEL:-${LOCAL_CODER_MODEL:-${FREETOKEN_MODEL:-}}}"
+  local env_model recorded
+  env_model="${PFY_FT_MODEL:-${LOCAL_CODER_MODEL:-${FREETOKEN_MODEL:-}}}"
+  if [[ -n "$env_model" ]]; then
+    printf '%s\n' "$env_model"
+    return 0
+  fi
+  recorded="$(ft_recorded_model)"
+  printf '%s\n' "$recorded"
+}
+
+record_ft_pull_model() {
+  mkdir -p "$STATE_DIR"
+  printf '%s\n' "$1" >"$STATE_DIR/ft-model"
 }
 
 ft_health() {
@@ -974,10 +993,61 @@ cmd_stage() {
 cmd_eval() { (cd "$ROOT" && REASON="${REASON:-pfy eval}" make eval-integration-change); }
 cmd_ship() { (cd "$ROOT" && make product-ship); }
 cmd_models_pull() {
-  local m="${1:-}"
+  local m="${1:-}" rt engine
   [[ -n "$m" ]] || die "usage: pfy models pull <name>"
-  have ollama || die "ollama not installed"
-  ollama pull "$m"
+  rt=$(local_runtime)
+  engine=$(rt_get "$rt" engine)
+  echo "engine: ${engine:-(none)}"
+
+  ft_record_pull() {
+    record_ft_pull_model "$m"
+    echo "recorded FreeToken model: $m"
+    echo "  next ./pfy / ./pfy up will: ft serve --model $m"
+    echo "  (HF/path load happens at serve; no ft pull)"
+  }
+
+  case "$engine" in
+    ollama)
+      if have ollama; then
+        ollama pull "$m"
+      else
+        echo "STUB: ollama not on PATH — honest skip"
+        echo "  https://github.com/themark-net/pfy-mentat/issues/112"
+        echo "  ollama pull $m"
+      fi
+      return 0
+      ;;
+    freetoken|ft)
+      ft_record_pull
+      return 0
+      ;;
+    llama-swap|llama-server|llama.cpp)
+      echo "note: $engine has no pull — honest skip (no GGUF download)"
+      echo "  https://github.com/themark-net/pfy-mentat/issues/112"
+      echo "  set PFY_LLAMA_MODEL to an existing GGUF path"
+      return 0
+      ;;
+    shimmy)
+      echo "STUB: shimmy has no pull — honest skip"
+      echo "  https://github.com/themark-net/pfy-mentat/issues/112"
+      echo "  shimmy"
+      return 0
+      ;;
+  esac
+
+  if have ft || have freetoken; then
+    ft_record_pull
+    return 0
+  fi
+  if have ollama; then
+    ollama pull "$m"
+    return 0
+  fi
+  echo "note: no local engine to pull — honest skip"
+  echo "  https://github.com/themark-net/pfy-mentat/issues/112"
+  echo "  ft serve --model \$PFY_FT_MODEL"
+  echo "  ollama pull $m"
+  return 0
 }
 
 cmd_models_list() {

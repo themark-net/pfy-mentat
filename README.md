@@ -175,7 +175,7 @@ Bare `./pfy` opens the native window (Tauri if built, else pywebview). Browser `
 | `./pfy start <harness>` | Same bring-up, then that harness (stubs: STUB + issue, exit 2) |
 | `./pfy board` / `./pfy board --open` | Same native window. --open is an optional browser hatch (honest skip if it fails) |
 | `./pfy models` | Inspect-only: list models from the live endpoint (`GET /v1/models`, Ollama `/api/tags`) |
-| `./pfy models pull deepseek-coder:6.7b` | Ollama pull (adapter subcommand) |
+| `./pfy models pull <name>` | Live engine: FreeToken records name for next `ft serve --model`; Ollama `pull`; llama-* honest skip |
 | `./pfy harness list` | Grok, OpenCode, Hermes, Claude Code, Codex, Gemini, Exo, … |
 | `./pfy harness use opencode` | Switch active harness (stubs print next steps) |
 | `./pfy stage` / `./pfy eval` / `./pfy ship` | Green checks + catalog gates + product verify |

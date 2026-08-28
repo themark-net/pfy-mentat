@@ -2,7 +2,7 @@
 
 **ADR:** [0014](../adr/0014-pluggable-local-inference-spine.md)
 
-Owner bar: `./pfy start` / `./pfy up` = inference + env-stage + active harness. `./pfy models` is inspect-only.
+Owner bar: `./pfy start` / `./pfy up` = inference + env-stage + active harness. `./pfy models` is inspect-only. `./pfy models pull` routes to the live engine (FreeToken records the name for next `ft serve --model`; Ollama pulls; llama-* honest skip).
 
 ## Preferred: FreeToken
 
