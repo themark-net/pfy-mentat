@@ -14,7 +14,7 @@ Operator environment: local inference, then product stage (honest skip if a piec
 
 ```bash
 ./pfy           # inference → env-stage → native window (no harness exec)
-./pfy board     # same native window (Tauri if built, else pywebview, else tkinter)
+./pfy board     # same native window (Tauri if built, else already-on-box webkit, else stdlib tk)
 ./pfy start grok  # named harness after inference/stage (still execs that harness)
 ./pfy models    # inspect-only: live GET /v1/models (and Ollama /api/tags); usage if exposed
 ```
@@ -25,7 +25,7 @@ If continue or agent-cage is the active harness: FAIL and copy `pfy harness use 
 
 `./pfy start <harness>` runs inference and stage, then that harness. Listing model tags is not success. Empty `ollama ps` is OK. A missing harness process is not. FreeToken model env: **`PFY_FT_MODEL`** (then `LOCAL_CODER_MODEL` or `FREETOKEN_MODEL`).
 
-Tauri is primary when `gui/operator/src-tauri/target/{release,debug}/pfy-operator` exists. Else pywebview (`scripts/pfy-gui.py`). Else stdlib tkinter with the same IA (engine status, env-stage, Attach grok / Attach opencode sidecar, loop/session). The window always opens; missing pywebview is not install-tips-as-UI.
+Tauri is primary when `gui/operator/src-tauri/target/{release,debug}/pfy-operator` exists. Else already-on-box webkit (`scripts/pfy-gui.py`). Else stdlib tk with the same IA (engine status, env-stage, Attach grok / Attach opencode sidecar, loop/session). pywebview is PFY_GUI_DEV=1 only. The window always opens; not install-tips-as-UI.
 
 ## What it is
 
@@ -167,7 +167,7 @@ cd pfy-mentat
 # or: ./pfy start grok    # named harness after inference/stage
 ```
 
-Bare `./pfy` opens the native window (Tauri if built, else pywebview, else tkinter). Browser `--open` is not the main path.
+Bare `./pfy` opens the native window (Tauri if built, else already-on-box webkit, else stdlib tk). pywebview is PFY_GUI_DEV=1 only. Browser `--open` is not the main path.
 
 | Command | Purpose |
 |---------|---------|
