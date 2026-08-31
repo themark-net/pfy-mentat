@@ -1,17 +1,19 @@
-# One-shot: commit 100755 for operator launch scripts on this feature branch only.
-# Contents API writes 100644. Second push no-ops when modes are already 100755.
-name: filemode-operator-scripts
+# Commit git filemode 100755 for operator launchers. No post-checkout hook.
+# Contents API writes 100644; this job is the mode fix. No-op if already 100755.
+name: operator-launch-filemode
 
 on:
   push:
-    branches: [feat/native-window-always-opens]
+    branches: [feat/native-window-always-opens, main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
-  chmod:
-    name: commit +x on operator launch scripts
-    runs-on: [self-hosted, Linux, X64, pfy-mentat]
-    permissions:
-      contents: write
+  chmod-launchers:
+    name: git filemode 100755
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
@@ -29,7 +31,7 @@ jobs:
           )
           need=0
           for p in "${paths[@]}"; do
-            [[ -e "$p" ]] || { echo "missing $p"; continue; }
+            [[ -e "$p" ]] || { echo "missing $p"; exit 1; }
             mode="$(git ls-files -s -- "$p" | awk '{print $1}')"
             echo "$p mode=$mode"
             if [[ "$mode" != "100755" ]]; then
@@ -37,11 +39,28 @@ jobs:
               need=1
             fi
           done
+          git ls-files -s -- "${paths[@]}"
           if [[ "$need" -eq 0 ]]; then
             echo "already 100755; no-op"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "chore(pfy): commit executable bit for operator launch scripts"
+          git commit -m "chore(pfy): git filemode 100755 on operator launchers"
           git push
+
+  tauri-nimo:
+    name: optional Tauri Linux binary (nimo)
+    runs-on: [self-hosted, Linux, X64, pfy-mentat]
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: cargo build --release when cargo is already on the runner
+        run: |
+          set -euo pipefail
+          if ! command -v cargo >/dev/null 2>&1; then
+            echo "note: cargo not on this runner — tk/webkit fallback remains"
+            exit 0
+          fi
+          cd gui/operator/src-tauri
+          cargo build --release
