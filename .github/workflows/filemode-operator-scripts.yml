@@ -1,0 +1,48 @@
+# One-shot: commit 100755 for operator launch scripts on this feature branch only.
+# Contents API writes 100644; Git Data may be unavailable to the implementer.
+# Second push no-ops when modes are already 100755.
+name: filemode-operator-scripts
+
+on:
+  push:
+    branches: [feat/native-window-always-opens]
+
+jobs:
+  chmod:
+    name: commit +x on operator launch scripts
+    runs-on: [self-hosted, Linux, X64, pfy-mentat]
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: git update-index --chmod=+x (no-op if already 100755)
+        run: |
+          set -euo pipefail
+          paths=(
+            pfy
+            scripts/pfy
+            scripts/pfy-gui.py
+            scripts/pfy-board.py
+            scripts/detect-local-runtime.sh
+            scripts/env-stage.sh
+          )
+          need=0
+          for p in "${paths[@]}"; do
+            [[ -e "$p" ]] || { echo "missing $p"; exit 1; }
+            mode="$(git ls-files -s -- "$p" | awk '{print $1}')"
+            echo "$p mode=$mode"
+            if [[ "$mode" != "100755" ]]; then
+              git update-index --chmod=+x -- "$p"
+              need=1
+            fi
+          done
+          if [[ "$need" -eq 0 ]]; then
+            echo "already 100755; no-op"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore(pfy): commit executable bit for operator launch scripts"
+          git push
