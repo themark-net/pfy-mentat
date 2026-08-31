@@ -1,9 +1,11 @@
-# Optional git filemode 100755 for operator launchers.
-# Contents API writes 100644. Run manually after a Contents-API push of launchers.
-# Not on push: a prior run committed an empty scripts/pfy blob.
+# One-shot: restore emptied launcher if needed, then commit 100755.
+# Contents API writes 100644. Second push no-ops when modes are already 100755.
+# Feature branch only. No post-checkout hook. No cargo/pip/apt as operator UI.
 name: operator-launch-filemode
 
 on:
+  push:
+    branches: [feat/native-window-always-opens]
   workflow_dispatch:
 
 permissions:
@@ -12,11 +14,13 @@ permissions:
 jobs:
   chmod-launchers:
     name: git filemode 100755
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, pfy-mentat]
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
+      - name: restore emptied scripts/pfy and drop cargo launch stub
+        run: python3 .github/scripts/restore-operator-launcher.py
       - name: git update-index --chmod=+x (no-op if already 100755)
         run: |
           set -euo pipefail
@@ -29,9 +33,13 @@ jobs:
             scripts/env-stage.sh
           )
           need=0
+          git add -- scripts/pfy || true
+          if ! git diff --cached --quiet -- scripts/pfy; then
+            need=1
+          fi
           for p in "${paths[@]}"; do
             [[ -e "$p" ]] || { echo "missing $p"; exit 1; }
-            [[ -s "$p" ]] || { echo "refusing empty $p"; exit 1; }
+            [[ -s "$p" ]] || { echo "empty $p after restore"; exit 1; }
             mode="$(git ls-files -s -- "$p" | awk '{print $1}')"
             echo "$p mode=$mode size=$(wc -c < "$p")"
             if [[ "$mode" != "100755" ]]; then
@@ -41,10 +49,10 @@ jobs:
           done
           git ls-files -s -- "${paths[@]}"
           if [[ "$need" -eq 0 ]]; then
-            echo "already 100755; no-op"
+            echo "already 100755 and launcher intact; no-op"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "chore(pfy): git filemode 100755 on operator launchers"
+          git commit -m "chore(pfy): restore launcher + git filemode 100755"
           git push
