@@ -78,7 +78,7 @@ launch_native_gui() {
     exec "$tbin"
   fi
   if [[ -f "$ROOT/scripts/pfy-gui.py" ]]; then
-    # pfy-gui.py prints native window (pywebview|webkit|tkinter); never cargo/pip/apt
+    # print native window (webkit|tk); never pywebview as product path
     exec python3 "$ROOT/scripts/pfy-gui.py"
   fi
   mkdir -p "$STATE_DIR"
@@ -94,7 +94,7 @@ cmd_gui() {
   run_product_stage
   warn_if_active_stub
   echo "native window is the main interface (no harness exec into this process)"
-  echo "  attach grok/opencode from the window (sidecar). named: ./pfy start <harness>"
+  echo "  Attach grok / Attach opencode from the window (sidecar). named: ./pfy start <harness>"
   launch_native_gui
 }
 
@@ -116,7 +116,7 @@ pfy — simple setup & launch for the pfy-mentat stack
                           --open is an optional browser hatch (not the main path)
   pfy help
 
-Native window is the main interface. Tauri if pfy-operator exists; else webkit or stdlib tk.
+Native window is the main interface. Tauri when binary exists; else already-on-box webkit or stdlib tk (scripts/pfy-gui.py). pywebview is PFY_GUI_DEV=1 only. Window always opens.
 Browser --open is not required. Board is not a supervisor.
 Continue/agent-cage active: FAIL, copy `pfy harness use grok` (no fallback).
 
