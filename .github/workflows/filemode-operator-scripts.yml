@@ -1,6 +1,6 @@
 # One-shot: commit 100755 for operator launch scripts on this feature branch only.
-# Contents API writes 100644; Git Data may be unavailable to the implementer.
-# Second push no-ops when modes are already 100755.
+# Also apply launch_native_gui + webkit fallback content (Contents API writes 100644).
+# Second push no-ops when modes are already 100755 and launch stubs are gone.
 name: filemode-operator-scripts
 
 on:
@@ -9,7 +9,7 @@ on:
 
 jobs:
   chmod:
-    name: commit +x on operator launch scripts
+    name: commit +x and launch fallback on operator scripts
     runs-on: [self-hosted, Linux, X64, pfy-mentat]
     permissions:
       contents: write
@@ -17,9 +17,130 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
-      - name: git update-index --chmod=+x (no-op if already 100755)
+      - name: Drop cargo/pip launch stubs; add webkit; chmod +x
         run: |
           set -euo pipefail
+          python3 << 'PY'
+          from pathlib import Path
+
+          p = Path("scripts/pfy")
+          t = p.read_text(encoding="utf-8")
+          old_launch = '''  if [[ -f "$ROOT/scripts/pfy-gui.py" ]]; then
+    echo "native window (pywebview)"
+    echo "  one-liner: cd gui/operator/src-tauri && cargo build --release"
+    exec python3 "$ROOT/scripts/pfy-gui.py"
+  fi'''
+          new_launch = '''  if [[ -f "$ROOT/scripts/pfy-gui.py" ]]; then
+    exec python3 "$ROOT/scripts/pfy-gui.py"
+  fi'''
+          if old_launch in t:
+              t = t.replace(old_launch, new_launch, 1)
+          old_usage = '''  pfy board [--open]      alias of the native operator window (Tauri if built, else pywebview)
+                          --open is an optional browser hatch (not the main path)
+  pfy help
+
+Native window is the main interface. Tauri binary (when built):
+  cd gui/operator/src-tauri && cargo build --release
+  → gui/operator/src-tauri/target/release/pfy-operator
+Else pywebview + WebKitGTK (scripts/pfy-gui.py). Missing pywebview: install tip, exit 2.
+Browser --open is not required. Board is not a supervisor.
+Continue/agent-cage active: FAIL, copy `pfy harness use grok` (no fallback).'''
+          new_usage = '''  pfy board [--open]      alias of the native operator window
+                          --open is an optional browser hatch (not the main path)
+  pfy help
+
+Native window is the main interface (Tauri if built, else pywebview / webkit / tkinter).
+Browser --open is not required. Board is not a supervisor.
+Continue/agent-cage active: FAIL, copy `pfy harness use grok` (no fallback).'''
+          if old_usage in t:
+              t = t.replace(old_usage, new_usage, 1)
+          p.write_text(t, encoding="utf-8")
+
+          g = Path("scripts/pfy-gui.py")
+          gt = g.read_text(encoding="utf-8")
+          if "def run_webkit" not in gt:
+              insert = '''
+
+def run_webkit(board) -> int:
+    """Already-present Gtk+WebKit2. Hosts the board frontend over the in-process poller."""
+    try:
+        import gi  # type: ignore
+    except ImportError:
+        return 1
+    gtk = None
+    webkit = None
+    for gtk_ver in ("3.0",):
+        try:
+            gi.require_version("Gtk", gtk_ver)
+            from gi.repository import Gtk  # type: ignore
+            gtk = Gtk
+            break
+        except (ValueError, ImportError):
+            continue
+    if gtk is None:
+        return 1
+    for wk_ver in ("4.1", "4.0"):
+        try:
+            gi.require_version("WebKit2", wk_ver)
+            from gi.repository import WebKit2  # type: ignore
+            webkit = WebKit2
+            break
+        except (ValueError, ImportError):
+            continue
+    if webkit is None:
+        return 1
+    from http.server import ThreadingHTTPServer
+    host = getattr(board, "HOST", os.environ.get("PFY_BOARD_HOST", "127.0.0.1"))
+    port = int(getattr(board, "PORT", os.environ.get("PFY_BOARD_PORT", "8765")))
+    url = f"http://{host}:{port}/"
+    httpd = None
+    if not _port_open(host, port):
+        httpd = ThreadingHTTPServer((host, port), board.Handler)
+        threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    try:
+        win = gtk.Window(title="pfy")
+        win.set_default_size(1280, 800)
+        win.connect("destroy", gtk.main_quit)
+        view = webkit.WebView()
+        view.load_uri(url)
+        win.add(view)
+        win.show_all()
+        print("native window (webkit)", flush=True)
+        gtk.main()
+        return 0
+    except Exception:
+        return 1
+    finally:
+        if httpd is not None:
+            try:
+                httpd.shutdown()
+            except Exception:
+                pass
+
+'''
+              if "def run_tkinter" in gt:
+                  gt = gt.replace("def run_tkinter", insert + "def run_tkinter", 1)
+              old_main = '''    try:
+        import webview  # noqa: F401
+    except ImportError:
+        return run_tkinter(board, selftest=False)
+    return run_pywebview(board)
+'''
+              new_main = '''    try:
+        import webview  # noqa: F401
+    except ImportError:
+        webview = None
+    if webview is not None:
+        return run_pywebview(board)
+    if run_webkit(board) == 0:
+        return 0
+    return run_tkinter(board, selftest=False)
+'''
+              if old_main in gt:
+                  gt = gt.replace(old_main, new_main, 1)
+              g.write_text(gt, encoding="utf-8")
+          print("content patch applied")
+          PY
           paths=(
             pfy
             scripts/pfy
@@ -29,6 +150,10 @@ jobs:
             scripts/env-stage.sh
           )
           need=0
+          git add scripts/pfy scripts/pfy-gui.py || true
+          if ! git diff --cached --quiet -- scripts/pfy scripts/pfy-gui.py; then
+            need=1
+          fi
           for p in "${paths[@]}"; do
             [[ -e "$p" ]] || { echo "missing $p"; exit 1; }
             mode="$(git ls-files -s -- "$p" | awk '{print $1}')"
@@ -39,10 +164,10 @@ jobs:
             fi
           done
           if [[ "$need" -eq 0 ]]; then
-            echo "already 100755; no-op"
+            echo "already 100755 and content patched; no-op"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "chore(pfy): commit executable bit for operator launch scripts"
+          git commit -m "chore(pfy): native-window fallback + executable bit for operator launch scripts"
           git push
