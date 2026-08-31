@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Restore truncated scripts/pfy; drop cargo launch stubs; spec print labels."""
+"""Restore scripts/pfy if emptied/truncated; drop cargo/pywebview launch one-liners."""
 from pathlib import Path
 import urllib.request
 
@@ -10,59 +10,45 @@ OLD_LAUNCH = (
     '    echo "  one-liner: cd gui/operator/src-tauri && cargo build --release"\n'
     '    exec python3 "$ROOT/scripts/pfy-gui.py"\n'
 )
-NEW_LAUNCH = (
-    '    # pfy-gui.py prints native window (pywebview|webkit|tkinter); never cargo/pip/apt\n'
-    '    exec python3 "$ROOT/scripts/pfy-gui.py"\n'
-)
-OLD_USAGE = (
-    "Native window is the main interface. Tauri binary (when built):\n"
-    "  cd gui/operator/src-tauri && cargo build --release\n"
-    "  \u2192 gui/operator/src-tauri/target/release/pfy-operator\n"
-    "Else pywebview + WebKitGTK (scripts/pfy-gui.py). Missing pywebview: install tip, exit 2.\n"
-)
-NEW_USAGE = (
-    "Native window is the main interface (Tauri if built, else pywebview / webkit / tkinter).\n"
-)
-OLD_BOARD = (
-    "  pfy board [--open]      alias of the native operator window (Tauri if built, else pywebview)\n"
-)
-NEW_BOARD = "  pfy board [--open]      alias of the native operator window\n"
-
-
-def restore_launcher() -> None:
-    p = Path("scripts/pfy")
-    t = p.read_text() if p.exists() else ""
-    truncated = (not p.exists()) or p.stat().st_size < 30000 or 'main "$@"' not in t
-    if truncated:
-        print("scripts/pfy truncated/broken — restoring from", MAIN)
-        p.write_bytes(urllib.request.urlopen(URL, timeout=30).read())
-        t = p.read_text()
-    if OLD_LAUNCH in t:
-        t = t.replace(OLD_LAUNCH, NEW_LAUNCH, 1)
-        print("dropped cargo/pywebview launch one-liners")
-    if OLD_USAGE in t:
-        t = t.replace(OLD_USAGE, NEW_USAGE, 1)
-        print("dropped cargo usage install tip")
-    if OLD_BOARD in t:
-        t = t.replace(OLD_BOARD, NEW_BOARD, 1)
-    p.write_text(t)
-    print("scripts/pfy bytes", p.stat().st_size, "has main", 'main "$@"' in t)
-
-
-def patch_gui() -> None:
-    p = Path("scripts/pfy-gui.py")
-    if not p.exists():
-        return
-    t = p.read_text()
-    if 'print("native window (tk)"' in t:
-        t = t.replace('print("native window (tk)"', 'print("native window (tkinter)"')
-        print("relabeled native window (tk) -> (tkinter)")
-    p.write_text(t)
+NEW_LAUNCH = '    exec python3 "$ROOT/scripts/pfy-gui.py"\n'
+REPLACES = [
+    (
+        "Native window is the main interface (Tauri if built, else pywebview / webkit / tkinter).\n",
+        "Native window is the main interface. Tauri if pfy-operator exists; else webkit or stdlib tk.\n",
+    ),
+    (
+        "Native window is the main interface. Tauri binary (when built):\n"
+        "  cd gui/operator/src-tauri && cargo build --release\n"
+        "  \u2192 gui/operator/src-tauri/target/release/pfy-operator\n"
+        "Else pywebview + WebKitGTK (scripts/pfy-gui.py). Missing pywebview: install tip, exit 2.\n",
+        "Native window is the main interface. Tauri if pfy-operator exists; else webkit or stdlib tk.\n",
+    ),
+    (
+        "  pfy board [--open]      alias of the native operator window (Tauri if built, else pywebview)\n",
+        "  pfy board [--open]      alias of the native operator window (Tauri / webkit / tk)\n",
+    ),
+]
 
 
 def main() -> None:
-    restore_launcher()
-    patch_gui()
+    p = Path("scripts/pfy")
+    if not p.exists() or p.stat().st_size < 25000:
+        print("scripts/pfy empty/truncated — restoring from", MAIN, "size", p.stat().st_size if p.exists() else 0)
+        p.write_bytes(urllib.request.urlopen(URL, timeout=30).read())
+    t = p.read_text()
+    if OLD_LAUNCH in t:
+        t = t.replace(OLD_LAUNCH, NEW_LAUNCH, 1)
+        print("dropped cargo/pywebview launch one-liners")
+    for old, new in REPLACES:
+        if old in t:
+            t = t.replace(old, new, 1)
+            print("replaced usage block")
+    t = t.replace('die "native GUI missing (scripts/pfy-gui.py)"',
+                  'die "native window could not open (scripts/pfy-gui.py missing)"')
+    p.write_text(t)
+    print("scripts/pfy bytes", p.stat().st_size)
+    if p.stat().st_size < 25000:
+        raise SystemExit("scripts/pfy still truncated after restore")
 
 
 if __name__ == "__main__":
