@@ -131,3 +131,263 @@ Detector is invoked with bash.
 Docker not required for basic start.
 U
 }
+
+json_field() {
+  python3 - "$REG" "$1" "${2:-}" <<'PY'
+import json,sys
+reg=json.load(open(sys.argv[1]))
+cmd=sys.argv[2]
+arg=sys.argv[3] if len(sys.argv)>3 else ""
+if cmd=="list":
+    for h in reg["harnesses"]:
+        print(f"{h['id']}\t{h['status']}\t{h['role']}\t{h['name']}")
+elif cmd=="default":
+    print(reg.get("default_harness","grok"))
+elif cmd=="get":
+    for h in reg["harnesses"]:
+        if h["id"]==arg:
+            print(json.dumps(h, indent=2)); break
+    else:
+        sys.exit(1)
+elif cmd=="detects":
+    for h in reg["harnesses"]:
+        if h["id"]==arg:
+            print("\n".join(h.get("detect") or [])); break
+elif cmd=="github_issue":
+    for h in reg["harnesses"]:
+        if h["id"]==arg:
+            gi=h.get("github_issue")
+            print("" if gi in (None,"") else gi)
+            break
+    else:
+        sys.exit(1)
+elif cmd=="adapter_ids":
+    for h in reg["harnesses"]:
+        if h.get("role")=="harness":
+            print(h["id"])
+PY
+}
+
+local_runtime() {
+  if [[ -f "$DETECT" ]]; then
+    bash "$DETECT" --json
+  else
+    echo '{"engine":"none","status":"missing","base_url":""}'
+  fi
+}
+
+rt_get() {
+  python3 -c "import json,sys; print(json.loads(sys.argv[1]).get(sys.argv[2],'') or '')" "$1" "$2"
+}
+
+ft_bin() {
+  if have ft; then echo ft
+  elif have freetoken; then echo freetoken
+  else echo ft
+  fi
+}
+
+ft_recorded_model() {
+  local f="${STATE_DIR}/ft-model" line=""
+  [[ -f "$f" ]] || return 0
+  IFS= read -r line <"$f" || true
+  printf '%s' "$line"
+}
+
+ft_default_model() {
+  local env_model recorded
+  env_model="${PFY_FT_MODEL:-${LOCAL_CODER_MODEL:-${FREETOKEN_MODEL:-}}}"
+  if [[ -n "$env_model" ]]; then
+    printf '%s\n' "$env_model"
+    return 0
+  fi
+  recorded="$(ft_recorded_model)"
+  printf '%s\n' "$recorded"
+}
+
+record_ft_pull_model() {
+  mkdir -p "$STATE_DIR"
+  printf '%s\n' "$1" >"$STATE_DIR/ft-model"
+}
+
+ft_health() {
+  curl -sf --max-time 2 http://127.0.0.1:1919/v1/models >/dev/null 2>&1 \
+    || curl -sf --max-time 2 http://127.0.0.1:1919/health >/dev/null 2>&1
+}
+
+wait_freetoken_health() {
+  local i
+  for i in $(seq 1 12); do
+    ft_health && return 0
+    sleep 0.5
+  done
+  return 1
+}
+
+ensure_freetoken() {
+  local bin model
+  if ! have ft && ! have freetoken; then
+    echo "STUB: FreeToken not on PATH. One-liner:"
+    echo "  ft serve --model \$PFY_FT_MODEL"
+    return 0
+  fi
+  bin="$(ft_bin)"
+  if ft_health; then
+    echo "FreeToken API healthy"
+    return 0
+  fi
+  model="$(ft_default_model)"
+  if [[ -z "$model" ]]; then
+    echo "note: FreeToken has no model env (set PFY_FT_MODEL, or LOCAL_CODER_MODEL / FREETOKEN_MODEL) — honest skip"
+    echo "  ft serve --model \$PFY_FT_MODEL"
+    return 0
+  fi
+  echo "starting FreeToken in background (wait for /v1/models or /health on :1919)…"
+  ("$bin" serve --model "$model" >>"$STATE_DIR/freetoken.log" 2>&1 &) || true
+  if wait_freetoken_health; then
+    echo "FreeToken API healthy"
+  else
+    echo "note: FreeToken launched but API not healthy (partial) — not fake ready"
+  fi
+}
+
+ollama_health() {
+  curl -sf --max-time 2 http://127.0.0.1:11434/api/tags >/dev/null 2>&1 \
+    || curl -sf --max-time 2 http://127.0.0.1:11434/v1/models >/dev/null 2>&1
+}
+
+wait_ollama_health() {
+  local i
+  for i in $(seq 1 12); do
+    ollama_health && return 0
+    sleep 0.5
+  done
+  return 1
+}
+
+ollama_default_model() {
+  echo "${PFY_OLLAMA_MODEL:-${LOCAL_CODER_MODEL:-${OLLAMA_MODEL:-}}}"
+}
+
+ollama_has_model() {
+  local name="${1:-}"
+  [[ -z "$name" ]] && return 1
+  ollama show "$name" >/dev/null 2>&1 && return 0
+  ollama list 2>/dev/null | awk -v n="$name" 'NR>1 && $1!="" && index($1,n)==1 { found=1 } END { exit !found }'
+}
+
+ollama_any_model() {
+  ollama list 2>/dev/null | awk 'NR>1 && $1!="" { found=1 } END { exit !found }'
+}
+
+ensure_ollama_adapter() {
+  if ! have ollama; then
+    echo "STUB: ollama not on PATH. One-liner:"
+    echo "  ollama serve"
+    return 0
+  fi
+  if ollama_health; then
+    echo "ollama API healthy"
+  else
+    echo "starting Ollama serve (wait for /api/tags or /v1/models)…"
+    (ollama serve >>"$STATE_DIR/ollama.log" 2>&1 &) || true
+    if wait_ollama_health; then
+      echo "ollama API healthy"
+    else
+      echo "note: ollama serve launched but API not healthy (partial) — not fake ready"
+      return 0
+    fi
+  fi
+  local model
+  model="$(ollama_default_model)"
+  if [[ -n "$model" ]]; then
+    if ollama_has_model "$model"; then
+      echo "default model present: $model"
+    else
+      echo "pulling default model: $model"
+      ollama pull "$model" || echo "note: ollama pull failed — honest skip"
+    fi
+  elif ollama_any_model; then
+    echo "note: no PFY_OLLAMA_MODEL / LOCAL_CODER_MODEL — using already-installed tags"
+  else
+    echo "note: no PFY_OLLAMA_MODEL / LOCAL_CODER_MODEL and no models installed — honest skip"
+  fi
+}
+
+
+llama_swap_health() {
+  curl -sf --max-time 2 http://127.0.0.1:9292/v1/models >/dev/null 2>&1 \
+    || curl -sf --max-time 2 http://127.0.0.1:9292/health >/dev/null 2>&1
+}
+
+wait_llama_swap_health() {
+  local i
+  for i in $(seq 1 12); do
+    llama_swap_health && return 0
+    sleep 0.5
+  done
+  return 1
+}
+
+ensure_llama_swap() {
+  if ! have llama-swap; then
+    echo "STUB: llama-swap not on PATH. One-liner:"
+    echo "  llama-swap"
+    return 0
+  fi
+  if llama_swap_health; then
+    echo "llama-swap API healthy"
+    return 0
+  fi
+  echo "starting llama-swap in background (wait for /v1/models or /health on :9292)…"
+  (llama-swap >>"$STATE_DIR/llama-swap.log" 2>&1 &) || true
+  if wait_llama_swap_health; then
+    echo "llama-swap API healthy"
+  else
+    echo "note: llama-swap launched but API not healthy (partial) — not fake ready"
+  fi
+}
+
+llama_server_health() {
+  curl -sf --max-time 2 http://127.0.0.1:8080/v1/models >/dev/null 2>&1 \
+    || curl -sf --max-time 2 http://127.0.0.1:8080/health >/dev/null 2>&1
+}
+
+wait_llama_server_health() {
+  local i
+  for i in $(seq 1 12); do
+    llama_server_health && return 0
+    sleep 0.5
+  done
+  return 1
+}
+
+llama_server_model_path() {
+  echo "${PFY_LLAMA_MODEL:-${LOCAL_CODER_MODEL:-}}"
+}
+
+ensure_llama_server() {
+  if ! have llama-server; then
+    echo "STUB: llama-server not on PATH. One-liner:"
+    echo "  llama-server -m \$PFY_LLAMA_MODEL --port 8080 --host 127.0.0.1"
+    return 0
+  fi
+  if llama_server_health; then
+    echo "llama-server API healthy"
+    return 0
+  fi
+  local model
+  model="$(llama_server_model_path)"
+  if [[ -z "$model" || ! -f "$model" ]]; then
+    echo "note: llama-server has no GGUF path (set PFY_LLAMA_MODEL or LOCAL_CODER_MODEL to an existing file) — honest skip"
+    echo "  llama-server -m \$PFY_LLAMA_MODEL --port 8080 --host 127.0.0.1"
+    return 0
+  fi
+  echo "starting llama-server in background (wait for /v1/models or /health on :8080)…"
+  (llama-server -m "$model" --port 8080 --host 127.0.0.1 >>"$STATE_DIR/llama-server.log" 2>&1 &) || true
+  if wait_llama_server_health; then
+    echo "llama-server API healthy"
+  else
+    echo "note: llama-server launched but API not healthy (partial) — not fake ready"
+  fi
+}
