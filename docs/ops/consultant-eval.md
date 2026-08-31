@@ -80,4 +80,26 @@ Detect order (ADR-0014, first live wins): **FreeToken :1919 → llama-swap :9292
 | opencode | harness | **ready** if `opencode` or `opencode-cli` on PATH; else **missing**. json may still say `partial` | Named start: `exec` binary, `OPENCODE_SKILLS` → `bootstrap/grok-cli/skills`, `OPENAI_BASE_URL` from `LOCAL_OPENAI_BASE_URL` when runtime ready. No binary: STUB + issue #55, exit 2 |
 | hermes | harness | **ready** if `hermes` or `hermes-agent` on PATH; else **missing**. json may stay `partial` | Named start: `exec` binary; `OPENAI_BASE_URL` from `LOCAL_OPENAI_BASE_URL` when runtime ready. No binary: STUB + issue #56 + `curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash`, exit 2. `/hermes-feedback` is process-only |
 | claude-code | harness | **ready** if `claude` on PATH; else **missing**. json may stay `partial` | Named start: `exec claude`; `OPENAI_BASE_URL` from `LOCAL_OPENAI_BASE_URL` when runtime ready. No binary: STUB + issue #57 + `curl -fsSL https://claude.ai/install.sh | bash`, exit 2. Login/credentials/2FA are owner-only |
-| codex | harness | **ready** if `codex` on PATH; else **missing**. json may stay `partial** | Named start: `exec codex`; `OPENAI_BASE_URL` from `LOCAL_OPENAI_BASE_URL` when runtime ready. No binary: STUB + issue #58 + `curl -fsSL https://chatgpt.com/codex/install.sh | sh`, exit 2. Login/credentials/2FA are owner-only |
+| codex | harness | **ready** if `codex` on PATH; else **missing**. json may stay `partial` | Named start: `exec codex`; `OPENAI_BASE_URL` from `LOCAL_OPENAI_BASE_URL` when runtime ready. No binary: STUB + issue #58 + `curl -fsSL https://chatgpt.com/codex/install.sh | sh`, exit 2. Login/credentials/2FA are owner-only |
+| gemini | harness | **ready** if `gemini` or `gemini-cli` on PATH; else **missing**. json may stay `partial` | Named start: `exec` binary; `OPENAI_BASE_URL` from `LOCAL_OPENAI_BASE_URL` when runtime ready. No binary: STUB + issue #59 + `npm install -g @google/gemini-cli`, exit 2. Login/credentials/2FA are owner-only |
+| exo | harness | **ready** if `$ROOT/exo.sh`, `$HOME/exo/exo.sh`, or `exo.sh` on PATH; else **missing**. json may stay `partial`. Docker on PATH is not ready. | Named start: `exec` that script; `OPENAI_BASE_URL` from `LOCAL_OPENAI_BASE_URL` when runtime ready. No invented Exo flags. Missing: STUB + issue #60 + official `setup.sh` one-liner, exit 2. Optional lab only — `./pfy harness use exo` does not change `default_harness` |
+| continue | harness | **always stub** (empty detect; never detected-stub even if continue is on PATH). Recipe at bootstrap/continue/. | Always STUB exit 2 + issue #61. Do not exec the IDE. If this id is active, bare `./pfy` is FAIL with no grok/opencode fallback; copy `pfy harness use grok`. |
+| agent-cage | lab | live **stub** / **detected-stub** (Docker on PATH is **not** ready / not startable) | Always STUB exit 2 + issue #62. If this id is active, bare `./pfy` is FAIL with no grok/opencode fallback; copy `pfy harness use grok`. Lab is `./pfy stage --lab` / `make cage-*` (doctor → setup → up-mcp). Missing Docker is honest skip, not product-ready. Do not sell cage. |
+
+## Eval without assuming cage
+
+| Command | Needs cage? | Needs LLM? | What green means |
+|---------|-------------|------------|------------------|
+| `make eval-structural` | No | No | G0 docs/schema scorers. Consultant default |
+| `make eval-golden` | No | Replay fixtures | Deterministic golden lane |
+| `make eval-deploy-ready` | Declared smokes | Mixed | G1 — skip if smoke needs lab you do not have; do not fake |
+| `./pfy eval` | No (Make target may skip) | Catalog change gates | `eval-integration-change`, not G0 |
+| `make cage-*` / in-cage smokes | **Yes** | Varies | Optional lab. Missing Docker is skip, not product-ready |
+
+Do not call a lane green if it skipped. Point of truth: [eval-gates-and-ux-uat.md](eval-gates-and-ux-uat.md). Catalog scoring rubric: [evaluation-framework.md](../evaluation-framework.md).
+
+## Out of scope for this pack
+
+- Shipping remaining harness adapters
+- Restoring a 1:1 dump of TOOLS.md into tools.json
+- Treating agent-cage as a `./pfy start` harness
