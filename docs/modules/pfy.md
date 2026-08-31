@@ -11,7 +11,7 @@
 ./pfy status
 ./pfy start [harness]    # no name: native window; named: exec that harness
 ./pfy up                 # same as bare ./pfy
-./pfy board [--open]     # alias of the native window; --open browser hatch only
+./pfy board [--open]     # alias of the native window (Tauri / pywebview / tkinter); --open browser hatch only
 ./pfy harness list|use <id>|show [id]
 ./pfy models
 ./pfy models pull <name>    # Ollama adapter only
