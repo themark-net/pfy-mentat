@@ -28,7 +28,10 @@ a.issue:hover{text-decoration:underline}
 .attach-result{display:block;margin-top:8px;font-weight:700}
 .attach-result.ok{color:#3dd68c}
 .attach-result.fail{color:#e8875b}
-.hit{margin-top:6px}
+a.hit{display:inline-block;margin-top:6px;background:#2a4a6d;border:1px solid #4d8dff;color:#e8edf4;border-radius:8px;padding:6px 10px;text-decoration:none;cursor:pointer}
+a.hit:hover{background:#345a80}
+a.inspect{color:#e8edf4;text-decoration:none}
+a.inspect .copy{display:inline-block}
 noscript .fail{padding:16px;display:block}
 </style></head><body>
 <noscript><p class=fail>FAIL JS required for sidebar and attach — pfy harness use grok</p></noscript>
@@ -132,9 +135,11 @@ document.getElementById('btnopen').addEventListener('click',()=>attach('opencode
 function chipHtml(c){
   const lv=live(c.live);
   const issue=c.issue_url?'<span class=muted> · <a class=issue href="'+c.issue_url+'">issue</a></span>':'';
+  const startHref='#start-'+c.id;
+  const inspect=(c.one_liner||('./pfy start '+c.id));
   const hit=c.startable
-    ? '<button type=button class=hit data-start="'+c.id+'">Start '+c.id+'</button>'
-    : '<code class=copy>'+(c.one_liner||('./pfy start '+c.id))+'</code>';
+    ? '<a class=hit href="'+startHref+'" data-start="'+c.id+'">Start '+c.id+'</a>'
+    : '<a class=inspect href="'+startHref+'"><code class=copy>'+inspect+'</code></a>';
   return '<div class=chip><b>'+c.id+'</b> <span class="live '+cls(lv)+'">'+lv+'</span><div class=muted>'+c.role+' · '+c.name+issue+'</div>'+hit+'</div>';
 }
 async function tick(){
@@ -185,7 +190,8 @@ async function tick(){
     document.getElementById('view-stage').innerHTML='<h2>STAGE</h2><div class=row>env-stage <span class="live '+cls(stage.live||'SKIP')+'">'+(stage.live||'SKIP')+'</span></div>'+skipNote+'<div class=row>what ran scripts/env-stage.sh (or skip reason)</div>';
     const rail=(s.chips||[]).map(chipHtml).join('');
     document.getElementById('view-attach').innerHTML='<h2>ATTACH</h2><p class=muted>chips (secondary) · start/inspect is the hit · issue URL muted</p><div class=row>NOW attached <b>'+attached+'</b> · last <b>'+verb+'</b> · state <b>'+(s.now||'idle')+'</b></div><div class=chips>'+rail+'</div>';
-    document.querySelectorAll('[data-start]').forEach(btn=>btn.addEventListener('click',()=>attach(btn.getAttribute('data-start'))));
+    document.querySelectorAll('[data-start]').forEach(el=>el.addEventListener('click',e=>{e.preventDefault();attach(el.getAttribute('data-start'));}));
+    document.querySelectorAll('a.inspect').forEach(el=>el.addEventListener('click',e=>e.preventDefault()));
     if(showOrg){
       const rows=(s.org_messages||[]).map(m=>'<tr><td>'+m.from+' → '+m.to+'</td><td>'+(m.pr||m.issue||'')+'</td><td>'+(m.state||'')+'</td></tr>').join('');
       document.getElementById('view-org').innerHTML='<h2>ORG</h2><table>'+rows+'</table>';
