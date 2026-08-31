@@ -4,32 +4,45 @@ body{margin:0;font:14px/1.4 ui-sans-serif,system-ui,sans-serif;background:#0e111
 .app{display:grid;grid-template-columns:168px 1fr;min-height:100vh}
 .side{background:#121821;border-right:1px solid #243041;padding:14px 0}
 .side b{display:block;padding:0 16px 12px;font-size:16px}
-.side button{display:block;width:100%;text-align:left;background:transparent;border:0;color:#e8edf4;padding:10px 16px;border-radius:0}
-.side button.on{background:#243041}
+.side button{display:block;width:calc(100% - 16px);margin:2px 8px;text-align:left;background:#18202c;border:1px solid #334155;color:#e8edf4;padding:10px 12px;border-radius:8px;cursor:pointer}
+.side button.on{background:#1e3a5f;border-color:#4d8dff;box-shadow:inset 4px 0 0 #4d8dff;font-weight:700}
+.side button:focus-visible{outline:2px solid #4d8dff;outline-offset:2px}
 header,.banner,.split,.tape,.main,.rail{padding:10px 16px;border-bottom:1px solid #243041}
 .split{display:grid;grid-template-columns:1fr 8px 1fr;padding:0}
 .local{background:#151a22;padding:12px 16px}.local.ready{background:#1a3d2f}
 .local.missing,.local.stub,.local.idle,.local.skip,.local.detected-stub{background:#151a22}
 .cloud{background:#1a2740;padding:12px 16px}
 .mid{background:#2a3344;writing-mode:vertical-rl;transform:rotate(180deg);display:flex;align-items:center;justify-content:center;font-size:11px}
-.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;opacity:.9}
 .chip{background:#18202c;border:1px solid #243041;border-radius:10px;padding:8px 10px;min-width:140px}
 .ready{color:#3dd68c}.partial{color:#e6c15a}.stub{color:#e8875b}.detected-stub{color:#c984f0}.missing{color:#7d8796}.skip{color:#7d8796}.idle{color:#6aa7d9}.READY{color:#3dd68c}.SKIP{color:#7d8796}.FAIL{color:#e8875b}
 .copy{font-family:ui-monospace,monospace;font-size:12px;background:#111823;padding:4px 6px;border-radius:6px;display:block;margin-top:6px;user-select:all}
-button{background:#243041;color:#e8edf4;border:1px solid #243041;border-radius:8px;padding:6px 10px}button:disabled{opacity:.4}
+button{background:#243041;color:#e8edf4;border:1px solid #3a4a60;border-radius:8px;padding:6px 10px;cursor:pointer}button:disabled{opacity:.4;cursor:not-allowed}
+button.primary{background:#2a4a6d;border-color:#4d8dff}
 .muted{color:#8b97a8}.banner{background:#3a2a12;color:#f3d9a4}.live{font-weight:700;text-transform:uppercase;font-size:11px}
 .fail{color:#e8875b;font-weight:700}
 .view{display:none}.view.on{display:block}
 .row{margin:4px 0}
+a.issue{color:#5c6b7a;font-size:11px;text-decoration:none}
+a.issue:hover{text-decoration:underline}
+.attach-result{display:block;margin-top:8px;font-weight:700}
+.attach-result.ok{color:#3dd68c}
+.attach-result.fail{color:#e8875b}
+a.hit{display:inline-block;margin-top:6px;background:#2a4a6d;border:1px solid #4d8dff;color:#e8edf4;border-radius:8px;padding:6px 10px;text-decoration:none;cursor:pointer}
+a.hit:hover{background:#345a80}
+a.inspect{color:#e8edf4;text-decoration:none}
+a.inspect .copy{display:inline-block}
+noscript .fail{padding:16px;display:block}
 </style></head><body>
+<noscript><p class=fail>FAIL JS required for sidebar and attach — pfy harness use grok</p></noscript>
 <div class=app>
 <nav class=side>
   <b>pfy</b>
-  <button class="navbtn on" data-go=loop>Loop</button>
-  <button class=navbtn data-go=engine>Engine</button>
-  <button class=navbtn data-go=stage>Stage</button>
-  <button class=navbtn data-go=attach>Attach</button>
-  <button class=navbtn id=orgnav data-go=org style=display:none>Org</button>
+  <button type=button class="navbtn on" data-go=loop>Loop</button>
+  <button type=button class=navbtn data-go=engine>Engine</button>
+  <button type=button class=navbtn data-go=stage>Stage</button>
+  <button type=button class=navbtn data-go=attach>Attach</button>
+  <button type=button class=navbtn id=orgnav data-go=org style=display:none>Org</button>
 </nav>
 <div class=shell>
 <header><b>pfy</b> <span class=muted id=meta>polling...</span></header>
@@ -43,45 +56,72 @@ button{background:#243041;color:#e8edf4;border:1px solid #243041;border-radius:8
 <div class=main>
   <p id=fail class=fail></p>
   <p>
-    <button id=btngrok onclick="attach('grok')">Attach grok</button>
-    <button id=btnopen onclick="attach('opencode')">Attach opencode</button>
-    <span class=muted id=attachmsg></span>
+    <button type=button class=primary id=btngrok>Attach grok</button>
+    <button type=button class=primary id=btnopen>Attach opencode</button>
   </p>
+  <span id=attachmsg class=attach-result></span>
   <section class="view on" id=view-loop></section>
   <section class=view id=view-engine></section>
   <section class=view id=view-stage></section>
   <section class=view id=view-attach></section>
   <section class=view id=view-org></section>
-  <div class=chips id=chips></div>
 </div>
 </div>
 <script>
 const REFRESH=2000;
 const LIVE=new Set(['ready','partial','stub','detected-stub','missing','skip']);
+const GROK_USE='pfy harness use grok';
 let attachMsg="";
+let attachKind="";
 let view='loop';
 function cls(s){return (s||'').replace(/[^a-z-]/g,'');}
 function live(s){s=(s||'').toLowerCase(); return LIVE.has(s)?s:'missing';}
 function isTauri(){return !!(window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke);}
+function paintAttach(){
+  const el=document.getElementById('attachmsg');
+  el.textContent=attachMsg;
+  el.className='attach-result'+(attachKind?(' '+attachKind):'');
+}
 async function getSnapshot(){
-  if(isTauri()){
-    const v=await window.__TAURI__.core.invoke('snapshot');
-    return typeof v==='string'?JSON.parse(v):v;
+  try{
+    if(isTauri()){
+      const v=await window.__TAURI__.core.invoke('snapshot');
+      return typeof v==='string'?JSON.parse(v):v;
+    }
+    const r=await fetch('/snapshot',{cache:'no-store'});
+    if(!r.ok) throw new Error('snapshot '+r.status);
+    return await r.json();
+  }catch(e){
+    return {error:String(e),chips:[],tape:[],blocked_copy:GROK_USE};
   }
-  return await (await fetch('/snapshot',{cache:'no-store'})).json();
 }
 async function postStart(id){
-  if(isTauri()){
-    const v=await window.__TAURI__.core.invoke('start_sidecar',{id});
-    return typeof v==='string'?JSON.parse(v):v;
+  try{
+    if(isTauri()){
+      const v=await window.__TAURI__.core.invoke('start_sidecar',{id});
+      return typeof v==='string'?JSON.parse(v):v;
+    }
+    const r=await fetch('/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});
+    try{return await r.json();}catch(e){return {ok:false,error:String(e),copy:GROK_USE,live:'FAIL'};}
+  }catch(e){
+    return {ok:false,error:String(e),copy:GROK_USE,live:'FAIL'};
   }
-  const r=await fetch('/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});
-  try{return await r.json();}catch(e){return {ok:false,error:String(e),copy:'pfy harness use grok',live:'FAIL'};}
 }
 async function attach(id){
-  const j=await postStart(id);
-  if(j && j.ok){attachMsg='sidecar '+id+(j.pid?(' pid '+j.pid):'');}
-  else{attachMsg='FAIL '+(j && (j.copy||j.error)||'pfy harness use grok');}
+  try{
+    const j=await postStart(id);
+    if(j && j.ok){
+      attachMsg='sidecar '+id+(j.pid?(' pid '+j.pid):' attached');
+      attachKind='ok';
+    }else{
+      attachMsg='FAIL '+(j && (j.copy||j.error)||GROK_USE);
+      attachKind='fail';
+    }
+  }catch(e){
+    attachMsg='FAIL '+GROK_USE;
+    attachKind='fail';
+  }
+  paintAttach();
   tick();
 }
 function show(v){
@@ -90,54 +130,80 @@ function show(v){
   document.querySelectorAll('.navbtn').forEach(b=>b.classList.toggle('on', b.dataset.go===v));
 }
 document.querySelectorAll('.navbtn').forEach(b=>b.addEventListener('click',()=>show(b.dataset.go)));
+document.getElementById('btngrok').addEventListener('click',()=>attach('grok'));
+document.getElementById('btnopen').addEventListener('click',()=>attach('opencode'));
+function chipHtml(c){
+  const lv=live(c.live);
+  const issue=c.issue_url?'<span class=muted> · <a class=issue href="'+c.issue_url+'">issue</a></span>':'';
+  const startHref='#start-'+c.id;
+  const inspect=(c.one_liner||('./pfy start '+c.id));
+  const hit=c.startable
+    ? '<a class=hit href="'+startHref+'" data-start="'+c.id+'">Start '+c.id+'</a>'
+    : '<a class=inspect href="'+startHref+'"><code class=copy>'+inspect+'</code></a>';
+  return '<div class=chip><b>'+c.id+'</b> <span class="live '+cls(lv)+'">'+lv+'</span><div class=muted>'+c.role+' · '+c.name+issue+'</div>'+hit+'</div>';
+}
 async function tick(){
-  const s=await getSnapshot();
-  document.getElementById('meta').textContent=s.ts+' · '+s.host+' · profile '+(s.profile||'(unset)');
-  const b=[]; if(s.local_only) b.push('DEPLOY_PROFILE=local-only — never auto-calls cloud. Grok usage omitted.');
-  if(s.honest && s.honest.note_nimo) b.push(s.honest.note_nimo);
-  (s.honest && s.honest.modes||[]).forEach(m=>b.push('honest state: '+m));
-  document.getElementById('banners').innerHTML=b.map(x=>'<div>'+x+'</div>').join('');
-  const d=s.detector||{}, r=s.status_runtime||{};
-  const engLive=live(s.engine_live||d.status||'missing');
-  document.getElementById('localpane').className='pane local'+(engLive==='ready'?' ready':'');
-  document.getElementById('local').innerHTML='engine <b>'+(d.engine||r.engine||'none')+'</b> <span class="live '+cls(engLive)+'">'+engLive+'</span><br>status <b>'+live(d.status||r.status)+'</b><br>URL <code>'+(d.base_url||r.base_url||'(none)')+'</code><pre>'+((s.usage||[]).join('\n')||'(empty)')+'</pre><p class=muted>Ollama is an adapter, not the product.</p>';
-  const g=(s.chips||[]).find(c=>c.id==='grok')||{};
-  document.getElementById('cloud').innerHTML='grok PATH <span class="live '+cls(live(g.live))+'">'+live(g.live)+'</span><p>role monitor / DoD</p><p class=muted>'+(s.grok_chip_note||'')+'</p>';
-  document.getElementById('mid').textContent=s.midline||'local = bulk · Grok = DoD';
-  const tape=s.tape||[];
-  document.getElementById('tape').innerHTML='<span class=muted>inference → env-stage → harness attach</span> '+tape.map((t,i)=>'<span class=chip>'+(i+1)+'. '+t.label+' <span class="live '+cls(t.live)+'">'+t.live+'</span></span>').join(' then ');
-  const stub=!!(s.active_stub || s.active==='continue' || s.active==='agent-cage');
-  document.getElementById('btngrok').disabled=stub;
-  document.getElementById('btnopen').disabled=stub;
-  document.getElementById('fail').textContent=stub?('FAIL  '+(s.blocked_copy||'pfy harness use grok')):'';
-  document.getElementById('attachmsg').textContent=attachMsg||(stub?(s.blocked_copy||''):'');
-  const showOrg=!s.agent_lane_collapsed && (s.org_messages||[]).length;
-  document.getElementById('orgnav').style.display=showOrg?'block':'none';
-  if(!showOrg && view==='org') show('loop');
-  const attached=s.active||'(none)';
-  const verb=(s.last_verb&&s.last_verb.verb)||'(none)';
-  const when=(s.last_verb&&s.last_verb.when)||'';
-  const tapeTxt=tape.map((t,i)=>(i+1)+'. '+t.label+' '+t.live).join(' then ');
-  const stage=tape.find(t=>t.id==='env-stage'||t.label==='env-stage')||{};
-  const models=(s.models&&s.models.length)?s.models.join(', '):'(none — live endpoint not listing or not up)';
-  const order=(s.detect_order||[]).map(o=>(o.winner?'> ':'')+o.label+' '+o.port+' · <span class="live '+cls(live(o.live))+'">'+live(o.live)+'</span>').join('<br>');
-  document.getElementById('view-loop').innerHTML='<h2>LOOP</h2><div class=row>attached <b>'+attached+'</b></div><div class=row>last <b>'+verb+'</b> <span class=muted>'+when+'</span></div><div class=row>tape '+tapeTxt+'</div><div class=row>now window owns the process; sidecar is a button · state <b>'+(s.now||'idle')+'</b></div>';
-  document.getElementById('view-engine').innerHTML='<h2>ENGINE</h2><div class=row>engine <b>'+(d.engine||r.engine||'none')+'</b></div><div class=row>live <span class="live '+cls(engLive)+'">'+engLive+'</span></div><div class=row>URL <code>'+(d.base_url||r.base_url||'(none)')+'</code></div><div class=row>usage <pre>'+((s.usage||[]).join('\n')||'(empty)')+'</pre></div><details class=models><summary>Models drawer (inspect-only)</summary><p class=muted>'+(s.models_note||'')+'</p><p>'+models+'</p></details><h3>Detect order</h3>'+order;
-  const skipNote=(stage.live==='SKIP')?'<p class=muted>skip is honest (never painted as failure of the env)</p>':'';
-  document.getElementById('view-stage').innerHTML='<h2>STAGE</h2><div class=row>env-stage <span class="live '+cls(stage.live||'SKIP')+'">'+(stage.live||'SKIP')+'</span></div>'+skipNote+'<div class=row>what ran scripts/env-stage.sh (or skip reason)</div>';
-  document.getElementById('view-attach').innerHTML='<h2>ATTACH</h2><p class=muted>rail · every harness.json id · live chip from ./pfy status</p><div class=row>NOW attached <b>'+attached+'</b> · last <b>'+verb+'</b> · state <b>'+(s.now||'idle')+'</b></div>';
-  if(showOrg){
-    const rows=(s.org_messages||[]).map(m=>'<tr><td>'+m.from+' → '+m.to+'</td><td>'+(m.pr||m.issue||'')+'</td><td>'+(m.state||'')+'</td></tr>').join('');
-    document.getElementById('view-org').innerHTML='<h2>ORG</h2><table>'+rows+'</table>';
-  } else {
-    document.getElementById('view-org').innerHTML='no org loop';
+  try{
+    const s=await getSnapshot();
+    if(s.error && !(s.chips||[]).length){
+      document.getElementById('meta').textContent=s.error;
+      document.getElementById('fail').textContent='FAIL  '+(s.blocked_copy||GROK_USE);
+      attachMsg=attachMsg||('FAIL '+(s.blocked_copy||GROK_USE));
+      attachKind='fail';
+      paintAttach();
+      return;
+    }
+    document.getElementById('meta').textContent=s.ts+' · '+s.host+' · profile '+(s.profile||'(unset)');
+    const b=[]; if(s.local_only) b.push('DEPLOY_PROFILE=local-only — never auto-calls cloud. Grok usage omitted.');
+    if(s.honest && s.honest.note_nimo) b.push(s.honest.note_nimo);
+    (s.honest && s.honest.modes||[]).forEach(m=>b.push('honest state: '+m));
+    document.getElementById('banners').innerHTML=b.map(x=>'<div>'+x+'</div>').join('');
+    const d=s.detector||{}, r=s.status_runtime||{};
+    const engLive=live(s.engine_live||d.status||'missing');
+    document.getElementById('localpane').className='pane local'+(engLive==='ready'?' ready':'');
+    document.getElementById('local').innerHTML='engine <b>'+(d.engine||r.engine||'none')+'</b> <span class="live '+cls(engLive)+'">'+engLive+'</span><br>status <b>'+live(d.status||r.status)+'</b><br>URL <code>'+(d.base_url||r.base_url||'(none)')+'</code><pre>'+((s.usage||[]).join('\n')||'(empty)')+'</pre><p class=muted>Ollama is an adapter, not the product.</p>';
+    const g=(s.chips||[]).find(c=>c.id==='grok')||{};
+    document.getElementById('cloud').innerHTML='grok PATH <span class="live '+cls(live(g.live))+'">'+live(g.live)+'</span><p>role monitor / DoD</p><p class=muted>'+(s.grok_chip_note||'')+'</p>';
+    document.getElementById('mid').textContent=s.midline||'local = bulk · Grok = DoD';
+    const tape=s.tape||[];
+    document.getElementById('tape').innerHTML='<span class=muted>inference → env-stage → harness attach</span> '+tape.map((t,i)=>'<span class=chip>'+(i+1)+'. '+t.label+' <span class="live '+cls(t.live)+'">'+t.live+'</span></span>').join(' then ');
+    const stub=!!(s.active_stub || s.active==='continue' || s.active==='agent-cage');
+    document.getElementById('btngrok').disabled=stub;
+    document.getElementById('btnopen').disabled=stub;
+    document.getElementById('fail').textContent=stub?('FAIL  '+(s.blocked_copy||GROK_USE)):'';
+    if(!attachMsg && stub){ attachMsg='FAIL '+(s.blocked_copy||GROK_USE); attachKind='fail'; }
+    paintAttach();
+    const showOrg=!s.agent_lane_collapsed && (s.org_messages||[]).length;
+    document.getElementById('orgnav').style.display=showOrg?'block':'none';
+    if(!showOrg && view==='org') show('loop');
+    const attached=s.active||'(none)';
+    const verb=(s.last_verb&&s.last_verb.verb)||'(none)';
+    const when=(s.last_verb&&s.last_verb.when)||'';
+    const tapeTxt=tape.map((t,i)=>(i+1)+'. '+t.label+' '+t.live).join(' then ');
+    const stage=tape.find(t=>t.id==='env-stage'||t.label==='env-stage')||{};
+    const models=(s.models&&s.models.length)?s.models.join(', '):'(none — live endpoint not listing or not up)';
+    const order=(s.detect_order||[]).map(o=>(o.winner?'> ':'')+o.label+' '+o.port+' · <span class="live '+cls(live(o.live))+'">'+live(o.live)+'</span>').join('<br>');
+    const next=stub?('FAIL '+ (s.blocked_copy||GROK_USE)):(attachMsg||'next Attach grok / Attach opencode');
+    document.getElementById('view-loop').innerHTML='<h2>LOOP</h2><div class=row>attached <b>'+attached+'</b></div><div class=row>last <b>'+verb+'</b> <span class=muted>'+when+'</span></div><div class=row>tape '+tapeTxt+'</div><div class=row>next '+next+'</div><div class=row>now window owns the process; sidecar is a button · state <b>'+(s.now||'idle')+'</b></div>';
+    document.getElementById('view-engine').innerHTML='<h2>ENGINE</h2><div class=row>engine <b>'+(d.engine||r.engine||'none')+'</b></div><div class=row>live <span class="live '+cls(engLive)+'">'+engLive+'</span></div><div class=row>URL <code>'+(d.base_url||r.base_url||'(none)')+'</code></div><div class=row>usage <pre>'+((s.usage||[]).join('\n')||'(empty)')+'</pre></div><details class=models><summary>Models drawer (inspect-only)</summary><p class=muted>'+(s.models_note||'')+'</p><p>'+models+'</p></details><h3>Detect order</h3>'+order;
+    const skipNote=(stage.live==='SKIP')?'<p class=muted>skip is honest (never painted as failure of the env)</p>':'';
+    document.getElementById('view-stage').innerHTML='<h2>STAGE</h2><div class=row>env-stage <span class="live '+cls(stage.live||'SKIP')+'">'+(stage.live||'SKIP')+'</span></div>'+skipNote+'<div class=row>what ran scripts/env-stage.sh (or skip reason)</div>';
+    const rail=(s.chips||[]).map(chipHtml).join('');
+    document.getElementById('view-attach').innerHTML='<h2>ATTACH</h2><p class=muted>chips (secondary) · start/inspect is the hit · issue URL muted</p><div class=row>NOW attached <b>'+attached+'</b> · last <b>'+verb+'</b> · state <b>'+(s.now||'idle')+'</b></div><div class=chips>'+rail+'</div>';
+    document.querySelectorAll('[data-start]').forEach(el=>el.addEventListener('click',e=>{e.preventDefault();attach(el.getAttribute('data-start'));}));
+    document.querySelectorAll('a.inspect').forEach(el=>el.addEventListener('click',e=>e.preventDefault()));
+    if(showOrg){
+      const rows=(s.org_messages||[]).map(m=>'<tr><td>'+m.from+' → '+m.to+'</td><td>'+(m.pr||m.issue||'')+'</td><td>'+(m.state||'')+'</td></tr>').join('');
+      document.getElementById('view-org').innerHTML='<h2>ORG</h2><table>'+rows+'</table>';
+    } else {
+      document.getElementById('view-org').innerHTML='no org loop';
+    }
+  }catch(e){
+    document.getElementById('fail').textContent='FAIL  '+GROK_USE;
+    attachMsg='FAIL '+GROK_USE;
+    attachKind='fail';
+    paintAttach();
   }
-  document.getElementById('chips').innerHTML=(s.chips||[]).map(c=>{
-    const lv=live(c.live);
-    const issue=c.issue_url?'<a href="'+c.issue_url+'">issue</a>':'';
-    const copy='<code class=copy>'+(c.startable?('./pfy start '+c.id):c.one_liner)+'</code>';
-    return '<div class=chip><b>'+c.id+'</b> <span class="live '+cls(lv)+'">'+lv+'</span><div class=muted>'+c.role+' · '+c.name+' '+issue+'</div>'+copy+'</div>';
-  }).join('');
 }
 tick(); setInterval(tick, REFRESH);
 </script></body></html>
