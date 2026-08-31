@@ -45,7 +45,7 @@ When the detector selects llama-server (or `PFY_LOCAL_RUNTIME=llama-server`), sa
 | Simple | Make / script |
 |--------|----------------|
 | `pfy setup` | `make env-init` + `bootstrap/grok-cli/install.sh` |
-| `pfy` / `pfy board` | native operator window (Tauri if built, else pywebview; `--open` browser hatch only) |
+| `pfy` / `pfy board` | native operator window (Tauri if built, else already-on-box webkit, else stdlib tk; `--open` browser hatch only) |
 | `pfy start` / `pfy up` | unnamed: same native window. named `pfy start <id>`: inference + env-stage + exec that harness |
 | `pfy stage` | `make env-stage` |
 | `pfy stage --lab` | `make cage-doctor` then `cage-setup` then `cage-up-mcp` (missing Docker: honest skip) |
@@ -62,6 +62,7 @@ When the detector selects llama-server (or `PFY_LOCAL_RUNTIME=llama-server`), sa
 | **stub** | Slot reserved; `pfy start` prints setup + issue text |
 | **missing** | Not installed |
 | **detected-stub** | Binary found but adapter still stub |
+| **skip** | Honest skip (tape / unused engine) — never `unknown` |
 
 Registry: [`data/harnesses.json`](../../data/harnesses.json).
 
@@ -73,7 +74,7 @@ Registry: [`data/harnesses.json`](../../data/harnesses.json).
 
 Continue is a **config recipe** at `bootstrap/continue/` (`LOCAL_OPENAI_BASE_URL`, not Ollama-only). `./pfy start continue` stays STUB exit 2. Continue is never detected-stub. If continue or agent-cage is the active harness, bare `./pfy` / unnamed start is FAIL with no grok/opencode fallback; copy `pfy harness use grok`.
 
-The native operator window **is** the main interface (`./pfy` with no args, `./pfy board`). Tauri 2 binary when built (`gui/operator/src-tauri/target/release/pfy-operator`); else pywebview (`scripts/pfy-gui.py`) wrapping the same frontend. Missing pywebview: install tip, exit 2. Optional `./pfy board --open` is a browser hatch, not the main path. In-window attach for grok/opencode spawns a sidecar. continue/agent-cage active: FAIL + copy `pfy harness use grok` (no fallback). Consultants should eval board chips against the `./pfy status` live column (same host; `missing` not `unknown`). Grok chip is PATH-only. nimo banner only if hostname contains `nimo`. Board is not a supervisor.
+The native operator window **is** the main interface (`./pfy` with no args, `./pfy board`). Tauri 2 binary when `gui/operator/src-tauri/target/{release,debug}/pfy-operator` exists; else already-on-box webkit (`scripts/pfy-gui.py`) wrapping the same frontend; else stdlib tk with live chips from `./pfy status`. pywebview is PFY_GUI_DEV=1 only. The window always opens. Optional `./pfy board --open` is a browser hatch, not the main path. In-window attach for grok/opencode spawns a sidecar. continue/agent-cage active: FAIL + copy `pfy harness use grok` (no fallback). Consultants should eval board chips against the `./pfy status` live column (same host; `missing` not `unknown`). Grok chip is PATH-only. nimo banner only if hostname contains `nimo`. Board is not a supervisor.
 
 `gemini` is a live adapter when `gemini` or `gemini-cli` is on PATH (`./pfy start gemini` execs it; missing: STUB + issue #59 + official install one-liner, exit 2). Login/credentials/2FA are owner-only.
 
@@ -102,5 +103,6 @@ Patterns may already exist as skills/docs; the unified installer path does not. 
 | llama-swap / llama-server start | [#104](https://github.com/themark-net/pfy-mentat/issues/104) |
 | board URL on start/up | [#106](https://github.com/themark-net/pfy-mentat/issues/106) |
 | native operator GUI | [#108](https://github.com/themark-net/pfy-mentat/issues/108) |
+| window always opens | [#114](https://github.com/themark-net/pfy-mentat/issues/114) |
 | FreeToken `ft serve` health wait | [#110](https://github.com/themark-net/pfy-mentat/issues/110) |
 | models pull live engine | [#112](https://github.com/themark-net/pfy-mentat/issues/112) |

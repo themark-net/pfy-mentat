@@ -1,31 +1,67 @@
 <!DOCTYPE html><html lang=en><head><meta charset=utf-8/><title>pfy</title>
-<style>body{margin:0;font:14px/1.4 ui-sans-serif,system-ui,sans-serif;background:#0e1116;color:#e8edf4}
-header,.pane,.rail,.now,.order,.models,.agent,.notes,.tape,.banner{padding:12px 18px;border-bottom:1px solid #243041}
-.split{display:grid;grid-template-columns:1fr 8px 1fr}
-.local{background:#151a22}.local.ready{background:#1a3d2f}.local.partial{background:#3d351a}
-.local.missing,.local.stub,.local.idle{background:#151a22}
-.cloud{background:#1a2740}
+<style>
+body{margin:0;font:14px/1.4 ui-sans-serif,system-ui,sans-serif;background:#0e1116;color:#e8edf4}
+.app{display:grid;grid-template-columns:168px 1fr;min-height:100vh}
+.side{background:#121821;border-right:1px solid #243041;padding:14px 0}
+.side b{display:block;padding:0 16px 12px;font-size:16px}
+.side button{display:block;width:100%;text-align:left;background:transparent;border:0;color:#e8edf4;padding:10px 16px;border-radius:0}
+.side button.on{background:#243041}
+header,.banner,.split,.tape,.main,.rail{padding:10px 16px;border-bottom:1px solid #243041}
+.split{display:grid;grid-template-columns:1fr 8px 1fr;padding:0}
+.local{background:#151a22;padding:12px 16px}.local.ready{background:#1a3d2f}
+.local.missing,.local.stub,.local.idle,.local.skip,.local.detected-stub{background:#151a22}
+.cloud{background:#1a2740;padding:12px 16px}
 .mid{background:#2a3344;writing-mode:vertical-rl;transform:rotate(180deg);display:flex;align-items:center;justify-content:center;font-size:11px}
-.chips{display:flex;flex-wrap:wrap;gap:8px}.chip{background:#18202c;border:1px solid #243041;border-radius:10px;padding:8px 10px;min-width:140px}
-.ready{color:#3dd68c}.partial{color:#e6c15a}.stub{color:#e8875b}.detected-stub{color:#c984f0}.missing{color:#7d8796}.idle{color:#6aa7d9}.READY{color:#3dd68c}.SKIP{color:#7d8796}.FAIL{color:#e8875b}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{background:#18202c;border:1px solid #243041;border-radius:10px;padding:8px 10px;min-width:140px}
+.ready{color:#3dd68c}.partial{color:#e6c15a}.stub{color:#e8875b}.detected-stub{color:#c984f0}.missing{color:#7d8796}.skip{color:#7d8796}.idle{color:#6aa7d9}.READY{color:#3dd68c}.SKIP{color:#7d8796}.FAIL{color:#e8875b}
 .copy{font-family:ui-monospace,monospace;font-size:12px;background:#111823;padding:4px 6px;border-radius:6px;display:block;margin-top:6px;user-select:all}
 button{background:#243041;color:#e8edf4;border:1px solid #243041;border-radius:8px;padding:6px 10px}button:disabled{opacity:.4}
 .muted{color:#8b97a8}.banner{background:#3a2a12;color:#f3d9a4}.live{font-weight:700;text-transform:uppercase;font-size:11px}
+.fail{color:#e8875b;font-weight:700}
+.view{display:none}.view.on{display:block}
+.row{margin:4px 0}
 </style></head><body>
-<header><b>pfy</b> <span class=muted id=meta>polling...</span> <span class=muted>native window · no daemon · chips = status live column</span></header>
-<div class=banner id=banners></div><div class=split>
-<section class='pane local' id=localpane><h2>LOCAL WORKER</h2><div id=local></div></section>
-<div class=mid id=mid>local = bulk · Grok = DoD</div>
-<section class='pane cloud'><h2>CLOUD MONITOR</h2><div id=cloud></div></section></div>
+<div class=app>
+<nav class=side>
+  <b>pfy</b>
+  <button class="navbtn on" data-go=loop>Loop</button>
+  <button class=navbtn data-go=engine>Engine</button>
+  <button class=navbtn data-go=stage>Stage</button>
+  <button class=navbtn data-go=attach>Attach</button>
+  <button class=navbtn id=orgnav data-go=org style=display:none>Org</button>
+</nav>
+<div class=shell>
+<header><b>pfy</b> <span class=muted id=meta>polling...</span></header>
+<div class=banner id=banners></div>
+<div class=split>
+  <section class='pane local' id=localpane><h2>LOCAL WORKER</h2><div id=local></div></section>
+  <div class=mid id=mid>local = bulk · Grok = DoD</div>
+  <section class='pane cloud'><h2>CLOUD MONITOR</h2><div id=cloud></div></section>
+</div>
 <div class=tape id=tape></div>
-<section class=rail><h2>Honesty rail</h2><p class=muted>Live chips from <code>./pfy status</code>. json status ignored. Unparsed live is <code>missing</code>, not unknown. grok/opencode attach = sidecar (separate process).</p><div class=chips id=chips></div></section>
-<section class=now id=now></section><section class=order id=order></section>
-<details class=models open><summary>Models drawer (inspect-only — tag list is not success)</summary><div id=models></div></details>
-<section class=agent id=agent></section><section class=notes id=notes></section>
+<div class=main>
+  <p id=fail class=fail></p>
+  <p>
+    <button id=btngrok onclick="attach('grok')">Attach grok</button>
+    <button id=btnopen onclick="attach('opencode')">Attach opencode</button>
+    <span class=muted id=attachmsg></span>
+  </p>
+  <section class="view on" id=view-loop></section>
+  <section class=view id=view-engine></section>
+  <section class=view id=view-stage></section>
+  <section class=view id=view-attach></section>
+  <section class=view id=view-org></section>
+  <div class=chips id=chips></div>
+</div>
+</div>
 <script>
 const REFRESH=2000;
+const LIVE=new Set(['ready','partial','stub','detected-stub','missing','skip']);
 let attachMsg="";
+let view='loop';
 function cls(s){return (s||'').replace(/[^a-z-]/g,'');}
+function live(s){s=(s||'').toLowerCase(); return LIVE.has(s)?s:'missing';}
 function isTauri(){return !!(window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke);}
 async function getSnapshot(){
   if(isTauri()){
@@ -48,6 +84,12 @@ async function attach(id){
   else{attachMsg='FAIL '+(j && (j.copy||j.error)||'pfy harness use grok');}
   tick();
 }
+function show(v){
+  view=v;
+  document.querySelectorAll('.view').forEach(el=>el.classList.toggle('on', el.id==='view-'+v));
+  document.querySelectorAll('.navbtn').forEach(b=>b.classList.toggle('on', b.dataset.go===v));
+}
+document.querySelectorAll('.navbtn').forEach(b=>b.addEventListener('click',()=>show(b.dataset.go)));
 async function tick(){
   const s=await getSnapshot();
   document.getElementById('meta').textContent=s.ts+' · '+s.host+' · profile '+(s.profile||'(unset)');
@@ -56,33 +98,46 @@ async function tick(){
   (s.honest && s.honest.modes||[]).forEach(m=>b.push('honest state: '+m));
   document.getElementById('banners').innerHTML=b.map(x=>'<div>'+x+'</div>').join('');
   const d=s.detector||{}, r=s.status_runtime||{};
-  const engLive=s.engine_live||d.status||'missing';
-  document.getElementById('localpane').className='pane local '+cls(engLive);
-  document.getElementById('local').innerHTML='engine <b>'+(d.engine||r.engine||'none')+'</b> <span class="live '+cls(engLive)+'">'+engLive+'</span><br>status <b>'+(d.status||r.status||'missing')+'</b><br>URL <code>'+(d.base_url||r.base_url||'(none)')+'</code><pre>'+((s.usage||[]).join('\n')||'(empty)')+'</pre><p class=muted>Ollama is an adapter, not the product. Board does not spawn llama-swap / llama-server / shimmy.</p>';
+  const engLive=live(s.engine_live||d.status||'missing');
+  document.getElementById('localpane').className='pane local'+(engLive==='ready'?' ready':'');
+  document.getElementById('local').innerHTML='engine <b>'+(d.engine||r.engine||'none')+'</b> <span class="live '+cls(engLive)+'">'+engLive+'</span><br>status <b>'+live(d.status||r.status)+'</b><br>URL <code>'+(d.base_url||r.base_url||'(none)')+'</code><pre>'+((s.usage||[]).join('\n')||'(empty)')+'</pre><p class=muted>Ollama is an adapter, not the product.</p>';
   const g=(s.chips||[]).find(c=>c.id==='grok')||{};
-  document.getElementById('cloud').innerHTML='grok chip (PATH-only): <span class="live '+cls(g.live)+'">'+(g.live||'missing')+'</span><p>DoD: Grok reviews / sets exit card. Local does bulk.</p><p class=muted>'+s.grok_chip_note+'</p>';
-  document.getElementById('mid').textContent=s.midline;
-  document.getElementById('tape').innerHTML=(s.tape||[]).map((t,i)=>'<span class=chip>'+(i+1)+'. '+t.label+' <span class="live '+cls(t.live)+'">'+t.live+'</span></span>').join(' ');
+  document.getElementById('cloud').innerHTML='grok PATH <span class="live '+cls(live(g.live))+'">'+live(g.live)+'</span><p>role monitor / DoD</p><p class=muted>'+(s.grok_chip_note||'')+'</p>';
+  document.getElementById('mid').textContent=s.midline||'local = bulk · Grok = DoD';
+  const tape=s.tape||[];
+  document.getElementById('tape').innerHTML='<span class=muted>inference → env-stage → harness attach</span> '+tape.map((t,i)=>'<span class=chip>'+(i+1)+'. '+t.label+' <span class="live '+cls(t.live)+'">'+t.live+'</span></span>').join(' then ');
+  const stub=!!(s.active_stub || s.active==='continue' || s.active==='agent-cage');
+  document.getElementById('btngrok').disabled=stub;
+  document.getElementById('btnopen').disabled=stub;
+  document.getElementById('fail').textContent=stub?('FAIL  '+(s.blocked_copy||'pfy harness use grok')):'';
+  document.getElementById('attachmsg').textContent=attachMsg||(stub?(s.blocked_copy||''):'');
+  const showOrg=!s.agent_lane_collapsed && (s.org_messages||[]).length;
+  document.getElementById('orgnav').style.display=showOrg?'block':'none';
+  if(!showOrg && view==='org') show('loop');
+  const attached=s.active||'(none)';
+  const verb=(s.last_verb&&s.last_verb.verb)||'(none)';
+  const when=(s.last_verb&&s.last_verb.when)||'';
+  const tapeTxt=tape.map((t,i)=>(i+1)+'. '+t.label+' '+t.live).join(' then ');
+  const stage=tape.find(t=>t.id==='env-stage'||t.label==='env-stage')||{};
+  const models=(s.models&&s.models.length)?s.models.join(', '):'(none — live endpoint not listing or not up)';
+  const order=(s.detect_order||[]).map(o=>(o.winner?'> ':'')+o.label+' '+o.port+' · <span class="live '+cls(live(o.live))+'">'+live(o.live)+'</span>').join('<br>');
+  document.getElementById('view-loop').innerHTML='<h2>LOOP</h2><div class=row>attached <b>'+attached+'</b></div><div class=row>last <b>'+verb+'</b> <span class=muted>'+when+'</span></div><div class=row>tape '+tapeTxt+'</div><div class=row>now window owns the process; sidecar is a button · state <b>'+(s.now||'idle')+'</b></div>';
+  document.getElementById('view-engine').innerHTML='<h2>ENGINE</h2><div class=row>engine <b>'+(d.engine||r.engine||'none')+'</b></div><div class=row>live <span class="live '+cls(engLive)+'">'+engLive+'</span></div><div class=row>URL <code>'+(d.base_url||r.base_url||'(none)')+'</code></div><div class=row>usage <pre>'+((s.usage||[]).join('\n')||'(empty)')+'</pre></div><details class=models><summary>Models drawer (inspect-only)</summary><p class=muted>'+(s.models_note||'')+'</p><p>'+models+'</p></details><h3>Detect order</h3>'+order;
+  const skipNote=(stage.live==='SKIP')?'<p class=muted>skip is honest (never painted as failure of the env)</p>':'';
+  document.getElementById('view-stage').innerHTML='<h2>STAGE</h2><div class=row>env-stage <span class="live '+cls(stage.live||'SKIP')+'">'+(stage.live||'SKIP')+'</span></div>'+skipNote+'<div class=row>what ran scripts/env-stage.sh (or skip reason)</div>';
+  document.getElementById('view-attach').innerHTML='<h2>ATTACH</h2><p class=muted>rail · every harness.json id · live chip from ./pfy status</p><div class=row>NOW attached <b>'+attached+'</b> · last <b>'+verb+'</b> · state <b>'+(s.now||'idle')+'</b></div>';
+  if(showOrg){
+    const rows=(s.org_messages||[]).map(m=>'<tr><td>'+m.from+' → '+m.to+'</td><td>'+(m.pr||m.issue||'')+'</td><td>'+(m.state||'')+'</td></tr>').join('');
+    document.getElementById('view-org').innerHTML='<h2>ORG</h2><table>'+rows+'</table>';
+  } else {
+    document.getElementById('view-org').innerHTML='no org loop';
+  }
   document.getElementById('chips').innerHTML=(s.chips||[]).map(c=>{
+    const lv=live(c.live);
     const issue=c.issue_url?'<a href="'+c.issue_url+'">issue</a>':'';
     const copy='<code class=copy>'+(c.startable?('./pfy start '+c.id):c.one_liner)+'</code>';
-    let btn='<button disabled title=not-a-supervisor>start via CLI</button>';
-    if(c.startable){btn='<button onclick="attach(\''+c.id+'\')">Attach '+c.id+'</button>';}
-    else if(c.id==='continue'||c.id==='agent-cage'){btn='<button disabled>FAIL</button>';}
-    return '<div class=chip><b>'+c.id+'</b> <span class="live '+cls(c.live)+'">'+c.live+'</span><div class=muted>'+c.role+' · '+c.name+' '+issue+'</div>'+copy+btn+'</div>';
+    return '<div class=chip><b>'+c.id+'</b> <span class="live '+cls(lv)+'">'+lv+'</span><div class=muted>'+c.role+' · '+c.name+' '+issue+'</div>'+copy+'</div>';
   }).join('');
-  let nowHtml='<h2>Now</h2>';
-  if(attachMsg){nowHtml+='<code class=copy>'+attachMsg+'</code>';}
-  if(s.active_stub){nowHtml+='<code class=copy>'+s.blocked_copy+'</code> (bare start STUB, no fallback)<br>';}
-  nowHtml+='attached <b>'+s.active+'</b><br>last verb <b>'+(s.last_verb.verb||'(none)')+'</b> <span class=muted>'+(s.last_verb.when||'')+'</span><br>state <b>'+s.now+'</b> (blocked or running)<br><span class=muted>ps: '+(((s.processes||[]).map(p=>p.id+'#'+p.pid).join(', '))||'(none)')+'</span>';
-  document.getElementById('now').innerHTML=nowHtml;
-  document.getElementById('order').innerHTML='<h2>Detect order</h2>'+(s.detect_order||[]).map(o=>'<div>'+(o.winner?'> ':'')+o.label+' '+o.port+' · <span class="live '+cls(o.live)+'">'+o.live+'</span>'+(o.live==='partial'?' <code class=copy>'+o.one_liner+'</code>':'')+'</div>').join('');
-  const tags=(s.models&&s.models.length)?s.models.map(m=>'<li>'+m+'</li>').join(''):'<li>(none — live endpoint not listing or not up)</li>';
-  document.getElementById('models').innerHTML='<p class=muted>'+s.models_note+'</p><ul>'+tags+'</ul>';
-  if(s.agent_lane_collapsed){document.getElementById('agent').innerHTML='no org loop';}
-  else {const rows=(s.org_messages||[]).map(m=>'<tr><td>'+m.from+' → '+m.to+'</td><td>'+(m.pr||m.issue||'')+'</td><td>'+(m.state||'')+'</td></tr>').join('');
-  document.getElementById('agent').innerHTML='<h2>Agent lane</h2><table>'+rows+'</table>';}
-  document.getElementById('notes').innerHTML='<p class=muted>No pfy daemon. Native window polls detector JSON + status stdout + ps. grok/opencode attach spawns a sidecar (not exec into this window). Continue is never detected-stub. Docker on PATH is cage detected-stub, not startable. Continue/agent-cage: FAIL, copy <code>'+s.blocked_copy+'</code>. Browser --open is an escape hatch, not the main path.</p>';
 }
 tick(); setInterval(tick, REFRESH);
 </script></body></html>

@@ -2,12 +2,12 @@
 
 Native operator window is the main interface. Linux first. Not Electron. Not Chrome-to-localhost.
 
-CLI prefers gui/operator/src-tauri/target/release/pfy-operator when present.
-Otherwise scripts/pfy-gui.py (pywebview + WebKitGTK) loads the same frontend/.
+CLI prefers gui/operator/src-tauri/target/{release,debug}/pfy-operator when present.
+Otherwise scripts/pfy-gui.py: PyGObject WebKit2 if already on the box (native window (webkit)),
+else stdlib tkinter (native window (tk)) with the same IA. pywebview is PFY_GUI_DEV=1 only.
 
-Build one-liner (not required for the pywebview path; CI does not build Rust here):
-cd gui/operator/src-tauri && cargo build --release
+Window chrome: sidebar Loop / Engine / Stage / Attach (Org omitted if unused);
+header LOCAL WORKER | CLOUD MONITOR + tape; title pfy; Attach grok / Attach opencode sidecar.
 
-If pywebview is missing, scripts/pfy-gui.py prints an install tip and exits 2.
-
-Same IA: chips bind ./pfy status live (missing not unknown). LOCAL WORKER vs CLOUD MONITOR. Tape READY|SKIP|FAIL. Agent lane no org loop when empty. grok/opencode attach is sidecar. continue/agent-cage is FAIL plus: pfy harness use grok.
+Same IA: chips bind ./pfy status live (missing not unknown). Tape READY|SKIP|FAIL.
+continue/agent-cage is FAIL plus: pfy harness use grok. Buttons disabled. No fallback spawn.

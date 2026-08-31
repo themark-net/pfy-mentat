@@ -45,6 +45,13 @@ ORG_CANDIDATES = (
     ROOT / ".pfy" / "org-messages.jsonl", ROOT / ".pfy" / "org-messages.json",
 )
 ENGINE_ALIAS = {"ft": "freetoken", "llama-server": "llama.cpp", "freetoken": "freetoken"}
+ALLOWED_LIVE = frozenset({"ready", "partial", "stub", "detected-stub", "missing", "skip"})
+
+def honest_live(value):
+    v = str(value or "").strip().lower()
+    if v in ALLOWED_LIVE:
+        return v
+    return "missing"
 
 def _run(argv, timeout=20.0):
     try:
@@ -103,7 +110,7 @@ def parse_status(text):
                 in_table = False; continue
             parts = stripped.split(None, 3)
             if len(parts) >= 3:
-                chips.append({"id": parts[0], "live": parts[1], "role": parts[2], "name": parts[3] if len(parts) > 3 else ""})
+                chips.append({"id": parts[0], "live": honest_live(parts[1]), "role": parts[2], "name": parts[3] if len(parts) > 3 else ""})
             continue
         if in_usage:
             if not stripped:
@@ -296,9 +303,7 @@ def snapshot():
         if not hid:
             continue
         parsed_row = parsed_chips.get(hid)
-        live = parsed_row.get("live") if parsed_row else "missing"
-        if not live:
-            live = "missing"
+        live = honest_live(parsed_row.get("live") if parsed_row else "missing")
         issue = h.get("github_issue")
         rec = {
             "id": hid, "name": h.get("name") or hid, "role": h.get("role") or "",
@@ -332,17 +337,19 @@ def snapshot():
         modes.append("missing-harness-or-stub")
     order = []
     for hid, label, port in DETECT_ORDER:
-        live = next((c["live"] for c in chips if c["id"] == hid), "missing")
+        live = honest_live(next((c["live"] for c in chips if c["id"] == hid), "missing"))
         order.append({"id": hid, "label": label, "port": port, "live": live, "winner": eng_norm == hid,
                       "one_liner": one_liner(hid, next((h for h in harnesses if h.get("id") == hid), {}))})
     winner = next((o for o in order if o["winner"]), None)
-    engine_live = (winner["live"] if winner else "") or det.get("status") or "missing"
-    if engine_live in ("skip",):
-        engine_live = "missing"
+    engine_live = honest_live((winner["live"] if winner else "") or det.get("status") or "missing")
     msgs = org_messages()
     nimo_note = ""
     if is_nimo:
         nimo_note = "nimo is an Actions runner with Ollama :11434, not a pfy profile. Empty ollama ps is OK. Ollama is an adapter, not the product."
+    tape = tape_steps(det, verb, parsed.get("usage") or [], active, live_active)
+    tape_outcome = " then ".join(f"{t['label']} {t['live']}" for t in tape)
+    env_stage_live = next((t["live"] for t in tape if t["id"] == "env-stage"), "SKIP")
+    blocked_reason = GROK_USE if active in STUB_ALWAYS else ""
     return {
         "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "host": host, "root": str(ROOT), "profile": profile, "local_only": profile == "local-only",
@@ -356,8 +363,9 @@ def snapshot():
         "honest": {"modes": modes, "note_nimo": nimo_note},
         "grok_chip_note": "Grok chip is PATH-only. Auth is attach-time only. No auth column. Grok usage omitted.",
         "midline": "local = bulk · Grok = DoD",
-        "tape": tape_steps(det, verb, parsed.get("usage") or [], active, live_active),
-        "blocked_copy": GROK_USE, "status_stdout": status_text, "no_daemon": True,
+        "tape": tape, "tape_outcome": tape_outcome, "env_stage_live": env_stage_live,
+        "blocked_copy": GROK_USE, "blocked_reason": blocked_reason,
+        "status_stdout": status_text, "no_daemon": True,
         "active_stub": active in STUB_ALWAYS, "refresh_ms": REFRESH_MS,
         "sidecar_ok": sorted(SIDECAR_OK),
     }
@@ -375,6 +383,12 @@ def start_sidecar(hid):
     hid = (hid or "").strip()
     if not hid:
         hid = active_harness("grok")
+    cur = active_harness("grok")
+    if cur in STUB_ALWAYS:
+        return {
+            "ok": False, "id": hid, "live": "FAIL", "copy": GROK_USE,
+            "error": f"{cur} is active — no grok/opencode fallback",
+        }
     if hid in STUB_ALWAYS:
         return {
             "ok": False, "id": hid, "live": "FAIL", "copy": GROK_USE,
