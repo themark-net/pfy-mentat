@@ -11,19 +11,23 @@ OLD_LAUNCH = (
     '    exec python3 "$ROOT/scripts/pfy-gui.py"\n'
 )
 NEW_LAUNCH = '    exec python3 "$ROOT/scripts/pfy-gui.py"\n'
-OLD_USAGE = (
-    "Native window is the main interface. Tauri binary (when built):\n"
-    "  cd gui/operator/src-tauri && cargo build --release\n"
-    "  \u2192 gui/operator/src-tauri/target/release/pfy-operator\n"
-    "Else pywebview + WebKitGTK (scripts/pfy-gui.py). Missing pywebview: install tip, exit 2.\n"
-)
-NEW_USAGE = (
-    "Native window is the main interface (Tauri if built, else pywebview / webkit / tkinter).\n"
-)
-OLD_BOARD = (
-    "  pfy board [--open]      alias of the native operator window (Tauri if built, else pywebview)\n"
-)
-NEW_BOARD = "  pfy board [--open]      alias of the native operator window\n"
+REPLACES = [
+    (
+        "Native window is the main interface (Tauri if built, else pywebview / webkit / tkinter).\n",
+        "Native window is the main interface. Tauri if pfy-operator exists; else webkit or stdlib tk.\n",
+    ),
+    (
+        "Native window is the main interface. Tauri binary (when built):\n"
+        "  cd gui/operator/src-tauri && cargo build --release\n"
+        "  \u2192 gui/operator/src-tauri/target/release/pfy-operator\n"
+        "Else pywebview + WebKitGTK (scripts/pfy-gui.py). Missing pywebview: install tip, exit 2.\n",
+        "Native window is the main interface. Tauri if pfy-operator exists; else webkit or stdlib tk.\n",
+    ),
+    (
+        "  pfy board [--open]      alias of the native operator window (Tauri if built, else pywebview)\n",
+        "  pfy board [--open]      alias of the native operator window (Tauri / webkit / tk)\n",
+    ),
+]
 
 
 def main() -> None:
@@ -35,11 +39,12 @@ def main() -> None:
     if OLD_LAUNCH in t:
         t = t.replace(OLD_LAUNCH, NEW_LAUNCH, 1)
         print("dropped cargo/pywebview launch one-liners")
-    if OLD_USAGE in t:
-        t = t.replace(OLD_USAGE, NEW_USAGE, 1)
-        print("dropped cargo usage install tip")
-    if OLD_BOARD in t:
-        t = t.replace(OLD_BOARD, NEW_BOARD, 1)
+    for old, new in REPLACES:
+        if old in t:
+            t = t.replace(old, new, 1)
+            print("replaced usage block")
+    t = t.replace('die "native GUI missing (scripts/pfy-gui.py)"',
+                  'die "native window could not open (scripts/pfy-gui.py missing)"')
     p.write_text(t)
     print("scripts/pfy bytes", p.stat().st_size)
 
