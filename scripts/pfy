@@ -81,7 +81,12 @@ launch_native_gui() {
     # pfy-gui.py prints native window (pywebview|webkit|tkinter); never cargo/pip/apt
     exec python3 "$ROOT/scripts/pfy-gui.py"
   fi
-  die "native GUI missing (scripts/pfy-gui.py)"
+  mkdir -p "$STATE_DIR"
+  art="$STATE_DIR/gui-stopped-exit.txt"
+  printf 'STOPPED_EXIT\nerror: scripts/pfy-gui.py missing\n' >"$art"
+  echo "STOPPED_EXIT: scripts/pfy-gui.py missing" >&2
+  echo "artifact: $art" >&2
+  exit 1
 }
 
 cmd_gui() {
@@ -111,7 +116,7 @@ pfy — simple setup & launch for the pfy-mentat stack
                           --open is an optional browser hatch (not the main path)
   pfy help
 
-Native window is the main interface (Tauri if built, else pywebview / webkit / tkinter).
+Native window is the main interface. Tauri if pfy-operator exists; else webkit or stdlib tk.
 Browser --open is not required. Board is not a supervisor.
 Continue/agent-cage active: FAIL, copy `pfy harness use grok` (no fallback).
 
