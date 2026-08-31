@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Restore scripts/pfy if truncated/emptied; drop cargo/pywebview launch one-liners."""
 from pathlib import Path
+import os
 import urllib.request
 
 MAIN = "22a2f2448f9565643ac1b62fa5f9c6026547eb1a"
@@ -42,6 +43,16 @@ REPLACES = [
         "  pfy board [--open]      alias of the native operator window (Tauri / webkit / tk)\n",
     ),
 ]
+STOPPED_FN = (
+    "def stopped_exit(error):\n"
+    "    state = Path(os.environ.get(\"PFY_STATE_DIR\", str(Path.home() / \".pfy-mentat\")))\n"
+    "    state.mkdir(parents=True, exist_ok=True)\n"
+    "    artifact = state / \"gui-stopped-exit.txt\"\n"
+    "    artifact.write_text(f\"STOPPED_EXIT\\nerror: {error}\\n\", encoding=\"utf-8\")\n"
+    "    print(f\"STOPPED_EXIT: {error}\", file=sys.stderr)\n"
+    "    print(f\"artifact: {artifact}\", file=sys.stderr)\n"
+    "    return 1\n\n"
+)
 
 
 def broken(text: str) -> bool:
@@ -52,6 +63,31 @@ def broken(text: str) -> bool:
     if "cmd_status()" not in text:
         return True
     return False
+
+
+def patch_gui() -> None:
+    p = Path("scripts/pfy-gui.py")
+    if not p.exists():
+        return
+    t = p.read_text(encoding="utf-8")
+    if "def stopped_exit" not in t:
+        needle = "def load_board():"
+        if needle in t:
+            t = t.replace(needle, STOPPED_FN + needle, 1)
+            print("inserted stopped_exit in pfy-gui.py")
+    t = t.replace(
+        'print(f"error: native window could not open: {e}", file=sys.stderr); return 1',
+        "return stopped_exit(str(e))",
+        1,
+    )
+    t = t.replace(
+        'print("error: native window could not open", file=sys.stderr); return 1',
+        'return stopped_exit("no already-on-box toolkit opened a native window")',
+        1,
+    )
+    # spec print is native window (tk), never tkinter
+    t = t.replace('print("native window (tkinter)", flush=True)', 'print("native window (tk)", flush=True)')
+    p.write_text(t, encoding="utf-8")
 
 
 def main() -> None:
@@ -75,6 +111,7 @@ def main() -> None:
     if broken(p.read_text(encoding="utf-8")):
         raise SystemExit("scripts/pfy still truncated after restore")
     print("scripts/pfy bytes", p.stat().st_size)
+    patch_gui()
 
 
 if __name__ == "__main__":
