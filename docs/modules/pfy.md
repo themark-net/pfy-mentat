@@ -11,14 +11,14 @@
 ./pfy status
 ./pfy start [harness]    # no name: native window; named: exec that harness
 ./pfy up                 # same as bare ./pfy
-./pfy board [--open]     # alias of the native window (Tauri / pywebview / tkinter); --open browser hatch only
+./pfy board [--open]     # alias of the native window (Tauri / webkit / tk); --open browser hatch only
 ./pfy harness list|use <id>|show [id]
 ./pfy models
 ./pfy models pull <name>    # Ollama adapter only
 ./pfy stage | eval | ship
 ```
 
-Root `./pfy` is a thin shim to `scripts/pfy`. Detector is invoked with `bash` (git `+x` not required).
+Root `./pfy` is a 100755 wrapper that execs `scripts/pfy`. Detector is invoked with `bash`.
 
 ## Not yet
 
