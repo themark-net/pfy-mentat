@@ -19,6 +19,15 @@ def honest(v):
     s = (v or "").strip().lower()
     return s if s in LIVE else "missing"
 
+def stopped_exit(error):
+    state = Path(os.environ.get("PFY_STATE_DIR", str(Path.home() / ".pfy-mentat")))
+    state.mkdir(parents=True, exist_ok=True)
+    artifact = state / "gui-stopped-exit.txt"
+    artifact.write_text(f"STOPPED_EXIT\nerror: {error}\n", encoding="utf-8")
+    print(f"STOPPED_EXIT: {error}", file=sys.stderr)
+    print(f"artifact: {artifact}", file=sys.stderr)
+    return 1
+
 def load_board():
     path = ROOT / "scripts" / "pfy-board.py"
     spec = importlib.util.spec_from_file_location("pfy_board", path)
@@ -263,13 +272,13 @@ def main() -> int:
         return 0 if run_tk(None, True) else 1
     try: board = load_board()
     except Exception as e:
-        print(f"error: native window could not open: {e}", file=sys.stderr); return 1
+        return stopped_exit(str(e))
     httpd, url = ensure_http(board)
     try:
         if run_webkit(url): return 0
         if run_tk(board, False): return 0
         if os.environ.get("PFY_GUI_DEV")=="1" and run_pywebview(url): return 0
-        print("error: native window could not open", file=sys.stderr); return 1
+        return stopped_exit("no already-on-box toolkit opened a native window")
     finally:
         if httpd is not None:
             try: httpd.shutdown()
