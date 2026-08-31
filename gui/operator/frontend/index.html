@@ -58,8 +58,11 @@ noscript .fail{padding:16px;display:block}
   <p>
     <button type=button class=primary id=btngrok>Attach grok</button>
     <button type=button class=primary id=btnopen>Attach opencode</button>
+    <button type=button class=primary id=btnrefresh>Refresh status</button>
+    <button type=button class=primary id=btncopy>Copy stub one-liner</button>
   </p>
   <span id=attachmsg class=attach-result></span>
+  <span id=copymsg class=attach-result></span>
   <section class="view on" id=view-loop></section>
   <section class=view id=view-engine></section>
   <section class=view id=view-stage></section>
@@ -74,6 +77,8 @@ const GROK_USE='pfy harness use grok';
 let attachMsg="";
 let attachKind="";
 let view='loop';
+let lastSnap={};
+let refreshing=false;
 function cls(s){return (s||'').replace(/[^a-z-]/g,'');}
 function live(s){s=(s||'').toLowerCase(); return LIVE.has(s)?s:'missing';}
 function isTauri(){return !!(window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke);}
@@ -81,6 +86,24 @@ function paintAttach(){
   const el=document.getElementById('attachmsg');
   el.textContent=attachMsg;
   el.className='attach-result'+(attachKind?(' '+attachKind):'');
+}
+function paintCopy(text, kind){
+  const el=document.getElementById('copymsg');
+  el.textContent=text;
+  el.className='attach-result'+(kind?(' '+kind):'');
+}
+function stubLine(s){
+  s=s||lastSnap||{};
+  if(s.active_stub || s.active==='continue' || s.active==='agent-cage'){
+    return s.blocked_copy || GROK_USE;
+  }
+  const chips=s.chips||[];
+  const active=chips.find(c=>c.id===s.active);
+  const c=active && ['stub','detected-stub','missing'].includes(live(active.live))
+    ? active
+    : chips.find(x=>['stub','detected-stub','missing'].includes(live(x.live)) && (x.one_liner||x.startable===false));
+  if(!c) return '';
+  return c.one_liner || ('./pfy start '+c.id);
 }
 async function getSnapshot(){
   try{
@@ -124,6 +147,49 @@ async function attach(id){
   paintAttach();
   tick();
 }
+async function refreshNow(){
+  const btn=document.getElementById('btnrefresh');
+  if(refreshing) return;
+  refreshing=true;
+  btn.disabled=true;
+  document.getElementById('meta').textContent='refreshing…';
+  try{
+    await tick();
+    const ts=(lastSnap&&lastSnap.ts)?lastSnap.ts:'';
+    if(!ts) document.getElementById('meta').textContent=(document.getElementById('meta').textContent||'')+' · refreshed';
+  }catch(e){
+    document.getElementById('fail').textContent='FAIL  '+GROK_USE;
+    document.getElementById('meta').textContent='FAIL refresh';
+  }finally{
+    refreshing=false;
+    btn.disabled=false;
+  }
+}
+async function copyText(t){
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      await navigator.clipboard.writeText(t);
+      return true;
+    }
+  }catch(e){}
+  try{
+    const ta=document.createElement('textarea');
+    ta.value=t; ta.setAttribute('readonly',''); ta.style.position='fixed'; ta.style.left='-9999px';
+    document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, t.length);
+    const ok=document.execCommand('copy');
+    ta.remove();
+    return !!ok;
+  }catch(e){ return false; }
+}
+async function copyStub(){
+  const line=stubLine(lastSnap);
+  if(!line){
+    paintCopy('FAIL no stub one-liner','fail');
+    return;
+  }
+  const ok=await copyText(line);
+  paintCopy(ok?'copied':'FAIL clipboard — select the one-liner', ok?'ok':'fail');
+}
 function show(v){
   view=v;
   document.querySelectorAll('.view').forEach(el=>el.classList.toggle('on', el.id==='view-'+v));
@@ -132,6 +198,8 @@ function show(v){
 document.querySelectorAll('.navbtn').forEach(b=>b.addEventListener('click',()=>show(b.dataset.go)));
 document.getElementById('btngrok').addEventListener('click',()=>attach('grok'));
 document.getElementById('btnopen').addEventListener('click',()=>attach('opencode'));
+document.getElementById('btnrefresh').addEventListener('click',()=>refreshNow());
+document.getElementById('btncopy').addEventListener('click',()=>copyStub());
 function chipHtml(c){
   const lv=live(c.live);
   const issue=c.issue_url?'<span class=muted> · <a class=issue href="'+c.issue_url+'">issue</a></span>':'';
@@ -145,6 +213,7 @@ function chipHtml(c){
 async function tick(){
   try{
     const s=await getSnapshot();
+    lastSnap=s||{};
     if(s.error && !(s.chips||[]).length){
       document.getElementById('meta').textContent=s.error;
       document.getElementById('fail').textContent='FAIL  '+(s.blocked_copy||GROK_USE);
