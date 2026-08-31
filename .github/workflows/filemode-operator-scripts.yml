@@ -1,10 +1,9 @@
-# Commit git filemode 100755 for operator launchers. No post-checkout hook.
-# Contents API writes 100644; this job is the mode fix. No-op if already 100755.
+# Optional git filemode 100755 for operator launchers.
+# Contents API writes 100644. Run manually after a Contents-API push of launchers.
+# Not on push: a prior run committed an empty scripts/pfy blob.
 name: operator-launch-filemode
 
 on:
-  push:
-    branches: [feat/native-window-always-opens, main]
   workflow_dispatch:
 
 permissions:
@@ -32,8 +31,9 @@ jobs:
           need=0
           for p in "${paths[@]}"; do
             [[ -e "$p" ]] || { echo "missing $p"; exit 1; }
+            [[ -s "$p" ]] || { echo "refusing empty $p"; exit 1; }
             mode="$(git ls-files -s -- "$p" | awk '{print $1}')"
-            echo "$p mode=$mode"
+            echo "$p mode=$mode size=$(wc -c < "$p")"
             if [[ "$mode" != "100755" ]]; then
               git update-index --chmod=+x -- "$p"
               need=1
@@ -48,19 +48,3 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "chore(pfy): git filemode 100755 on operator launchers"
           git push
-
-  tauri-nimo:
-    name: optional Tauri Linux binary (nimo)
-    runs-on: [self-hosted, Linux, X64, pfy-mentat]
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-      - name: cargo build --release when cargo is already on the runner
-        run: |
-          set -euo pipefail
-          if ! command -v cargo >/dev/null 2>&1; then
-            echo "note: cargo not on this runner — tk/webkit fallback remains"
-            exit 0
-          fi
-          cd gui/operator/src-tauri
-          cargo build --release
