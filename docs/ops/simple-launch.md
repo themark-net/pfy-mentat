@@ -56,7 +56,7 @@ When the detector selects llama-server (or `PFY_LOCAL_RUNTIME=llama-server`), sa
 ## Harness status legend
 
 | Live status | Meaning |
-|-------------|---------| 
+|-------------|---------|
 | **ready** | Binary found; start should work |
 | **partial** | Installed or documented path incomplete |
 | **stub** | Slot reserved; `pfy start` prints setup + issue text |
