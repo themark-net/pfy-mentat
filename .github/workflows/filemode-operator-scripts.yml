@@ -47,7 +47,11 @@ jobs:
               need=1
             fi
           done
-          git ls-files -s -- "${paths[@]}"
+          git ls-files -s -- "${paths[@]}" | tee .github/operator-filemode.txt
+          git add -- .github/operator-filemode.txt
+          if ! git diff --cached --quiet -- .github/operator-filemode.txt; then
+            need=1
+          fi
           if [[ "$need" -eq 0 ]]; then
             echo "already 100755 and launcher intact; no-op"
             exit 0
