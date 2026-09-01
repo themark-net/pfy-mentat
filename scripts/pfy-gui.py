@@ -89,7 +89,7 @@ def run_pywebview(url) -> bool:
 class Win:
     def __init__(self, board, root):
         self.board, self.root = board, root
-        self.busy = False; self.msg = ""; self.view = "loop"; self.snap = {}
+        self.busy = False; self.msg = ""; self.view = "loop"; self.snap = {}; self.pending_user = False
         tk = sys.modules["tkinter"]; ttk = sys.modules["tkinter.ttk"]
         root.title("pfy"); root.geometry("1280x800"); root.configure(bg=BG); root.minsize(960, 640)
         st = ttk.Style()
@@ -99,6 +99,7 @@ class Win:
         st.configure("M.TLabel", background=BG, foreground=MUTED)
         st.configure("H.TLabel", background=BG, foreground=FG, font=("sans-serif", 13, "bold"))
         st.configure("F.TLabel", background=BG, foreground="#e8875b", font=("sans-serif", 11, "bold"))
+        st.configure("Ok.TLabel", background=BG, foreground="#3dd68c", font=("sans-serif", 11, "bold"))
         outer = ttk.Frame(root); outer.pack(fill="both", expand=True)
         side = tk.Frame(outer, bg=SIDE, width=168); side.pack(side="left", fill="y"); side.pack_propagate(False)
         tk.Label(side, text="pfy", bg=SIDE, fg=FG, font=("sans-serif", 16, "bold")).pack(anchor="w", padx=14, pady=(14, 8))
@@ -126,8 +127,11 @@ class Win:
         self.tape = ttk.Label(right, text="", justify="left"); self.tape.pack(anchor="w", padx=12)
         btns = ttk.Frame(right); btns.pack(fill="x", padx=12, pady=6)
         self.bgrok = ttk.Button(btns, text="Attach grok", command=lambda: self.attach("grok")); self.bgrok.pack(side="left", padx=(0,6))
-        self.bopen = ttk.Button(btns, text="Attach opencode", command=lambda: self.attach("opencode")); self.bopen.pack(side="left")
+        self.bopen = ttk.Button(btns, text="Attach opencode", command=lambda: self.attach("opencode")); self.bopen.pack(side="left", padx=(0,6))
+        self.brefresh = ttk.Button(btns, text="Refresh status", command=self.refresh_now); self.brefresh.pack(side="left", padx=(0,6))
+        self.bcopy = ttk.Button(btns, text="Copy stub one-liner", command=self.copy_stub); self.bcopy.pack(side="left")
         self.ast = ttk.Label(btns, text="", style="M.TLabel"); self.ast.pack(side="left", padx=12)
+        self.cst = ttk.Label(btns, text="", style="M.TLabel"); self.cst.pack(side="left", padx=8)
         self.fail = ttk.Label(right, text="", style="F.TLabel"); self.fail.pack(anchor="w", padx=12)
         self.body = ttk.Label(right, text="", justify="left", wraplength=1040); self.body.pack(anchor="w", padx=12, pady=6)
         self.chips = ttk.Frame(right); self.chips.pack(fill="both", expand=True, padx=12, pady=(0,10))
@@ -156,17 +160,94 @@ class Win:
             self.msg = "FAIL " + (res.get("copy") or GROK_USE)
         self.ast.configure(text=self.msg); self.refresh()
 
-    def refresh(self):
-        if self.busy or self.board is None: return
+    def paint_copy(self, text, fail=False):
+        self.cst.configure(text=text, style="F.TLabel" if fail else "Ok.TLabel")
+
+    def stub_line(self):
+        s = self.snap or {}
+        if s.get("active_stub") or str(s.get("active") or "") in BLOCKED:
+            return s.get("blocked_copy") or GROK_USE
+        chips = s.get("chips") or []
+        active_id = s.get("active")
+        active = next((c for c in chips if c.get("id") == active_id), None)
+        stubish = ("stub", "detected-stub", "missing")
+        def is_stubish(c):
+            return honest(c.get("live")) in stubish
+        c = active if active and is_stubish(active) else next(
+            (x for x in chips if is_stubish(x) and (x.get("one_liner") or x.get("startable") is False)),
+            None,
+        )
+        if not c:
+            return ""
+        return c.get("one_liner") or ("./pfy start " + str(c.get("id") or ""))
+
+    def copy_stub(self):
+        line = self.stub_line()
+        if not line:
+            self.paint_copy("FAIL no stub one-liner", True)
+            return
+        try:
+            self.root.clipboard_clear()
+            self.root.clipboard_append(line)
+            try:
+                self.root.update_idletasks()
+            except Exception:
+                pass
+            self.paint_copy("copied", False)
+        except Exception:
+            self.paint_copy("FAIL clipboard", True)
+
+    def refresh_now(self):
+        self.refresh(user=True)
+
+    def refresh(self, user=False):
+        if self.board is None:
+            if user:
+                self.meta.configure(text="FAIL refresh")
+                self.fail.configure(text="FAIL  " + GROK_USE)
+            return
+        if self.busy:
+            if user:
+                self.pending_user = True
+                self.meta.configure(text="refreshing…")
+                try:
+                    self.brefresh.configure(state="disabled")
+                except Exception:
+                    pass
+            return
         self.busy = True
+        if user:
+            self.meta.configure(text="refreshing…")
+            try:
+                self.brefresh.configure(state="disabled")
+            except Exception:
+                pass
         def work():
-            try: snap = self.board.snapshot()
-            except Exception as e: snap = {"error": str(e)}
-            self.root.after(0, lambda: self.apply(snap))
+            try:
+                snap = self.board.snapshot()
+            except Exception as e:
+                snap = {"error": str(e)}
+            self.root.after(0, lambda s=snap, u=user: self.apply(s, user=u))
         threading.Thread(target=work, daemon=True).start()
 
-    def apply(self, s):
-        self.busy = False; self.snap = s or {}; self.render()
+    def apply(self, s, user=False):
+        pending = self.pending_user
+        self.pending_user = False
+        self.busy = False
+        try:
+            self.brefresh.configure(state="normal")
+        except Exception:
+            pass
+        self.snap = s or {}
+        self.render()
+        if user:
+            ts = self.snap.get("ts") or ""
+            if not ts and not self.snap.get("error"):
+                cur = str(self.meta.cget("text") or "")
+                if "refreshed" not in cur:
+                    self.meta.configure(text=(cur + " · refreshed").strip(" ·"))
+        if pending:
+            self.refresh(user=True)
 
     def render(self):
         tk = sys.modules["tkinter"]; s = self.snap
@@ -263,8 +344,16 @@ def run_tk(board, selftest=False) -> bool:
     w = Win(board, root)
     if selftest:
         w.apply(selftest_snap()); root.update_idletasks(); root.update()
-        title = root.title(); root.destroy()
-        return title == "pfy"
+        title = root.title()
+        has = (w.brefresh.cget("text") == "Refresh status" and w.bcopy.cget("text") == "Copy stub one-liner")
+        w.copy_stub()
+        copied = (w.cst.cget("text") == "copied")
+        try:
+            clip = root.clipboard_get()
+        except Exception:
+            clip = ""
+        root.destroy()
+        return title == "pfy" and has and copied and bool(clip)
     w.poll(int(os.environ.get("PFY_BOARD_REFRESH_MS", "2000"))); root.mainloop(); return True
 
 def main() -> int:
