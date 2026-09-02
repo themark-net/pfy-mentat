@@ -19,7 +19,7 @@ header,.banner,.split,.tape,.main,.rail{padding:10px 16px;border-bottom:1px soli
 .copy{font-family:ui-monospace,monospace;font-size:12px;background:#111823;padding:4px 6px;border-radius:6px;display:block;margin-top:6px;user-select:all}
 button{background:#243041;color:#e8edf4;border:1px solid #3a4a60;border-radius:8px;padding:6px 10px;cursor:pointer}button:disabled{opacity:.4;cursor:not-allowed}
 button.primary{background:#2a4a6d;border-color:#4d8dff}
-.muted{color:#8b97a8}.banner{background:#3a2a12;color:#f3d9a4}.live{font-weight:700;text-transform:uppercase;font-size:11px}
+.muted{color:#8b97a8}.banner{display:none}.live{font-weight:700;text-transform:uppercase;font-size:11px}
 .fail{color:#e8875b;font-weight:700}
 .view{display:none}.view.on{display:block}
 .row{margin:4px 0}
@@ -34,7 +34,7 @@ a.inspect{color:#e8edf4;text-decoration:none}
 a.inspect .copy{display:inline-block}
 noscript .fail{padding:16px;display:block}
 </style></head><body>
-<noscript><p class=fail>FAIL JS required for sidebar and attach — pfy harness use grok</p></noscript>
+<noscript><p class=fail>FAIL JS required — pfy harness use grok</p></noscript>
 <div class=app>
 <nav class=side>
   <b>pfy</b>
@@ -82,6 +82,11 @@ let refreshing=false;
 function cls(s){return (s||'').replace(/[^a-z-]/g,'');}
 function live(s){s=(s||'').toLowerCase(); return LIVE.has(s)?s:'missing';}
 function isTauri(){return !!(window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke);}
+function apiRoot(){
+  if(isTauri()) return '';
+  if(location.protocol==='http:'||location.protocol==='https:') return '';
+  return 'http://127.0.0.1:'+(location.port||'8765');
+}
 function paintAttach(){
   const el=document.getElementById('attachmsg');
   el.textContent=attachMsg;
@@ -111,7 +116,7 @@ async function getSnapshot(){
       const v=await window.__TAURI__.core.invoke('snapshot');
       return typeof v==='string'?JSON.parse(v):v;
     }
-    const r=await fetch('/snapshot',{cache:'no-store'});
+    const r=await fetch(apiRoot()+'/snapshot',{cache:'no-store'});
     if(!r.ok) throw new Error('snapshot '+r.status);
     return await r.json();
   }catch(e){
@@ -124,7 +129,7 @@ async function postStart(id){
       const v=await window.__TAURI__.core.invoke('start_sidecar',{id});
       return typeof v==='string'?JSON.parse(v):v;
     }
-    const r=await fetch('/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});
+    const r=await fetch(apiRoot()+'/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});
     try{return await r.json();}catch(e){return {ok:false,error:String(e),copy:GROK_USE,live:'FAIL'};}
   }catch(e){
     return {ok:false,error:String(e),copy:GROK_USE,live:'FAIL'};
@@ -222,23 +227,18 @@ async function tick(){
       paintAttach();
       return;
     }
-    document.getElementById('meta').textContent=s.ts+' · '+s.host+' · profile '+(s.profile||'(unset)');
-    const b=[]; if(s.local_only) b.push('DEPLOY_PROFILE=local-only — never auto-calls cloud. Grok usage omitted.');
-    if(s.honest && s.honest.note_nimo) b.push(s.honest.note_nimo);
-    (s.honest && s.honest.modes||[]).forEach(m=>b.push('honest state: '+m));
-    document.getElementById('banners').innerHTML=b.map(x=>'<div>'+x+'</div>').join('');
+    document.getElementById('meta').textContent=s.ts||'';
+    document.getElementById('banners').innerHTML='';
     const d=s.detector||{}, r=s.status_runtime||{};
     const engLive=live(s.engine_live||d.status||'missing');
     document.getElementById('localpane').className='pane local'+(engLive==='ready'?' ready':'');
-    document.getElementById('local').innerHTML='engine <b>'+(d.engine||r.engine||'none')+'</b> <span class="live '+cls(engLive)+'">'+engLive+'</span><br>status <b>'+live(d.status||r.status)+'</b><br>URL <code>'+(d.base_url||r.base_url||'(none)')+'</code><pre>'+((s.usage||[]).join('\n')||'(empty)')+'</pre><p class=muted>Ollama is an adapter, not the product.</p>';
+    document.getElementById('local').innerHTML='engine <b>'+(d.engine||r.engine||'none')+'</b> <span class="live '+cls(engLive)+'">'+engLive+'</span>';
     const g=(s.chips||[]).find(c=>c.id==='grok')||{};
-    document.getElementById('cloud').innerHTML='grok PATH <span class="live '+cls(live(g.live))+'">'+live(g.live)+'</span><p>role monitor / DoD</p><p class=muted>'+(s.grok_chip_note||'')+'</p>';
+    document.getElementById('cloud').innerHTML='grok PATH <span class="live '+cls(live(g.live))+'">'+live(g.live)+'</span>';
     document.getElementById('mid').textContent=s.midline||'local = bulk · Grok = DoD';
     const tape=s.tape||[];
-    document.getElementById('tape').innerHTML='<span class=muted>inference → env-stage → harness attach</span> '+tape.map((t,i)=>'<span class=chip>'+(i+1)+'. '+t.label+' <span class="live '+cls(t.live)+'">'+t.live+'</span></span>').join(' then ');
+    document.getElementById('tape').innerHTML=tape.map((t,i)=>'<span class=chip>'+(i+1)+'. '+t.label+' <span class="live '+cls(t.live)+'">'+t.live+'</span></span>').join(' then ');
     const stub=!!(s.active_stub || s.active==='continue' || s.active==='agent-cage');
-    document.getElementById('btngrok').disabled=stub;
-    document.getElementById('btnopen').disabled=stub;
     document.getElementById('fail').textContent=stub?('FAIL  '+(s.blocked_copy||GROK_USE)):'';
     if(!attachMsg && stub){ attachMsg='FAIL '+(s.blocked_copy||GROK_USE); attachKind='fail'; }
     paintAttach();
@@ -250,17 +250,16 @@ async function tick(){
     const when=(s.last_verb&&s.last_verb.when)||'';
     const tapeTxt=tape.map((t,i)=>(i+1)+'. '+t.label+' '+t.live).join(' then ');
     const stage=tape.find(t=>t.id==='env-stage'||t.label==='env-stage')||{};
-    const models=(s.models&&s.models.length)?s.models.join(', '):'(none — live endpoint not listing or not up)';
-    const order=(s.detect_order||[]).map(o=>(o.winner?'> ':'')+o.label+' '+o.port+' · <span class="live '+cls(live(o.live))+'">'+live(o.live)+'</span>').join('<br>');
+    const models=(s.models&&s.models.length)?s.models.join(', '):'(none)';
+    const order=(s.detect_order||[]).map(o=>(o.winner?'> ':'')+o.label+' · <span class="live '+cls(live(o.live))+'">'+live(o.live)+'</span>').join('<br>');
     const next=stub?('FAIL '+ (s.blocked_copy||GROK_USE)):(attachMsg||'next Attach grok / Attach opencode');
-    document.getElementById('view-loop').innerHTML='<h2>LOOP</h2><div class=row>attached <b>'+attached+'</b></div><div class=row>last <b>'+verb+'</b> <span class=muted>'+when+'</span></div><div class=row>tape '+tapeTxt+'</div><div class=row>next '+next+'</div><div class=row>now window owns the process; sidecar is a button · state <b>'+(s.now||'idle')+'</b></div>';
-    document.getElementById('view-engine').innerHTML='<h2>ENGINE</h2><div class=row>engine <b>'+(d.engine||r.engine||'none')+'</b></div><div class=row>live <span class="live '+cls(engLive)+'">'+engLive+'</span></div><div class=row>URL <code>'+(d.base_url||r.base_url||'(none)')+'</code></div><div class=row>usage <pre>'+((s.usage||[]).join('\n')||'(empty)')+'</pre></div><details class=models><summary>Models drawer (inspect-only)</summary><p class=muted>'+(s.models_note||'')+'</p><p>'+models+'</p></details><h3>Detect order</h3>'+order;
-    const skipNote=(stage.live==='SKIP')?'<p class=muted>skip is honest (never painted as failure of the env)</p>':'';
-    document.getElementById('view-stage').innerHTML='<h2>STAGE</h2><div class=row>env-stage <span class="live '+cls(stage.live||'SKIP')+'">'+(stage.live||'SKIP')+'</span></div>'+skipNote+'<div class=row>what ran scripts/env-stage.sh (or skip reason)</div>';
+    document.getElementById('view-loop').innerHTML='<h2>LOOP</h2><div class=row>attached <b>'+attached+'</b></div><div class=row>last <b>'+verb+'</b> <span class=muted>'+when+'</span></div><div class=row>tape '+tapeTxt+'</div><div class=row>next '+next+'</div><div class=row>state <b>'+(s.now||'idle')+'</b></div>';
+    document.getElementById('view-engine').innerHTML='<h2>ENGINE</h2><div class=row>engine <b>'+(d.engine||r.engine||'none')+'</b></div><div class=row>live <span class="live '+cls(engLive)+'">'+engLive+'</span></div><details class=models><summary>Models</summary><p>'+models+'</p></details><h3>Detect order</h3>'+order;
+    document.getElementById('view-stage').innerHTML='<h2>STAGE</h2><div class=row>env-stage <span class="live '+cls(stage.live||'SKIP')+'">'+(stage.live||'SKIP')+'</span></div>';
     const rail=(s.chips||[]).map(chipHtml).join('');
-    document.getElementById('view-attach').innerHTML='<h2>ATTACH</h2><p class=muted>chips (secondary) · start/inspect is the hit · issue URL muted</p><div class=row>NOW attached <b>'+attached+'</b> · last <b>'+verb+'</b> · state <b>'+(s.now||'idle')+'</b></div><div class=chips>'+rail+'</div>';
+    document.getElementById('view-attach').innerHTML='<h2>ATTACH</h2><div class=row>NOW attached <b>'+attached+'</b> · last <b>'+verb+'</b> · state <b>'+(s.now||'idle')+'</b></div><div class=chips>'+rail+'</div>';
     document.querySelectorAll('[data-start]').forEach(el=>el.addEventListener('click',e=>{e.preventDefault();attach(el.getAttribute('data-start'));}));
-    document.querySelectorAll('a.inspect').forEach(el=>el.addEventListener('click',e=>e.preventDefault()));
+    document.querySelectorAll('a.inspect').forEach(el=>el.addEventListener('click',e=>{e.preventDefault(); const t=el.textContent||''; if(t){ copyText(t).then(ok=>paintCopy(ok?'copied':'FAIL clipboard — select the one-liner', ok?'ok':'fail')); } else { paintCopy('FAIL no stub one-liner','fail'); }}));
     if(showOrg){
       const rows=(s.org_messages||[]).map(m=>'<tr><td>'+m.from+' → '+m.to+'</td><td>'+(m.pr||m.issue||'')+'</td><td>'+(m.state||'')+'</td></tr>').join('');
       document.getElementById('view-org').innerHTML='<h2>ORG</h2><table>'+rows+'</table>';
