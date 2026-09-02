@@ -260,7 +260,7 @@ class Win:
         tk = sys.modules["tkinter"]; s = self.snap
         if s.get("error") and not s.get("chips"):
             self.meta.configure(text=str(s.get("error"))); return
-        self.meta.configure(text=s.get("ts") or "")
+        self.meta.configure(text=" · ".join(x for x in (s.get("host") or "", s.get("profile") or "", s.get("ts") or "") if x))
         self.banner.configure(text="")
         d, r = s.get("detector") or {}, s.get("status_runtime") or {}
         eng_live = honest(s.get("engine_live") or d.get("status"))
@@ -280,6 +280,8 @@ class Win:
         bits = [f"{i}. {t.get('label') or t.get('id')} {t.get('live') or 'SKIP'}" for i,t in enumerate(tape,1)]
         self.tape.configure(text=" then ".join(bits) if bits else "1. inference SKIP then 2. env-stage SKIP then 3. harness attach SKIP")
         stub = bool(s.get("active_stub")) or str(s.get("active") or "") in BLOCKED
+        self.bgrok.configure(state="disabled" if stub else "normal")
+        self.bopen.configure(state="disabled" if stub else "normal")
         self.fail.configure(text=(f"FAIL  {s.get('blocked_copy') or GROK_USE}") if stub else "")
         show_org = (not s.get("agent_lane_collapsed", True)) and bool(s.get("org_messages"))
         if show_org: self.nav["org"].pack(fill="x")
@@ -295,11 +297,10 @@ class Win:
             txt = f"LOOP\nattached   {attached}\nlast       {verb}\ntape       {' then '.join(bits)}\nstate      {now}"
             if stub: txt += f"\nFAIL       {s.get('blocked_copy') or GROK_USE}"
         elif self.view == "engine":
-            order = "\n".join(("> " if o.get("winner") else "  ") + f"{o.get('label')} {o.get('port')} · {honest(o.get('live'))}" for o in (s.get("detect_order") or []))
-            txt = f"ENGINE\nengine     {engine}\nlive       {eng_live}\n{order}"
+            txt = f"ENGINE\nengine     {engine}\nlive       {eng_live}\nURL        {url}\nusage      {usage}"
         elif self.view == "stage":
             sl = stage.get("live") or "SKIP"
-            txt = f"STAGE\nenv-stage   {sl}"
+            txt = f"STAGE\nenv-stage   {sl}\nwhat ran    env-stage"
         elif self.view == "attach":
             txt = f"ATTACH\nNOW     attached {attached} · last {verb} · state {now}"
             if stub: txt += f"\nFAIL    {s.get('blocked_copy') or GROK_USE}"
