@@ -60,9 +60,11 @@ noscript .fail{padding:16px;display:block}
     <button type=button class=primary id=btnopen>Attach opencode</button>
     <button type=button class=primary id=btnrefresh>Refresh status</button>
     <button type=button class=primary id=btncopy>Copy stub one-liner</button>
+    <button type=button class=primary id=btnstage>Run stage</button>
   </p>
   <span id=attachmsg class=attach-result></span>
   <span id=copymsg class=attach-result></span>
+  <span id=stagemsg class=attach-result></span>
   <section class="view on" id=view-loop></section>
   <section class=view id=view-engine></section>
   <section class=view id=view-stage></section>
@@ -195,6 +197,50 @@ async function copyStub(){
   const ok=await copyText(line);
   paintCopy(ok?'copied':'FAIL clipboard — select the one-liner', ok?'ok':'fail');
 }
+function paintStage(text, kind){
+  const el=document.getElementById('stagemsg');
+  el.textContent=text;
+  el.className='attach-result'+(kind?(' '+kind):'');
+}
+async function postStage(){
+  try{
+    if(isTauri()){
+      try{
+        const v=await window.__TAURI__.core.invoke('run_stage');
+        return typeof v==='string'?JSON.parse(v):v;
+      }catch(e){
+        const r=await fetch(apiRoot()+'/stage',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+        try{return await r.json();}catch(e2){return {ok:false,error:String(e),copy:'FAIL env-stage',live:'FAIL'};}
+      }
+    }
+    const r=await fetch(apiRoot()+'/stage',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+    try{return await r.json();}catch(e){return {ok:false,error:String(e),copy:'FAIL env-stage',live:'FAIL'};}
+  }catch(e){
+    return {ok:false,error:String(e),copy:'FAIL env-stage',live:'FAIL'};
+  }
+}
+async function runStage(){
+  const btn=document.getElementById('btnstage');
+  btn.disabled=true;
+  paintStage('running env-stage…','');
+  document.getElementById('meta').textContent='refreshing…';
+  try{
+    const j=await postStage();
+    if(j && j.ok){
+      paintStage(j.copy||'PASS env-stage','ok');
+    }else{
+      paintStage('FAIL '+(j && (j.copy||j.error)||'env-stage'),'fail');
+    }
+    await tick();
+    const ts=(lastSnap&&lastSnap.ts)?lastSnap.ts:'';
+    if(ts) document.getElementById('meta').textContent=[lastSnap.host,lastSnap.profile,ts].filter(Boolean).join(' · ');
+  }catch(e){
+    paintStage('FAIL env-stage','fail');
+    document.getElementById('fail').textContent='FAIL  env-stage';
+  }finally{
+    btn.disabled=false;
+  }
+}
 function show(v){
   view=v;
   document.querySelectorAll('.view').forEach(el=>el.classList.toggle('on', el.id==='view-'+v));
@@ -205,6 +251,7 @@ document.getElementById('btngrok').addEventListener('click',()=>attach('grok'));
 document.getElementById('btnopen').addEventListener('click',()=>attach('opencode'));
 document.getElementById('btnrefresh').addEventListener('click',()=>refreshNow());
 document.getElementById('btncopy').addEventListener('click',()=>copyStub());
+document.getElementById('btnstage').addEventListener('click',()=>runStage());
 function chipHtml(c){
   const lv=live(c.live);
   const issue=c.issue_url?'<span class=muted> · <a class=issue href="'+c.issue_url+'">issue</a></span>':'';
@@ -234,7 +281,7 @@ async function tick(){
     document.getElementById('localpane').className='pane local'+(engLive==='ready'?' ready':'');
     document.getElementById('local').innerHTML='engine <b>'+(d.engine||r.engine||'none')+'</b> <span class="live '+cls(engLive)+'">'+engLive+'</span>';
     const g=(s.chips||[]).find(c=>c.id==='grok')||{};
-    document.getElementById('cloud').innerHTML='grok PATH <span class="live '+cls(live(g.live))+'">'+live(g.live)+'</span>';
+    document.getElementById('cloud').innerHTML='grok PATH <span class="live '+cls(live(g.live))+'" >'+live(g.live)+'</span>';
     document.getElementById('mid').textContent='';
     const tape=s.tape||[];
     document.getElementById('tape').innerHTML=tape.map((t,i)=>'<span class=chip>'+(i+1)+'. '+t.label+' <span class="live '+cls(t.live)+'">'+t.live+'</span></span>').join(' then ');
@@ -256,11 +303,12 @@ async function tick(){
     const next=stub?('FAIL '+ (s.blocked_copy||GROK_USE)):(attachMsg||'next Attach grok / Attach opencode');
     document.getElementById('view-loop').innerHTML='<h2>LOOP</h2><div class=row>attached <b>'+attached+'</b></div><div class=row>last <b>'+verb+'</b> <span class=muted>'+when+'</span></div><div class=row>tape '+tapeTxt+'</div><div class=row>next '+next+'</div><div class=row>state <b>'+(s.now||'idle')+'</b></div>';
     const usage=((s.usage||[]).join('\n')||'(empty)'); const eurl=d.base_url||r.base_url||''; document.getElementById('view-engine').innerHTML='<h2>ENGINE</h2><div class=row>engine <b>'+(d.engine||r.engine||'none')+'</b></div><div class=row>live <span class="live '+cls(engLive)+'">'+engLive+'</span></div>'+(eurl?'<div class=row>URL <code>'+eurl+'</code></div>':'')+'<div class=row>usage <pre>'+usage+'</pre></div><details class=models><summary>Models</summary><p>'+models+'</p></details>';
-    document.getElementById('view-stage').innerHTML='<h2>STAGE</h2><div class=row>env-stage <span class="live '+cls(stage.live||'SKIP')+'">'+(stage.live||'SKIP')+'</span></div><div class=row>what ran env-stage</div>';
+    const stageHit=document.getElementById('stagemsg').textContent||'next Run stage'; document.getElementById('view-stage').innerHTML='<h2>STAGE</h2><div class=row>env-stage <span class="live '+cls(stage.live||'SKIP')+'">'+(stage.live||'SKIP')+'</span></div><div class=row>what ran env-stage</div><div class=row>'+stageHit+'</div><p><button type=button class=primary data-run-stage=1>Run stage</button></p>';
     const rail=(s.chips||[]).map(chipHtml).join('');
     document.getElementById('view-attach').innerHTML='<h2>ATTACH</h2><div class=row>NOW attached <b>'+attached+'</b> · last <b>'+verb+'</b> · state <b>'+(s.now||'idle')+'</b></div><div class=chips>'+rail+'</div>';
     document.querySelectorAll('[data-start]').forEach(el=>el.addEventListener('click',e=>{e.preventDefault();attach(el.getAttribute('data-start'));}));
     document.querySelectorAll('a.inspect').forEach(el=>el.addEventListener('click',e=>{e.preventDefault(); const t=el.textContent||''; if(t){ copyText(t).then(ok=>paintCopy(ok?'copied':'FAIL clipboard — select the one-liner', ok?'ok':'fail')); } else { paintCopy('FAIL no stub one-liner','fail'); }}));
+    document.querySelectorAll('[data-run-stage]').forEach(el=>el.addEventListener('click',e=>{e.preventDefault();runStage();}));
     if(showOrg){
       const rows=(s.org_messages||[]).map(m=>'<tr><td>'+m.from+' → '+m.to+'</td><td>'+(m.pr||m.issue||'')+'</td><td>'+(m.state||'')+'</td></tr>').join('');
       document.getElementById('view-org').innerHTML='<h2>ORG</h2><table>'+rows+'</table>';
