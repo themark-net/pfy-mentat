@@ -354,7 +354,7 @@ def snapshot():
         "org_messages": msgs, "agent_lane_collapsed": not msgs,
         "honest": {"modes": modes, "note_nimo": nimo_note},
         "grok_chip_note": "",
-        "midline": "local = bulk · Grok = DoD",
+        "midline": "",
         "tape": tape, "tape_outcome": tape_outcome, "env_stage_live": env_stage_live,
         "blocked_copy": GROK_USE, "blocked_reason": blocked_reason,
         "status_stdout": status_text, "no_daemon": True,
