@@ -69,7 +69,14 @@ def run_webkit(url) -> bool:
         from gi.repository import Gtk, WebKit2
         win = Gtk.Window(title="pfy"); win.set_default_size(1280, 800)
         win.connect("destroy", Gtk.main_quit)
-        view = WebKit2.WebView(); view.load_uri(url); win.add(view); win.show_all()
+        view = WebKit2.WebView()
+        try:
+            stg = view.get_settings()
+            stg.set_enable_javascript(True)
+            stg.set_javascript_can_access_clipboard(True)
+        except Exception:
+            pass
+        view.load_uri(url); win.add(view); win.show_all()
     except Exception:
         return False
     print("native window (webkit)", flush=True)
@@ -253,12 +260,8 @@ class Win:
         tk = sys.modules["tkinter"]; s = self.snap
         if s.get("error") and not s.get("chips"):
             self.meta.configure(text=str(s.get("error"))); return
-        self.meta.configure(text=f"{s.get('ts') or ''} · {s.get('host') or ''} · profile {s.get('profile') or '(unset)'}")
-        hon = s.get("honest") or {}
-        notes = []
-        if hon.get("note_nimo"):
-            notes.append(hon["note_nimo"])
-        self.banner.configure(text="\n".join(notes))
+        self.meta.configure(text=" · ".join(x for x in (s.get("host") or "", s.get("profile") or "", s.get("ts") or "") if x))
+        self.banner.configure(text="")
         d, r = s.get("detector") or {}, s.get("status_runtime") or {}
         eng_live = honest(s.get("engine_live") or d.get("status"))
         engine = d.get("engine") or r.get("engine") or "none"
@@ -269,10 +272,10 @@ class Win:
         for c in self.lfr.winfo_children():
             try: c.configure(bg=bg)
             except tk.TclError: pass
-        self.local.configure(text=f"engine {engine}  {eng_live}\nstatus {honest(d.get('status'))}\nURL {url}\n{usage}")
+        self.local.configure(text=f"engine {engine}  {eng_live}")
         chips = s.get("chips") or []
         grok = next((c for c in chips if c.get("id")=="grok"), {}) or {}
-        self.cloud.configure(text=f"grok PATH {honest(grok.get('live'))}\nrole monitor / DoD")
+        self.cloud.configure(text=f"grok PATH {honest(grok.get('live'))}")
         tape = s.get("tape") or []
         bits = [f"{i}. {t.get('label') or t.get('id')} {t.get('live') or 'SKIP'}" for i,t in enumerate(tape,1)]
         self.tape.configure(text=" then ".join(bits) if bits else "1. inference SKIP then 2. env-stage SKIP then 3. harness attach SKIP")
@@ -291,16 +294,15 @@ class Win:
         now = s.get("now") or "idle"
         stage = next((t for t in tape if t.get("id")=="env-stage"), {}) or {}
         if self.view == "loop":
-            txt = f"LOOP\nattached   {attached}\nlast       {verb}\ntape       {' then '.join(bits)}\nnow        window owns the process; sidecar is a button · state {now}"
+            txt = f"LOOP\nattached   {attached}\nlast       {verb}\ntape       {' then '.join(bits)}\nstate      {now}"
             if stub: txt += f"\nFAIL       {s.get('blocked_copy') or GROK_USE}"
         elif self.view == "engine":
-            order = "\n".join(("> " if o.get("winner") else "  ") + f"{o.get('label')} {o.get('port')} · {honest(o.get('live'))}" for o in (s.get("detect_order") or []))
-            txt = f"ENGINE\nengine     {engine}\nlive       {eng_live}\nURL        {url}\nusage      {usage}\n{order}"
+            txt = f"ENGINE\nengine     {engine}\nlive       {eng_live}\nURL        {url}\nusage      {usage}"
         elif self.view == "stage":
             sl = stage.get("live") or "SKIP"
-            txt = f"STAGE\nenv-stage   {sl}\n" + ("skip is honest (never painted as failure of the env)\n" if sl=="SKIP" else "") + "what ran    scripts/env-stage.sh (or skip reason)"
+            txt = f"STAGE\nenv-stage   {sl}\nwhat ran    env-stage"
         elif self.view == "attach":
-            txt = f"ATTACH\nrail    every harness.json id · live chip from ./pfy status\nNOW     attached {attached} · last {verb} · state {now}"
+            txt = f"ATTACH\nNOW     attached {attached} · last {verb} · state {now}"
             if stub: txt += f"\nFAIL    {s.get('blocked_copy') or GROK_USE}"
         else:
             rows = s.get("org_messages") or []

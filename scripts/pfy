@@ -113,7 +113,7 @@ pfy — simple setup & launch for the pfy-mentat stack
   pfy models              list models from the live local endpoint (inspect-only)
   pfy models pull <name>  live engine (FreeToken records name; Ollama pulls; llama skip)
   pfy board [--open]      alias of the native operator window
-                          --open is an optional browser hatch (not the main path)
+                          --open is an optional hatch (not the main path)
   pfy help
 
 Native window is the main interface. Tauri when binary exists; else already-on-box webkit or stdlib tk (scripts/pfy-gui.py). pywebview is PFY_GUI_DEV=1 only. Window always opens.
@@ -532,7 +532,7 @@ cmd_status() {
     printf "%-14s %-14s %-8s %s\n" "$id" "$live" "$role" "$name"
   done
   echo ""
-  echo "next: pfy setup   |   pfy   |   pfy start grok   |   pfy board   |   pfy harness list"
+  echo "next: pfy setup   |   pfy   |   pfy start grok   |   pfy harness list"
   echo "override: PFY_LOCAL_RUNTIME=freetoken|llama-swap|llama-server|ollama"
 }
 
@@ -1083,8 +1083,7 @@ cmd_board() {
     fi
   done
   if [[ "$open_flag" -eq 1 ]]; then
-    echo "note: --open is a browser hatch; native window is the main path"
-    print_board_url
+    echo "note: --open is a hatch; native window is the main path"
     open_board_url || true
     if [[ ${#args[@]} -gt 0 ]]; then
       exec python3 "$ROOT/scripts/pfy-board.py" "${args[@]}"
