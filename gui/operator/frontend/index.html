@@ -227,7 +227,7 @@ async function tick(){
       paintAttach();
       return;
     }
-    document.getElementById('meta').textContent=s.ts||'';
+    document.getElementById('meta').textContent=[s.host,s.profile,s.ts].filter(Boolean).join(' · ');
     document.getElementById('banners').innerHTML='';
     const d=s.detector||{}, r=s.status_runtime||{};
     const engLive=live(s.engine_live||d.status||'missing');
@@ -239,6 +239,8 @@ async function tick(){
     const tape=s.tape||[];
     document.getElementById('tape').innerHTML=tape.map((t,i)=>'<span class=chip>'+(i+1)+'. '+t.label+' <span class="live '+cls(t.live)+'">'+t.live+'</span></span>').join(' then ');
     const stub=!!(s.active_stub || s.active==='continue' || s.active==='agent-cage');
+    document.getElementById('btngrok').disabled=stub;
+    document.getElementById('btnopen').disabled=stub;
     document.getElementById('fail').textContent=stub?('FAIL  '+(s.blocked_copy||GROK_USE)):'';
     if(!attachMsg && stub){ attachMsg='FAIL '+(s.blocked_copy||GROK_USE); attachKind='fail'; }
     paintAttach();
@@ -251,11 +253,10 @@ async function tick(){
     const tapeTxt=tape.map((t,i)=>(i+1)+'. '+t.label+' '+t.live).join(' then ');
     const stage=tape.find(t=>t.id==='env-stage'||t.label==='env-stage')||{};
     const models=(s.models&&s.models.length)?s.models.join(', '):'(none)';
-    const order=(s.detect_order||[]).map(o=>(o.winner?'> ':'')+o.label+' · <span class="live '+cls(live(o.live))+'">'+live(o.live)+'</span>').join('<br>');
     const next=stub?('FAIL '+ (s.blocked_copy||GROK_USE)):(attachMsg||'next Attach grok / Attach opencode');
     document.getElementById('view-loop').innerHTML='<h2>LOOP</h2><div class=row>attached <b>'+attached+'</b></div><div class=row>last <b>'+verb+'</b> <span class=muted>'+when+'</span></div><div class=row>tape '+tapeTxt+'</div><div class=row>next '+next+'</div><div class=row>state <b>'+(s.now||'idle')+'</b></div>';
-    document.getElementById('view-engine').innerHTML='<h2>ENGINE</h2><div class=row>engine <b>'+(d.engine||r.engine||'none')+'</b></div><div class=row>live <span class="live '+cls(engLive)+'">'+engLive+'</span></div><details class=models><summary>Models</summary><p>'+models+'</p></details><h3>Detect order</h3>'+order;
-    document.getElementById('view-stage').innerHTML='<h2>STAGE</h2><div class=row>env-stage <span class="live '+cls(stage.live||'SKIP')+'">'+(stage.live||'SKIP')+'</span></div>';
+    const usage=((s.usage||[]).join('\n')||'(empty)'); const eurl=d.base_url||r.base_url||''; document.getElementById('view-engine').innerHTML='<h2>ENGINE</h2><div class=row>engine <b>'+(d.engine||r.engine||'none')+'</b></div><div class=row>live <span class="live '+cls(engLive)+'">'+engLive+'</span></div>'+(eurl?'<div class=row>URL <code>'+eurl+'</code></div>':'')+'<div class=row>usage <pre>'+usage+'</pre></div><details class=models><summary>Models</summary><p>'+models+'</p></details>';
+    document.getElementById('view-stage').innerHTML='<h2>STAGE</h2><div class=row>env-stage <span class="live '+cls(stage.live||'SKIP')+'">'+(stage.live||'SKIP')+'</span></div><div class=row>what ran env-stage</div>';
     const rail=(s.chips||[]).map(chipHtml).join('');
     document.getElementById('view-attach').innerHTML='<h2>ATTACH</h2><div class=row>NOW attached <b>'+attached+'</b> · last <b>'+verb+'</b> · state <b>'+(s.now||'idle')+'</b></div><div class=chips>'+rail+'</div>';
     document.querySelectorAll('[data-start]').forEach(el=>el.addEventListener('click',e=>{e.preventDefault();attach(el.getAttribute('data-start'));}));
