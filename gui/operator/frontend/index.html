@@ -49,7 +49,7 @@ noscript .fail{padding:16px;display:block}
 <div class=banner id=banners></div>
 <div class=split>
   <section class='pane local' id=localpane><h2>LOCAL WORKER</h2><div id=local></div></section>
-  <div class=mid id=mid>local = bulk · Grok = DoD</div>
+  <div class=mid id=mid></div>
   <section class='pane cloud'><h2>CLOUD MONITOR</h2><div id=cloud></div></section>
 </div>
 <div class=tape id=tape></div>
@@ -235,7 +235,7 @@ async function tick(){
     document.getElementById('local').innerHTML='engine <b>'+(d.engine||r.engine||'none')+'</b> <span class="live '+cls(engLive)+'">'+engLive+'</span>';
     const g=(s.chips||[]).find(c=>c.id==='grok')||{};
     document.getElementById('cloud').innerHTML='grok PATH <span class="live '+cls(live(g.live))+'">'+live(g.live)+'</span>';
-    document.getElementById('mid').textContent=s.midline||'local = bulk · Grok = DoD';
+    document.getElementById('mid').textContent='';
     const tape=s.tape||[];
     document.getElementById('tape').innerHTML=tape.map((t,i)=>'<span class=chip>'+(i+1)+'. '+t.label+' <span class="live '+cls(t.live)+'">'+t.live+'</span></span>').join(' then ');
     const stub=!!(s.active_stub || s.active==='continue' || s.active==='agent-cage');
