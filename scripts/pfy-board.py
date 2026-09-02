@@ -3,6 +3,7 @@
 
 Serves the shared GUI at gui/operator/frontend/index.html.
 POST /start spawns grok/opencode as a sidecar subprocess only.
+POST /stage runs ./pfy stage (env-stage).
 """
 from __future__ import annotations
 import json, os, socket, subprocess, sys, urllib.request
@@ -370,6 +371,21 @@ def html_page():
     )
 
 
+
+def run_stage():
+    """Run product env-stage (./pfy stage). Not --lab. Honest skip is PASS."""
+    if not PFY.is_file():
+        return {"ok": False, "live": "FAIL", "copy": "FAIL env-stage", "error": "scripts/pfy missing"}
+    rc, out = _run(["bash", str(PFY), "stage"], timeout=90.0)
+    ok = rc == 0
+    live = "PASS" if ok else "FAIL"
+    copy = "PASS env-stage" if ok else "FAIL env-stage"
+    return {
+        "ok": ok, "live": live, "copy": copy,
+        "error": "" if ok else ((out or "env-stage failed")[-400:]),
+        "stdout": (out or "")[-800:],
+    }
+
 def start_sidecar(hid):
     """Spawn grok/opencode as a separate process. Not a supervisor for other ids."""
     hid = (hid or "").strip()
@@ -435,6 +451,14 @@ class Handler(BaseHTTPRequestHandler):
             code = 200 if result.get("ok") else 400
             self._send(code, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
             return
+        if path == "/stage":
+            length = int(self.headers.get("Content-Length") or 0)
+            if length:
+                self.rfile.read(length)
+            result = run_stage()
+            code = 200 if result.get("ok") else 400
+            self._send(code, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
+            return
         self._send(405, b"POST disabled for this path\n", "text/plain; charset=utf-8")
 
 def main():
@@ -445,6 +469,10 @@ def main():
     if args[:1] == ["--start"]:
         hid = args[1] if len(args) > 1 else ""
         result = start_sidecar(hid)
+        print(json.dumps(result))
+        return 0 if result.get("ok") else 2
+    if args[:1] == ["--stage"]:
+        result = run_stage()
         print(json.dumps(result))
         return 0 if result.get("ok") else 2
     if HOST not in ("127.0.0.1", "localhost"):

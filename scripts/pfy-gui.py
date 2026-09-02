@@ -137,6 +137,8 @@ class Win:
         self.bopen = ttk.Button(btns, text="Attach opencode", command=lambda: self.attach("opencode")); self.bopen.pack(side="left", padx=(0,6))
         self.brefresh = ttk.Button(btns, text="Refresh status", command=self.refresh_now); self.brefresh.pack(side="left", padx=(0,6))
         self.bcopy = ttk.Button(btns, text="Copy stub one-liner", command=self.copy_stub); self.bcopy.pack(side="left")
+        self.bstage = ttk.Button(btns, text="Run stage", command=self.run_stage); self.bstage.pack(side="left", padx=(6,0))
+        self.sst = ttk.Label(btns, text="", style="M.TLabel"); self.sst.pack(side="left", padx=8)
         self.ast = ttk.Label(btns, text="", style="M.TLabel"); self.ast.pack(side="left", padx=12)
         self.cst = ttk.Label(btns, text="", style="M.TLabel"); self.cst.pack(side="left", padx=8)
         self.fail = ttk.Label(right, text="", style="F.TLabel"); self.fail.pack(anchor="w", padx=12)
@@ -203,6 +205,38 @@ class Win:
             self.paint_copy("copied", False)
         except Exception:
             self.paint_copy("FAIL clipboard", True)
+
+    def paint_stage(self, text, fail=False):
+        self.sst.configure(text=text, style="F.TLabel" if fail else "Ok.TLabel")
+
+    def run_stage(self):
+        self.paint_stage("running env-stage…", False)
+        self.meta.configure(text="refreshing…")
+        try:
+            self.bstage.configure(state="disabled")
+        except Exception:
+            pass
+        def work():
+            try:
+                if self.board is None:
+                    res = {"ok": False, "copy": "FAIL env-stage", "error": "no board"}
+                else:
+                    res = self.board.run_stage()
+            except Exception as e:
+                res = {"ok": False, "copy": "FAIL env-stage", "error": str(e)}
+            self.root.after(0, lambda r=res: self.done_stage(r))
+        threading.Thread(target=work, daemon=True).start()
+
+    def done_stage(self, res):
+        try:
+            self.bstage.configure(state="normal")
+        except Exception:
+            pass
+        if res.get("ok"):
+            self.paint_stage(res.get("copy") or "PASS env-stage", False)
+        else:
+            self.paint_stage("FAIL " + (res.get("copy") or res.get("error") or "env-stage"), True)
+        self.refresh(user=True)
 
     def refresh_now(self):
         self.refresh(user=True)
@@ -300,7 +334,8 @@ class Win:
             txt = f"ENGINE\nengine     {engine}\nlive       {eng_live}\nURL        {url}\nusage      {usage}"
         elif self.view == "stage":
             sl = stage.get("live") or "SKIP"
-            txt = f"STAGE\nenv-stage   {sl}\nwhat ran    env-stage"
+            last = self.sst.cget("text") if str(self.sst.cget("text") or "") else "next Run stage"
+            txt = f"STAGE\nenv-stage   {sl}\nwhat ran    env-stage\n{last}"
         elif self.view == "attach":
             txt = f"ATTACH\nNOW     attached {attached} · last {verb} · state {now}"
             if stub: txt += f"\nFAIL    {s.get('blocked_copy') or GROK_USE}"
@@ -347,7 +382,7 @@ def run_tk(board, selftest=False) -> bool:
     if selftest:
         w.apply(selftest_snap()); root.update_idletasks(); root.update()
         title = root.title()
-        has = (w.brefresh.cget("text") == "Refresh status" and w.bcopy.cget("text") == "Copy stub one-liner")
+        has = (w.brefresh.cget("text") == "Refresh status" and w.bcopy.cget("text") == "Copy stub one-liner" and w.bstage.cget("text") == "Run stage")
         w.copy_stub()
         copied = (w.cst.cget("text") == "copied")
         try:

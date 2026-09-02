@@ -57,9 +57,14 @@ fn start_sidecar(id: String) -> Result<Value, String> {
     run_board(&["--start", &id])
 }
 
+#[tauri::command]
+fn run_stage() -> Result<Value, String> {
+    run_board(&["--stage"])
+}
+
 fn main() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![snapshot, start_sidecar])
+        .invoke_handler(tauri::generate_handler![snapshot, start_sidecar, run_stage])
         .run(tauri::generate_context!())
         .expect("error while running pfy-operator");
 }
