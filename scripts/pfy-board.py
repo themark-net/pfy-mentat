@@ -329,12 +329,6 @@ def snapshot():
     eng_norm = ENGINE_ALIAS.get(eng, eng)
     ready_h = any(c["role"] == "harness" and c["live"] == "ready" for c in chips)
     modes = []
-    if det.get("status") == "ready" and ready_h:
-        modes.append("all-local-ready")
-    if eng_norm == "ollama":
-        modes.append("ollama-adapter-only")
-    if not ready_h:
-        modes.append("missing-harness-or-stub")
     order = []
     for hid, label, port in DETECT_ORDER:
         live = honest_live(next((c["live"] for c in chips if c["id"] == hid), "missing"))
@@ -344,8 +338,6 @@ def snapshot():
     engine_live = honest_live((winner["live"] if winner else "") or det.get("status") or "missing")
     msgs = org_messages()
     nimo_note = ""
-    if is_nimo:
-        nimo_note = "nimo is an Actions runner with Ollama :11434, not a pfy profile. Empty ollama ps is OK. Ollama is an adapter, not the product."
     tape = tape_steps(det, verb, parsed.get("usage") or [], active, live_active)
     tape_outcome = " then ".join(f"{t['label']} {t['live']}" for t in tape)
     env_stage_live = next((t["live"] for t in tape if t["id"] == "env-stage"), "SKIP")
@@ -358,10 +350,10 @@ def snapshot():
         "chips": chips, "active": active, "last_verb": verb, "now": now_state(active, live_active, procs, verb),
         "processes": procs, "detect_order": order, "engine_live": engine_live,
         "models": inspect_models(base) if base else [],
-        "models_note": "inspect-only — tag list is not success",
+        "models_note": "",
         "org_messages": msgs, "agent_lane_collapsed": not msgs,
         "honest": {"modes": modes, "note_nimo": nimo_note},
-        "grok_chip_note": "Grok chip is PATH-only. Auth is attach-time only. No auth column. Grok usage omitted.",
+        "grok_chip_note": "",
         "midline": "local = bulk · Grok = DoD",
         "tape": tape, "tape_outcome": tape_outcome, "env_stage_live": env_stage_live,
         "blocked_copy": GROK_USE, "blocked_reason": blocked_reason,
@@ -392,12 +384,12 @@ def start_sidecar(hid):
     if hid in STUB_ALWAYS:
         return {
             "ok": False, "id": hid, "live": "FAIL", "copy": GROK_USE,
-            "error": f"{hid} is not startable from the board",
+            "error": f"{hid} is not startable from the window",
         }
     if hid not in SIDECAR_OK:
         return {
             "ok": False, "id": hid, "live": "FAIL", "copy": GROK_USE,
-            "error": f"board is not a supervisor for {hid}",
+            "error": f"{hid} is not a sidecar",
         }
     STATE.mkdir(parents=True, exist_ok=True)
     log = STATE / f"sidecar-{hid}.log"
@@ -414,7 +406,7 @@ def start_sidecar(hid):
 
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
-        sys.stderr.write("[pfy-board] " + (fmt % args) + "\n")
+        sys.stderr.write("[pfy] " + (fmt % args) + "\n")
     def _send(self, code, body, ctype):
         self.send_response(code)
         self.send_header("Content-Type", ctype)
@@ -443,7 +435,7 @@ class Handler(BaseHTTPRequestHandler):
             code = 200 if result.get("ok") else 400
             self._send(code, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
             return
-        self._send(405, b"POST disabled for this path - board is not a supervisor\n", "text/plain; charset=utf-8")
+        self._send(405, b"POST disabled for this path\n", "text/plain; charset=utf-8")
 
 def main():
     args = sys.argv[1:]
@@ -456,16 +448,13 @@ def main():
         print(json.dumps(result))
         return 0 if result.get("ok") else 2
     if HOST not in ("127.0.0.1", "localhost"):
-        print("error: pfy board binds 127.0.0.1 only", file=sys.stderr); return 2
+        print("error: operator HTTP binds loopback only", file=sys.stderr); return 2
     httpd = ThreadingHTTPServer((HOST, PORT), Handler)
-    print("pfy board (local operator GUI HTTP; native window is the main path)")
-    print(f"  http://{HOST}:{PORT}/")
-    print("  polls detector JSON + ./pfy status stdout + process table")
-    print("  grok/opencode POST /start = sidecar · not a supervisor · chips == status live column")
+    print("native window")
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
-        print("\nboard stopped")
+        print("\nstopped")
     return 0
 
 if __name__ == "__main__":
