@@ -4,6 +4,7 @@
 Serves the shared GUI at gui/operator/frontend/index.html.
 POST /start spawns grok/opencode as a sidecar subprocess only.
 POST /stage runs ./pfy stage (env-stage).
+POST /env runs ./pfy env (inference + env-stage). No harness exec.
 """
 from __future__ import annotations
 import json, os, socket, subprocess, sys, urllib.request
@@ -270,7 +271,7 @@ def rsf_env_stage(verb, usage):
         return "FAIL"
     if "honest skip" in blob or "skip: env-stage" in blob:
         return "SKIP"
-    if v.startswith(("start", "up", "stage", "gui", "board")):
+    if v.startswith(("start", "up", "stage", "gui", "board", "env", "launch-env")):
         return "READY"
     return "SKIP"
 
@@ -386,6 +387,19 @@ def run_stage():
         "stdout": (out or "")[-800:],
     }
 
+def launch_env():
+    """Same path as bare ./pfy before the window: inference then env-stage. No harness exec."""
+    if not PFY.is_file():
+        return {"ok": False, "live": "FAIL", "copy": "FAIL env", "error": "scripts/pfy missing"}
+    rc, out = _run(["bash", str(PFY), "env"], timeout=120.0)
+    ok = rc == 0
+    copy = "PASS env" if ok else "FAIL env"
+    return {
+        "ok": ok, "live": "PASS" if ok else "FAIL", "copy": copy,
+        "error": "" if ok else ((out or "env failed")[-400:]),
+        "stdout": (out or "")[-800:],
+    }
+
 def start_sidecar(hid):
     """Spawn grok/opencode as a separate process. Not a supervisor for other ids."""
     hid = (hid or "").strip()
@@ -459,6 +473,14 @@ class Handler(BaseHTTPRequestHandler):
             code = 200 if result.get("ok") else 400
             self._send(code, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
             return
+        if path == "/env":
+            length = int(self.headers.get("Content-Length") or 0)
+            if length:
+                self.rfile.read(length)
+            result = launch_env()
+            code = 200 if result.get("ok") else 400
+            self._send(code, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
+            return
         self._send(405, b"POST disabled for this path\n", "text/plain; charset=utf-8")
 
 def main():
@@ -473,6 +495,10 @@ def main():
         return 0 if result.get("ok") else 2
     if args[:1] == ["--stage"]:
         result = run_stage()
+        print(json.dumps(result))
+        return 0 if result.get("ok") else 2
+    if args[:1] == ["--env"]:
+        result = launch_env()
         print(json.dumps(result))
         return 0 if result.get("ok") else 2
     if HOST not in ("127.0.0.1", "localhost"):

@@ -59,6 +59,10 @@ tauri_bin() {
     if ! grep -a -F -q "run_stage" "$b" 2>/dev/null; then
       continue
     fi
+
+    if ! grep -a -F -q "launch_env" "$b" 2>/dev/null; then
+      continue
+    fi
     echo "$b"
     return 0
   done
@@ -111,6 +115,7 @@ usage() {
 pfy — simple setup & launch for the pfy-mentat stack
 
   pfy                     inference → env-stage → native operator window (no harness exec)
+  pfy env                 inference + env-stage (no window, no harness exec)
   pfy setup [local-only|balanced|max-performance]
   pfy status
   pfy up                  same as bare pfy (native window; attach is in-window sidecar)
@@ -637,6 +642,13 @@ run_product_stage() {
   bash "$ROOT/scripts/env-stage.sh" || echo "note: env-stage incomplete — continuing (honest skip)"
 }
 
+
+cmd_env() {
+  # Same path as bare ./pfy before the window. No harness exec. No native window.
+  ensure_inference
+  run_product_stage
+}
+
 grok_bin() {
   if have grok; then command -v grok
   elif [[ -x "$HOME/.local/bin/grok" ]]; then echo "$HOME/.local/bin/grok"
@@ -1126,6 +1138,7 @@ main() {
       ;;
     start) cmd_start "$@" ;;
     stage) cmd_stage "$@" ;;
+    env|launch-env) cmd_env ;;
     eval) cmd_eval ;;
     ship) cmd_ship ;;
     models)

@@ -47,12 +47,15 @@ noscript .fail{padding:16px;display:block}
   <p id=fail class=fail></p>
   <section class="view on" id=view-loop>
     <h2>LOOP</h2>
+    <div class=row>env <span id=loop-env class=live>SKIP</span></div>
     <div class=row>attached <b id=loop-attached>(none)</b></div>
     <div class=row>last <b id=loop-last>(none)</b> <span class=muted id=loop-when></span></div>
     <div class=acts>
-      <button type=button class=primary id=btngrok>Attach grok</button>
+      <button type=button class=primary id=btnlaunch>Launch env</button>
       <button type=button class=primary id=btnopen>Attach opencode</button>
+      <button type=button class=primary id=btngrok>Attach grok</button>
     </div>
+    <span id=launchmsg class=attach-result></span>
     <span id=attachmsg class=attach-result></span>
   </section>
   <section class=view id=view-engine>
@@ -108,6 +111,25 @@ function apiRoot(){
   return null;
 }
 function noLiveApi(){ return apiRoot()===null; }
+function lastVerbLabel(v){
+  v=(v||'').trim();
+  if(v==='env'||v==='launch-env') return 'Launch env';
+  return v||'(none)';
+}
+function envLive(s){
+  const tape=(s&&s.tape)||[];
+  const inf=((tape.find(t=>t.id==='inference')||{}).live||'SKIP')+'';
+  const st=((tape.find(t=>t.id==='env-stage')||{}).live||'SKIP')+'';
+  const a=[inf,st].map(x=>x.toUpperCase());
+  if(a.includes('FAIL')) return 'FAIL';
+  if(a.includes('READY')) return 'READY';
+  return 'SKIP';
+}
+function paintLaunch(text, kind){
+  const el=document.getElementById('launchmsg');
+  el.textContent=text;
+  el.className='attach-result'+(kind?(' '+kind):'');
+}
 function paintAttach(){
   const el=document.getElementById('attachmsg');
   el.textContent=attachMsg;
@@ -223,6 +245,45 @@ function paintStage(text, kind){
   el.textContent=text;
   el.className='attach-result'+(kind?(' '+kind):'');
 }
+async function postEnv(){
+  try{
+    if(isTauri()){
+      try{
+        const v=await window.__TAURI__.core.invoke('launch_env');
+        return typeof v==='string'?JSON.parse(v):v;
+      }catch(e){
+        return {ok:false,error:String(e),copy:'FAIL env',live:'FAIL'};
+      }
+    }
+    if(noLiveApi()) return {ok:false,error:'FAIL',copy:'FAIL env',live:'FAIL'};
+    const r=await fetch(apiRoot()+'/env',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+    try{return await r.json();}catch(e){return {ok:false,error:String(e),copy:'FAIL env',live:'FAIL'};}
+  }catch(e){
+    return {ok:false,error:String(e),copy:'FAIL env',live:'FAIL'};
+  }
+}
+async function runEnv(){
+  const btn=document.getElementById('btnlaunch');
+  btn.disabled=true;
+  paintLaunch('launching env…','');
+  document.getElementById('meta').textContent='refreshing…';
+  try{
+    const j=await postEnv();
+    if(j && j.ok){
+      paintLaunch(j.copy||'PASS env','ok');
+    }else{
+      paintLaunch('FAIL '+(j && (j.copy||j.error)||'env'),'fail');
+    }
+    await tick();
+    const ts=(lastSnap&&lastSnap.ts)?lastSnap.ts:'';
+    if(ts) document.getElementById('meta').textContent=[lastSnap.host,lastSnap.profile,ts].filter(Boolean).join(' · ');
+  }catch(e){
+    paintLaunch('FAIL env','fail');
+    document.getElementById('fail').textContent='FAIL  env';
+  }finally{
+    btn.disabled=false;
+  }
+}
 async function postStage(){
   try{
     if(isTauri()){
@@ -279,6 +340,7 @@ bindAttach('att-open','opencode');
 document.getElementById('btnrefresh').addEventListener('click',()=>refreshNow());
 document.getElementById('btncopy').addEventListener('click',()=>copyStub());
 document.getElementById('btnstage').addEventListener('click',()=>runStage());
+document.getElementById('btnlaunch').addEventListener('click',()=>runEnv());
 function chipHtml(c){
   const lv=live(c.live);
   return '<div class=chip><b>'+c.id+'</b> <span class="live '+cls(lv)+'">'+lv+'</span><div class=muted>'+c.role+' · '+c.name+'</div></div>';
@@ -317,11 +379,15 @@ async function tick(){
     document.getElementById('orgnav').style.display=showOrg?'block':'none';
     if(!showOrg && view==='org') show('loop');
     const attached=s.active||'(none)';
-    const verb=(s.last_verb&&s.last_verb.verb)||'(none)';
+    const verb=lastVerbLabel((s.last_verb&&s.last_verb.verb)||'(none)');
     const when=(s.last_verb&&s.last_verb.when)||'';
     const pid=s.sidecar_pid || '';
     document.getElementById('loop-attached').textContent=attached+(pid?(' pid '+pid):'');
     document.getElementById('loop-last').textContent=verb;
+    const elv=envLive(s);
+    const envEl=document.getElementById('loop-env');
+    envEl.textContent=elv;
+    envEl.className='live '+cls(elv.toLowerCase());
     document.getElementById('loop-when').textContent=when;
     document.getElementById('eng-name').textContent=d.engine||r.engine||'none';
     setLive('eng-live', engLive);
