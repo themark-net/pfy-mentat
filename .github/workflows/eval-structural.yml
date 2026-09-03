@@ -20,6 +20,14 @@ jobs:
         run: |
           python3 examples/eval-harness/run_structural.py --write-md pipelines/eval/structural.latest.md
           python3 examples/eval-harness/run_golden.py --write-md pipelines/eval/golden.latest.md
+      - name: Launcher must exec
+        if: always() && !cancelled()
+        run: |
+          set -euo pipefail
+          git ls-files -s -- pfy scripts/pfy
+          test -x pfy
+          test -x scripts/pfy
+          ./pfy help
       - name: Upload receipts
         if: always()
         uses: actions/upload-artifact@v4
@@ -37,11 +45,25 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
-      - name: Structural + golden + catalog receipts
+      - name: Structural + golden
         run: |
           set -euo pipefail
           python3 examples/eval-harness/run_structural.py --write-md pipelines/eval/structural.latest.md
           python3 examples/eval-harness/run_golden.py --write-md pipelines/eval/golden.latest.md
+      - name: Launcher must exec
+        if: always() && !cancelled()
+        run: |
+          set -euo pipefail
+          git ls-files -s -- pfy scripts/pfy
+          test -x pfy
+          test -x scripts/pfy
+          ./pfy help
+      - name: Catalog receipts
+        # Catalog 70-75 HOLD. Separate step so a red dashboard/check cannot skip ./pfy.
+        # Do not fake-pass. Do not unpark catalog to green this.
+        if: always() && !cancelled()
+        run: |
+          set -euo pipefail
           python3 scripts/catalog_dashboard.py
           python3 scripts/catalog_check.py
           python3 scripts/smoke_contract_lint.py
