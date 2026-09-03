@@ -67,9 +67,14 @@ fn launch_env() -> Result<Value, String> {
     run_board(&["--env"])
 }
 
+#[tauri::command]
+fn pull_model(name: String) -> Result<Value, String> {
+    run_board(&["--pull", &name])
+}
+
 fn main() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![snapshot, start_sidecar, run_stage, launch_env])
+        .invoke_handler(tauri::generate_handler![snapshot, start_sidecar, run_stage, launch_env, pull_model])
         .run(tauri::generate_context!())
         .expect("error while running pfy-operator");
 }
