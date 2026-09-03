@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Native operator window. Tauri is preferred by scripts/pfy.
+"""Native operator window. scripts/pfy prefers a current Tauri binary; else this file.
 
 Order here: WebKit2 (gi) → stdlib tk. pywebview only if PFY_GUI_DEV=1 and it imports.
 Print native window (webkit) or native window (tk). Never STUB. Never exit 2.
@@ -120,29 +120,17 @@ class Win:
         head = ttk.Frame(right); head.pack(fill="x", padx=12, pady=(8, 2))
         ttk.Label(head, text="pfy", style="H.TLabel").pack(side="left")
         self.meta = ttk.Label(head, text="polling…", style="M.TLabel"); self.meta.pack(side="left", padx=12)
-        self.banner = ttk.Label(right, text="", style="M.TLabel", wraplength=1040, justify="left")
-        self.banner.pack(anchor="w", padx=12)
-        split = ttk.Frame(right); split.pack(fill="x", padx=12, pady=4)
-        self.lfr = tk.Frame(split, bg=PANE); self.lfr.pack(side="left", fill="both", expand=True, padx=(0, 4))
-        tk.Label(self.lfr, text="LOCAL WORKER", bg=PANE, fg=FG, font=("sans-serif", 12, "bold")).pack(anchor="w", padx=8, pady=(8,2))
-        self.local = tk.Label(self.lfr, text="", bg=PANE, fg=FG, justify="left", wraplength=500, anchor="w")
-        self.local.pack(anchor="w", padx=8, pady=(0,8))
-        cfr = tk.Frame(split, bg=CLOUD); cfr.pack(side="left", fill="both", expand=True, padx=(4, 0))
-        tk.Label(cfr, text="CLOUD MONITOR", bg=CLOUD, fg=FG, font=("sans-serif", 12, "bold")).pack(anchor="w", padx=8, pady=(8,2))
-        self.cloud = tk.Label(cfr, text="", bg=CLOUD, fg=FG, justify="left", wraplength=500, anchor="w")
-        self.cloud.pack(anchor="w", padx=8, pady=(0,8))
-        self.tape = ttk.Label(right, text="", justify="left"); self.tape.pack(anchor="w", padx=12)
-        btns = ttk.Frame(right); btns.pack(fill="x", padx=12, pady=6)
-        self.bgrok = ttk.Button(btns, text="Attach grok", command=lambda: self.attach("grok")); self.bgrok.pack(side="left", padx=(0,6))
-        self.bopen = ttk.Button(btns, text="Attach opencode", command=lambda: self.attach("opencode")); self.bopen.pack(side="left", padx=(0,6))
-        self.brefresh = ttk.Button(btns, text="Refresh status", command=self.refresh_now); self.brefresh.pack(side="left", padx=(0,6))
-        self.bcopy = ttk.Button(btns, text="Copy stub one-liner", command=self.copy_stub); self.bcopy.pack(side="left")
-        self.bstage = ttk.Button(btns, text="Run stage", command=self.run_stage); self.bstage.pack(side="left", padx=(6,0))
-        self.sst = ttk.Label(btns, text="", style="M.TLabel"); self.sst.pack(side="left", padx=8)
-        self.ast = ttk.Label(btns, text="", style="M.TLabel"); self.ast.pack(side="left", padx=12)
-        self.cst = ttk.Label(btns, text="", style="M.TLabel"); self.cst.pack(side="left", padx=8)
-        self.fail = ttk.Label(right, text="", style="F.TLabel"); self.fail.pack(anchor="w", padx=12)
-        self.body = ttk.Label(right, text="", justify="left", wraplength=1040); self.body.pack(anchor="w", padx=12, pady=6)
+        self.fail = ttk.Label(right, text="", style="F.TLabel"); self.fail.pack(anchor="w", padx=12, pady=(4,0))
+        self.body = ttk.Label(right, text="", justify="left", wraplength=1040); self.body.pack(anchor="w", padx=12, pady=8)
+        self.acts = ttk.Frame(right); self.acts.pack(fill="x", padx=12, pady=6)
+        self.bgrok = ttk.Button(self.acts, text="Attach grok", command=lambda: self.attach("grok"))
+        self.bopen = ttk.Button(self.acts, text="Attach opencode", command=lambda: self.attach("opencode"))
+        self.brefresh = ttk.Button(self.acts, text="Refresh status", command=self.refresh_now)
+        self.bcopy = ttk.Button(self.acts, text="Copy stub one-liner", command=self.copy_stub)
+        self.bstage = ttk.Button(self.acts, text="Run stage", command=self.run_stage)
+        self.sst = ttk.Label(self.acts, text="", style="M.TLabel")
+        self.ast = ttk.Label(self.acts, text="", style="Ok.TLabel")
+        self.cst = ttk.Label(self.acts, text="", style="M.TLabel")
         self.chips = ttk.Frame(right); self.chips.pack(fill="both", expand=True, padx=12, pady=(0,10))
 
     def set_view(self, k):
@@ -164,10 +152,12 @@ class Win:
 
     def done(self, hid, res):
         if res.get("ok"):
-            pid = res.get("pid"); self.msg = f"sidecar {hid}" + (f" pid {pid}" if pid else "")
+            pid = res.get("pid"); self.msg = f"attached {hid}" + (f" pid {pid}" if pid else "")
+            self.ast.configure(text=self.msg, style="Ok.TLabel")
         else:
-            self.msg = "FAIL " + (res.get("copy") or GROK_USE)
-        self.ast.configure(text=self.msg); self.refresh()
+            self.msg = "FAIL  " + (res.get("copy") or GROK_USE)
+            self.ast.configure(text=self.msg, style="F.TLabel")
+        self.refresh()
 
     def paint_copy(self, text, fail=False):
         self.cst.configure(text=text, style="F.TLabel" if fail else "Ok.TLabel")
@@ -290,29 +280,29 @@ class Win:
         if pending:
             self.refresh(user=True)
 
+    def pack_acts(self, names):
+        for w in (self.bgrok, self.bopen, self.brefresh, self.bcopy, self.bstage, self.sst, self.ast, self.cst):
+            try: w.pack_forget()
+            except Exception: pass
+        order = {
+            "grok": self.bgrok, "open": self.bopen, "refresh": self.brefresh,
+            "copy": self.bcopy, "stage": self.bstage, "sst": self.sst, "ast": self.ast, "cst": self.cst,
+        }
+        for n in names:
+            w = order[n]
+            w.pack(side="left", padx=(0, 8))
+
     def render(self):
         tk = sys.modules["tkinter"]; s = self.snap
         if s.get("error") and not s.get("chips"):
             self.meta.configure(text=str(s.get("error"))); return
         self.meta.configure(text=" · ".join(x for x in (s.get("host") or "", s.get("profile") or "", s.get("ts") or "") if x))
-        self.banner.configure(text="")
         d, r = s.get("detector") or {}, s.get("status_runtime") or {}
         eng_live = honest(s.get("engine_live") or d.get("status"))
         engine = d.get("engine") or r.get("engine") or "none"
-        url = d.get("base_url") or r.get("base_url") or "(none)"
-        usage = "\n".join(s.get("usage") or []) or "(empty)"
-        bg = "#1a3d2f" if eng_live == "ready" else PANE
-        self.lfr.configure(bg=bg)
-        for c in self.lfr.winfo_children():
-            try: c.configure(bg=bg)
-            except tk.TclError: pass
-        self.local.configure(text=f"engine {engine}  {eng_live}")
         chips = s.get("chips") or []
         grok = next((c for c in chips if c.get("id")=="grok"), {}) or {}
-        self.cloud.configure(text=f"grok PATH {honest(grok.get('live'))}")
         tape = s.get("tape") or []
-        bits = [f"{i}. {t.get('label') or t.get('id')} {t.get('live') or 'SKIP'}" for i,t in enumerate(tape,1)]
-        self.tape.configure(text=" then ".join(bits) if bits else "1. inference SKIP then 2. env-stage SKIP then 3. harness attach SKIP")
         stub = bool(s.get("active_stub")) or str(s.get("active") or "") in BLOCKED
         self.bgrok.configure(state="disabled" if stub else "normal")
         self.bopen.configure(state="disabled" if stub else "normal")
@@ -325,27 +315,33 @@ class Win:
         for k,b in self.nav.items():
             b.configure(bg="#243041" if k==self.view else SIDE)
         attached = s.get("active") or "(none)"; verb = (s.get("last_verb") or {}).get("verb") or "(none)"
-        now = s.get("now") or "idle"
+        when = (s.get("last_verb") or {}).get("when") or ""
+        pid = s.get("sidecar_pid") or ""
+        att = attached + (f" pid {pid}" if pid else "")
         stage = next((t for t in tape if t.get("id")=="env-stage"), {}) or {}
         if self.view == "loop":
-            txt = f"LOOP\nattached   {attached}\nlast       {verb}\ntape       {' then '.join(bits)}\nstate      {now}"
+            txt = f"LOOP\nattached   {att}\nlast       {verb}  {when}"
             if stub: txt += f"\nFAIL       {s.get('blocked_copy') or GROK_USE}"
+            if self.msg: txt += "\n" + self.msg
+            self.pack_acts(["grok", "open", "ast"])
         elif self.view == "engine":
-            txt = f"ENGINE\nengine     {engine}\nlive       {eng_live}\nURL        {url}\nusage      {usage}"
+            txt = f"ENGINE\nengine     {engine}\nlive       {eng_live}\ngrok       {honest(grok.get('live'))}"
+            self.pack_acts(["refresh"])
         elif self.view == "stage":
             sl = stage.get("live") or "SKIP"
-            last = self.sst.cget("text") if str(self.sst.cget("text") or "") else "next Run stage"
-            txt = f"STAGE\nenv-stage   {sl}\nwhat ran    env-stage\n{last}"
+            txt = f"STAGE\nenv-stage   {sl}"
+            self.pack_acts(["stage", "sst"])
         elif self.view == "attach":
-            txt = f"ATTACH\nNOW     attached {attached} · last {verb} · state {now}"
+            txt = f"ATTACH\nNOW     attached {attached} · last {verb}"
             if stub: txt += f"\nFAIL    {s.get('blocked_copy') or GROK_USE}"
+            self.pack_acts(["grok", "open", "copy", "cst"])
         else:
             rows = s.get("org_messages") or []
             txt = "no org loop" if not rows else "ORG\n" + "\n".join(f"{m.get('from')} → {m.get('to')}  {m.get('state') or ''}" for m in rows)
-        if self.msg: txt += "\n" + self.msg
+            self.pack_acts([])
         self.body.configure(text=txt)
         for c in self.chips.winfo_children(): c.destroy()
-        if self.view in ("attach", "loop"):
+        if self.view == "attach":
             for c in chips:
                 hid, live, role, name = c.get("id") or "", honest(c.get("live")), c.get("role") or "", c.get("name") or ""
                 fr = tk.Frame(self.chips, bg="#18202c", highlightbackground="#243041", highlightthickness=1, padx=8, pady=6)
@@ -382,7 +378,15 @@ def run_tk(board, selftest=False) -> bool:
     if selftest:
         w.apply(selftest_snap()); root.update_idletasks(); root.update()
         title = root.title()
-        has = (w.brefresh.cget("text") == "Refresh status" and w.bcopy.cget("text") == "Copy stub one-liner" and w.bstage.cget("text") == "Run stage")
+        has = (
+            w.bgrok.cget("text") == "Attach grok"
+            and w.bopen.cget("text") == "Attach opencode"
+            and w.brefresh.cget("text") == "Refresh status"
+            and w.bcopy.cget("text") == "Copy stub one-liner"
+            and w.bstage.cget("text") == "Run stage"
+        )
+        w.set_view("loop")
+        loop_ok = "LOOP" in (w.body.cget("text") or "") and "LOCAL WORKER" not in (w.body.cget("text") or "")
         w.copy_stub()
         copied = (w.cst.cget("text") == "copied")
         try:
@@ -390,7 +394,7 @@ def run_tk(board, selftest=False) -> bool:
         except Exception:
             clip = ""
         root.destroy()
-        return title == "pfy" and has and copied and bool(clip)
+        return title == "pfy" and has and loop_ok and copied and bool(clip)
     w.poll(int(os.environ.get("PFY_BOARD_REFRESH_MS", "2000"))); root.mainloop(); return True
 
 def main() -> int:
