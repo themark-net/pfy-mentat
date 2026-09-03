@@ -156,7 +156,7 @@ class Win:
         side = tk.Frame(outer, bg=SIDE, width=168); side.pack(side="left", fill="y"); side.pack_propagate(False)
         tk.Label(side, text="pfy", bg=SIDE, fg=FG, font=("sans-serif", 16, "bold")).pack(anchor="w", padx=14, pady=(14, 8))
         self.nav = {}
-        for k, lab in (("loop","Loop"),("engine","Engine"),("stage","Stage"),("attach","Attach"),("org","Org")):
+        for k, lab in (("loop","Loop"),("engine","Engine"),("stage","Stage"),("attach","Attach"),("tools","Tools"),("org","Org")):
             b = tk.Button(side, text=lab, bg=SIDE, fg=FG, bd=0, highlightthickness=0, anchor="w", padx=14, pady=8,
                           command=lambda x=k: self.set_view(x))
             b.pack(fill="x"); self.nav[k] = b
@@ -176,6 +176,10 @@ class Win:
         self.benv = ttk.Button(self.acts, text="Launch env", command=self.launch_env)
         self.bpull = ttk.Button(self.acts, text="Pull", command=self.pull_model)
         self.btest = ttk.Button(self.acts, text="Test model", command=self.test_model)
+        self.tool_btns = {}
+        for tid, lab in (("one-shot","one-shot"),("investigate","investigate"),("agent-loops","agent-loops"),("hermes-feedback","hermes-feedback"),("mcp","mcp"),("write-guard","write-guard"),("extra-tools","extra tools")):
+            self.tool_btns[tid] = ttk.Button(self.acts, text=lab, command=lambda x=tid: self.toggle_tool(x))
+        self.toolst = ttk.Label(self.acts, text="", style="M.TLabel")
         self.pullname = ttk.Entry(self.acts, width=22)
         self.sst = ttk.Label(self.acts, text="", style="M.TLabel")
         self.est = ttk.Label(self.acts, text="", style="M.TLabel")
@@ -444,8 +448,45 @@ class Win:
         if pending:
             self.refresh(user=True)
 
+    def paint_tools(self, text, fail=False):
+        self.toolst.configure(text=text, style="F.TLabel" if fail else "Ok.TLabel")
+        self.msg = text
+
+    def tool_on(self, tid):
+        tools = (self.snap or {}).get("tools") or {}
+        if tid == "mcp":
+            return bool(tools.get("mcp"))
+        if tid == "write-guard":
+            return bool(tools.get("write_guard"))
+        if tid == "extra-tools":
+            return (tools.get("tools_mode") or "") == "local_tools"
+        return bool((tools.get("skills") or {}).get(tid))
+
+    def toggle_tool(self, tid):
+        want = not self.tool_on(tid)
+        self.paint_tools("toggling…", False)
+        def work():
+            try:
+                if self.board is None:
+                    res = {"ok": False, "copy": "FAIL tools", "error": "no board"}
+                else:
+                    res = self.board.set_tool(tid, want)
+            except Exception as e:
+                res = {"ok": False, "copy": "FAIL tools", "error": str(e)}
+            self.root.after(0, lambda r=res: self.done_tool(r))
+        threading.Thread(target=work, daemon=True).start()
+
+    def done_tool(self, res):
+        if res.get("ok"):
+            self.paint_tools(res.get("copy") or "PASS tools", False)
+        else:
+            self.paint_tools("FAIL " + (res.get("copy") or res.get("error") or "tools"), True)
+        self.refresh(user=True)
+
     def pack_acts(self, names):
-        for w in (self.bgrok, self.bopen, self.brefresh, self.bcopy, self.bstage, self.benv, self.bpull, self.btest, self.pullname, self.sst, self.est, self.pst, self.tst, self.ast, self.cst):
+        forget = [self.bgrok, self.bopen, self.brefresh, self.bcopy, self.bstage, self.benv, self.bpull, self.btest, self.pullname, self.sst, self.est, self.pst, self.tst, self.ast, self.cst, self.toolst]
+        forget.extend(self.tool_btns.values())
+        for w in forget:
             try: w.pack_forget()
             except Exception: pass
         order = {
@@ -518,6 +559,27 @@ class Win:
             txt = f"ATTACH\nNOW     attached {attached} · last {verb}"
             if stub: txt += f"\nFAIL    {s.get('blocked_copy') or GROK_USE}"
             self.pack_acts(["grok", "open", "copy", "cst"])
+        elif self.view == "tools":
+            tools = s.get("tools") or {}
+            skills = tools.get("skills") or {}
+            def onoff(v):
+                return "on" if v else "off"
+            extra = onoff((tools.get("tools_mode") or "") == "local_tools")
+            txt = (
+                "TOOLS\n"
+                f"one-shot         {onoff(skills.get('one-shot'))}\n"
+                f"investigate      {onoff(skills.get('investigate'))}\n"
+                f"agent-loops      {onoff(skills.get('agent-loops'))}\n"
+                f"hermes-feedback  {onoff(skills.get('hermes-feedback'))}\n"
+                f"mcp              {onoff(tools.get('mcp'))}\n"
+                f"write-guard      {onoff(tools.get('write_guard'))}\n"
+                f"extra tools      {extra}"
+            )
+            if self.msg: txt += "\n" + self.msg
+            self.pack_acts([])
+            for w in self.tool_btns.values():
+                w.pack(side="left", padx=(0, 8))
+            self.toolst.pack(side="left", padx=(0, 8))
         else:
             rows = s.get("org_messages") or []
             txt = "no org loop" if not rows else "ORG\n" + "\n".join(f"{m.get('from')} → {m.get('to')}  {m.get('state') or ''}" for m in rows)
@@ -548,7 +610,8 @@ def selftest_snap():
             "tape":[{"id":"inference","label":"inference","live":"SKIP"},{"id":"env-stage","label":"env-stage","live":"SKIP"},
                     {"id":"harness-attach","label":"harness attach","live":"SKIP"}],
             "detect_order":[],"active":"grok","active_stub":False,"blocked_copy":GROK_USE,
-            "last_verb":{"verb":"gui","when":""},"now":"idle","processes":[],"agent_lane_collapsed":True}
+            "last_verb":{"verb":"gui","when":""},"now":"idle","processes":[],"agent_lane_collapsed":True,
+            "tools":{"skills":{"one-shot":True,"investigate":True,"agent-loops":True,"hermes-feedback":True},"mcp":False,"write_guard":False,"tools_mode":"split"}}
 
 def selftest_fresh_bind():
     from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -626,6 +689,7 @@ def run_tk(board, selftest=False) -> bool:
             and w.benv.cget("text") == "Launch env"
             and w.bpull.cget("text") == "Pull"
             and w.btest.cget("text") == "Test model"
+            and "tools" in w.nav
         )
         w.set_view("loop")
         body = w.body.cget("text") or ""

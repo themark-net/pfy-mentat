@@ -40,6 +40,7 @@ noscript .fail{padding:16px;display:block}
   <button type=button class=navbtn data-go=engine>Engine</button>
   <button type=button class=navbtn data-go=stage>Stage</button>
   <button type=button class=navbtn data-go=attach>Attach</button>
+  <button type=button class=navbtn data-go=tools>Tools</button>
   <button type=button class=navbtn id=orgnav data-go=org style=display:none>Org</button>
 </nav>
 <div class=shell>
@@ -96,6 +97,17 @@ noscript .fail{padding:16px;display:block}
       <button type=button class=primary id=btncopy>Copy stub one-liner</button>
     </div>
     <span id=copymsg class=attach-result></span>
+  </section>
+  <section class=view id=view-tools>
+    <h2>TOOLS</h2>
+    <div class=row>one-shot <span id=tool-one-shot class=live>missing</span> <button type=button class=primary data-tool=one-shot>Toggle</button></div>
+    <div class=row>investigate <span id=tool-investigate class=live>missing</span> <button type=button class=primary data-tool=investigate>Toggle</button></div>
+    <div class=row>agent-loops <span id=tool-agent-loops class=live>missing</span> <button type=button class=primary data-tool=agent-loops>Toggle</button></div>
+    <div class=row>hermes-feedback <span id=tool-hermes-feedback class=live>missing</span> <button type=button class=primary data-tool=hermes-feedback>Toggle</button></div>
+    <div class=row>mcp <span id=tool-mcp class=live>missing</span> <button type=button class=primary data-tool=mcp>Toggle</button></div>
+    <div class=row>write-guard <span id=tool-write-guard class=live>missing</span> <button type=button class=primary data-tool=write-guard>Toggle</button></div>
+    <div class=row>extra tools <span id=tool-extra-tools class=live>missing</span> <button type=button class=primary data-tool=extra-tools>Toggle</button></div>
+    <span id=toolsmsg class=attach-result></span>
   </section>
   <section class=view id=view-org>
     <h2>ORG</h2>
@@ -448,6 +460,63 @@ document.getElementById('btnstage').addEventListener('click',()=>runStage());
 document.getElementById('btnlaunch').addEventListener('click',()=>runEnv());
 document.getElementById('btnpull').addEventListener('click',()=>runPull());
 document.getElementById('btntest').addEventListener('click',()=>runEval());
+function paintTools(text, kind){
+  const el=document.getElementById('toolsmsg');
+  if(!el) return;
+  el.textContent=text;
+  el.className='attach-result'+(kind?(' '+kind):'');
+}
+function toolOn(s, id){
+  const tools=(s&&s.tools)||{};
+  if(id==='mcp') return !!tools.mcp;
+  if(id==='write-guard') return !!tools.write_guard;
+  if(id==='extra-tools') return (tools.tools_mode||'')==='local_tools';
+  return !!((tools.skills||{})[id]);
+}
+function paintToolRow(s){
+  ['one-shot','investigate','agent-loops','hermes-feedback','mcp','write-guard','extra-tools'].forEach(id=>{
+    const el=document.getElementById('tool-'+id);
+    if(!el) return;
+    const on=toolOn(s,id);
+    el.textContent=on?'on':'off';
+    el.className='live '+(on?'ready':'missing');
+  });
+}
+async function postTool(id, on){
+  try{
+    if(isTauri()){
+      try{
+        const v=await window.__TAURI__.core.invoke('set_tool',{id, on});
+        return typeof v==='string'?JSON.parse(v):v;
+      }catch(e){
+        return {ok:false,error:String(e),copy:'FAIL tools',live:'FAIL'};
+      }
+    }
+    if(noLiveApi()) return {ok:false,error:'FAIL',copy:'FAIL tools',live:'FAIL'};
+    const r=await fetch(apiRoot()+'/tools',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,on})});
+    try{return await r.json();}catch(e){return {ok:false,error:String(e),copy:'FAIL tools',live:'FAIL'};}
+  }catch(e){
+    return {ok:false,error:String(e),copy:'FAIL tools',live:'FAIL'};
+  }
+}
+async function runTool(id){
+  const on=!toolOn(lastSnap,id);
+  paintTools('toggling…','');
+  try{
+    const j=await postTool(id,on);
+    if(j && j.ok){
+      paintTools(j.copy||('PASS '+id),'ok');
+      if(j.tools) lastSnap.tools=j.tools;
+      paintToolRow(lastSnap);
+    }else{
+      paintTools('FAIL '+(j && (j.copy||j.error)||id),'fail');
+    }
+    await tick();
+  }catch(e){
+    paintTools('FAIL tools','fail');
+  }
+}
+document.querySelectorAll('[data-tool]').forEach(el=>el.addEventListener('click',()=>runTool(el.getAttribute('data-tool'))));
 function chipHtml(c){
   const lv=live(c.live);
   return '<div class=chip><b>'+c.id+'</b> <span class="live '+cls(lv)+'">'+lv+'</span><div class=muted>'+c.role+' · '+c.name+'</div></div>';
@@ -510,6 +579,7 @@ async function tick(){
     setLive('eng-grok', g.live);
     const models=s.models||[];
     document.getElementById('eng-models').textContent=models.length?models.join(' · '):'(none)';
+    paintToolRow(s);
     const tape=s.tape||[];
     const stage=tape.find(t=>t.id==='env-stage'||t.label==='env-stage')||{};
     const sl=stage.live||'SKIP';
