@@ -51,6 +51,8 @@ noscript .fail{padding:16px;display:block}
     <div class=row>env <span id=loop-env class=live>SKIP</span></div>
     <div class=row>attached <b id=loop-attached>(none)</b></div>
     <div class=row>last <b id=loop-last>(none)</b> <span class=muted id=loop-when></span></div>
+    <div class=row>monitor <b id=loop-monitor>(none)</b></div>
+    <div class=row>grok <span id=loop-grok class=live>missing</span></div>
     <div class=acts>
       <button type=button class=primary id=btnlaunch>Launch env</button>
       <button type=button class=primary id=btnopen>Attach opencode</button>
@@ -203,7 +205,8 @@ async function attach(id){
   try{
     const j=await postStart(id);
     if(j && j.ok){
-      attachMsg='attached '+id+(j.pid?(' pid '+j.pid):'');
+      const kind=(j.role==='monitor')?'monitor':id;
+      attachMsg='attached '+kind+(j.pid?(' pid '+j.pid):'');
       attachKind='ok';
     }else{
       attachMsg='FAIL  '+(j && (j.copy||j.error)||GROK_USE);
@@ -493,6 +496,15 @@ async function tick(){
     envEl.textContent=elv;
     envEl.className='live '+cls(elv.toLowerCase());
     document.getElementById('loop-when').textContent=when;
+    const mon=document.getElementById('loop-monitor');
+    if(mon){
+      const note=s.monitor_note||'';
+      const mpid=s.monitor_pid||'';
+      mon.textContent=note||(mpid?('pid '+mpid):'(none)');
+    }
+    const gpath=s.grok_path||g.live||'missing';
+    const gEl=document.getElementById('loop-grok');
+    if(gEl) setLive('loop-grok', gpath);
     document.getElementById('eng-name').textContent=d.engine||r.engine||'none';
     setLive('eng-live', engLive);
     setLive('eng-grok', g.live);

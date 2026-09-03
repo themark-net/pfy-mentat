@@ -204,7 +204,9 @@ class Win:
 
     def done(self, hid, res):
         if res.get("ok"):
-            pid = res.get("pid"); self.msg = f"attached {hid}" + (f" pid {pid}" if pid else "")
+            pid = res.get("pid")
+            kind = "monitor" if res.get("role") == "monitor" else hid
+            self.msg = f"attached {kind}" + (f" pid {pid}" if pid else "")
             self.ast.configure(text=self.msg, style="Ok.TLabel")
         else:
             self.msg = "FAIL  " + (res.get("copy") or GROK_USE)
@@ -495,7 +497,11 @@ class Win:
         else:
             env_live = "SKIP"
         if self.view == "loop":
-            txt = f"LOOP\nenv        {env_live}\nattached   {att}\nlast       {verb}  {when}"
+            note = s.get("monitor_note") or ""
+            mpid = s.get("monitor_pid") or ""
+            mon = note or (f"pid {mpid}" if mpid else "(none)")
+            gpath = s.get("grok_path") or honest(grok.get("live"))
+            txt = f"LOOP\nenv        {env_live}\nattached   {att}\nlast       {verb}  {when}\nmonitor    {mon}\ngrok       {gpath}"
             if stub: txt += f"\nFAIL       {s.get('blocked_copy') or GROK_USE}"
             if self.msg: txt += "\n" + self.msg
             self.pack_acts(["env", "open", "grok", "est", "ast"])
