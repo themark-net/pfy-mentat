@@ -44,15 +44,60 @@ def port_open(host, port):
     finally:
         s.close()
 
+def leftover_dump(body, hdr=""):
+    """True when HTML is the old consultant board, not the current session."""
+    h = (hdr or "").strip().lower()
+    b = body or ""
+    low = b.lower()
+    if h == "session" and 'data-pfy-ui="session"' in b and "pfy board" not in low:
+        return False
+    if "pfy board" in low or "start via cli" in low:
+        return True
+    if "127.0.0.1:8765" in b and "<title>pfy</title>" not in low:
+        return True
+    return False
+
+def occupant_html(host, port):
+    import urllib.request
+    try:
+        req = urllib.request.Request(f"http://{host}:{port}/", method="GET")
+        with urllib.request.urlopen(req, timeout=0.4) as r:
+            hdr = (r.headers.get("X-Pfy-UI") or "")
+            body = r.read(16000).decode("utf-8", "replace")
+        return hdr, body
+    except Exception:
+        return "", ""
+
+def bind_http(board, host, port):
+    from http.server import ThreadingHTTPServer
+    httpd = ThreadingHTTPServer((host, port), board.Handler)
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    return httpd
+
 def ensure_http(board):
+    """Serve current frontend. Never reuse a leftover listener just because the port answered."""
     host = getattr(board, "HOST", os.environ.get("PFY_BOARD_HOST", "127.0.0.1"))
-    port = int(getattr(board, "PORT", os.environ.get("PFY_BOARD_PORT", "8765")))
+    preferred = int(getattr(board, "PORT", os.environ.get("PFY_BOARD_PORT", "8765")))
+    if host not in ("127.0.0.1", "localhost"):
+        host = "127.0.0.1"
+    from http.server import ThreadingHTTPServer
     httpd = None
-    if not port_open(host, port):
-        from http.server import ThreadingHTTPServer
-        httpd = ThreadingHTTPServer((host, port), board.Handler)
+    chosen = None
+    tried = [preferred] + [p for p in range(preferred + 1, preferred + 16)]
+    for port in tried:
+        if port_open(host, port):
+            continue
+        try:
+            httpd = bind_http(board, host, port)
+            chosen = port
+            break
+        except OSError:
+            continue
+    if httpd is None:
+        httpd = ThreadingHTTPServer((host, 0), board.Handler)
         threading.Thread(target=httpd.serve_forever, daemon=True).start()
-    return httpd, f"http://{host}:{port}/"
+        chosen = httpd.server_address[1]
+    return httpd, f"http://{host}:{chosen}/"
 
 def run_webkit(url) -> bool:
     try:
@@ -367,6 +412,62 @@ def selftest_snap():
             "detect_order":[],"active":"grok","active_stub":False,"blocked_copy":GROK_USE,
             "last_verb":{"verb":"gui","when":""},"now":"idle","processes":[],"agent_lane_collapsed":True}
 
+def selftest_fresh_bind():
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+    from urllib.parse import urlparse
+    import urllib.request
+    class Dump(BaseHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+        def do_GET(self):
+            b = b"<!DOCTYPE html><html><head><title>pfy board</title></head><body>127.0.0.1:8765 start via CLI nimo honest-state</body></html>"
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(b)))
+            self.end_headers()
+            self.wfile.write(b)
+    class Ours(BaseHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+        def do_GET(self):
+            b = b'<!DOCTYPE html><html data-pfy-ui="session"><head><title>pfy</title></head><body>LOOP Attach grok</body></html>'
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("X-Pfy-UI", "session")
+            self.send_header("Content-Length", str(len(b)))
+            self.end_headers()
+            self.wfile.write(b)
+    dump = ThreadingHTTPServer(("127.0.0.1", 0), Dump)
+    threading.Thread(target=dump.serve_forever, daemon=True).start()
+    dport = dump.server_address[1]
+    class Board:
+        HOST = "127.0.0.1"
+        PORT = dport
+        Handler = Ours
+    httpd, url = ensure_http(Board)
+    try:
+        got = urlparse(url).port
+        if got == dport:
+            return False
+        with urllib.request.urlopen(url, timeout=1) as r:
+            body = r.read().decode("utf-8", "replace")
+            hdr = (r.headers.get("X-Pfy-UI") or "")
+        return (
+            not leftover_dump(body, hdr)
+            and "pfy board" not in body.lower()
+            and "start via cli" not in body.lower()
+            and "<title>pfy</title>" in body
+        )
+    finally:
+        try:
+            httpd.shutdown()
+        except Exception:
+            pass
+        try:
+            dump.shutdown()
+        except Exception:
+            pass
+
 def run_tk(board, selftest=False) -> bool:
     try:
         import tkinter as tk; import tkinter.ttk  # noqa
@@ -386,7 +487,8 @@ def run_tk(board, selftest=False) -> bool:
             and w.bstage.cget("text") == "Run stage"
         )
         w.set_view("loop")
-        loop_ok = "LOOP" in (w.body.cget("text") or "") and "LOCAL WORKER" not in (w.body.cget("text") or "")
+        body = w.body.cget("text") or ""
+        loop_ok = "LOOP" in body and "LOCAL WORKER" not in body and "pfy board" not in body.lower()
         w.copy_stub()
         copied = (w.cst.cget("text") == "copied")
         try:
@@ -399,7 +501,7 @@ def run_tk(board, selftest=False) -> bool:
 
 def main() -> int:
     if os.environ.get("PFY_GUI_SELFTEST")=="1" or "--selftest" in sys.argv:
-        return 0 if run_tk(None, True) else 1
+        return 0 if run_tk(None, True) and selftest_fresh_bind() else 1
     try: board = load_board()
     except Exception as e:
         return stopped_exit(str(e))
