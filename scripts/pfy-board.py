@@ -2,14 +2,14 @@
 """Local operator board. Independent poller — not a daemon, not a supervisor.
 
 Serves the shared GUI at gui/operator/frontend/index.html.
-POST /start spawns grok/opencode as a sidecar subprocess only.
+POST /start spawns grok/opencode as a sidecar. OpenCode gets LOCAL_OPENAI_BASE_URL + OPENCODE_SKILLS.
 POST /stage runs ./pfy stage (env-stage).
 POST /env runs ./pfy env (inference + env-stage). No harness exec.
 POST /models/pull runs ./pfy models pull <name>.
 POST /eval runs a live-endpoint chat/completions probe against LOCAL_OPENAI_BASE_URL.
 """
 from __future__ import annotations
-import json, os, socket, subprocess, sys, urllib.request
+import json, os, shutil, socket, subprocess, sys, urllib.request
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -364,6 +364,7 @@ def snapshot():
         "status_stdout": status_text, "no_daemon": True,
         "active_stub": active in STUB_ALWAYS, "refresh_ms": REFRESH_MS,
         "sidecar_ok": sorted(SIDECAR_OK),
+        "sidecar_pid": sidecar_pid_live(),
     }
 
 def html_page():
@@ -486,8 +487,87 @@ def launch_env():
         "stdout": (out or "")[-800:],
     }
 
+def which_bin(*names):
+    for n in names:
+        found = shutil.which(n)
+        if found:
+            return found
+    return ""
+
+def pid_alive(pid):
+    try:
+        pid = int(pid)
+    except (TypeError, ValueError):
+        return False
+    if pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+
+def live_openai_base():
+    det = detector_json()
+    base = str(det.get("base_url") or os.environ.get("LOCAL_OPENAI_BASE_URL") or "").strip()
+    if base == "(none)":
+        base = ""
+    if not base:
+        return "", det
+    b = base.rstrip("/")
+    if not b.endswith("/v1"):
+        b = b + "/v1"
+    return b, det
+
+
+def write_opencode_config(base, models):
+    STATE.mkdir(parents=True, exist_ok=True)
+    name = ""
+    if models:
+        name = str(models[0]).strip()
+    if not name:
+        name = (os.environ.get("LOCAL_CODER_MODEL") or os.environ.get("PFY_FT_MODEL") or os.environ.get("PFY_OLLAMA_MODEL") or "local").strip() or "local"
+    opts = {}
+    opts["baseURL"] = base
+    opts["apiKey"] = "local"
+    localp = {}
+    localp["name"] = "local"
+    localp["options"] = opts
+    localp["models"] = {name: {"name": name}}
+    localp["npm"] = "@ai-sdk/openai-compatible"
+    cfg = {"provider": {"local": localp}, "model": "local/" + name}
+    path = STATE / "opencode.json"
+    path.write_text(json.dumps(cfg, indent=2) + chr(10), encoding="utf-8")
+    return path, name
+
+def record_sidecar_pid(hid, pid):
+    STATE.mkdir(parents=True, exist_ok=True)
+    (STATE / ("sidecar-%s.pid" % hid)).write_text(str(pid) + chr(10), encoding="utf-8")
+
+def sidecar_pid_live():
+    for hid in ("opencode", "grok"):
+        path = STATE / ("sidecar-%s.pid" % hid)
+        if not path.is_file():
+            continue
+        try:
+            pid = int(path.read_text(encoding="utf-8", errors="replace").strip())
+        except ValueError:
+            continue
+        if pid_alive(pid):
+            return pid
+    return ""
+
+def record_last_verb(verb):
+    STATE.mkdir(parents=True, exist_ok=True)
+    when = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    (STATE / "last-verb").write_text("verb: %s\nwhen: %s\n" % (verb, when), encoding="utf-8")
+
+def opencode_stub_line():
+    rec = next((h for h in (load_registry().get("harnesses") or []) if h.get("id") == "opencode"), {}) or {}
+    return one_liner("opencode", rec)
+
 def start_sidecar(hid):
-    """Spawn grok/opencode as a separate process. Not a supervisor for other ids."""
+    """Spawn grok/opencode as a separate process. OpenCode uses the live local endpoint."""
     hid = (hid or "").strip()
     if not hid:
         hid = active_harness("grok")
@@ -508,6 +588,57 @@ def start_sidecar(hid):
             "error": f"{hid} is not a sidecar",
         }
     STATE.mkdir(parents=True, exist_ok=True)
+    if hid == "opencode":
+        bin_path = which_bin("opencode", "opencode-cli")
+        stub = opencode_stub_line()
+        if not bin_path:
+            return {
+                "ok": False, "id": hid, "live": "FAIL", "copy": stub,
+                "error": "opencode missing",
+            }
+        base, _det = live_openai_base()
+        if not base:
+            return {
+                "ok": False, "id": hid, "live": "FAIL", "copy": stub,
+                "error": "no live local endpoint",
+            }
+        models = inspect_models(base)
+        cfg_path, model = write_opencode_config(base, models)
+        skills = ROOT / "bootstrap" / "grok-cli" / "skills"
+        env = os.environ.copy()
+        env["LOCAL_OPENAI_BASE_URL"] = base
+        env["OPENAI_BASE_URL"] = base
+        env["OPENAI_API_KEY"] = env.get("OPENAI_API_KEY") or "local"
+        env["OPENCODE_CONFIG"] = str(cfg_path)
+        if skills.is_dir():
+            env["OPENCODE_SKILLS"] = str(skills)
+        log = STATE / "sidecar-opencode.log"
+        with log.open("ab") as f:
+            proc = subprocess.Popen(
+                [bin_path],
+                cwd=str(ROOT),
+                env=env,
+                stdout=f,
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
+            )
+        if not pid_alive(proc.pid):
+            err = ""
+            try:
+                err = log.read_text(encoding="utf-8", errors="replace")[-400:]
+            except Exception:
+                err = "opencode exited"
+            return {
+                "ok": False, "id": hid, "live": "FAIL", "copy": stub,
+                "error": err or "opencode exited", "pid": proc.pid, "log": str(log),
+            }
+        record_sidecar_pid("opencode", proc.pid)
+        (STATE / "active-harness").write_text("opencode\n", encoding="utf-8")
+        record_last_verb("start opencode")
+        return {
+            "ok": True, "id": hid, "live": "READY", "pid": proc.pid,
+            "sidecar": True, "log": str(log), "base_url": base, "model": model,
+        }
     log = STATE / f"sidecar-{hid}.log"
     with log.open("ab") as f:
         proc = subprocess.Popen(
@@ -517,8 +648,10 @@ def start_sidecar(hid):
             stderr=subprocess.STDOUT,
             start_new_session=True,
         )
+    if hid == "grok" and pid_alive(proc.pid):
+        record_sidecar_pid("grok", proc.pid)
+        record_last_verb("start grok")
     return {"ok": True, "id": hid, "live": "READY", "pid": proc.pid, "sidecar": True, "log": str(log)}
-
 
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
