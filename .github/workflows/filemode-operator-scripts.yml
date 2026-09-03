@@ -1,62 +1,85 @@
-# One-shot: restore emptied launcher if needed, then commit 100755.
-# Contents API writes 100644. Second push no-ops when modes are already 100755.
-# Feature branch only. No post-checkout hook. No cargo/pip/apt as operator UI.
+# G0: FAIL the PR if pfy / scripts/pfy are not 100755.
+# Contents API writes 100644; this feature-branch job restores 100755 via git.
+# Check is ubuntu-hosted (nimo G0 red is not a substitute). No cargo/pip as UI.
 name: operator-launch-filemode
 
 on:
   push:
-    branches: [feat/native-window-always-opens]
+  pull_request:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
+  check-filemode:
+    name: G0 launcher 100755
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: FAIL unless pfy and scripts/pfy are 100755 and ./pfy help runs
+        run: |
+          set -euo pipefail
+          fail=0
+          for p in pfy scripts/pfy; do
+            mode="$(git ls-files -s -- "$p" | awk '{print $1}')"
+            echo "$p gitmode=$mode"
+            if [[ "$mode" != "100755" ]]; then
+              echo "FAIL: $p is ${mode:-missing} not 100755"
+              fail=1
+            fi
+            if [[ ! -x "$p" ]]; then
+              echo "FAIL: $p not executable in working tree"
+              fail=1
+            fi
+          done
+          set +e
+          ./pfy help > /tmp/pfy-help.out 2> /tmp/pfy-help.err
+          rc=$?
+          set -e
+          echo "----- ./pfy help stdout -----"
+          cat /tmp/pfy-help.out || true
+          echo "----- ./pfy help stderr -----"
+          cat /tmp/pfy-help.err || true
+          if [[ "$rc" -eq 126 ]] || grep -qi 'permission denied' /tmp/pfy-help.err /tmp/pfy-help.out; then
+            echo "FAIL: ./pfy permission denied / not executable"
+            fail=1
+          elif [[ "$rc" -ne 0 ]]; then
+            echo "FAIL: ./pfy help exit $rc"
+            fail=1
+          fi
+          exit "$fail"
+
   chmod-launchers:
     name: git filemode 100755
-    runs-on: [self-hosted, Linux, X64, pfy-mentat]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/feat/pfy-executable'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
-      - name: restore emptied scripts/pfy and drop cargo launch stub
-        run: python3 .github/scripts/restore-operator-launcher.py
       - name: git update-index --chmod=+x (no-op if already 100755)
         run: |
           set -euo pipefail
-          paths=(
-            pfy
-            scripts/pfy
-            scripts/pfy-gui.py
-            scripts/pfy-board.py
-            scripts/detect-local-runtime.sh
-            scripts/env-stage.sh
-          )
+          paths=(pfy scripts/pfy)
           need=0
-          git add -- scripts/pfy scripts/pfy-gui.py || true
-          if ! git diff --cached --quiet -- scripts/pfy scripts/pfy-gui.py; then
-            need=1
-          fi
           for p in "${paths[@]}"; do
             [[ -e "$p" ]] || { echo "missing $p"; exit 1; }
-            [[ -s "$p" ]] || { echo "empty $p after restore"; exit 1; }
             mode="$(git ls-files -s -- "$p" | awk '{print $1}')"
-            echo "$p mode=$mode size=$(wc -c < "$p")"
+            echo "$p mode=$mode"
             if [[ "$mode" != "100755" ]]; then
               git update-index --chmod=+x -- "$p"
               need=1
             fi
           done
-          git ls-files -s -- "${paths[@]}" | tee .github/operator-filemode.txt
-          git add -- .github/operator-filemode.txt
-          if ! git diff --cached --quiet -- .github/operator-filemode.txt; then
-            need=1
-          fi
+          git ls-files -s -- "${paths[@]}"
           if [[ "$need" -eq 0 ]]; then
-            echo "already 100755 and launcher intact; no-op"
+            echo "already 100755; no-op"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "chore(pfy): restore launcher + git filemode 100755"
+          git commit -m "chore(pfy): git filemode 100755 for pfy and scripts/pfy"
           git push

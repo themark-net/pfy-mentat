@@ -9,6 +9,7 @@ Checks:
   3. data/tools.json parses and has required schema fields
   4. Key design/coding skill SKILL.md files exist (agent-loops, investigate, one-shot, adr)
   5. Golden-task cards validate (validate_golden_tasks.py) when present
+  6. pfy and scripts/pfy are git 100755, +x, and ./pfy help execs
 
 Write summary to pipelines/eval/structural.latest.md when --write-md.
 """
@@ -16,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -185,6 +187,46 @@ def check_external_skills() -> tuple[bool, str]:
     return True, f"ok external packs {len(packs)} ua_skills={n}"
 
 
+
+LAUNCHERS = ("pfy", "scripts/pfy")
+
+
+def check_launcher_filemode() -> tuple[bool, str]:
+    """pfy and scripts/pfy must be git 100755 and +x after clone/pull."""
+    bad: list[str] = []
+    for rel in LAUNCHERS:
+        code, out = run(["git", "ls-files", "-s", "--", rel])
+        parts = out.split()
+        mode = parts[0] if parts else ""
+        if mode != "100755":
+            bad.append(f"{rel} gitmode={mode or 'missing'}")
+        path = ROOT / rel
+        if not path.is_file():
+            bad.append(f"{rel} missing")
+        elif not os.access(path, os.X_OK):
+            bad.append(f"{rel} not executable")
+    if bad:
+        return False, "; ".join(bad)
+    return True, "ok 100755 pfy scripts/pfy"
+
+
+def check_launcher_runs() -> tuple[bool, str]:
+    """Bare ./pfy must exec. Permission denied / not-executable is FAIL."""
+    path = ROOT / "pfy"
+    if not path.is_file():
+        return False, "pfy missing"
+    if not os.access(path, os.X_OK):
+        return False, "permission denied ./pfy"
+    proc = subprocess.run([str(path), "help"], cwd=ROOT, capture_output=True, text=True)
+    out = (proc.stdout or "") + (proc.stderr or "")
+    if proc.returncode == 126 or "Permission denied" in out:
+        return False, "permission denied ./pfy"
+    if proc.returncode != 0:
+        tail = out.strip().replace("\n", " ")[-200:]
+        return False, f"./pfy help exit {proc.returncode} {tail}"
+    return True, "ok ./pfy help"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--write-md", type=Path, default=None)
@@ -198,6 +240,8 @@ def main() -> int:
         ("design_coding_skills", check_design_skill_files),
         ("text_scorer_fixtures", check_text_scorers),
         ("golden_tasks", check_golden_tasks),
+        ("launcher_filemode", check_launcher_filemode),
+        ("launcher_runs", check_launcher_runs),
     ]
     rows: list[tuple[str, bool, str]] = []
     for name, fn in checks:
