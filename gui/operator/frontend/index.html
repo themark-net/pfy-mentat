@@ -15,6 +15,7 @@ header{border-bottom:1px solid #243041}
 .copy{font-family:ui-monospace,monospace;font-size:12px;background:#111823;padding:4px 6px;border-radius:6px;display:block;margin-top:6px;user-select:all}
 button{background:#243041;color:#e8edf4;border:1px solid #3a4a60;border-radius:8px;padding:6px 10px;cursor:pointer}button:disabled{opacity:.4;cursor:not-allowed}
 button.primary{background:#2a4a6d;border-color:#4d8dff}
+input[type=text]{background:#18202c;color:#e8edf4;border:1px solid #3a4a60;border-radius:8px;padding:6px 10px;min-width:180px}
 .muted{color:#8b97a8}.live{font-weight:700;text-transform:uppercase;font-size:11px}
 .fail{color:#e8875b;font-weight:700}
 .view{display:none;padding:16px}.view.on{display:block}
@@ -63,9 +64,15 @@ noscript .fail{padding:16px;display:block}
     <div class=row>engine <b id=eng-name>none</b></div>
     <div class=row>live <span id=eng-live class=live>missing</span></div>
     <div class=row>grok <span id=eng-grok class=live>missing</span></div>
+    <div class=row>models <span id=eng-models class=muted>(none)</span></div>
     <div class=acts>
       <button type=button class=primary id=btnrefresh>Refresh status</button>
     </div>
+    <div class=acts>
+      <input id=pullname type=text placeholder=model autocomplete=off>
+      <button type=button class=primary id=btnpull>Pull</button>
+    </div>
+    <span id=pullmsg class=attach-result></span>
   </section>
   <section class=view id=view-stage>
     <h2>STAGE</h2>
@@ -124,6 +131,11 @@ function envLive(s){
   if(a.includes('FAIL')) return 'FAIL';
   if(a.includes('READY')) return 'READY';
   return 'SKIP';
+}
+function paintPull(text, kind){
+  const el=document.getElementById('pullmsg');
+  el.textContent=text;
+  el.className='attach-result'+(kind?(' '+kind):'');
 }
 function paintLaunch(text, kind){
   const el=document.getElementById('launchmsg');
@@ -245,6 +257,50 @@ function paintStage(text, kind){
   el.textContent=text;
   el.className='attach-result'+(kind?(' '+kind):'');
 }
+async function postPull(name){
+  try{
+    if(isTauri()){
+      try{
+        const v=await window.__TAURI__.core.invoke('pull_model',{name});
+        return typeof v==='string'?JSON.parse(v):v;
+      }catch(e){
+        return {ok:false,error:String(e),copy:'FAIL pull',live:'FAIL'};
+      }
+    }
+    if(noLiveApi()) return {ok:false,error:'FAIL',copy:'FAIL pull',live:'FAIL'};
+    const r=await fetch(apiRoot()+'/models/pull',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
+    try{return await r.json();}catch(e){return {ok:false,error:String(e),copy:'FAIL pull',live:'FAIL'};}
+  }catch(e){
+    return {ok:false,error:String(e),copy:'FAIL pull',live:'FAIL'};
+  }
+}
+async function runPull(){
+  const btn=document.getElementById('btnpull');
+  const name=(document.getElementById('pullname').value||'').trim();
+  if(!name){
+    paintPull('FAIL pull','fail');
+    return;
+  }
+  btn.disabled=true;
+  paintPull('pulling…','');
+  document.getElementById('meta').textContent='refreshing…';
+  try{
+    const j=await postPull(name);
+    if(j && j.ok){
+      const c=j.copy||'PASS pull';
+      paintPull(c, c.indexOf('SKIP')===0?'':'ok');
+    }else{
+      paintPull('FAIL '+(j && (j.copy||j.error)||'pull'),'fail');
+    }
+    await tick();
+    const ts=(lastSnap&&lastSnap.ts)?lastSnap.ts:'';
+    if(ts) document.getElementById('meta').textContent=[lastSnap.host,lastSnap.profile,ts].filter(Boolean).join(' · ');
+  }catch(e){
+    paintPull('FAIL pull','fail');
+  }finally{
+    btn.disabled=false;
+  }
+}
 async function postEnv(){
   try{
     if(isTauri()){
@@ -341,6 +397,7 @@ document.getElementById('btnrefresh').addEventListener('click',()=>refreshNow())
 document.getElementById('btncopy').addEventListener('click',()=>copyStub());
 document.getElementById('btnstage').addEventListener('click',()=>runStage());
 document.getElementById('btnlaunch').addEventListener('click',()=>runEnv());
+document.getElementById('btnpull').addEventListener('click',()=>runPull());
 function chipHtml(c){
   const lv=live(c.live);
   return '<div class=chip><b>'+c.id+'</b> <span class="live '+cls(lv)+'">'+lv+'</span><div class=muted>'+c.role+' · '+c.name+'</div></div>';
@@ -392,6 +449,8 @@ async function tick(){
     document.getElementById('eng-name').textContent=d.engine||r.engine||'none';
     setLive('eng-live', engLive);
     setLive('eng-grok', g.live);
+    const models=s.models||[];
+    document.getElementById('eng-models').textContent=models.length?models.join(' · '):'(none)';
     const tape=s.tape||[];
     const stage=tape.find(t=>t.id==='env-stage'||t.label==='env-stage')||{};
     const sl=stage.live||'SKIP';

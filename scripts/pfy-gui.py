@@ -174,8 +174,11 @@ class Win:
         self.bcopy = ttk.Button(self.acts, text="Copy stub one-liner", command=self.copy_stub)
         self.bstage = ttk.Button(self.acts, text="Run stage", command=self.run_stage)
         self.benv = ttk.Button(self.acts, text="Launch env", command=self.launch_env)
+        self.bpull = ttk.Button(self.acts, text="Pull", command=self.pull_model)
+        self.pullname = ttk.Entry(self.acts, width=22)
         self.sst = ttk.Label(self.acts, text="", style="M.TLabel")
         self.est = ttk.Label(self.acts, text="", style="M.TLabel")
+        self.pst = ttk.Label(self.acts, text="", style="M.TLabel")
         self.ast = ttk.Label(self.acts, text="", style="Ok.TLabel")
         self.cst = ttk.Label(self.acts, text="", style="M.TLabel")
         self.chips = ttk.Frame(right); self.chips.pack(fill="both", expand=True, padx=12, pady=(0,10))
@@ -245,6 +248,46 @@ class Win:
 
     def paint_stage(self, text, fail=False):
         self.sst.configure(text=text, style="F.TLabel" if fail else "Ok.TLabel")
+
+    def paint_pull(self, text, fail=False):
+        self.pst.configure(text=text, style="F.TLabel" if fail else "Ok.TLabel")
+
+    def pull_model(self):
+        try:
+            name = (self.pullname.get() or "").strip()
+        except Exception:
+            name = ""
+        if not name:
+            self.paint_pull("FAIL pull", True)
+            return
+        self.paint_pull("pulling…", False)
+        self.meta.configure(text="refreshing…")
+        try:
+            self.bpull.configure(state="disabled")
+        except Exception:
+            pass
+        def work():
+            try:
+                if self.board is None:
+                    res = {"ok": False, "copy": "FAIL pull", "error": "no board"}
+                else:
+                    res = self.board.pull_model(name)
+            except Exception as e:
+                res = {"ok": False, "copy": "FAIL pull", "error": str(e)}
+            self.root.after(0, lambda r=res: self.done_pull(r))
+        threading.Thread(target=work, daemon=True).start()
+
+    def done_pull(self, res):
+        try:
+            self.bpull.configure(state="normal")
+        except Exception:
+            pass
+        if res.get("ok"):
+            copy = res.get("copy") or "PASS pull"
+            self.paint_pull(copy, False)
+        else:
+            self.paint_pull("FAIL " + (res.get("copy") or res.get("error") or "pull"), True)
+        self.refresh(user=True)
 
     def paint_env(self, text, fail=False):
         self.est.configure(text=text, style="F.TLabel" if fail else "Ok.TLabel")
@@ -360,12 +403,13 @@ class Win:
             self.refresh(user=True)
 
     def pack_acts(self, names):
-        for w in (self.bgrok, self.bopen, self.brefresh, self.bcopy, self.bstage, self.benv, self.sst, self.est, self.ast, self.cst):
+        for w in (self.bgrok, self.bopen, self.brefresh, self.bcopy, self.bstage, self.benv, self.bpull, self.pullname, self.sst, self.est, self.pst, self.ast, self.cst):
             try: w.pack_forget()
             except Exception: pass
         order = {
             "grok": self.bgrok, "open": self.bopen, "refresh": self.brefresh,
             "copy": self.bcopy, "stage": self.bstage, "env": self.benv,
+            "pull": self.bpull, "pullname": self.pullname, "pst": self.pst,
             "sst": self.sst, "est": self.est, "ast": self.ast, "cst": self.cst,
         }
         for n in names:
@@ -415,8 +459,10 @@ class Win:
             if self.msg: txt += "\n" + self.msg
             self.pack_acts(["env", "open", "grok", "est", "ast"])
         elif self.view == "engine":
-            txt = f"ENGINE\nengine     {engine}\nlive       {eng_live}\ngrok       {honest(grok.get('live'))}"
-            self.pack_acts(["refresh"])
+            models = s.get("models") or []
+            mtxt = " · ".join(str(x) for x in models) if models else "(none)"
+            txt = f"ENGINE\nengine     {engine}\nlive       {eng_live}\ngrok       {honest(grok.get('live'))}\nmodels     {mtxt}"
+            self.pack_acts(["refresh", "pullname", "pull", "pst"])
         elif self.view == "stage":
             sl = stage.get("live") or "SKIP"
             txt = f"STAGE\nenv-stage   {sl}"
@@ -531,6 +577,7 @@ def run_tk(board, selftest=False) -> bool:
             and w.bcopy.cget("text") == "Copy stub one-liner"
             and w.bstage.cget("text") == "Run stage"
             and w.benv.cget("text") == "Launch env"
+            and w.bpull.cget("text") == "Pull"
         )
         w.set_view("loop")
         body = w.body.cget("text") or ""

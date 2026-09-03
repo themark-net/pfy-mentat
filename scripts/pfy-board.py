@@ -5,6 +5,7 @@ Serves the shared GUI at gui/operator/frontend/index.html.
 POST /start spawns grok/opencode as a sidecar subprocess only.
 POST /stage runs ./pfy stage (env-stage).
 POST /env runs ./pfy env (inference + env-stage). No harness exec.
+POST /models/pull runs ./pfy models pull <name>.
 """
 from __future__ import annotations
 import json, os, socket, subprocess, sys, urllib.request
@@ -387,6 +388,26 @@ def run_stage():
         "stdout": (out or "")[-800:],
     }
 
+def pull_model(name):
+    # Live-engine pull: FreeToken records; Ollama pulls; llama skip honest.
+    name = (name or "").strip()
+    if not name:
+        return {"ok": False, "live": "FAIL", "copy": "FAIL pull", "error": "no name"}
+    if not PFY.is_file():
+        return {"ok": False, "live": "FAIL", "copy": "FAIL pull", "error": "scripts/pfy missing"}
+    rc, out = _run(["bash", str(PFY), "models", "pull", name], timeout=180.0)
+    blob = (out or "")
+    low = blob.lower()
+    if rc != 0:
+        return {
+            "ok": False, "live": "FAIL", "copy": "FAIL pull",
+            "error": (blob or "pull failed")[-400:],
+            "stdout": blob[-800:],
+        }
+    if "honest skip" in low or "has no pull" in low or "no local engine" in low:
+        return {"ok": True, "live": "SKIP", "copy": "SKIP pull", "stdout": blob[-800:]}
+    return {"ok": True, "live": "PASS", "copy": "PASS pull", "stdout": blob[-800:]}
+
 def launch_env():
     """Same path as bare ./pfy before the window: inference then env-stage. No harness exec."""
     if not PFY.is_file():
@@ -481,6 +502,18 @@ class Handler(BaseHTTPRequestHandler):
             code = 200 if result.get("ok") else 400
             self._send(code, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
             return
+        if path == "/models/pull":
+            length = int(self.headers.get("Content-Length") or 0)
+            raw = self.rfile.read(length) if length else b"{}"
+            try:
+                body = json.loads(raw.decode() or "{}")
+            except json.JSONDecodeError:
+                body = {}
+            name = str((body or {}).get("name") or "")
+            result = pull_model(name)
+            code = 200 if result.get("ok") else 400
+            self._send(code, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
+            return
         self._send(405, b"POST disabled for this path\n", "text/plain; charset=utf-8")
 
 def main():
@@ -499,6 +532,11 @@ def main():
         return 0 if result.get("ok") else 2
     if args[:1] == ["--env"]:
         result = launch_env()
+        print(json.dumps(result))
+        return 0 if result.get("ok") else 2
+    if args[:1] == ["--pull"]:
+        name = args[1] if len(args) > 1 else ""
+        result = pull_model(name)
         print(json.dumps(result))
         return 0 if result.get("ok") else 2
     if HOST not in ("127.0.0.1", "localhost"):
