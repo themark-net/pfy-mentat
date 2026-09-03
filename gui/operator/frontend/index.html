@@ -105,8 +105,9 @@ function isTauri(){return !!(window.__TAURI__ && window.__TAURI__.core && window
 function apiRoot(){
   if(isTauri()) return '';
   if(location.protocol==='http:'||location.protocol==='https:') return '';
-  return 'http://127.0.0.1:'+(location.port||'8765');
+  return null;
 }
+function noLiveApi(){ return apiRoot()===null; }
 function paintAttach(){
   const el=document.getElementById('attachmsg');
   el.textContent=attachMsg;
@@ -136,6 +137,7 @@ async function getSnapshot(){
       const v=await window.__TAURI__.core.invoke('snapshot');
       return typeof v==='string'?JSON.parse(v):v;
     }
+    if(noLiveApi()) return {error:'FAIL',chips:[],tape:[],blocked_copy:GROK_USE};
     const r=await fetch(apiRoot()+'/snapshot',{cache:'no-store'});
     if(!r.ok) throw new Error('snapshot '+r.status);
     return await r.json();
@@ -149,6 +151,7 @@ async function postStart(id){
       const v=await window.__TAURI__.core.invoke('start_sidecar',{id});
       return typeof v==='string'?JSON.parse(v):v;
     }
+    if(noLiveApi()) return {ok:false,error:'FAIL',copy:GROK_USE,live:'FAIL'};
     const r=await fetch(apiRoot()+'/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});
     try{return await r.json();}catch(e){return {ok:false,error:String(e),copy:GROK_USE,live:'FAIL'};}
   }catch(e){
@@ -230,6 +233,7 @@ async function postStage(){
         return {ok:false,error:String(e),copy:'FAIL env-stage',live:'FAIL'};
       }
     }
+    if(noLiveApi()) return {ok:false,error:'FAIL',copy:'FAIL env-stage',live:'FAIL'};
     const r=await fetch(apiRoot()+'/stage',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
     try{return await r.json();}catch(e){return {ok:false,error:String(e),copy:'FAIL env-stage',live:'FAIL'};}
   }catch(e){
