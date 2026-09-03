@@ -175,10 +175,12 @@ class Win:
         self.bstage = ttk.Button(self.acts, text="Run stage", command=self.run_stage)
         self.benv = ttk.Button(self.acts, text="Launch env", command=self.launch_env)
         self.bpull = ttk.Button(self.acts, text="Pull", command=self.pull_model)
+        self.btest = ttk.Button(self.acts, text="Test model", command=self.test_model)
         self.pullname = ttk.Entry(self.acts, width=22)
         self.sst = ttk.Label(self.acts, text="", style="M.TLabel")
         self.est = ttk.Label(self.acts, text="", style="M.TLabel")
         self.pst = ttk.Label(self.acts, text="", style="M.TLabel")
+        self.tst = ttk.Label(self.acts, text="", style="M.TLabel")
         self.ast = ttk.Label(self.acts, text="", style="Ok.TLabel")
         self.cst = ttk.Label(self.acts, text="", style="M.TLabel")
         self.chips = ttk.Frame(right); self.chips.pack(fill="both", expand=True, padx=12, pady=(0,10))
@@ -248,6 +250,44 @@ class Win:
 
     def paint_stage(self, text, fail=False):
         self.sst.configure(text=text, style="F.TLabel" if fail else "Ok.TLabel")
+
+    def paint_eval(self, text, fail=False):
+        self.tst.configure(text=text, style="F.TLabel" if fail else "Ok.TLabel")
+
+    def test_model(self):
+        self.paint_eval("testing…", False)
+        self.meta.configure(text="refreshing…")
+        try:
+            self.btest.configure(state="disabled")
+        except Exception:
+            pass
+        def work():
+            try:
+                if self.board is None:
+                    res = {"ok": False, "copy": "FAIL eval", "error": "no board"}
+                else:
+                    res = self.board.test_model()
+            except Exception as e:
+                res = {"ok": False, "copy": "FAIL eval", "error": str(e)}
+            self.root.after(0, lambda r=res: self.done_eval(r))
+        threading.Thread(target=work, daemon=True).start()
+
+    def done_eval(self, res):
+        try:
+            self.btest.configure(state="normal")
+        except Exception:
+            pass
+        if res.get("ok"):
+            copy = res.get("copy") or "PASS eval"
+            if str(copy).startswith("SKIP"):
+                self.tst.configure(text=copy, style="M.TLabel")
+            elif str(copy).startswith("FAIL"):
+                self.paint_eval(copy, True)
+            else:
+                self.paint_eval(copy, False)
+        else:
+            self.paint_eval("FAIL " + (res.get("copy") or res.get("error") or "eval"), True)
+        self.refresh(user=True)
 
     def paint_pull(self, text, fail=False):
         self.pst.configure(text=text, style="F.TLabel" if fail else "Ok.TLabel")
@@ -403,13 +443,14 @@ class Win:
             self.refresh(user=True)
 
     def pack_acts(self, names):
-        for w in (self.bgrok, self.bopen, self.brefresh, self.bcopy, self.bstage, self.benv, self.bpull, self.pullname, self.sst, self.est, self.pst, self.ast, self.cst):
+        for w in (self.bgrok, self.bopen, self.brefresh, self.bcopy, self.bstage, self.benv, self.bpull, self.btest, self.pullname, self.sst, self.est, self.pst, self.tst, self.ast, self.cst):
             try: w.pack_forget()
             except Exception: pass
         order = {
             "grok": self.bgrok, "open": self.bopen, "refresh": self.brefresh,
             "copy": self.bcopy, "stage": self.bstage, "env": self.benv,
             "pull": self.bpull, "pullname": self.pullname, "pst": self.pst,
+            "test": self.btest, "tst": self.tst,
             "sst": self.sst, "est": self.est, "ast": self.ast, "cst": self.cst,
         }
         for n in names:
@@ -462,7 +503,7 @@ class Win:
             models = s.get("models") or []
             mtxt = " · ".join(str(x) for x in models) if models else "(none)"
             txt = f"ENGINE\nengine     {engine}\nlive       {eng_live}\ngrok       {honest(grok.get('live'))}\nmodels     {mtxt}"
-            self.pack_acts(["refresh", "pullname", "pull", "pst"])
+            self.pack_acts(["refresh", "test", "pullname", "pull", "tst", "pst"])
         elif self.view == "stage":
             sl = stage.get("live") or "SKIP"
             txt = f"STAGE\nenv-stage   {sl}"
@@ -578,6 +619,7 @@ def run_tk(board, selftest=False) -> bool:
             and w.bstage.cget("text") == "Run stage"
             and w.benv.cget("text") == "Launch env"
             and w.bpull.cget("text") == "Pull"
+            and w.btest.cget("text") == "Test model"
         )
         w.set_view("loop")
         body = w.body.cget("text") or ""
