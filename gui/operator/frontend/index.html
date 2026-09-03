@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang=en><head><meta charset=utf-8/><title>pfy</title>
+<!DOCTYPE html><html lang=en data-pfy-ui=session><head><meta charset=utf-8/><title>pfy</title>
 <style>
 body{margin:0;font:14px/1.4 ui-sans-serif,system-ui,sans-serif;background:#0e1116;color:#e8edf4}
 .app{display:grid;grid-template-columns:168px 1fr;min-height:100vh}
@@ -278,13 +278,7 @@ document.getElementById('btncopy').addEventListener('click',()=>copyStub());
 document.getElementById('btnstage').addEventListener('click',()=>runStage());
 function chipHtml(c){
   const lv=live(c.live);
-  const issue=c.issue_url?'<span class=muted> · <a class=issue href="'+c.issue_url+'">issue</a></span>':'';
-  const startHref='#start-'+c.id;
-  const inspect=(c.one_liner||('./pfy start '+c.id));
-  const hit=c.startable
-    ? '<a class=hit href="'+startHref+'" data-start="'+c.id+'">Start '+c.id+'</a>'
-    : '<a class=inspect href="'+startHref+'"><code class=copy>'+inspect+'</code></a>';
-  return '<div class=chip><b>'+c.id+'</b> <span class="live '+cls(lv)+'">'+lv+'</span><div class=muted>'+c.role+' · '+c.name+issue+'</div>'+hit+'</div>';
+  return '<div class=chip><b>'+c.id+'</b> <span class="live '+cls(lv)+'">'+lv+'</span><div class=muted>'+c.role+' · '+c.name+'</div></div>';
 }
 function setLive(id, val){
   const el=document.getElementById(id);
