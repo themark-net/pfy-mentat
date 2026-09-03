@@ -227,8 +227,7 @@ async function postStage(){
         const v=await window.__TAURI__.core.invoke('run_stage');
         return typeof v==='string'?JSON.parse(v):v;
       }catch(e){
-        const r=await fetch('http://127.0.0.1:8765/stage',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
-        try{return await r.json();}catch(e2){return {ok:false,error:String(e),copy:'FAIL env-stage',live:'FAIL'};}
+        return {ok:false,error:String(e),copy:'FAIL env-stage',live:'FAIL'};
       }
     }
     const r=await fetch(apiRoot()+'/stage',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
