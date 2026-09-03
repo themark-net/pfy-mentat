@@ -173,7 +173,9 @@ class Win:
         self.brefresh = ttk.Button(self.acts, text="Refresh status", command=self.refresh_now)
         self.bcopy = ttk.Button(self.acts, text="Copy stub one-liner", command=self.copy_stub)
         self.bstage = ttk.Button(self.acts, text="Run stage", command=self.run_stage)
+        self.benv = ttk.Button(self.acts, text="Launch env", command=self.launch_env)
         self.sst = ttk.Label(self.acts, text="", style="M.TLabel")
+        self.est = ttk.Label(self.acts, text="", style="M.TLabel")
         self.ast = ttk.Label(self.acts, text="", style="Ok.TLabel")
         self.cst = ttk.Label(self.acts, text="", style="M.TLabel")
         self.chips = ttk.Frame(right); self.chips.pack(fill="both", expand=True, padx=12, pady=(0,10))
@@ -243,6 +245,38 @@ class Win:
 
     def paint_stage(self, text, fail=False):
         self.sst.configure(text=text, style="F.TLabel" if fail else "Ok.TLabel")
+
+    def paint_env(self, text, fail=False):
+        self.est.configure(text=text, style="F.TLabel" if fail else "Ok.TLabel")
+
+    def launch_env(self):
+        self.paint_env("launching env…", False)
+        self.meta.configure(text="refreshing…")
+        try:
+            self.benv.configure(state="disabled")
+        except Exception:
+            pass
+        def work():
+            try:
+                if self.board is None:
+                    res = {"ok": False, "copy": "FAIL env", "error": "no board"}
+                else:
+                    res = self.board.launch_env()
+            except Exception as e:
+                res = {"ok": False, "copy": "FAIL env", "error": str(e)}
+            self.root.after(0, lambda r=res: self.done_env(r))
+        threading.Thread(target=work, daemon=True).start()
+
+    def done_env(self, res):
+        try:
+            self.benv.configure(state="normal")
+        except Exception:
+            pass
+        if res.get("ok"):
+            self.paint_env(res.get("copy") or "PASS env", False)
+        else:
+            self.paint_env("FAIL " + (res.get("copy") or res.get("error") or "env"), True)
+        self.refresh(user=True)
 
     def run_stage(self):
         self.paint_stage("running env-stage…", False)
@@ -326,12 +360,13 @@ class Win:
             self.refresh(user=True)
 
     def pack_acts(self, names):
-        for w in (self.bgrok, self.bopen, self.brefresh, self.bcopy, self.bstage, self.sst, self.ast, self.cst):
+        for w in (self.bgrok, self.bopen, self.brefresh, self.bcopy, self.bstage, self.benv, self.sst, self.est, self.ast, self.cst):
             try: w.pack_forget()
             except Exception: pass
         order = {
             "grok": self.bgrok, "open": self.bopen, "refresh": self.brefresh,
-            "copy": self.bcopy, "stage": self.bstage, "sst": self.sst, "ast": self.ast, "cst": self.cst,
+            "copy": self.bcopy, "stage": self.bstage, "env": self.benv,
+            "sst": self.sst, "est": self.est, "ast": self.ast, "cst": self.cst,
         }
         for n in names:
             w = order[n]
@@ -360,15 +395,25 @@ class Win:
         for k,b in self.nav.items():
             b.configure(bg="#243041" if k==self.view else SIDE)
         attached = s.get("active") or "(none)"; verb = (s.get("last_verb") or {}).get("verb") or "(none)"
+        if verb in ("env", "launch-env"):
+            verb = "Launch env"
         when = (s.get("last_verb") or {}).get("when") or ""
         pid = s.get("sidecar_pid") or ""
         att = attached + (f" pid {pid}" if pid else "")
         stage = next((t for t in tape if t.get("id")=="env-stage"), {}) or {}
+        inf = next((t for t in tape if t.get("id")=="inference"), {}) or {}
+        lives = [str(inf.get("live") or "SKIP").upper(), str(stage.get("live") or "SKIP").upper()]
+        if "FAIL" in lives:
+            env_live = "FAIL"
+        elif "READY" in lives:
+            env_live = "READY"
+        else:
+            env_live = "SKIP"
         if self.view == "loop":
-            txt = f"LOOP\nattached   {att}\nlast       {verb}  {when}"
+            txt = f"LOOP\nenv        {env_live}\nattached   {att}\nlast       {verb}  {when}"
             if stub: txt += f"\nFAIL       {s.get('blocked_copy') or GROK_USE}"
             if self.msg: txt += "\n" + self.msg
-            self.pack_acts(["grok", "open", "ast"])
+            self.pack_acts(["env", "open", "grok", "est", "ast"])
         elif self.view == "engine":
             txt = f"ENGINE\nengine     {engine}\nlive       {eng_live}\ngrok       {honest(grok.get('live'))}"
             self.pack_acts(["refresh"])
@@ -485,10 +530,11 @@ def run_tk(board, selftest=False) -> bool:
             and w.brefresh.cget("text") == "Refresh status"
             and w.bcopy.cget("text") == "Copy stub one-liner"
             and w.bstage.cget("text") == "Run stage"
+            and w.benv.cget("text") == "Launch env"
         )
         w.set_view("loop")
         body = w.body.cget("text") or ""
-        loop_ok = "LOOP" in body and "LOCAL WORKER" not in body and "pfy board" not in body.lower()
+        loop_ok = "LOOP" in body and "env" in body.lower() and "LOCAL WORKER" not in body and "pfy board" not in body.lower()
         w.copy_stub()
         copied = (w.cst.cget("text") == "copied")
         try:
