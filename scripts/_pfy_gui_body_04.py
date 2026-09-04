@@ -1,4 +1,12 @@
-self.refresh(user=True)
+ res.get("ok"):
+            copy = res.get("copy") or ("SKIP env" if str(res.get("live") or "") == "SKIP" else "PASS env")
+            if str(copy).startswith("SKIP"):
+                self.est.configure(text=copy, style="M.TLabel")
+            else:
+                self.paint_env(copy, False)
+        else:
+            self.paint_env("FAIL " + (res.get("copy") or res.get("error") or "env"), True)
+        self.refresh(user=True)
 
     def run_stage(self):
         self.paint_stage("running env-stage…", False)
@@ -100,13 +108,4 @@ self.refresh(user=True)
         return bool((tools.get("skills") or {}).get(tid))
 
     def toggle_tool(self, tid):
-        want = not self.tool_on(tid)
-        self.paint_tools("toggling…", False)
-        def work():
-            try:
-                if self.board is None:
-                    res = {"ok": False, "copy": "FAIL tools", "error": "no board"}
-                else:
-                    res = self.board.set_tool(tid, want)
-            except Exception as e:
-                res = {"ok": False, "copy": "FAIL tools"
+    

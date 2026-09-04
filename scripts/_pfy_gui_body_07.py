@@ -1,4 +1,8 @@
--loops":True,"hermes-feedback":True},"mcp":False,"write_guard":False,"tools_mode":"split"}}
+{"id":"env-stage","label":"env-stage","live":"SKIP"},
+                    {"id":"harness-attach","label":"harness attach","live":"SKIP"}],
+            "detect_order":[],"active":"grok","active_stub":False,"blocked_copy":GROK_USE,
+            "last_verb":{"verb":"gui","when":""},"now":"idle","processes":[],"agent_lane_collapsed":True,
+            "tools":{"skills":{"one-shot":True,"investigate":True,"agent-loops":True,"hermes-feedback":True},"mcp":False,"write_guard":False,"tools_mode":"split"}}
 
 def selftest_fresh_bind():
     from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -82,22 +86,11 @@ def run_tk(board, selftest=False) -> bool:
         body = w.body.cget("text") or ""
         loop_ok = "LOOP" in body and "env" in body.lower() and "LOCAL WORKER" not in body and "pfy board" not in body.lower()
         w.copy_stub()
-        copied = (w.cst.cget("text") == "copied")
+        copied = (w.cst.cget("text") in ("copied", "PASS copied"))
         try:
             clip = root.clipboard_get()
         except Exception:
             clip = ""
         root.destroy()
         return title == "pfy" and has and loop_ok and copied and bool(clip)
-    w.poll(int(os.environ.get("PFY_BOARD_REFRESH_MS", "2000"))); root.mainloop(); return True
-
-def main() -> int:
-    if os.environ.get("PFY_GUI_SELFTEST")=="1" or "--selftest" in sys.argv:
-        return 0 if run_tk(None, True) and selftest_fresh_bind() else 1
-    try: board = load_board()
-    except Exception as e:
-        return stopped_exit(str(e))
-    httpd, url = ensure_http(board)
-    try:
-        if run_webkit(url): return 0
-        if run_tk(boar
+    w.poll(int(os.environ.get("PFY_

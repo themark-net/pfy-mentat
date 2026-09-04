@@ -1,4 +1,10 @@
-odels") or []
+ok.get("live"))
+            txt = f"LOOP\nenv        {env_live}\nattached   {att}\nlast       {verb}  {when}\nmonitor    {mon}\ngrok       {gpath}"
+            if stub: txt += f"\nFAIL       {s.get('blocked_copy') or GROK_USE}"
+            if self.msg: txt += "\n" + self.msg
+            self.pack_acts(["env", "open", "grok", "est", "ast"])
+        elif self.view == "engine":
+            models = s.get("models") or []
             mtxt = " · ".join(str(x) for x in models) if models else "(none)"
             txt = f"ENGINE\nengine     {engine}\nlive       {eng_live}\ngrok       {honest(grok.get('live'))}\nmodels     {mtxt}"
             self.pack_acts(["refresh", "test", "pullname", "pull", "tst", "pst"])
@@ -59,8 +65,4 @@ def selftest_snap():
     return {"ts":"selftest","host":"selftest","profile":"","detector":{"engine":"none","status":"missing","base_url":""},
             "engine_live":"missing","usage":[],"chips":[{"id":"grok","live":"missing","role":"harness","name":"Grok CLI"},
             {"id":"continue","live":"stub","role":"harness","name":"Continue"}],
-            "tape":[{"id":"inference","label":"inference","live":"SKIP"},{"id":"env-stage","label":"env-stage","live":"SKIP"},
-                    {"id":"harness-attach","label":"harness attach","live":"SKIP"}],
-            "detect_order":[],"active":"grok","active_stub":False,"blocked_copy":GROK_USE,
-            "last_verb":{"verb":"gui","when":""},"now":"idle","processes":[],"agent_lane_collapsed":True,
-            "tools":{"skills":{"one-shot":True,"investigate":True,"agent
+            "tape":[{"id":"inference","label":"inference","live":"SKIP"},

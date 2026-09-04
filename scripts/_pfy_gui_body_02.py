@@ -15,7 +15,12 @@ n(self.acts, text="Test model", command=self.test_model)
     def set_view(self, k):
         self.view = k; self.render()
 
+    def paint_attach(self, text, fail=False):
+        self.msg = text
+        self.ast.configure(text=text, style="F.TLabel" if fail else "Ok.TLabel")
+
     def attach(self, hid):
+        self.paint_attach("attaching "+hid+"…", False)
         def work():
             try: snap = self.board.snapshot() if self.board else {}
             except Exception as e: snap, err = {}, str(e)
@@ -24,7 +29,7 @@ n(self.acts, text="Test model", command=self.test_model)
             if active in BLOCKED:
                 res = {"ok": False, "copy": GROK_USE, "error": f"{active} is active — no grok/opencode fallback"}
             else:
-                try: res = self.board.start_sidecar(hid)
+                try: res = self.board.start_sidecar(hid) if self.board else {"ok": False, "copy": GROK_USE, "error": "no board"}
                 except Exception as e: res = {"ok": False, "copy": GROK_USE, "error": str(e) or err}
             self.root.after(0, lambda: self.done(hid, res))
         threading.Thread(target=work, daemon=True).start()
@@ -33,15 +38,17 @@ n(self.acts, text="Test model", command=self.test_model)
         if res.get("ok"):
             pid = res.get("pid")
             kind = "monitor" if res.get("role") == "monitor" else hid
-            self.msg = f"attached {kind}" + (f" pid {pid}" if pid else "")
-            self.ast.configure(text=self.msg, style="Ok.TLabel")
+            self.paint_attach(f"attached {kind}" + (f" pid {pid}" if pid else ""), False)
         else:
-            self.msg = "FAIL  " + (res.get("copy") or GROK_USE)
-            self.ast.configure(text=self.msg, style="F.TLabel")
+            detail = res.get("error") or res.get("copy") or GROK_USE
+            self.paint_attach(f"FAIL Attach {hid} — {detail}", True)
         self.refresh()
 
     def paint_copy(self, text, fail=False):
-        self.cst.configure(text=text, style="F.TLabel" if fail else "Ok.TLabel")
+        self.msg = text
+        style = "F.TLabel" if fail else "Ok.TLabel"
+        self.cst.configure(text=text, style=style)
+        self.ast.configure(text=text, style=style)
 
     def stub_line(self):
         s = self.snap or {}
@@ -62,6 +69,7 @@ n(self.acts, text="Test model", command=self.test_model)
         return c.get("one_liner") or ("./pfy start " + str(c.get("id") or ""))
 
     def copy_stub(self):
+        self.paint_copy("copying…", False)
         line = self.stub_line()
         if not line:
             self.paint_copy("FAIL no stub one-liner", True)
@@ -73,16 +81,5 @@ n(self.acts, text="Test model", command=self.test_model)
                 self.root.update_idletasks()
             except Exception:
                 pass
-            self.paint_copy("copied", False)
-        except Exception:
-            self.paint_copy("FAIL clipboard", True)
-
-    def paint_stage(self, text, fail=False):
-        self.sst.configure(text=text, style="F.TLabel" if fail else "Ok.TLabel")
-
-    def paint_eval(self, text, fail=False):
-        self.tst.configure(text=text, style="F.TLabel" if fail else "Ok.TLabel")
-
-    def test_model(self):
-        self.paint_eval("testing…", False)
-       
+            self.paint_copy("PASS copied", False)
+        except Exception

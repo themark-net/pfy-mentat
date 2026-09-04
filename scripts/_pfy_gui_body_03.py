@@ -1,4 +1,15 @@
- self.meta.configure(text="refreshing…")
+:
+            self.paint_copy("FAIL clipboard — select the one-liner", True)
+
+    def paint_stage(self, text, fail=False):
+        self.sst.configure(text=text, style="F.TLabel" if fail else "Ok.TLabel")
+
+    def paint_eval(self, text, fail=False):
+        self.tst.configure(text=text, style="F.TLabel" if fail else "Ok.TLabel")
+
+    def test_model(self):
+        self.paint_eval("testing…", False)
+        self.meta.configure(text="refreshing…")
         try:
             self.btest.configure(state="disabled")
         except Exception:
@@ -97,12 +108,4 @@
             self.benv.configure(state="normal")
         except Exception:
             pass
-        if res.get("ok"):
-            copy = res.get("copy") or ("SKIP env" if str(res.get("live") or "") == "SKIP" else "PASS env")
-            if str(copy).startswith("SKIP"):
-                self.est.configure(text=copy, style="M.TLabel")
-            else:
-                self.paint_env(copy, False)
-        else:
-            self.paint_env("FAIL " + (res.get("copy") or res.get("error") or "env"), True)
-        
+        if

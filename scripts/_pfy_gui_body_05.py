@@ -1,4 +1,13 @@
-, "error": str(e)}
+    want = not self.tool_on(tid)
+        self.paint_tools("toggling…", False)
+        def work():
+            try:
+                if self.board is None:
+                    res = {"ok": False, "copy": "FAIL tools", "error": "no board"}
+                else:
+                    res = self.board.set_tool(tid, want)
+            except Exception as e:
+                res = {"ok": False, "copy": "FAIL tools", "error": str(e)}
             self.root.after(0, lambda r=res: self.done_tool(r))
         threading.Thread(target=work, daemon=True).start()
 
@@ -67,10 +76,4 @@
             note = s.get("monitor_note") or ""
             mpid = s.get("monitor_pid") or ""
             mon = note or (f"pid {mpid}" if mpid else "(none)")
-            gpath = s.get("grok_path") or honest(grok.get("live"))
-            txt = f"LOOP\nenv        {env_live}\nattached   {att}\nlast       {verb}  {when}\nmonitor    {mon}\ngrok       {gpath}"
-            if stub: txt += f"\nFAIL       {s.get('blocked_copy') or GROK_USE}"
-            if self.msg: txt += "\n" + self.msg
-            self.pack_acts(["env", "open", "grok", "est", "ast"])
-        elif self.view == "engine":
-            models = s.get("m
+            gpath = s.get("grok_path") or honest(gr
