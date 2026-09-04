@@ -1,4 +1,27 @@
-ok.get("live"))
+["org"].pack_forget()
+            if self.view == "org": self.view = "loop"
+        for k,b in self.nav.items():
+            b.configure(bg="#243041" if k==self.view else SIDE)
+        attached = s.get("active") or "(none)"; verb = (s.get("last_verb") or {}).get("verb") or "(none)"
+        if verb in ("env", "launch-env"):
+            verb = "Launch env"
+        when = (s.get("last_verb") or {}).get("when") or ""
+        pid = s.get("sidecar_pid") or ""
+        att = attached + (f" pid {pid}" if pid else "")
+        stage = next((t for t in tape if t.get("id")=="env-stage"), {}) or {}
+        inf = next((t for t in tape if t.get("id")=="inference"), {}) or {}
+        lives = [str(inf.get("live") or "SKIP").upper(), str(stage.get("live") or "SKIP").upper()]
+        if "FAIL" in lives:
+            env_live = "FAIL"
+        elif "READY" in lives:
+            env_live = "READY"
+        else:
+            env_live = "SKIP"
+        if self.view == "loop":
+            note = s.get("monitor_note") or ""
+            mpid = s.get("monitor_pid") or ""
+            mon = note or (f"pid {mpid}" if mpid else "(none)")
+            gpath = s.get("grok_path") or honest(grok.get("live"))
             txt = f"LOOP\nenv        {env_live}\nattached   {att}\nlast       {verb}  {when}\nmonitor    {mon}\ngrok       {gpath}"
             if stub: txt += f"\nFAIL       {s.get('blocked_copy') or GROK_USE}"
             if self.msg: txt += "\n" + self.msg
@@ -7,7 +30,7 @@ ok.get("live"))
             models = s.get("models") or []
             mtxt = " · ".join(str(x) for x in models) if models else "(none)"
             txt = f"ENGINE\nengine     {engine}\nlive       {eng_live}\ngrok       {honest(grok.get('live'))}\nmodels     {mtxt}"
-            self.pack_acts(["refresh", "test", "pullname", "pull", "tst", "pst"])
+            self.pack_acts(["refresh", "test", "pullname", "pull", "tst", "pst", "rst"])
         elif self.view == "stage":
             sl = stage.get("live") or "SKIP"
             txt = f"STAGE\nenv-stage   {sl}"
@@ -47,22 +70,4 @@ ok.get("live"))
         if self.view == "attach":
             for c in chips:
                 hid, live, role, name = c.get("id") or "", honest(c.get("live")), c.get("role") or "", c.get("name") or ""
-                fr = tk.Frame(self.chips, bg="#18202c", highlightbackground="#243041", highlightthickness=1, padx=8, pady=6)
-                fr.pack(side="left", padx=4, pady=4, anchor="n")
-                tk.Label(fr, text=hid, bg="#18202c", fg=FG, font=("sans-serif", 10, "bold")).pack(anchor="w")
-                tk.Label(fr, text=live, bg="#18202c", fg=CHIP.get(live, CHIP["missing"]), font=("sans-serif", 9, "bold")).pack(anchor="w")
-                tk.Label(fr, text=f"{role} · {name}", bg="#18202c", fg=MUTED).pack(anchor="w")
-                if hid in BLOCKED:
-                    tk.Label(fr, text=GROK_USE, bg="#111823", fg=FG, font=("monospace", 9)).pack(anchor="w", pady=(4,0))
-
-    def poll(self, ms=2000):
-        self.refresh()
-        def tick():
-            self.refresh(); self.root.after(ms, tick)
-        self.root.after(ms, tick)
-
-def selftest_snap():
-    return {"ts":"selftest","host":"selftest","profile":"","detector":{"engine":"none","status":"missing","base_url":""},
-            "engine_live":"missing","usage":[],"chips":[{"id":"grok","live":"missing","role":"harness","name":"Grok CLI"},
-            {"id":"continue","live":"stub","role":"harness","name":"Continue"}],
-            "tape":[{"id":"inference","label":"inference","live":"SKIP"},
+                fr = tk.Frame(self.chips, bg="#18202c", highlightbackground="#243041", highligh
