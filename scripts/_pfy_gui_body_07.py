@@ -1,4 +1,22 @@
-{"id":"env-stage","label":"env-stage","live":"SKIP"},
+tthickness=1, padx=8, pady=6)
+                fr.pack(side="left", padx=4, pady=4, anchor="n")
+                tk.Label(fr, text=hid, bg="#18202c", fg=FG, font=("sans-serif", 10, "bold")).pack(anchor="w")
+                tk.Label(fr, text=live, bg="#18202c", fg=CHIP.get(live, CHIP["missing"]), font=("sans-serif", 9, "bold")).pack(anchor="w")
+                tk.Label(fr, text=f"{role} · {name}", bg="#18202c", fg=MUTED).pack(anchor="w")
+                if hid in BLOCKED:
+                    tk.Label(fr, text=GROK_USE, bg="#111823", fg=FG, font=("monospace", 9)).pack(anchor="w", pady=(4,0))
+
+    def poll(self, ms=2000):
+        self.refresh()
+        def tick():
+            self.refresh(); self.root.after(ms, tick)
+        self.root.after(ms, tick)
+
+def selftest_snap():
+    return {"ts":"selftest","host":"selftest","profile":"","detector":{"engine":"none","status":"missing","base_url":""},
+            "engine_live":"missing","usage":[],"chips":[{"id":"grok","live":"missing","role":"harness","name":"Grok CLI"},
+            {"id":"continue","live":"stub","role":"harness","name":"Continue"}],
+            "tape":[{"id":"inference","label":"inference","live":"SKIP"},{"id":"env-stage","label":"env-stage","live":"SKIP"},
                     {"id":"harness-attach","label":"harness attach","live":"SKIP"}],
             "detect_order":[],"active":"grok","active_stub":False,"blocked_copy":GROK_USE,
             "last_verb":{"verb":"gui","when":""},"now":"idle","processes":[],"agent_lane_collapsed":True,
@@ -66,31 +84,4 @@ def run_tk(board, selftest=False) -> bool:
         root = tk.Tk()
     except Exception:
         return False
-    print("native window (tk)", flush=True)
-    w = Win(board, root)
-    if selftest:
-        w.apply(selftest_snap()); root.update_idletasks(); root.update()
-        title = root.title()
-        has = (
-            w.bgrok.cget("text") == "Attach grok"
-            and w.bopen.cget("text") == "Attach opencode"
-            and w.brefresh.cget("text") == "Refresh status"
-            and w.bcopy.cget("text") == "Copy stub one-liner"
-            and w.bstage.cget("text") == "Run stage"
-            and w.benv.cget("text") == "Launch env"
-            and w.bpull.cget("text") == "Pull"
-            and w.btest.cget("text") == "Test model"
-            and "tools" in w.nav
-        )
-        w.set_view("loop")
-        body = w.body.cget("text") or ""
-        loop_ok = "LOOP" in body and "env" in body.lower() and "LOCAL WORKER" not in body and "pfy board" not in body.lower()
-        w.copy_stub()
-        copied = (w.cst.cget("text") in ("copied", "PASS copied"))
-        try:
-            clip = root.clipboard_get()
-        except Exception:
-            clip = ""
-        root.destroy()
-        return title == "pfy" and has and loop_ok and copied and bool(clip)
-    w.poll(int(os.environ.get("PFY_
+    print("native wind
