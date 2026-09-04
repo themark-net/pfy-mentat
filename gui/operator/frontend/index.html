@@ -220,6 +220,9 @@ async function postStart(id){
   }
 }
 async function attach(id){
+  attachMsg='attaching '+id+'…';
+  attachKind='';
+  paintAttach();
   try{
     const j=await postStart(id);
     if(j && j.ok){
@@ -227,15 +230,16 @@ async function attach(id){
       attachMsg='attached '+kind+(j.pid?(' pid '+j.pid):'');
       attachKind='ok';
     }else{
-      attachMsg='FAIL  '+(j && (j.copy||j.error)||GROK_USE);
+      attachMsg='FAIL Attach '+id+' — '+(j && (j.copy||j.error)||GROK_USE);
       attachKind='fail';
     }
   }catch(e){
-    attachMsg='FAIL  '+GROK_USE;
+    attachMsg='FAIL Attach '+id+' — '+GROK_USE;
     attachKind='fail';
   }
   paintAttach();
-  tick();
+  await tick();
+  paintAttach();
 }
 async function refreshNow(){
   const btn=document.getElementById('btnrefresh');
@@ -272,13 +276,29 @@ async function copyText(t){
   }catch(e){ return false; }
 }
 async function copyStub(){
+  paintCopy('copying…','');
+  attachMsg='copying…';
+  attachKind='';
+  paintAttach();
   const line=stubLine(lastSnap);
   if(!line){
     paintCopy('FAIL no stub one-liner','fail');
+    attachMsg='FAIL no stub one-liner';
+    attachKind='fail';
+    paintAttach();
     return;
   }
   const ok=await copyText(line);
-  paintCopy(ok?'copied':'FAIL clipboard — select the one-liner', ok?'ok':'fail');
+  if(ok){
+    paintCopy('PASS copied','ok');
+    attachMsg='PASS copied';
+    attachKind='ok';
+  }else{
+    paintCopy('FAIL clipboard — select the one-liner','fail');
+    attachMsg='FAIL clipboard — select the one-liner';
+    attachKind='fail';
+  }
+  paintAttach();
 }
 function paintStage(text, kind){
   const el=document.getElementById('stagemsg');
@@ -558,7 +578,13 @@ async function tick(){
       if(el) el.disabled=stub;
     });
     document.getElementById('fail').textContent=stub?('FAIL  '+(s.blocked_copy||GROK_USE)):'';
-    if(!attachMsg && stub){ attachMsg='FAIL  '+(s.blocked_copy||GROK_USE); attachKind='fail'; }
+    if(stub && attachKind!=='fail'){
+      attachMsg='FAIL  '+(s.blocked_copy||GROK_USE);
+      attachKind='fail';
+    }else if(!attachMsg && stub){
+      attachMsg='FAIL  '+(s.blocked_copy||GROK_USE);
+      attachKind='fail';
+    }
     paintAttach();
     const showOrg=!s.agent_lane_collapsed && (s.org_messages||[]).length;
     document.getElementById('orgnav').style.display=showOrg?'block':'none';
