@@ -4,6 +4,26 @@ nt(self.headers.get("Content-Length") or 0)
                 body = json.loads(raw.decode() or "{}")
             except json.JSONDecodeError:
                 body = {}
+            name = str((body or {}).get("name") or "")
+            result = pull_model(name)
+            code = 200 if result.get("ok") else 400
+            self._send(code, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
+            return
+        if path == "/eval":
+            length = int(self.headers.get("Content-Length") or 0)
+            if length:
+                self.rfile.read(length)
+            result = test_model()
+            code = 200 if result.get("ok") else 400
+            self._send(code, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
+            return
+        if path == "/tools":
+            length = int(self.headers.get("Content-Length") or 0)
+            raw = self.rfile.read(length) if length else b"{}"
+            try:
+                body = json.loads(raw.decode() or "{}")
+            except json.JSONDecodeError:
+                body = {}
             tid = str((body or {}).get("id") or "")
             on = (body or {}).get("on")
             result = set_tool(tid, on)
