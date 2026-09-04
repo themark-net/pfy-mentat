@@ -1,4 +1,6 @@
-s=%s" % (key, val))
+val in updates.items():
+        if key not in seen:
+            out.append("%s=%s" % (key, val))
     path.write_text("\n".join(out) + "\n", encoding="utf-8")
 
 def patch_toml_section_enabled(path, section, enabled):
@@ -85,4 +87,3 @@ def apply_write_guard(want):
             else:
                 patch_toml_section_enabled(dest, "mcp_servers.write-guard", True)
         env = os.environ.copy()
-        env["PYTHONPATH"] = str(wg / "src") + os.pathsep + env.get("PYTHONPAT
