@@ -1,4 +1,6 @@
-et("id") or m.get("name") or m.get("model") if isinstance(m, dict) else str(m)) or ""
+"models"):
+            for m in d.get(key) or []:
+                name = (m.get("id") or m.get("name") or m.get("model") if isinstance(m, dict) else str(m)) or ""
                 name = str(name).strip()
                 if name and name not in seen:
                     seen.add(name); ids.append(name)
@@ -42,7 +44,7 @@ def one_liner(hid, rec):
         return GROK_USE
     if hid == "llama-swap":
         return "llama-swap"
-    if hid in ("llama.cpp", "llama-server"):
+    if hid == "llama.cpp" or hid == "llama-server":
         return "llama-server"
     if hid == "shimmy":
         return "shimmy"
@@ -106,5 +108,4 @@ def snapshot():
     default = str(reg.get("default_harness") or "grok")
     det = detector_json()
     status_text = pfy_status_stdout()
-    parsed = parse_status(status_text)
-    parsed_chips = {c["id"]: c for c in p
+   
