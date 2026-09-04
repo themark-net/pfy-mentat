@@ -1,1 +1,1 @@
-@/workspace/pfy-150/restore/board_patched.py
+PLACEHOLDER_REPLACE_WITH_FILE
