@@ -1,4 +1,5 @@
-arsed["chips"]}
+ parsed = parse_status(status_text)
+    parsed_chips = {c["id"]: c for c in parsed["chips"]}
     chips = []
     for h in harnesses:
         hid = str(h.get("id") or "")
@@ -82,6 +83,4 @@ def html_page():
 
 
 def run_stage():
-    """Run product env-stage (./pfy stage). Not --lab. Honest skip is PASS."""
-    if not PFY.is_file():
-        return {
+    """Run product env-stage (./pfy stage). 
