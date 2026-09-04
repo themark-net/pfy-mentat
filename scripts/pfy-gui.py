@@ -1,1 +1,1 @@
-__LOAD_FROM__/workspace/pfy-150/pfy-gui.py
+file:///workspace/pfy-150/pfy-gui.py

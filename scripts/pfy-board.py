@@ -1,1 +1,1 @@
-__LOAD_FROM__/workspace/pfy-150/pfy-board.py
+file:///workspace/pfy-150/pfy-board.py
