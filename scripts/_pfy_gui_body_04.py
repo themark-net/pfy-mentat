@@ -58,7 +58,7 @@ state="normal")
                 else:
                     res = self.board.run_stage()
             except Exception as e:
-                res = {"ok": False, "copy": "FAIL eval", "error": str(e)}
+                res = {"ok": False, "copy": "FAIL env-stage", "error": str(e)}
             self.root.after(0, lambda r=res: self.done_stage(r))
         threading.Thread(target=work, daemon=True).start()
 
