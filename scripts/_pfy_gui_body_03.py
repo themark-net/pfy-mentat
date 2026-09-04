@@ -1,4 +1,5 @@
-:
+     self.paint_copy("PASS copied", False)
+        except Exception:
             self.paint_copy("FAIL clipboard — select the one-liner", True)
 
     def paint_stage(self, text, fail=False):
@@ -105,7 +106,4 @@
 
     def done_env(self, res):
         try:
-            self.benv.configure(state="normal")
-        except Exception:
-            pass
-        if
+            self.benv.configure(st

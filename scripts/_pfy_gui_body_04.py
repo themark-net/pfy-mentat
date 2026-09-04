@@ -1,4 +1,7 @@
- res.get("ok"):
+ate="normal")
+        except Exception:
+            pass
+        if res.get("ok"):
             copy = res.get("copy") or ("SKIP env" if str(res.get("live") or "") == "SKIP" else "PASS env")
             if str(copy).startswith("SKIP"):
                 self.est.configure(text=copy, style="M.TLabel")
@@ -41,7 +44,15 @@
             self.paint_stage("FAIL " + (res.get("copy") or res.get("error") or "env-stage"), True)
         self.refresh(user=True)
 
+    def paint_refresh(self, text, fail=False, skip=False):
+        style = "M.TLabel" if skip else ("F.TLabel" if fail else "Ok.TLabel")
+        self.rst.configure(text=text, style=style)
+
     def refresh_now(self):
+        if self.busy:
+            self.paint_refresh("SKIP refresh", fail=False, skip=True)
+        else:
+            self.paint_refresh("refreshing…", False)
         self.refresh(user=True)
 
     def refresh(self, user=False):
@@ -49,6 +60,7 @@
             if user:
                 self.meta.configure(text="FAIL refresh")
                 self.fail.configure(text="FAIL  " + GROK_USE)
+                self.paint_refresh("FAIL refresh", True)
             return
         if self.busy:
             if user:
@@ -62,6 +74,7 @@
         self.busy = True
         if user:
             self.meta.configure(text="refreshing…")
+            self.paint_refresh("refreshing…", False)
             try:
                 self.brefresh.configure(state="disabled")
             except Exception:
@@ -85,27 +98,12 @@
         self.snap = s or {}
         self.render()
         if user:
-            ts = self.snap.get("ts") or ""
-            if not ts and not self.snap.get("error"):
-                cur = str(self.meta.cget("text") or "")
-                if "refreshed" not in cur:
-                    self.meta.configure(text=(cur + " · refreshed").strip(" ·"))
-        if pending:
-            self.refresh(user=True)
-
-    def paint_tools(self, text, fail=False):
-        self.toolst.configure(text=text, style="F.TLabel" if fail else "Ok.TLabel")
-        self.msg = text
-
-    def tool_on(self, tid):
-        tools = (self.snap or {}).get("tools") or {}
-        if tid == "mcp":
-            return bool(tools.get("mcp"))
-        if tid == "write-guard":
-            return bool(tools.get("write_guard"))
-        if tid == "extra-tools":
-            return (tools.get("tools_mode") or "") == "local_tools"
-        return bool((tools.get("skills") or {}).get(tid))
-
-    def toggle_tool(self, tid):
-    
+            err = self.snap.get("error") and not (self.snap.get("chips") or [])
+            if err:
+                self.paint_refresh("FAIL refresh", True)
+                self.meta.configure(text="FAIL refresh")
+            else:
+                ts = self.snap.get("ts") or ""
+                host = self.snap.get("host") or ""
+                if ts:
+                    line = "PASS refr

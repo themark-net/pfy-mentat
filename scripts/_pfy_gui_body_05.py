@@ -1,4 +1,30 @@
-    want = not self.tool_on(tid)
+esh · " + " · ".join(x for x in (host, ts) if x)
+                    self.paint_refresh(line, False)
+                    self.meta.configure(text=" · ".join(x for x in (host, self.snap.get("profile") or "", ts) if x))
+                else:
+                    self.paint_refresh("PASS refresh · refreshed", False)
+                    cur = str(self.meta.cget("text") or "")
+                    if "refreshed" not in cur:
+                        self.meta.configure(text=(cur + " · refreshed").strip(" ·"))
+        if pending:
+            self.refresh(user=True)
+
+    def paint_tools(self, text, fail=False):
+        self.toolst.configure(text=text, style="F.TLabel" if fail else "Ok.TLabel")
+        self.msg = text
+
+    def tool_on(self, tid):
+        tools = (self.snap or {}).get("tools") or {}
+        if tid == "mcp":
+            return bool(tools.get("mcp"))
+        if tid == "write-guard":
+            return bool(tools.get("write_guard"))
+        if tid == "extra-tools":
+            return (tools.get("tools_mode") or "") == "local_tools"
+        return bool((tools.get("skills") or {}).get(tid))
+
+    def toggle_tool(self, tid):
+        want = not self.tool_on(tid)
         self.paint_tools("toggling…", False)
         def work():
             try:
@@ -19,7 +45,7 @@
         self.refresh(user=True)
 
     def pack_acts(self, names):
-        forget = [self.bgrok, self.bopen, self.brefresh, self.bcopy, self.bstage, self.benv, self.bpull, self.btest, self.pullname, self.sst, self.est, self.pst, self.tst, self.ast, self.cst, self.toolst]
+        forget = [self.bgrok, self.bopen, self.brefresh, self.bcopy, self.bstage, self.benv, self.bpull, self.btest, self.pullname, self.sst, self.est, self.pst, self.rst, self.tst, self.ast, self.cst, self.toolst]
         forget.extend(self.tool_btns.values())
         for w in forget:
             try: w.pack_forget()
@@ -28,7 +54,7 @@
             "grok": self.bgrok, "open": self.bopen, "refresh": self.brefresh,
             "copy": self.bcopy, "stage": self.bstage, "env": self.benv,
             "pull": self.bpull, "pullname": self.pullname, "pst": self.pst,
-            "test": self.btest, "tst": self.tst,
+            "test": self.btest, "tst": self.tst, "rst": self.rst,
             "sst": self.sst, "est": self.est, "ast": self.ast, "cst": self.cst,
         }
         for n in names:
@@ -53,27 +79,4 @@
         show_org = (not s.get("agent_lane_collapsed", True)) and bool(s.get("org_messages"))
         if show_org: self.nav["org"].pack(fill="x")
         else:
-            self.nav["org"].pack_forget()
-            if self.view == "org": self.view = "loop"
-        for k,b in self.nav.items():
-            b.configure(bg="#243041" if k==self.view else SIDE)
-        attached = s.get("active") or "(none)"; verb = (s.get("last_verb") or {}).get("verb") or "(none)"
-        if verb in ("env", "launch-env"):
-            verb = "Launch env"
-        when = (s.get("last_verb") or {}).get("when") or ""
-        pid = s.get("sidecar_pid") or ""
-        att = attached + (f" pid {pid}" if pid else "")
-        stage = next((t for t in tape if t.get("id")=="env-stage"), {}) or {}
-        inf = next((t for t in tape if t.get("id")=="inference"), {}) or {}
-        lives = [str(inf.get("live") or "SKIP").upper(), str(stage.get("live") or "SKIP").upper()]
-        if "FAIL" in lives:
-            env_live = "FAIL"
-        elif "READY" in lives:
-            env_live = "READY"
-        else:
-            env_live = "SKIP"
-        if self.view == "loop":
-            note = s.get("monitor_note") or ""
-            mpid = s.get("monitor_pid") or ""
-            mon = note or (f"pid {mpid}" if mpid else "(none)")
-            gpath = s.get("grok_path") or honest(gr
+            self.nav

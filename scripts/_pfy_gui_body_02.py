@@ -7,6 +7,7 @@ n(self.acts, text="Test model", command=self.test_model)
         self.sst = ttk.Label(self.acts, text="", style="M.TLabel")
         self.est = ttk.Label(self.acts, text="", style="M.TLabel")
         self.pst = ttk.Label(self.acts, text="", style="M.TLabel")
+        self.rst = ttk.Label(self.acts, text="", style="M.TLabel")
         self.tst = ttk.Label(self.acts, text="", style="M.TLabel")
         self.ast = ttk.Label(self.acts, text="", style="Ok.TLabel")
         self.cst = ttk.Label(self.acts, text="", style="M.TLabel")
@@ -81,5 +82,4 @@ n(self.acts, text="Test model", command=self.test_model)
                 self.root.update_idletasks()
             except Exception:
                 pass
-            self.paint_copy("PASS copied", False)
-        except Exception
+       
