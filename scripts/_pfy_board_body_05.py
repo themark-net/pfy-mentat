@@ -1,4 +1,5 @@
-nv-stage. No harness exec.
+nch_env():
+    """Same path as bare ./pfy before the window: inference then env-stage. No harness exec.
 
     Always record_last_verb so LOOP last/timestamp refresh even when already up.
     Honest skip / already-up paints SKIP (never silent).
@@ -116,7 +117,4 @@ def write_opencode_config(base, models):
 
 def record_sidecar_pid(hid, pid):
     STATE.mkdir(parents=True, exist_ok=True)
-    (STATE / ("sidecar-%s.pid" % hid)).write_text(str(pid) + chr(10), encoding="utf-8")
-
-def sidecar_pid_live():
-    for hid i
+    (STATE / ("sidecar-%s.pid" % hid)).write_text
