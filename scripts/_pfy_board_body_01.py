@@ -1,4 +1,7 @@
-parse_status(text):
+.0)
+    return out if out.strip() else f"(pfy status empty, exit {rc})"
+
+def parse_status(text):
     active, usage, chips = "", [], []
     runtime = {"engine": "", "status": "", "base_url": ""}
     in_usage = in_table = False
@@ -99,6 +102,4 @@ def inspect_models(base_url):
             continue
         if not isinstance(d, dict):
             continue
-        for key in ("data", "models"):
-            for m in d.get(key) or []:
-                name = (m.g
+        for key in ("data", 
