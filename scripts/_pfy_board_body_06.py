@@ -1,4 +1,7 @@
-n ("opencode", "grok"):
+(str(pid) + chr(10), encoding="utf-8")
+
+def sidecar_pid_live():
+    for hid in ("opencode", "grok"):
         path = STATE / ("sidecar-%s.pid" % hid)
         if not path.is_file():
             continue
@@ -114,5 +117,4 @@ def start_monitor_sidecar():
         "note": last_monitor_note(),
     }
 
-SKILL_IDS = ("one-shot", "investigate", "agent-loops", "hermes-feedback")
-SKILLS_ROOT = ROOT / "bootstrap" / "grok
+SKILL_IDS = ("one-shot", "investigate
