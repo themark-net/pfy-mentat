@@ -75,4 +75,4 @@
         self.msg = text
         style = "F.TLabel" if fail else "Ok.TLabel"
         self.cst.configure(text=text, style=style)
-        self.ast.configure(text=text, style=style)
+        self.ast.configure(text=text, style=
