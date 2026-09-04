@@ -1,4 +1,37 @@
-ate="normal")
+state="normal")
+        except Exception:
+            pass
+        if res.get("ok"):
+            copy = res.get("copy") or "PASS pull"
+            self.paint_pull(copy, False)
+        else:
+            self.paint_pull("FAIL " + (res.get("copy") or res.get("error") or "pull"), True)
+        self.refresh(user=True)
+
+    def paint_env(self, text, fail=False):
+        self.est.configure(text=text, style="F.TLabel" if fail else "Ok.TLabel")
+
+    def launch_env(self):
+        self.paint_env("launching env…", False)
+        self.meta.configure(text="refreshing…")
+        try:
+            self.benv.configure(state="disabled")
+        except Exception:
+            pass
+        def work():
+            try:
+                if self.board is None:
+                    res = {"ok": False, "copy": "FAIL env", "error": "no board"}
+                else:
+                    res = self.board.launch_env()
+            except Exception as e:
+                res = {"ok": False, "copy": "FAIL env", "error": str(e)}
+            self.root.after(0, lambda r=res: self.done_env(r))
+        threading.Thread(target=work, daemon=True).start()
+
+    def done_env(self, res):
+        try:
+            self.benv.configure(state="normal")
         except Exception:
             pass
         if res.get("ok"):
@@ -25,7 +58,7 @@ ate="normal")
                 else:
                     res = self.board.run_stage()
             except Exception as e:
-                res = {"ok": False, "copy": "FAIL env-stage", "error": str(e)}
+                res = {"ok": False, "copy": "FAIL eval", "error": str(e)}
             self.root.after(0, lambda r=res: self.done_stage(r))
         threading.Thread(target=work, daemon=True).start()
 
@@ -73,37 +106,4 @@ ate="normal")
             return
         self.busy = True
         if user:
-            self.meta.configure(text="refreshing…")
-            self.paint_refresh("refreshing…", False)
-            try:
-                self.brefresh.configure(state="disabled")
-            except Exception:
-                pass
-        def work():
-            try:
-                snap = self.board.snapshot()
-            except Exception as e:
-                snap = {"error": str(e)}
-            self.root.after(0, lambda s=snap, u=user: self.apply(s, user=u))
-        threading.Thread(target=work, daemon=True).start()
-
-    def apply(self, s, user=False):
-        pending = self.pending_user
-        self.pending_user = False
-        self.busy = False
-        try:
-            self.brefresh.configure(state="normal")
-        except Exception:
-            pass
-        self.snap = s or {}
-        self.render()
-        if user:
-            err = self.snap.get("error") and not (self.snap.get("chips") or [])
-            if err:
-                self.paint_refresh("FAIL refresh", True)
-                self.meta.configure(text="FAIL refresh")
-            else:
-                ts = self.snap.get("ts") or ""
-                host = self.snap.get("host") or ""
-                if ts:
-                    line = "PASS refr
+            self.m
