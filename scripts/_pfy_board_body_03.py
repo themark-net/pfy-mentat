@@ -80,6 +80,7 @@ def html_page():
     )
 
 
+
 def run_stage():
     """Run product env-stage (./pfy stage). Not --lab. Honest skip is PASS."""
     if not PFY.is_file():
