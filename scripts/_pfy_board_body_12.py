@@ -1,4 +1,6 @@
-json.loads(raw.decode() or "{}")
+   raw = self.rfile.read(length) if length else b"{}"
+            try:
+                body = json.loads(raw.decode() or "{}")
             except json.JSONDecodeError:
                 body = {}
             tid = str((body or {}).get("id") or "")
