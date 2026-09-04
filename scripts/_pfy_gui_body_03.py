@@ -1,4 +1,3 @@
-style)
 
     def stub_line(self):
         s = self.snap or {}
