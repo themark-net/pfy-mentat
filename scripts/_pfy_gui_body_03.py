@@ -1,4 +1,37 @@
-     self.paint_copy("PASS copied", False)
+style)
+
+    def stub_line(self):
+        s = self.snap or {}
+        if s.get("active_stub") or str(s.get("active") or "") in BLOCKED:
+            return s.get("blocked_copy") or GROK_USE
+        chips = s.get("chips") or []
+        active_id = s.get("active")
+        active = next((c for c in chips if c.get("id") == active_id), None)
+        stubish = ("stub", "detected-stub", "missing")
+        def is_stubish(c):
+            return honest(c.get("live")) in stubish
+        c = active if active and is_stubish(active) else next(
+            (x for x in chips if is_stubish(x) and (x.get("one_liner") or x.get("startable") is False)),
+            None,
+        )
+        if not c:
+            return ""
+        return c.get("one_liner") or ("./pfy start " + str(c.get("id") or ""))
+
+    def copy_stub(self):
+        self.paint_copy("copying…", False)
+        line = self.stub_line()
+        if not line:
+            self.paint_copy("FAIL no stub one-liner", True)
+            return
+        try:
+            self.root.clipboard_clear()
+            self.root.clipboard_append(line)
+            try:
+                self.root.update_idletasks()
+            except Exception:
+                pass
+            self.paint_copy("PASS copied", False)
         except Exception:
             self.paint_copy("FAIL clipboard — select the one-liner", True)
 
@@ -73,37 +106,4 @@
 
     def done_pull(self, res):
         try:
-            self.bpull.configure(state="normal")
-        except Exception:
-            pass
-        if res.get("ok"):
-            copy = res.get("copy") or "PASS pull"
-            self.paint_pull(copy, False)
-        else:
-            self.paint_pull("FAIL " + (res.get("copy") or res.get("error") or "pull"), True)
-        self.refresh(user=True)
-
-    def paint_env(self, text, fail=False):
-        self.est.configure(text=text, style="F.TLabel" if fail else "Ok.TLabel")
-
-    def launch_env(self):
-        self.paint_env("launching env…", False)
-        self.meta.configure(text="refreshing…")
-        try:
-            self.benv.configure(state="disabled")
-        except Exception:
-            pass
-        def work():
-            try:
-                if self.board is None:
-                    res = {"ok": False, "copy": "FAIL env", "error": "no board"}
-                else:
-                    res = self.board.launch_env()
-            except Exception as e:
-                res = {"ok": False, "copy": "FAIL env", "error": str(e)}
-            self.root.after(0, lambda r=res: self.done_env(r))
-        threading.Thread(target=work, daemon=True).start()
-
-    def done_env(self, res):
-        try:
-            self.benv.configure(st
+            self.bpull.configure(
