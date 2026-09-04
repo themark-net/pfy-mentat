@@ -23,6 +23,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        if ctype.startswith("text/html"):
+            self.send_header("X-Pfy-UI", "session")
         self.end_headers()
         self.wfile.write(body)
     def do_GET(self):
@@ -84,6 +86,4 @@ class Handler(BaseHTTPRequestHandler):
             return
         if path == "/tools":
             length = int(self.headers.get("Content-Length") or 0)
-            raw = self.rfile.read(length) if length else b"{}"
-            try:
-                body = 
+         

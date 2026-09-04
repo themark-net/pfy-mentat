@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang=en data-pfy-ui=session><head><meta charset=utf-8/><title>pfy</title>
+<!DOCTYPE html><html lang=en data-pfy-ui="session"><head><meta charset=utf-8/><title>pfy</title>
 <style>
 body{margin:0;font:14px/1.4 ui-sans-serif,system-ui,sans-serif;background:#0e1116;color:#e8edf4}
 .app{display:grid;grid-template-columns:168px 1fr;min-height:100vh}
@@ -24,6 +24,7 @@ input[type=text]{background:#18202c;color:#e8edf4;border:1px solid #3a4a60;borde
 .attach-result{display:block;margin-top:8px;font-weight:700}
 .attach-result.ok{color:#3dd68c}
 .attach-result.fail{color:#e8875b}
+.attach-result.muted{color:#8b97a8}
 a.issue{color:#5c6b7a;font-size:11px;text-decoration:none}
 a.issue:hover{text-decoration:underline}
 a.hit{display:inline-block;margin-top:6px;background:#2a4a6d;border:1px solid #4d8dff;color:#e8edf4;border-radius:8px;padding:6px 10px;text-decoration:none;cursor:pointer}
@@ -76,6 +77,7 @@ noscript .fail{padding:16px;display:block}
       <input id=pullname type=text placeholder=model autocomplete=off>
       <button type=button class=primary id=btnpull>Pull</button>
     </div>
+    <span id=refreshmsg class=attach-result></span>
     <span id=evalmsg class=attach-result></span>
     <span id=pullmsg class=attach-result></span>
   </section>
@@ -96,6 +98,7 @@ noscript .fail{padding:16px;display:block}
       <button type=button class=primary id=att-open>Attach opencode</button>
       <button type=button class=primary id=btncopy>Copy stub one-liner</button>
     </div>
+    <span id=attresult class=attach-result></span>
     <span id=copymsg class=attach-result></span>
   </section>
   <section class=view id=view-tools>
@@ -158,15 +161,25 @@ function paintPull(text, kind){
   el.textContent=text;
   el.className='attach-result'+(kind?(' '+kind):'');
 }
+function paintRefresh(text, kind){
+  const el=document.getElementById('refreshmsg');
+  if(!el) return;
+  el.textContent=text;
+  el.className='attach-result'+(kind?(' '+kind):'');
+}
 function paintLaunch(text, kind){
   const el=document.getElementById('launchmsg');
   el.textContent=text;
   el.className='attach-result'+(kind?(' '+kind):'');
 }
 function paintAttach(){
-  const el=document.getElementById('attachmsg');
-  el.textContent=attachMsg;
-  el.className='attach-result'+(attachKind?(' '+attachKind):'');
+  const kind=attachKind?(' '+attachKind):'';
+  ['attachmsg','attresult'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    el.textContent=attachMsg;
+    el.className='attach-result'+kind;
+  });
 }
 function paintCopy(text, kind){
   const el=document.getElementById('copymsg');
@@ -214,6 +227,9 @@ async function postStart(id){
   }
 }
 async function attach(id){
+  attachMsg='attaching '+id+'…';
+  attachKind='';
+  paintAttach();
   try{
     const j=await postStart(id);
     if(j && j.ok){
@@ -221,29 +237,45 @@ async function attach(id){
       attachMsg='attached '+kind+(j.pid?(' pid '+j.pid):'');
       attachKind='ok';
     }else{
-      attachMsg='FAIL  '+(j && (j.copy||j.error)||GROK_USE);
+      attachMsg='FAIL Attach '+id+' — '+(j && (j.copy||j.error)||GROK_USE);
       attachKind='fail';
     }
   }catch(e){
-    attachMsg='FAIL  '+GROK_USE;
+    attachMsg='FAIL Attach '+id+' — '+GROK_USE;
     attachKind='fail';
   }
   paintAttach();
-  tick();
+  await tick();
+  paintAttach();
 }
 async function refreshNow(){
   const btn=document.getElementById('btnrefresh');
-  if(refreshing) return;
+  if(refreshing){
+    paintRefresh('SKIP refresh','muted');
+    return;
+  }
   refreshing=true;
   btn.disabled=true;
   document.getElementById('meta').textContent='refreshing…';
+  paintRefresh('refreshing…','');
   try{
     await tick();
-    const ts=(lastSnap&&lastSnap.ts)?lastSnap.ts:'';
-    if(!ts) document.getElementById('meta').textContent=(document.getElementById('meta').textContent||'')+' · refreshed';
+    const err=lastSnap&&lastSnap.error&&!(lastSnap.chips||[]).length;
+    if(err){
+      paintRefresh('FAIL refresh','fail');
+      document.getElementById('meta').textContent='FAIL refresh';
+    }else{
+      const ts=(lastSnap&&lastSnap.ts)?lastSnap.ts:'';
+      const host=(lastSnap&&lastSnap.host)||'';
+      const line=ts?('PASS refresh · '+[host,ts].filter(Boolean).join(' · ')):'PASS refresh · refreshed';
+      paintRefresh(line,'ok');
+      if(ts) document.getElementById('meta').textContent=[host,lastSnap.profile,ts].filter(Boolean).join(' · ');
+      else document.getElementById('meta').textContent=(document.getElementById('meta').textContent||'')+' · refreshed';
+    }
   }catch(e){
     document.getElementById('fail').textContent='FAIL  '+GROK_USE;
     document.getElementById('meta').textContent='FAIL refresh';
+    paintRefresh('FAIL refresh','fail');
   }finally{
     refreshing=false;
     btn.disabled=false;
@@ -266,13 +298,29 @@ async function copyText(t){
   }catch(e){ return false; }
 }
 async function copyStub(){
+  paintCopy('copying…','');
+  attachMsg='copying…';
+  attachKind='';
+  paintAttach();
   const line=stubLine(lastSnap);
   if(!line){
     paintCopy('FAIL no stub one-liner','fail');
+    attachMsg='FAIL no stub one-liner';
+    attachKind='fail';
+    paintAttach();
     return;
   }
   const ok=await copyText(line);
-  paintCopy(ok?'copied':'FAIL clipboard — select the one-liner', ok?'ok':'fail');
+  if(ok){
+    paintCopy('PASS copied','ok');
+    attachMsg='PASS copied';
+    attachKind='ok';
+  }else{
+    paintCopy('FAIL clipboard — select the one-liner','fail');
+    attachMsg='FAIL clipboard — select the one-liner';
+    attachKind='fail';
+  }
+  paintAttach();
 }
 function paintStage(text, kind){
   const el=document.getElementById('stagemsg');
@@ -305,7 +353,7 @@ async function runEval(){
     const j=await postEval();
     if(j && j.ok){
       const c=j.copy||'PASS eval';
-      paintEval(c, c.indexOf('SKIP')===0?'':(c.indexOf('PASS')===0?'ok':''));
+      paintEval(c, c.indexOf('SKIP')===0?'muted':(c.indexOf('PASS')===0?'ok':''));
     }else{
       paintEval('FAIL '+(j && (j.copy||j.error)||'eval'),'fail');
     }
@@ -349,7 +397,7 @@ async function runPull(){
     const j=await postPull(name);
     if(j && j.ok){
       const c=j.copy||'PASS pull';
-      paintPull(c, c.indexOf('SKIP')===0?'':'ok');
+      paintPull(c, c.indexOf('SKIP')===0?'muted':(c.indexOf('PASS')===0?'ok':''));
     }else{
       paintPull('FAIL '+(j && (j.copy||j.error)||'pull'),'fail');
     }
@@ -387,7 +435,8 @@ async function runEnv(){
   try{
     const j=await postEnv();
     if(j && j.ok){
-      paintLaunch(j.copy||'PASS env','ok');
+      const c=j.copy||((j.live||'')==='SKIP'?'SKIP env':'PASS env');
+      paintLaunch(c, c.indexOf('SKIP')===0?'muted':(c.indexOf('PASS')===0?'ok':''));
     }else{
       paintLaunch('FAIL '+(j && (j.copy||j.error)||'env'),'fail');
     }
@@ -426,7 +475,8 @@ async function runStage(){
   try{
     const j=await postStage();
     if(j && j.ok){
-      paintStage(j.copy||'PASS env-stage','ok');
+      const c=j.copy||'PASS env-stage';
+      paintStage(c, c.indexOf('SKIP')===0?'muted':(c.indexOf('PASS')===0?'ok':''));
     }else{
       paintStage('FAIL '+(j && (j.copy||j.error)||'env-stage'),'fail');
     }
@@ -444,6 +494,7 @@ function show(v){
   view=v;
   document.querySelectorAll('.view').forEach(el=>el.classList.toggle('on', el.id==='view-'+v));
   document.querySelectorAll('.navbtn').forEach(b=>b.classList.toggle('on', b.dataset.go===v));
+  paintAttach();
 }
 document.querySelectorAll('.navbtn').forEach(b=>b.addEventListener('click',()=>show(b.dataset.go)));
 function bindAttach(id, hid){
@@ -549,7 +600,13 @@ async function tick(){
       if(el) el.disabled=stub;
     });
     document.getElementById('fail').textContent=stub?('FAIL  '+(s.blocked_copy||GROK_USE)):'';
-    if(!attachMsg && stub){ attachMsg='FAIL  '+(s.blocked_copy||GROK_USE); attachKind='fail'; }
+    if(stub && attachKind!=='fail'){
+      attachMsg='FAIL  '+(s.blocked_copy||GROK_USE);
+      attachKind='fail';
+    }else if(!attachMsg && stub){
+      attachMsg='FAIL  '+(s.blocked_copy||GROK_USE);
+      attachKind='fail';
+    }
     paintAttach();
     const showOrg=!s.agent_lane_collapsed && (s.org_messages||[]).length;
     document.getElementById('orgnav').style.display=showOrg?'block':'none';
