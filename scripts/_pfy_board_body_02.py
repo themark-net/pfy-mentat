@@ -44,7 +44,7 @@ def one_liner(hid, rec):
         return GROK_USE
     if hid == "llama-swap":
         return "llama-swap"
-    if hid == "llama.cpp" or hid == "llama-server":
+    if hid in ("llama.cpp", "llama-server"):
         return "llama-server"
     if hid == "shimmy":
         return "shimmy"
