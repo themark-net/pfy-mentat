@@ -1,4 +1,6 @@
-"ok": False, "live": "FAIL", "copy": "FAIL env-stage", "error": "scripts/pfy missing"}
+Not --lab. Honest skip is PASS."""
+    if not PFY.is_file():
+        return {"ok": False, "live": "FAIL", "copy": "FAIL env-stage", "error": "scripts/pfy missing"}
     rc, out = _run(["bash", str(PFY), "stage"], timeout=90.0)
     ok = rc == 0
     live = "PASS" if ok else "FAIL"
@@ -93,5 +95,4 @@ def pull_model(name):
         return {"ok": True, "live": "SKIP", "copy": "SKIP pull", "stdout": blob[-800:]}
     return {"ok": True, "live": "PASS", "copy": "PASS pull", "stdout": blob[-800:]}
 
-def launch_env():
-    """Same path as bare ./pfy before the window: inference then e
+def lau
