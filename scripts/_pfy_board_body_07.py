@@ -1,4 +1,5 @@
--cli" / "skills"
+", "agent-loops", "hermes-feedback")
+SKILLS_ROOT = ROOT / "bootstrap" / "grok-cli" / "skills"
 TOOLS_FILE = STATE / "tools.json"
 MCP_FRAGMENT = ROOT / "bootstrap" / "grok-cli" / "config" / "config.fragment.toml"
 WRITE_GUARD_DIR = ROOT / "harness" / "write-guard-mcp"
@@ -113,6 +114,4 @@ def upsert_env_file(path, updates):
             seen.add(key)
         else:
             out.append(line)
-    for key, val in updates.items():
-        if key not in seen:
-            out.append("%
+    for key, 

@@ -1,4 +1,27 @@
-tthickness=1, padx=8, pady=6)
+     "TOOLS\n"
+                f"one-shot         {onoff(skills.get('one-shot'))}\n"
+                f"investigate      {onoff(skills.get('investigate'))}\n"
+                f"agent-loops      {onoff(skills.get('agent-loops'))}\n"
+                f"hermes-feedback  {onoff(skills.get('hermes-feedback'))}\n"
+                f"mcp              {onoff(tools.get('mcp'))}\n"
+                f"write-guard      {onoff(tools.get('write_guard'))}\n"
+                f"extra tools      {extra}"
+            )
+            if self.msg: txt += "\n" + self.msg
+            self.pack_acts([])
+            for w in self.tool_btns.values():
+                w.pack(side="left", padx=(0, 8))
+            self.toolst.pack(side="left", padx=(0, 8))
+        else:
+            rows = s.get("org_messages") or []
+            txt = "no org loop" if not rows else "ORG\n" + "\n".join(f"{m.get('from')} → {m.get('to')}  {m.get('state') or ''}" for m in rows)
+            self.pack_acts([])
+        self.body.configure(text=txt)
+        for c in self.chips.winfo_children(): c.destroy()
+        if self.view == "attach":
+            for c in chips:
+                hid, live, role, name = c.get("id") or "", honest(c.get("live")), c.get("role") or "", c.get("name") or ""
+                fr = tk.Frame(self.chips, bg="#18202c", highlightbackground="#243041", highlightthickness=1, padx=8, pady=6)
                 fr.pack(side="left", padx=4, pady=4, anchor="n")
                 tk.Label(fr, text=hid, bg="#18202c", fg=FG, font=("sans-serif", 10, "bold")).pack(anchor="w")
                 tk.Label(fr, text=live, bg="#18202c", fg=CHIP.get(live, CHIP["missing"]), font=("sans-serif", 9, "bold")).pack(anchor="w")
@@ -42,46 +65,4 @@ def selftest_fresh_bind():
         def do_GET(self):
             b = b'<!DOCTYPE html><html data-pfy-ui="session"><head><title>pfy</title></head><body>LOOP Attach grok</body></html>'
             self.send_response(200)
-            self.send_header("Content-Type", "text/html; charset=utf-8")
-            self.send_header("X-Pfy-UI", "session")
-            self.send_header("Content-Length", str(len(b)))
-            self.end_headers()
-            self.wfile.write(b)
-    dump = ThreadingHTTPServer(("127.0.0.1", 0), Dump)
-    threading.Thread(target=dump.serve_forever, daemon=True).start()
-    dport = dump.server_address[1]
-    class Board:
-        HOST = "127.0.0.1"
-        PORT = dport
-        Handler = Ours
-    httpd, url = ensure_http(Board)
-    try:
-        got = urlparse(url).port
-        if got == dport:
-            return False
-        with urllib.request.urlopen(url, timeout=1) as r:
-            body = r.read().decode("utf-8", "replace")
-            hdr = (r.headers.get("X-Pfy-UI") or "")
-        return (
-            not leftover_dump(body, hdr)
-            and "pfy board" not in body.lower()
-            and "start via cli" not in body.lower()
-            and "<title>pfy</title>" in body
-        )
-    finally:
-        try:
-            httpd.shutdown()
-        except Exception:
-            pass
-        try:
-            dump.shutdown()
-        except Exception:
-            pass
-
-def run_tk(board, selftest=False) -> bool:
-    try:
-        import tkinter as tk; import tkinter.ttk  # noqa
-        root = tk.Tk()
-    except Exception:
-        return False
-    print("native wind
+            self.send_header("Content-T

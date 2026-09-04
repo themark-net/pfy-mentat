@@ -1,4 +1,7 @@
-      (STATE / "active-harness").write_text("opencode\n", encoding="utf-8")
+: str(log),
+            }
+        record_sidecar_pid("opencode", proc.pid)
+        (STATE / "active-harness").write_text("opencode\n", encoding="utf-8")
         record_last_verb("start opencode")
         return {
             "ok": True, "id": hid, "live": "READY", "pid": proc.pid,
@@ -14,6 +17,32 @@
             start_new_session=True,
         )
     return {"ok": True, "id": hid, "live": "READY", "pid": proc.pid, "sidecar": True, "log": str(log)}
+
+
+def run_space_invaders():
+    """Session proof: Attach OpenCode required, then workspace/space-invaders. Cite #155."""
+    import importlib.util
+    path = ROOT / "scripts" / "pfy_space_invaders.py"
+    if not path.is_file():
+        return {
+            "ok": False, "live": "FAIL",
+            "copy": "FAIL Space Invaders · module missing",
+            "error": str(path), "path": "",
+        }
+    spec = importlib.util.spec_from_file_location("pfy_space_invaders", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.run(
+        root=ROOT,
+        state=STATE,
+        which_bin=which_bin,
+        write_opencode_config=write_opencode_config,
+        live_openai_base=live_openai_base,
+        inspect_models=inspect_models,
+        record_last_verb=record_last_verb,
+        active_harness=active_harness,
+        pid_alive=pid_alive,
+    )
 
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
@@ -65,25 +94,4 @@ class Handler(BaseHTTPRequestHandler):
             self._send(code, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
             return
         if path == "/models/pull":
-            length = int(self.headers.get("Content-Length") or 0)
-            raw = self.rfile.read(length) if length else b"{}"
-            try:
-                body = json.loads(raw.decode() or "{}")
-            except json.JSONDecodeError:
-                body = {}
-            name = str((body or {}).get("name") or "")
-            result = pull_model(name)
-            code = 200 if result.get("ok") else 400
-            self._send(code, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
-            return
-        if path == "/eval":
-            length = int(self.headers.get("Content-Length") or 0)
-            if length:
-                self.rfile.read(length)
-            result = test_model()
-            code = 200 if result.get("ok") else 400
-            self._send(code, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
-            return
-        if path == "/tools":
-            length = int(self.headers.get("Content-Length") or 0)
-         
+            length = i

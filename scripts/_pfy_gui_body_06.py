@@ -1,4 +1,28 @@
-["org"].pack_forget()
+       }
+        for n in names:
+            w = order[n]
+            w.pack(side="left", padx=(0, 8))
+
+    def render(self):
+        tk = sys.modules["tkinter"]; s = self.snap
+        if s.get("error") and not s.get("chips"):
+            self.meta.configure(text=str(s.get("error"))); return
+        self.meta.configure(text=" · ".join(x for x in (s.get("host") or "", s.get("profile") or "", s.get("ts") or "") if x))
+        d, r = s.get("detector") or {}, s.get("status_runtime") or {}
+        eng_live = honest(s.get("engine_live") or d.get("status"))
+        engine = d.get("engine") or r.get("engine") or "none"
+        chips = s.get("chips") or []
+        grok = next((c for c in chips if c.get("id")=="grok"), {}) or {}
+        tape = s.get("tape") or []
+        stub = bool(s.get("active_stub")) or str(s.get("active") or "") in BLOCKED
+        self.bgrok.configure(state="disabled" if stub else "normal")
+        self.bopen.configure(state="disabled" if stub else "normal")
+        self.bsi.configure(state="disabled" if stub else "normal")
+        self.fail.configure(text=(f"FAIL  {s.get('blocked_copy') or GROK_USE}") if stub else "")
+        show_org = (not s.get("agent_lane_collapsed", True)) and bool(s.get("org_messages"))
+        if show_org: self.nav["org"].pack(fill="x")
+        else:
+            self.nav["org"].pack_forget()
             if self.view == "org": self.view = "loop"
         for k,b in self.nav.items():
             b.configure(bg="#243041" if k==self.view else SIDE)
@@ -39,7 +63,7 @@
             txt = f"ATTACH\nNOW     attached {attached} · last {verb}"
             if stub: txt += f"\nFAIL    {s.get('blocked_copy') or GROK_USE}"
             if self.msg: txt += "\n" + self.msg
-            self.pack_acts(["grok", "open", "copy", "ast", "cst"])
+            self.pack_acts(["grok", "open", "si", "copy", "ast", "sist", "cst"])
         elif self.view == "tools":
             tools = s.get("tools") or {}
             skills = tools.get("skills") or {}
@@ -47,27 +71,4 @@
                 return "on" if v else "off"
             extra = onoff((tools.get("tools_mode") or "") == "local_tools")
             txt = (
-                "TOOLS\n"
-                f"one-shot         {onoff(skills.get('one-shot'))}\n"
-                f"investigate      {onoff(skills.get('investigate'))}\n"
-                f"agent-loops      {onoff(skills.get('agent-loops'))}\n"
-                f"hermes-feedback  {onoff(skills.get('hermes-feedback'))}\n"
-                f"mcp              {onoff(tools.get('mcp'))}\n"
-                f"write-guard      {onoff(tools.get('write_guard'))}\n"
-                f"extra tools      {extra}"
-            )
-            if self.msg: txt += "\n" + self.msg
-            self.pack_acts([])
-            for w in self.tool_btns.values():
-                w.pack(side="left", padx=(0, 8))
-            self.toolst.pack(side="left", padx=(0, 8))
-        else:
-            rows = s.get("org_messages") or []
-            txt = "no org loop" if not rows else "ORG\n" + "\n".join(f"{m.get('from')} → {m.get('to')}  {m.get('state') or ''}" for m in rows)
-            self.pack_acts([])
-        self.body.configure(text=txt)
-        for c in self.chips.winfo_children(): c.destroy()
-        if self.view == "attach":
-            for c in chips:
-                hid, live, role, name = c.get("id") or "", honest(c.get("live")), c.get("role") or "", c.get("name") or ""
-                fr = tk.Frame(self.chips, bg="#18202c", highlightbackground="#243041", highligh
+           

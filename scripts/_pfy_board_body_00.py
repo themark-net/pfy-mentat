@@ -8,6 +8,7 @@ POST /env runs ./pfy env (inference + env-stage). No harness exec.
 POST /models/pull runs ./pfy models pull <name>.
 POST /eval runs a live-endpoint chat/completions probe against LOCAL_OPENAI_BASE_URL.
 POST /tools toggles skills, MCP, write-guard, extra tools.
+POST /space-invaders runs session Space Invaders via Attach OpenCode (#155).
 """
 from __future__ import annotations
 import json, os, shutil, socket, subprocess, sys, urllib.request
@@ -86,7 +87,4 @@ def detector_json():
     return {"engine": "none", "status": "missing", "base_url": ""}
 
 def pfy_status_stdout():
-    rc, out = _run(["bash", str(PFY), "status"], timeout=25.0)
-    return out if out.strip() else f"(pfy status empty, exit {rc})"
-
-def 
+    rc, out = _run(["bash", str(PFY), "status"], timeout=25

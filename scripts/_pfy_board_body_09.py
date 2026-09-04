@@ -1,4 +1,4 @@
-H", "")
+        env["PYTHONPATH"] = str(wg / "src") + os.pathsep + env.get("PYTHONPATH", "")
         env["WRITE_GUARD_MODE"] = "enforce"
         env["WRITE_GUARD_ROOTS"] = str(ROOT)
         policy = wg / "policy.default.yaml"
@@ -77,5 +77,4 @@ def set_tool(tid, on):
         st["write_guard"] = want
         save_tools_state(st)
         return {"ok": True, "live": "PASS", "copy": ("ON " if want else "OFF ") + "write-guard", "id": "write-guard", "on": want, "tools": st}
-    if tid in ("extra-tools", "local_tools", "tools_mode"):
-        ok, err = apply_
+    if 

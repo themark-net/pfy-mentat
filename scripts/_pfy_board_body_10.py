@@ -1,4 +1,5 @@
-extra_tools(want)
+tid in ("extra-tools", "local_tools", "tools_mode"):
+        ok, err = apply_extra_tools(want)
         if not ok:
             return {"ok": False, "live": "FAIL", "copy": "FAIL extra tools", "error": err, "id": "extra-tools"}
         st["tools_mode"] = "local_tools" if want else "split"
@@ -90,7 +91,4 @@ def start_sidecar(hid):
                 err = "opencode exited"
             return {
                 "ok": False, "id": hid, "live": "FAIL", "copy": stub,
-                "error": err or "opencode exited", "pid": proc.pid, "log": str(log),
-            }
-        record_sidecar_pid("opencode", proc.pid)
-  
+                "error": err or "opencode exited", "pid": proc.pid, "log"

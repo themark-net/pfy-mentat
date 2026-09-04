@@ -29,3 +29,6 @@ examples/voice-stt-edge/.venv-python-path
 gui/operator/src-tauri/target/
 gui/operator/node_modules/
 gui/operator/src-tauri/gen/
+
+# Session workspace artifacts (Attach OpenCode / Space Invaders)
+/workspace/

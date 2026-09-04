@@ -1,4 +1,25 @@
-   raw = self.rfile.read(length) if length else b"{}"
+nt(self.headers.get("Content-Length") or 0)
+            raw = self.rfile.read(length) if length else b"{}"
+            try:
+                body = json.loads(raw.decode() or "{}")
+            except json.JSONDecodeError:
+                body = {}
+            name = str((body or {}).get("name") or "")
+            result = pull_model(name)
+            code = 200 if result.get("ok") else 400
+            self._send(code, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
+            return
+        if path == "/eval":
+            length = int(self.headers.get("Content-Length") or 0)
+            if length:
+                self.rfile.read(length)
+            result = test_model()
+            code = 200 if result.get("ok") else 400
+            self._send(code, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
+            return
+        if path == "/tools":
+            length = int(self.headers.get("Content-Length") or 0)
+            raw = self.rfile.read(length) if length else b"{}"
             try:
                 body = json.loads(raw.decode() or "{}")
             except json.JSONDecodeError:
@@ -6,6 +27,14 @@
             tid = str((body or {}).get("id") or "")
             on = (body or {}).get("on")
             result = set_tool(tid, on)
+            code = 200 if result.get("ok") else 400
+            self._send(code, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
+            return
+        if path == "/space-invaders":
+            length = int(self.headers.get("Content-Length") or 0)
+            if length:
+                self.rfile.read(length)
+            result = run_space_invaders()
             code = 200 if result.get("ok") else 400
             self._send(code, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
             return
@@ -43,6 +72,10 @@ def main():
         onraw = args[2] if len(args) > 2 else "1"
         on = str(onraw).strip().lower() in ("1", "true", "on", "yes")
         result = set_tool(tid, on)
+        print(json.dumps(result))
+        return 0 if result.get("ok") else 2
+    if args[:1] == ["--space-invaders"]:
+        result = run_space_invaders()
         print(json.dumps(result))
         return 0 if result.get("ok") else 2
     if HOST not in ("127.0.0.1", "localhost"):

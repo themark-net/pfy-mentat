@@ -83,9 +83,14 @@ fn set_tool(id: String, on: bool) -> Result<Value, String> {
     run_board(&["--tool", &id, flag])
 }
 
+#[tauri::command]
+fn space_invaders() -> Result<Value, String> {
+    run_board(&["--space-invaders"])
+}
+
 fn main() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![snapshot, start_sidecar, run_stage, launch_env, pull_model, test_model, set_tool])
+        .invoke_handler(tauri::generate_handler![snapshot, start_sidecar, run_stage, launch_env, pull_model, test_model, set_tool, space_invaders])
         .run(tauri::generate_context!())
         .expect("error while running pfy-operator");
 }

@@ -1,4 +1,37 @@
-esh · " + " · ".join(x for x in (host, ts) if x)
+eta.configure(text="refreshing…")
+            self.paint_refresh("refreshing…", False)
+            try:
+                self.brefresh.configure(state="disabled")
+            except Exception:
+                pass
+        def work():
+            try:
+                snap = self.board.snapshot()
+            except Exception as e:
+                snap = {"error": str(e)}
+            self.root.after(0, lambda s=snap, u=user: self.apply(s, user=u))
+        threading.Thread(target=work, daemon=True).start()
+
+    def apply(self, s, user=False):
+        pending = self.pending_user
+        self.pending_user = False
+        self.busy = False
+        try:
+            self.brefresh.configure(state="normal")
+        except Exception:
+            pass
+        self.snap = s or {}
+        self.render()
+        if user:
+            err = self.snap.get("error") and not (self.snap.get("chips") or [])
+            if err:
+                self.paint_refresh("FAIL refresh", True)
+                self.meta.configure(text="FAIL refresh")
+            else:
+                ts = self.snap.get("ts") or ""
+                host = self.snap.get("host") or ""
+                if ts:
+                    line = "PASS refresh · " + " · ".join(x for x in (host, ts) if x)
                     self.paint_refresh(line, False)
                     self.meta.configure(text=" · ".join(x for x in (host, self.snap.get("profile") or "", ts) if x))
                 else:
@@ -45,38 +78,15 @@ esh · " + " · ".join(x for x in (host, ts) if x)
         self.refresh(user=True)
 
     def pack_acts(self, names):
-        forget = [self.bgrok, self.bopen, self.brefresh, self.bcopy, self.bstage, self.benv, self.bpull, self.btest, self.pullname, self.sst, self.est, self.pst, self.rst, self.tst, self.ast, self.cst, self.toolst]
+        forget = [self.bgrok, self.bopen, self.bsi, self.brefresh, self.bcopy, self.bstage, self.benv, self.bpull, self.btest, self.pullname, self.sst, self.est, self.pst, self.rst, self.tst, self.ast, self.cst, self.sist, self.toolst]
         forget.extend(self.tool_btns.values())
         for w in forget:
             try: w.pack_forget()
             except Exception: pass
         order = {
-            "grok": self.bgrok, "open": self.bopen, "refresh": self.brefresh,
+            "grok": self.bgrok, "open": self.bopen, "si": self.bsi, "refresh": self.brefresh,
             "copy": self.bcopy, "stage": self.bstage, "env": self.benv,
             "pull": self.bpull, "pullname": self.pullname, "pst": self.pst,
             "test": self.btest, "tst": self.tst, "rst": self.rst,
-            "sst": self.sst, "est": self.est, "ast": self.ast, "cst": self.cst,
-        }
-        for n in names:
-            w = order[n]
-            w.pack(side="left", padx=(0, 8))
-
-    def render(self):
-        tk = sys.modules["tkinter"]; s = self.snap
-        if s.get("error") and not s.get("chips"):
-            self.meta.configure(text=str(s.get("error"))); return
-        self.meta.configure(text=" · ".join(x for x in (s.get("host") or "", s.get("profile") or "", s.get("ts") or "") if x))
-        d, r = s.get("detector") or {}, s.get("status_runtime") or {}
-        eng_live = honest(s.get("engine_live") or d.get("status"))
-        engine = d.get("engine") or r.get("engine") or "none"
-        chips = s.get("chips") or []
-        grok = next((c for c in chips if c.get("id")=="grok"), {}) or {}
-        tape = s.get("tape") or []
-        stub = bool(s.get("active_stub")) or str(s.get("active") or "") in BLOCKED
-        self.bgrok.configure(state="disabled" if stub else "normal")
-        self.bopen.configure(state="disabled" if stub else "normal")
-        self.fail.configure(text=(f"FAIL  {s.get('blocked_copy') or GROK_USE}") if stub else "")
-        show_org = (not s.get("agent_lane_collapsed", True)) and bool(s.get("org_messages"))
-        if show_org: self.nav["org"].pack(fill="x")
-        else:
-            self.nav
+            "sst": self.sst, "est": self.est, "ast": self.ast, "cst": self.cst, "sist": self.sist,
+ 

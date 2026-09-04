@@ -1,4 +1,46 @@
-ow (tk)", flush=True)
+ype", "text/html; charset=utf-8")
+            self.send_header("X-Pfy-UI", "session")
+            self.send_header("Content-Length", str(len(b)))
+            self.end_headers()
+            self.wfile.write(b)
+    dump = ThreadingHTTPServer(("127.0.0.1", 0), Dump)
+    threading.Thread(target=dump.serve_forever, daemon=True).start()
+    dport = dump.server_address[1]
+    class Board:
+        HOST = "127.0.0.1"
+        PORT = dport
+        Handler = Ours
+    httpd, url = ensure_http(Board)
+    try:
+        got = urlparse(url).port
+        if got == dport:
+            return False
+        with urllib.request.urlopen(url, timeout=1) as r:
+            body = r.read().decode("utf-8", "replace")
+            hdr = (r.headers.get("X-Pfy-UI") or "")
+        return (
+            not leftover_dump(body, hdr)
+            and "pfy board" not in body.lower()
+            and "start via cli" not in body.lower()
+            and "<title>pfy</title>" in body
+        )
+    finally:
+        try:
+            httpd.shutdown()
+        except Exception:
+            pass
+        try:
+            dump.shutdown()
+        except Exception:
+            pass
+
+def run_tk(board, selftest=False) -> bool:
+    try:
+        import tkinter as tk; import tkinter.ttk  # noqa
+        root = tk.Tk()
+    except Exception:
+        return False
+    print("native window (tk)", flush=True)
     w = Win(board, root)
     if selftest:
         w.apply(selftest_snap()); root.update_idletasks(); root.update()
