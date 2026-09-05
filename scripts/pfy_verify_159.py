@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Verify surfaces for Space Invaders + Launch env — cite #159.
 
-Open game / Open folder / TASK preview+copy and Launch-env what + next step.
+Open game / Open folder / TASK preview+copy and Launch-env "what + next step".
 Session proof stays Attach OpenCode + on-disk artifact (not a board-hosted game).
 """
 from __future__ import annotations
@@ -41,6 +41,7 @@ def paths(root) -> dict:
 
 
 def _open_uri(uri: str) -> tuple[bool, str]:
+    """Open via webbrowser then xdg-open. Returns (ok, error)."""
     try:
         if webbrowser.open(uri):
             return True, ""
@@ -51,7 +52,13 @@ def _open_uri(uri: str) -> tuple[bool, str]:
     xdg = shutil.which("xdg-open")
     if xdg:
         try:
-            proc = subprocess.run([xdg, uri], capture_output=True, text=True, timeout=15, check=False)
+            proc = subprocess.run(
+                [xdg, uri],
+                capture_output=True,
+                text=True,
+                timeout=15,
+                check=False,
+            )
             if proc.returncode == 0:
                 return True, ""
             last = ((proc.stderr or proc.stdout or "") or "xdg-open failed")[-400:]
@@ -61,62 +68,147 @@ def _open_uri(uri: str) -> tuple[bool, str]:
 
 
 def open_game(root) -> dict:
+    """Open file://…/workspace/space-invaders/index.html via OS default browser."""
     info = paths(root)
     if not info["exists"]:
-        return {"ok": False, "live": "FAIL", "copy": "FAIL Open game · artifact missing", "error": "missing " + info["rel"], **{k: info[k] for k in ("rel", "abs_path", "folder", "task_path", "task_text", "exists", "note")}}
+        return {
+            "ok": False,
+            "live": "FAIL",
+            "copy": "FAIL Open game · artifact missing",
+            "error": "missing " + info["rel"],
+            **{k: info[k] for k in ("rel", "abs_path", "folder", "task_path", "task_text", "exists", "note")},
+        }
     uri = Path(info["abs_path"]).resolve().as_uri()
     ok, err = _open_uri(uri)
     if not ok:
-        return {"ok": False, "live": "FAIL", "copy": "FAIL Open game", "error": err[:400], "uri": uri, **{k: info[k] for k in ("rel", "abs_path", "folder", "task_path", "task_text", "exists", "note")}}
-    return {"ok": True, "live": "PASS", "copy": "PASS Open game · " + info["rel"], "error": "", "uri": uri, **{k: info[k] for k in ("rel", "abs_path", "folder", "task_path", "task_text", "exists", "note")}}
+        return {
+            "ok": False,
+            "live": "FAIL",
+            "copy": "FAIL Open game",
+            "error": err[:400],
+            "uri": uri,
+            **{k: info[k] for k in ("rel", "abs_path", "folder", "task_path", "task_text", "exists", "note")},
+        }
+    return {
+        "ok": True,
+        "live": "PASS",
+        "copy": "PASS Open game · " + info["rel"],
+        "error": "",
+        "uri": uri,
+        **{k: info[k] for k in ("rel", "abs_path", "folder", "task_path", "task_text", "exists", "note")},
+    }
 
 
 def open_folder(root) -> dict:
+    """Reveal workspace/space-invaders folder in the file manager."""
     info = paths(root)
     folder = Path(info["folder"])
     if not folder.is_dir():
         try:
             folder.mkdir(parents=True, exist_ok=True)
         except OSError as e:
-            return {"ok": False, "live": "FAIL", "copy": "FAIL Open folder", "error": str(e)[:400], **{k: info[k] for k in ("rel", "abs_path", "folder", "task_path", "task_text", "exists", "note")}}
+            return {
+                "ok": False,
+                "live": "FAIL",
+                "copy": "FAIL Open folder",
+                "error": str(e)[:400],
+                **{k: info[k] for k in ("rel", "abs_path", "folder", "task_path", "task_text", "exists", "note")},
+            }
     target = str(folder)
     xdg = shutil.which("xdg-open")
-    err = "xdg-open missing"
     if xdg:
         try:
-            proc = subprocess.run([xdg, target], capture_output=True, text=True, timeout=15, check=False)
+            proc = subprocess.run(
+                [xdg, target],
+                capture_output=True,
+                text=True,
+                timeout=15,
+                check=False,
+            )
             if proc.returncode == 0:
-                return {"ok": True, "live": "PASS", "copy": "PASS Open folder · " + info["folder"], "error": "", **{k: info[k] for k in ("rel", "abs_path", "folder", "task_path", "task_text", "exists", "note")}}
+                return {
+                    "ok": True,
+                    "live": "PASS",
+                    "copy": "PASS Open folder · " + info["folder"],
+                    "error": "",
+                    **{k: info[k] for k in ("rel", "abs_path", "folder", "task_path", "task_text", "exists", "note")},
+                }
             err = ((proc.stderr or proc.stdout or "") or "xdg-open failed")[-400:]
         except Exception as e:
             err = str(e)[:400]
+    else:
+        err = "xdg-open missing"
+    # Fallback: file:// folder URI via webbrowser
     try:
         uri = folder.resolve().as_uri()
         ok, werr = _open_uri(uri)
         if ok:
-            return {"ok": True, "live": "PASS", "copy": "PASS Open folder · " + info["folder"], "error": "", "uri": uri, **{k: info[k] for k in ("rel", "abs_path", "folder", "task_path", "task_text", "exists", "note")}}
+            return {
+                "ok": True,
+                "live": "PASS",
+                "copy": "PASS Open folder · " + info["folder"],
+                "error": "",
+                "uri": uri,
+                **{k: info[k] for k in ("rel", "abs_path", "folder", "task_path", "task_text", "exists", "note")},
+            }
         err = werr or err
     except Exception as e:
         err = str(e)[:400]
-    return {"ok": False, "live": "FAIL", "copy": "FAIL Open folder", "error": (err or "open failed")[:400], **{k: info[k] for k in ("rel", "abs_path", "folder", "task_path", "task_text", "exists", "note")}}
+    return {
+        "ok": False,
+        "live": "FAIL",
+        "copy": "FAIL Open folder",
+        "error": (err or "open failed")[:400],
+        **{k: info[k] for k in ("rel", "abs_path", "folder", "task_path", "task_text", "exists", "note")},
+    }
 
 
 def task_payload(root) -> dict:
+    """Read-only TASK.md preview + copy payload."""
     info = paths(root)
     text = info.get("task_text") or ""
     if not text and not Path(info["task_path"]).is_file():
-        return {"ok": False, "live": "FAIL", "copy": "FAIL Copy TASK · missing", "error": "TASK.md missing", "task_text": "", **{k: info[k] for k in ("rel", "abs_path", "folder", "task_path", "exists", "note")}}
-    return {"ok": True, "live": "PASS", "copy": "PASS Copy TASK", "error": "", "task_text": text, "value": text, **{k: info[k] for k in ("rel", "abs_path", "folder", "task_path", "exists", "note")}}
+        return {
+            "ok": False,
+            "live": "FAIL",
+            "copy": "FAIL Copy TASK · missing",
+            "error": "TASK.md missing",
+            "task_text": "",
+            **{k: info[k] for k in ("rel", "abs_path", "folder", "task_path", "exists", "note")},
+        }
+    return {
+        "ok": True,
+        "live": "PASS",
+        "copy": "PASS Copy TASK",
+        "error": "",
+        "task_text": text,
+        "value": text,
+        **{k: info[k] for k in ("rel", "abs_path", "folder", "task_path", "exists", "note")},
+    }
 
 
 def copy_payload(value: str, label: str = "copied") -> dict:
+    """Shape a clipboard-ready payload (actual clipboard is host UI)."""
     value = value if value is not None else ""
     if not str(value).strip():
-        return {"ok": False, "live": "FAIL", "copy": "FAIL " + label, "error": "empty", "value": ""}
-    return {"ok": True, "live": "PASS", "copy": "PASS " + label, "error": "", "value": str(value)}
+        return {
+            "ok": False,
+            "live": "FAIL",
+            "copy": "FAIL " + label,
+            "error": "empty",
+            "value": "",
+        }
+    return {
+        "ok": True,
+        "live": "PASS",
+        "copy": "PASS " + label,
+        "error": "",
+        "value": str(value),
+    }
 
 
 def _stage_live_from_state(STATE: Path) -> str:
+    """Best-effort stage hint from last verb / known state files."""
     try:
         p = Path(STATE) / "last-verb.json"
         if p.is_file():
@@ -130,6 +222,7 @@ def _stage_live_from_state(STATE: Path) -> str:
 
 
 def enrich_launch_env(res, live_openai_base, STATE, ROOT) -> dict:
+    """Add base_url, engine, what, next_steps; enrich copy on PASS."""
     res = dict(res or {})
     base = ""
     eng = ""
@@ -202,5 +295,12 @@ def enrich_launch_env(res, live_openai_base, STATE, ROOT) -> dict:
 
 
 def artifact_get(root) -> dict:
+    """GET-shaped paths + task for /space-invaders/artifact."""
     info = paths(root)
-    return {"ok": True if info["exists"] else False, "live": "PASS" if info["exists"] else "FAIL", "copy": ("PASS artifact · " + info["rel"]) if info["exists"] else "FAIL artifact missing", "error": "" if info["exists"] else "missing index.html", **info}
+    return {
+        "ok": True if info["exists"] else False,
+        "live": "PASS" if info["exists"] else "FAIL",
+        "copy": ("PASS artifact · " + info["rel"]) if info["exists"] else "FAIL artifact missing",
+        "error": "" if info["exists"] else "missing index.html",
+        **info,
+    }
