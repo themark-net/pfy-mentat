@@ -2,22 +2,44 @@ nch_env():
     """Same path as bare ./pfy before the window: inference then env-stage. No harness exec.
 
     Always record_last_verb so LOOP last/timestamp refresh even when already up.
-    Honest skip / already-up paints SKIP (never silent).
+    Honest skip / already-up paints SKIP (never silent). Cite #159 enrich.
     """
+    def _enrich_env(res):
+        try:
+            import importlib.util
+            path = ROOT / "scripts" / "pfy_verify_159.py"
+            if not path.is_file():
+                out = dict(res or {})
+                out["ok"] = False
+                out["live"] = "FAIL"
+                out["copy"] = "FAIL env · verify module missing"
+                out["error"] = str(path)
+                return out
+            spec = importlib.util.spec_from_file_location("pfy_verify_159", path)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            return mod.enrich_launch_env(res, live_openai_base, STATE, ROOT)
+        except Exception as e:
+            out = dict(res or {})
+            out["ok"] = False
+            out["live"] = "FAIL"
+            out["copy"] = "FAIL env · enrich"
+            out["error"] = str(e)[:400]
+            return out
     if not PFY.is_file():
         record_last_verb("env")
-        return {"ok": False, "live": "FAIL", "copy": "FAIL env", "error": "scripts/pfy missing"}
+        return _enrich_env({"ok": False, "live": "FAIL", "copy": "FAIL env", "error": "scripts/pfy missing"})
     rc, out = _run(["bash", str(PFY), "env"], timeout=120.0)
     blob = out or ""
     low = blob.lower()
     # Always stamp the click so LOOP last + when move even if tape was already READY.
     record_last_verb("env")
     if rc != 0:
-        return {
+        return _enrich_env({
             "ok": False, "live": "FAIL", "copy": "FAIL env",
             "error": (blob or "env failed")[-400:],
             "stdout": blob[-800:],
-        }
+        })
     # Honest skip / no local runtime: paint SKIP, not a fake PASS that looks like silence.
     if (
         "honest skip" in low
@@ -25,12 +47,12 @@ nch_env():
         or "skip: env-stage" in low
         or "env-stage.sh missing" in low
     ):
-        return {"ok": True, "live": "SKIP", "copy": "SKIP env", "stdout": blob[-800:]}
-    return {
+        return _enrich_env({"ok": True, "live": "SKIP", "copy": "SKIP env", "stdout": blob[-800:]})
+    return _enrich_env({
         "ok": True, "live": "PASS", "copy": "PASS env",
         "error": "",
         "stdout": blob[-800:],
-    }
+    })
 
 def which_bin(*names):
     for n in names:
