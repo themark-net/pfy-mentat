@@ -32,51 +32,51 @@ async function postSI(path, body){
   }
 }
 async function spaceInvaders(){
-  paintSI('invaders…','');
+  paintSI('invaders\u2026','');
   try{
     if(isTauri()){
       try{
         const v=await window.__TAURI__.core.invoke('space_invaders');
         const j=typeof v==='string'?JSON.parse(v):v;
-        if(j && j.ok){ paintSI(j.copy||('PASS invaders · '+(j.path||'')), 'ok'); paintSIPaths(j); }
+        if(j && j.ok){ paintSI(j.copy||('PASS invaders \u00b7 '+(j.path||'')), 'ok'); paintSIPaths(j); }
         else { paintSI((j && (j.copy||j.error))||'FAIL invaders','fail'); }
         await tick();
         return;
       }catch(e){ /* fall through to HTTP */ }
     }
-    if(noLiveApi()){ paintSI('FAIL invaders · '+GROK_USE,'fail'); return; }
+    if(noLiveApi()){ paintSI('FAIL invaders \u00b7 '+GROK_USE,'fail'); return; }
     const r=await fetch(apiRoot()+'/space-invaders',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
     let j={};
     try{j=await r.json();}catch(e){j={ok:false,copy:'FAIL invaders',error:String(e)};}
-    if(j && j.ok){ paintSI(j.copy||('PASS invaders · '+(j.path||'')),'ok'); paintSIPaths(j); }
+    if(j && j.ok){ paintSI(j.copy||('PASS invaders \u00b7 '+(j.path||'')),'ok'); paintSIPaths(j); }
     else paintSI((j && (j.copy||j.error))||'FAIL invaders','fail');
   }catch(e){
-    paintSI('FAIL invaders · '+String(e),'fail');
+    paintSI('FAIL invaders \u00b7 '+String(e),'fail');
   }
   await tick();
 }
 async function openSIGame(){
-  paintSIOpen('opening game…','');
+  paintSIOpen('opening game\u2026','');
   try{
     const j=await postSI('/space-invaders/open-game','{}');
     if(j && j.ok){ paintSIOpen(j.copy||'PASS Open game','ok'); paintSIPaths(j); }
     else paintSIOpen((j && (j.copy||j.error))||'FAIL Open game','fail');
   }catch(e){
-    paintSIOpen('FAIL Open game · '+String(e),'fail');
+    paintSIOpen('FAIL Open game \u00b7 '+String(e),'fail');
   }
 }
 async function openSIFolder(){
-  paintSIOpen('opening folder…','');
+  paintSIOpen('opening folder\u2026','');
   try{
     const j=await postSI('/space-invaders/open-folder','{}');
     if(j && j.ok){ paintSIOpen(j.copy||'PASS Open folder','ok'); paintSIPaths(j); }
     else paintSIOpen((j && (j.copy||j.error))||'FAIL Open folder','fail');
   }catch(e){
-    paintSIOpen('FAIL Open folder · '+String(e),'fail');
+    paintSIOpen('FAIL Open folder \u00b7 '+String(e),'fail');
   }
 }
 async function copySITask(){
-  paintSIOpen('copying TASK…','');
+  paintSIOpen('copying TASK\u2026','');
   try{
     const j=await postSI('/space-invaders/copy-task','{}');
     const text=(j && (j.task_text||j.value||''))||'';
@@ -89,7 +89,7 @@ async function copySITask(){
       paintSIOpen((j && (j.copy||j.error))||'FAIL Copy TASK','fail');
     }
   }catch(e){
-    paintSIOpen('FAIL Copy TASK · '+String(e),'fail');
+    paintSIOpen('FAIL Copy TASK \u00b7 '+String(e),'fail');
   }
 }
 document.getElementById('btnsi')&&document.getElementById('btnsi').addEventListener('click',function(){spaceInvaders();});
