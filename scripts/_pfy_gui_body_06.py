@@ -52,7 +52,7 @@
                 txt += "\nwhat       " + what
             if stub: txt += f"\nFAIL       {s.get('blocked_copy') or GROK_USE}"
             if self.msg: txt += "\n" + self.msg
-            self.pack_acts(["env", "open", "grok", "est", "ewhat", "copyep", "copyst", "ast"])
+            self.pack_acts(["env", "copyep", "copyst", "open", "grok", "est", "ast"])
         elif self.view == "engine":
             models = s.get("models") or []
             mtxt = " · ".join(str(x) for x in models) if models else "(none)"
@@ -65,13 +65,22 @@
         elif self.view == "attach":
             txt = f"ATTACH\nNOW     attached {attached} · last {verb}"
             si = getattr(self, "_last_si", {}) or {}
-            if si.get("abs_path") or si.get("path"):
-                txt += "\ninvaders  " + str(si.get("abs_path") or "")
-                txt += "\n          " + str(si.get("rel") or si.get("path") or "")
+            abs_p = str(si.get("abs_path") or "")
+            rel_p = str(si.get("rel") or si.get("path") or "")
+            task_p = str(si.get("task_text") or si.get("task_md") or "")
+            if abs_p or rel_p or task_p:
+                if abs_p:
+                    txt += "\nabs       " + abs_p
+                if rel_p:
+                    txt += "\nrel       " + rel_p
+                if task_p:
+                    prev = task_p if len(task_p) <= 320 else task_p[:320] + "…"
+                    txt += "\nTASK      " + prev.replace("\n", " / ")
                 txt += "\nnote      Session proof: Attach OpenCode + disk artifact — not a board-hosted game"
             if stub: txt += f"\nFAIL    {s.get('blocked_copy') or GROK_USE}"
             if self.msg: txt += "\n" + self.msg
-            self.pack_acts(["grok", "open", "si", "siopen", "sifold", "sitask", "copy", "ast", "sist", "siabs", "sirel", "sitxt", "siopenst", "cst"])
+            # Buttons only (no path labels in the side pack — they clipped off-screen)
+            self.pack_acts(["si", "siopen", "sifold", "sitask", "grok", "open", "copy", "ast", "sist", "cst"])
         elif self.view == "tools":
             tools = s.get("tools") or {}
             skills = tools.get("skills") or {}
