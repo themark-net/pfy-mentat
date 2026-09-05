@@ -34,6 +34,10 @@ state="normal")
             self.benv.configure(state="normal")
         except Exception:
             pass
+        self._last_env = res or {}
+        what = str((res or {}).get("what") or "")
+        if what:
+            self.ewhat.configure(text=what)
         if res.get("ok"):
             copy = res.get("copy") or ("SKIP env" if str(res.get("live") or "") == "SKIP" else "PASS env")
             if str(copy).startswith("SKIP"):
