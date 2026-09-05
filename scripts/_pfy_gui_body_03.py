@@ -65,6 +65,9 @@ style)
         threading.Thread(target=work, daemon=True).start()
 
     def done_si_open(self, res):
+        cur = dict(getattr(self, "_last_si", {}) or {})
+        cur.update(res or {})
+        self._last_si = cur
         if res.get("ok"):
             self.paint_si_open(res.get("copy") or "PASS Open game", False)
             if res.get("abs_path"):
@@ -73,6 +76,7 @@ style)
                 self.sirel.configure(text="rel " + str(res.get("rel") or res.get("path") or ""))
         else:
             self.paint_si_open(res.get("copy") or ("FAIL Open game · " + str(res.get("error") or "")), True)
+        self.refresh(user=True)
 
     def open_si_folder(self):
         self.paint_si_open("opening folder…", False)
@@ -97,12 +101,19 @@ style)
     def done_si_task(self, res):
         text = str((res or {}).get("task_text") or (res or {}).get("value") or "")
         preview = text if len(text) <= 240 else text[:240] + "…"
+        cur = dict(getattr(self, "_last_si", {}) or {})
+        cur.update(res or {})
+        if text:
+            cur["task_text"] = text
+        self._last_si = cur
         if preview:
             self.sitask.configure(text=preview)
         if not (res or {}).get("ok"):
             self.paint_si_open((res or {}).get("copy") or "FAIL Copy TASK", True)
+            self.refresh(user=True)
             return
         self._clip(text, self.paint_si_open, res.get("copy") or "PASS Copy TASK", "FAIL clipboard — select TASK")
+        self.refresh(user=True)
 
     def copy_endpoint(self):
         res = self._last_env or {}
