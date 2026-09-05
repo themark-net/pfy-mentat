@@ -60,6 +60,10 @@ class Handler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         if path in ("/", "/index.html"):
             self._send(200, html_page().encode("utf-8"), "text/html; charset=utf-8"); return
+        asset = frontend_static(path)
+        if asset:
+            fp, ctype = asset
+            self._send(200, fp.read_bytes(), ctype); return
         if path == "/snapshot":
             self._send(200, json.dumps(snapshot(), indent=2).encode("utf-8"), "application/json; charset=utf-8"); return
         self._send(404, b"not found\n", "text/plain; charset=utf-8")
