@@ -13,6 +13,18 @@
         self.ast = ttk.Label(self.acts, text="", style="Ok.TLabel")
         self.cst = ttk.Label(self.acts, text="", style="M.TLabel")
         self.sist = ttk.Label(self.acts, text="", style="M.TLabel")
+        self.bsiopen = ttk.Button(self.acts, text="Open game", command=self.open_si_game)
+        self.bsifold = ttk.Button(self.acts, text="Open folder", command=self.open_si_folder)
+        self.bsitask = ttk.Button(self.acts, text="Copy TASK", command=self.copy_si_task)
+        self.bcopyep = ttk.Button(self.acts, text="Copy endpoint", command=self.copy_endpoint)
+        self.bcopyst = ttk.Button(self.acts, text="Copy ./pfy status", command=self.copy_pfy_status)
+        self.siabs = ttk.Label(self.acts, text="", style="M.TLabel")
+        self.sirel = ttk.Label(self.acts, text="", style="M.TLabel")
+        self.sitask = ttk.Label(self.acts, text="", style="M.TLabel")
+        self.ewhat = ttk.Label(self.acts, text="", style="M.TLabel")
+        self.siopenst = ttk.Label(self.acts, text="", style="M.TLabel")
+        self._last_env = {}
+        self._last_si = {}
         self.chips = ttk.Frame(right); self.chips.pack(fill="both", expand=True, padx=12, pady=(0,10))
 
     def set_view(self, k):
@@ -65,8 +77,15 @@
         threading.Thread(target=work, daemon=True).start()
 
     def done_si(self, res):
+        self._last_si = res or {}
         if res.get("ok"):
             self.paint_si(res.get("copy") or ("PASS Space Invaders · " + str(res.get("path") or "")), False)
+            self.siabs.configure(text="abs " + str(res.get("abs_path") or ""))
+            self.sirel.configure(text="rel " + str(res.get("rel") or res.get("path") or ""))
+            preview = str(res.get("task_text") or res.get("task_md") or "")
+            if len(preview) > 240:
+                preview = preview[:240] + "…"
+            self.sitask.configure(text=preview)
         else:
             self.paint_si(res.get("copy") or ("FAIL Space Invaders · " + str(res.get("error") or "")), True)
         self.refresh(user=True)
