@@ -60,13 +60,59 @@ async function postEnv(){
     return {ok:false,error:String(e),copy:'FAIL env',live:'FAIL'};
   }
 }
+function paintLaunchWhat(j){
+  const el=document.getElementById('launchwhat');
+  if(!el) return;
+  const what=(j&&j.what)||'';
+  const base=(j&&j.base_url)||'';
+  el.textContent=what||(base?('engine '+base):'');
+  el.dataset.base=base||'';
+  el.dataset.status='./pfy status';
+  const steps=(j&&j.next_steps)||[];
+  steps.forEach(function(s){
+    if(s&&s.id==='endpoint'&&s.value) el.dataset.base=s.value;
+    if(s&&s.id==='status'&&s.value) el.dataset.status=s.value;
+  });
+  window.__pfyLaunchNext=j||{};
+}
+function paintLaunchCopy(text, kind){
+  const el=document.getElementById('launchcopymsg');
+  if(!el) return;
+  el.textContent=text||'';
+  el.className='attach-result'+(kind?(' '+kind):'');
+}
+async function copyLaunchEndpoint(){
+  const el=document.getElementById('launchwhat');
+  const j=window.__pfyLaunchNext||{};
+  let val=(j.base_url)||(el&&el.dataset.base)||'';
+  if(!val && j.next_steps){
+    const s=(j.next_steps||[]).find(x=>x&&x.id==='endpoint');
+    if(s) val=s.value||'';
+  }
+  if(!val){ paintLaunchCopy('FAIL no endpoint','fail'); return; }
+  const ok=await copyText(val);
+  paintLaunchCopy(ok?'PASS Copy endpoint':'FAIL clipboard — select endpoint', ok?'ok':'fail');
+}
+async function copyLaunchStatus(){
+  const el=document.getElementById('launchwhat');
+  const j=window.__pfyLaunchNext||{};
+  let val='./pfy status';
+  if(j.next_steps){
+    const s=(j.next_steps||[]).find(x=>x&&x.id==='status');
+    if(s&&s.value) val=s.value;
+  }else if(el&&el.dataset.status) val=el.dataset.status;
+  const ok=await copyText(val);
+  paintLaunchCopy(ok?'PASS Copy ./pfy status':'FAIL clipboard — select status', ok?'ok':'fail');
+}
 async function runEnv(){
   const btn=document.getElementById('btnlaunch');
   btn.disabled=true;
   paintLaunch('launching env…','');
+  paintLaunchWhat({});
   document.getElementById('meta').textContent='refreshing…';
   try{
     const j=await postEnv();
+    paintLaunchWhat(j||{});
     if(j && j.ok){
       const c=j.copy||((j.live||'')==='SKIP'?'SKIP env':'PASS env');
       paintLaunch(c, c.indexOf('SKIP')===0?'muted':(c.indexOf('PASS')===0?'ok':''));

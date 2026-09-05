@@ -246,6 +246,11 @@ def run(
     copy = "PASS Space Invaders · %s" % rel
     if opencode_note in ("ok", "ran"):
         copy = "PASS Space Invaders · %s · opencode %s" % (rel, opencode_note)
+    task_md = ""
+    try:
+        task_md = task_path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        task_md = TASK_MD
     return {
         "ok": True,
         "live": "PASS",
@@ -253,6 +258,12 @@ def run(
         "error": opencode_err if opencode_note in ("fail", "timeout") else "",
         "path": rel,
         "abs_path": str(index_path),
+        "rel": rel,
+        "folder": str(ws),
+        "task_path": str(task_path),
+        "task_md": task_md,
+        "task_text": task_md,
+        "note": "Session proof: Attach OpenCode + disk artifact — not a board-hosted game",
         "pid": pid,
         "opencode_run": opencode_note,
         "when": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
