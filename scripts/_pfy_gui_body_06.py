@@ -47,9 +47,12 @@
             mon = note or (f"pid {mpid}" if mpid else "(none)")
             gpath = s.get("grok_path") or honest(grok.get("live"))
             txt = f"LOOP\nenv        {env_live}\nattached   {att}\nlast       {verb}  {when}\nmonitor    {mon}\ngrok       {gpath}"
+            what = str((getattr(self, "_last_env", {}) or {}).get("what") or "")
+            if what:
+                txt += "\nwhat       " + what
             if stub: txt += f"\nFAIL       {s.get('blocked_copy') or GROK_USE}"
             if self.msg: txt += "\n" + self.msg
-            self.pack_acts(["env", "open", "grok", "est", "ast"])
+            self.pack_acts(["env", "open", "grok", "est", "ewhat", "copyep", "copyst", "ast"])
         elif self.view == "engine":
             models = s.get("models") or []
             mtxt = " · ".join(str(x) for x in models) if models else "(none)"
@@ -61,9 +64,14 @@
             self.pack_acts(["stage", "sst"])
         elif self.view == "attach":
             txt = f"ATTACH\nNOW     attached {attached} · last {verb}"
+            si = getattr(self, "_last_si", {}) or {}
+            if si.get("abs_path") or si.get("path"):
+                txt += "\ninvaders  " + str(si.get("abs_path") or "")
+                txt += "\n          " + str(si.get("rel") or si.get("path") or "")
+                txt += "\nnote      Session proof: Attach OpenCode + disk artifact — not a board-hosted game"
             if stub: txt += f"\nFAIL    {s.get('blocked_copy') or GROK_USE}"
             if self.msg: txt += "\n" + self.msg
-            self.pack_acts(["grok", "open", "si", "copy", "ast", "sist", "cst"])
+            self.pack_acts(["grok", "open", "si", "siopen", "sifold", "sitask", "copy", "ast", "sist", "siabs", "sirel", "sitxt", "siopenst", "cst"])
         elif self.view == "tools":
             tools = s.get("tools") or {}
             skills = tools.get("skills") or {}
