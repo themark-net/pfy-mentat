@@ -78,7 +78,7 @@ async function runTool(id){
     paintTools('FAIL tools','fail');
   }
 }
-document.querySelectorAll('[data-tool]').forEach(el=>el.addEventListener('click',()=>runTool(el.getAttribute('data-tool')));
+document.querySelectorAll('[data-tool]').forEach(el=>el.addEventListener('click',()=>runTool(el.getAttribute('data-tool'))));
 function chipHtml(c){
   const lv=live(c.live);
   return '<div class=chip><b>'+c.id+'</b> <span class="live '+cls(lv)+'">'+lv+'</span><div class=muted>'+c.role+' · '+c.name+'</div></div>';
