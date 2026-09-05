@@ -44,7 +44,8 @@ NO_SPAWN = {"llama-swap", "llama.cpp", "llama-server", "shimmy"}
 SIDECAR_OK = {"grok", "opencode"}
 ISSUE_BASE = "https://github.com/themark-net/pfy-mentat/issues/"
 GROK_USE = "pfy harness use grok"
-FRONTEND = ROOT / "gui" / "operator" / "frontend" / "index.html"
+FRONTEND_DIR = ROOT / "gui" / "operator" / "frontend"
+FRONTEND = FRONTEND_DIR / "index.html"
 ORG_CANDIDATES = (
     STATE / "org-messages.jsonl", STATE / "org-messages.json",
     ROOT / "data" / "org-messages.jsonl", ROOT / "data" / "org-messages.json",

@@ -82,5 +82,31 @@ def html_page():
 
 
 
+def frontend_static(path: str):
+    """Serve sibling assets from gui/operator/frontend (app-core-*.js, app-ui.js, …)."""
+    name = (path or "").lstrip("/")
+    if not name or "/" in name or "\\" in name or ".." in name or name.startswith("."):
+        return None
+    if not name.endswith((".js", ".css", ".map", ".svg", ".png", ".ico", ".woff2")):
+        return None
+    fp = (FRONTEND_DIR / name).resolve()
+    try:
+        fp.relative_to(FRONTEND_DIR.resolve())
+    except ValueError:
+        return None
+    if not fp.is_file():
+        return None
+    ctype = {
+        ".js": "application/javascript; charset=utf-8",
+        ".css": "text/css; charset=utf-8",
+        ".map": "application/json; charset=utf-8",
+        ".svg": "image/svg+xml",
+        ".png": "image/png",
+        ".ico": "image/x-icon",
+        ".woff2": "font/woff2",
+    }.get(fp.suffix.lower(), "application/octet-stream")
+    return fp, ctype
+
+
 def run_stage():
     """Run product env-stage (./pfy stage). 
