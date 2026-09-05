@@ -38,6 +38,30 @@ nt(self.headers.get("Content-Length") or 0)
             code = 200 if result.get("ok") else 400
             self._send(code, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
             return
+        if path == "/space-invaders/open-game":
+            length = int(self.headers.get("Content-Length") or 0)
+            if length:
+                self.rfile.read(length)
+            result = open_space_invaders_game()
+            code = 200 if result.get("ok") else 400
+            self._send(code, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
+            return
+        if path == "/space-invaders/open-folder":
+            length = int(self.headers.get("Content-Length") or 0)
+            if length:
+                self.rfile.read(length)
+            result = open_space_invaders_folder()
+            code = 200 if result.get("ok") else 400
+            self._send(code, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
+            return
+        if path in ("/space-invaders/copy-task", "/space-invaders/task"):
+            length = int(self.headers.get("Content-Length") or 0)
+            if length:
+                self.rfile.read(length)
+            result = space_invaders_task()
+            code = 200 if result.get("ok") else 400
+            self._send(code, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
+            return
         self._send(405, b"POST disabled for this path\n", "text/plain; charset=utf-8")
 
 def main():
@@ -76,6 +100,22 @@ def main():
         return 0 if result.get("ok") else 2
     if args[:1] == ["--space-invaders"]:
         result = run_space_invaders()
+        print(json.dumps(result))
+        return 0 if result.get("ok") else 2
+    if args[:1] == ["--open-game"]:
+        result = open_space_invaders_game()
+        print(json.dumps(result))
+        return 0 if result.get("ok") else 2
+    if args[:1] == ["--open-folder"]:
+        result = open_space_invaders_folder()
+        print(json.dumps(result))
+        return 0 if result.get("ok") else 2
+    if args[:1] in (["--copy-task"], ["--task"]):
+        result = space_invaders_task()
+        print(json.dumps(result))
+        return 0 if result.get("ok") else 2
+    if args[:1] == ["--artifact"]:
+        result = space_invaders_artifact()
         print(json.dumps(result))
         return 0 if result.get("ok") else 2
     if HOST not in ("127.0.0.1", "localhost"):

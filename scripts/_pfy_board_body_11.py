@@ -44,6 +44,56 @@ def run_space_invaders():
         pid_alive=pid_alive,
     )
 
+def _load_verify_159():
+    """Load pfy_verify_159 or return (None, error). Cite #159."""
+    import importlib.util
+    path = ROOT / "scripts" / "pfy_verify_159.py"
+    if not path.is_file():
+        return None, str(path)
+    try:
+        spec = importlib.util.spec_from_file_location("pfy_verify_159", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod, ""
+    except Exception as e:
+        return None, str(e)[:400]
+
+def open_space_invaders_game():
+    mod, err = _load_verify_159()
+    if mod is None:
+        return {"ok": False, "live": "FAIL", "copy": "FAIL Open game · module missing", "error": err}
+    try:
+        return mod.open_game(ROOT)
+    except Exception as e:
+        return {"ok": False, "live": "FAIL", "copy": "FAIL Open game", "error": str(e)[:400]}
+
+def open_space_invaders_folder():
+    mod, err = _load_verify_159()
+    if mod is None:
+        return {"ok": False, "live": "FAIL", "copy": "FAIL Open folder · module missing", "error": err}
+    try:
+        return mod.open_folder(ROOT)
+    except Exception as e:
+        return {"ok": False, "live": "FAIL", "copy": "FAIL Open folder", "error": str(e)[:400]}
+
+def space_invaders_task():
+    mod, err = _load_verify_159()
+    if mod is None:
+        return {"ok": False, "live": "FAIL", "copy": "FAIL Copy TASK · module missing", "error": err, "task_text": ""}
+    try:
+        return mod.task_payload(ROOT)
+    except Exception as e:
+        return {"ok": False, "live": "FAIL", "copy": "FAIL Copy TASK", "error": str(e)[:400], "task_text": ""}
+
+def space_invaders_artifact():
+    mod, err = _load_verify_159()
+    if mod is None:
+        return {"ok": False, "live": "FAIL", "copy": "FAIL artifact · module missing", "error": err}
+    try:
+        return mod.artifact_get(ROOT)
+    except Exception as e:
+        return {"ok": False, "live": "FAIL", "copy": "FAIL artifact", "error": str(e)[:400]}
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         sys.stderr.write("[pfy] " + (fmt % args) + "\n")
@@ -66,6 +116,10 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, fp.read_bytes(), ctype); return
         if path == "/snapshot":
             self._send(200, json.dumps(snapshot(), indent=2).encode("utf-8"), "application/json; charset=utf-8"); return
+        if path == "/space-invaders/artifact":
+            result = space_invaders_artifact()
+            code = 200 if result.get("ok") else 404
+            self._send(code, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8"); return
         self._send(404, b"not found\n", "text/plain; charset=utf-8")
     def do_POST(self):
         path = urlparse(self.path).path
