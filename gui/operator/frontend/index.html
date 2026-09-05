@@ -61,6 +61,12 @@ noscript .fail{padding:16px;display:block}
       <button type=button class=primary id=btngrok>Attach grok</button>
     </div>
     <span id=launchmsg class=attach-result></span>
+    <div class=row id=launchwhat class=muted></div>
+    <div class=acts>
+      <button type=button class=primary id=btncopyendpoint>Copy endpoint</button>
+      <button type=button class=primary id=btncopystatus>Copy ./pfy status</button>
+    </div>
+    <span id=launchcopymsg class=attach-result></span>
     <span id=attachmsg class=attach-result></span>
   </section>
   <section class=view id=view-engine>
@@ -101,6 +107,16 @@ noscript .fail{padding:16px;display:block}
     </div>
     <span id=attresult class=attach-result></span>
     <span id=simsg class=attach-result></span>
+    <div class=row>abs <span id=siabs class=copy></span></div>
+    <div class=row>rel <span id=sirel class=copy></span></div>
+    <p class=muted id=sinote>Session proof: Attach OpenCode + disk artifact — not a board-hosted game</p>
+    <div class=acts>
+      <button type=button class=primary id=btnsiopen>Open game</button>
+      <button type=button class=primary id=btnsifold>Open folder</button>
+      <button type=button class=primary id=btnsitask>Copy TASK</button>
+    </div>
+    <span id=siopenmsg class=attach-result></span>
+    <pre id=sipreview class=copy style="white-space:pre-wrap;max-height:160px;overflow:auto"></pre>
     <span id=copymsg class=attach-result></span>
   </section>
   <section class=view id=view-tools>
