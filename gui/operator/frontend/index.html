@@ -82,8 +82,10 @@ noscript .fail{padding:16px;display:block}
     <div class=row id=eng-usage-fail class=fail style=display:none></div>
     <div class=acts>
       <button type=button class=primary id=btnrefresh>Refresh status</button>
+      <button type=button class=primary id=btncopyendpoint-eng>Copy endpoint</button>
       <button type=button class=primary id=btntest>Test model</button>
     </div>
+    <span id=engcopymsg class=attach-result></span>
     <div class=acts>
       <input id=pullname type=text placeholder=model autocomplete=off>
       <button type=button class=primary id=btnpull>Pull</button>
@@ -150,4 +152,3 @@ noscript .fail{padding:16px;display:block}
 <script src="app-ui.js"></script>
 <script src="space-invaders.js"></script>
 </body></html>
-
