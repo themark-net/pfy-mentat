@@ -1,1 +1,10 @@
-__CURSOR_WORKSPACE_FILE__:/workspace/FINAL_content.txt
+#!/usr/bin/env bash
+# scripts/pfy — self-extracting operator surface (#161). Expands beside this file so ROOT resolves.
+set -euo pipefail
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BODY="$DIR/.pfy.expanded.sh"
+base64 -d <<'PFY_PAYLOAD_B64' | gzip -dc >"$BODY"
+PLACEHOLDER_B64
+PFY_PAYLOAD_B64
+chmod +x "$BODY"
+exec bash "$BODY" "$@"
