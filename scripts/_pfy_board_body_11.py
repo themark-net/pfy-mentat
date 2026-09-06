@@ -16,7 +16,7 @@ if tid in ("write-guard", "write_guard"):
     return {"ok": False, "live": "FAIL", "copy": "FAIL tools", "error": "unknown toggle", "id": tid}
 
 def start_sidecar(hid):
-    """Spawn grok/opencode as a separate process. OpenCode uses the live local endpoint."""
+    """Spawn grok/opencode as a separate process. OpenCode re-probes FreeToken-first (#171)."""
     hid = (hid or "").strip()
     if not hid:
         hid = active_harness("grok")

@@ -43,11 +43,12 @@ def open_enterable_opencode_session(
     active_harness_setter=None,
     stub_line="",
 ):
-    """Attach OpenCode + open/focus enterable terminal session. Cite #162.
+    """Attach OpenCode + open/focus enterable terminal session. Cite #162/#171.
 
-    ok=True with session_reach only when a real enterable surface is up.
+    Re-probes FreeToken-first detect immediately before open (#171).
+    ok=True with session_reach only when a real enterable surface is up
+    against the live detect base (not a stale Launch/Ollama pin alone).
     Tracks the real terminal/session pid (not a short-lived wrapper).
-    Does not FAIL while an enterable OpenCode session is actually alive.
     """
     ROOT = Path(ROOT)
     STATE = Path(STATE)
@@ -64,24 +65,50 @@ def open_enterable_opencode_session(
             "error": "opencode missing",
             "session_reach": "FAIL",
         }
-    base, _det = live_openai_base()
-    if not base:
+    base, det = live_openai_base()
+    status = str((det or {}).get("status") or "").strip().lower()
+    engine = str((det or {}).get("engine") or "").strip() or "none"
+    next_step = "Launch env or ./pfy up"
+    if not base or status != "ready":
         clear_session_reach(STATE)
+        reason = "no local engine" if status != "ready" else "no live local endpoint"
+        copy = "FAIL attach — %s · %s" % (reason, next_step)
         return {
             "ok": False,
             "id": hid,
             "live": "FAIL",
-            "copy": stub,
-            "error": "no live local endpoint",
+            "copy": copy,
+            "error": reason,
             "session_reach": "FAIL",
+            "next_step": next_step,
+            "next_steps": [{"id": "next", "label": next_step, "value": next_step}],
+            "engine": engine,
+            "detect_status": status or "missing",
         }
 
-    # Reuse recorded terminal/session pid only if still enterable (alive + focusable preferred)
+    attach_base_path = STATE / "opencode-attach-base"
+    prev_base = ""
+    try:
+        if attach_base_path.is_file():
+            prev_base = attach_base_path.read_text(encoding="utf-8", errors="replace").strip()
+    except OSError:
+        prev_base = ""
+
+    # Reuse only when still alive AND bound to the same FreeToken-first detect base (#171).
+    # If FreeToken now preferred and prior session was Ollama (or base drifted), clear and re-spawn.
     term_pid = read_terminal_pid(STATE)
     real = resolve_enterable_pid(bin_path, term_pid, pid_alive) if term_pid else 0
-    if real and pid_alive(real):
+    if real and pid_alive(real) and prev_base and prev_base != base:
+        clear_session_reach(STATE)
+        try:
+            if attach_base_path.is_file():
+                attach_base_path.unlink()
+        except OSError:
+            pass
+        real = 0
+        term_pid = 0
+    if real and pid_alive(real) and prev_base == base:
         focused = _focus_pid(real)
-        # Alive enterable session counts even if focus helpers missing
         write_session_reach(STATE, SESSION_REACH_OK)
         write_terminal_pid(STATE, real)
         if active_harness_setter:
@@ -95,9 +122,10 @@ def open_enterable_opencode_session(
             "sidecar": True,
             "session_reach": SESSION_REACH_OK,
             "focused": bool(focused),
-            "copy": "attached opencode pid %s · %s" % (real, SESSION_REACH_OK),
+            "copy": "attached opencode pid %s · %s · %s" % (real, SESSION_REACH_OK, engine),
             "error": "",
             "base_url": base,
+            "engine": engine,
         }
 
     models = inspect_models(base)
@@ -127,6 +155,9 @@ def open_enterable_opencode_session(
                 continue
             k, v = s.split("=", 1)
             env[k.strip()] = v.strip().strip("'\"")
+    # #171: detect base wins over tools-model.env / stale shell Ollama pin
+    env["LOCAL_OPENAI_BASE_URL"] = base
+    env["OPENAI_BASE_URL"] = base
     env["GROK_HOME"] = str(grok_home())
     log = STATE / "sidecar-opencode.log"
     ok, pid, err = spawn_terminal_opencode(bin_path, str(ROOT), env, log, pid_alive)
@@ -145,6 +176,11 @@ def open_enterable_opencode_session(
             except OSError:
                 pass
         record_last_verb("start opencode")
+        try:
+            STATE.mkdir(parents=True, exist_ok=True)
+            attach_base_path.write_text(base + "\n", encoding="utf-8")
+        except OSError:
+            pass
         return {
             "ok": True,
             "id": hid,
@@ -156,10 +192,16 @@ def open_enterable_opencode_session(
             "model": model,
             "session_reach": SESSION_REACH_OK,
             "focused": bool(focused),
-            "copy": "attached opencode pid %s · %s" % (real, SESSION_REACH_OK),
+            "copy": "attached opencode pid %s · %s · %s" % (real, SESSION_REACH_OK, engine),
             "error": "",
+            "engine": engine,
         }
     clear_session_reach(STATE)
+    try:
+        if attach_base_path.is_file():
+            attach_base_path.unlink()
+    except OSError:
+        pass
     return {
         "ok": False,
         "id": hid,
