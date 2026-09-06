@@ -116,6 +116,7 @@ async function runEnv(){
     if(j && j.ok){
       const c=j.copy||((j.live||'')==='SKIP'?'SKIP env':'PASS env');
       paintLaunch(c, c.indexOf('SKIP')===0?'muted':(c.indexOf('PASS')===0?'ok':''));
+      if(j.session_reach) paintSessionReach(j.session_reach);
     }else{
       paintLaunch('FAIL '+(j && (j.copy||j.error)||'env'),'fail');
     }
