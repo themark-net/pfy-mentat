@@ -1,80 +1,96 @@
-        env["PYTHONPATH"] = str(wg / "src") + os.pathsep + env.get("PYTHONPATH", "")
-        env["WRITE_GUARD_MODE"] = "enforce"
-        env["WRITE_GUARD_ROOTS"] = str(ROOT)
-        policy = wg / "policy.default.yaml"
-        if policy.is_file():
-            env["WRITE_GUARD_POLICY"] = str(policy)
-        probe = ROOT / "README.md"
-        if not probe.is_file():
-            probe = wg / "README.md"
-        try:
-            p = subprocess.run(
-                ["python3", "-m", "write_guard", "check", "--path", str(probe), "--op", "write", "--mode", "enforce"],
-                cwd=str(ROOT), capture_output=True, text=True, timeout=20.0, env=env,
-            )
-            rc, out = p.returncode, (p.stdout or "") + (("\n" + p.stderr) if p.stderr else "")
-        except (OSError, subprocess.TimeoutExpired) as e:
-            rc, out = 1, str(e)
-        if rc != 0:
-            return False, (out or "write-guard check failed")[-300:]
-        upsert_env_file(TOOLS_ENV, {"WRITE_GUARD_MODE": "enforce", "WRITE_GUARD_ROOTS": str(ROOT)})
-        (STATE / "write-guard-mode").write_text("enforce\n", encoding="utf-8")
+
+    seen = set()
+    out = []
+    for line in lines:
+        s = line.strip()
+        key = ""
+        raw = s[7:].strip() if s.startswith("export ") else s
+        if raw and not raw.startswith("#") and "=" in raw:
+            key = raw.split("=", 1)[0].strip()
+        if key in updates:
+            out.append("%s=%s" % (key, updates[key]))
+            seen.add(key)
+        else:
+            out.append(line)
+    for key, val in updates.items():
+        if key not in seen:
+            out.append("%s=%s" % (key, val))
+    path.write_text("\n".join(out) + "\n", encoding="utf-8")
+
+def patch_toml_section_enabled(path, section, enabled):
+    if not path.is_file():
+        return False
+    text = path.read_text(encoding="utf-8")
+    header = "[" + section + "]"
+    if header not in text:
+        return False
+    parts = text.split(header, 1)
+    body = parts[1]
+    nxt = body.find("\n[")
+    chunk, rest = (body[:nxt], body[nxt:]) if nxt >= 0 else (body, "")
+    if "enabled = true" in chunk or "enabled = false" in chunk:
+        chunk = chunk.replace("enabled = true", "enabled = " + ("true" if enabled else "false"), 1)
+        if enabled:
+            chunk = chunk.replace("enabled = false", "enabled = true", 1)
+        else:
+            chunk = chunk.replace("enabled = true", "enabled = false", 1)
+    else:
+        chunk = chunk.rstrip() + "\nenabled = " + ("true" if enabled else "false") + "\n"
+    path.write_text(parts[0] + header + chunk + rest, encoding="utf-8")
+    return True
+
+def apply_mcp(want):
+    if want:
+        if not MCP_FRAGMENT.is_file():
+            return False, "mcp recipe missing"
+        if not MERGE_PY.is_file():
+            return False, "mcp merge missing"
+        STATE.mkdir(parents=True, exist_ok=True)
+        targets = [STATE_GROK, grok_config_path()]
+        last_err = ""
+        applied = False
+        for dest in targets:
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            rc, out = _run(["python3", str(MERGE_PY), "--config", str(dest), "--no-backup"], timeout=20.0)
+            if rc != 0:
+                last_err = (out or "mcp merge failed")[-300:]
+                continue
+            text = dest.read_text(encoding="utf-8", errors="replace") if dest.is_file() else ""
+            if "mcp_servers.codebase-memory" not in text:
+                last_err = "mcp not in config"
+                continue
+            applied = True
+        if not applied:
+            return False, last_err or "mcp merge failed"
         return True, ""
     for dest in (STATE_GROK, grok_config_path()):
-        patch_toml_section_enabled(dest, "mcp_servers.write-guard", False)
-    upsert_env_file(TOOLS_ENV, {"WRITE_GUARD_MODE": "off"}) if TOOLS_ENV.parent.is_dir() or TOOLS_ENV.is_file() else None
-    (STATE / "write-guard-mode").write_text("off\n", encoding="utf-8")
-    yml = STATE / "mcp-servers.write-guard.yaml"
-    if yml.is_file():
-        yml.write_text(yml.read_text(encoding="utf-8").replace("enabled: true", "enabled: false"), encoding="utf-8")
+        patch_toml_section_enabled(dest, "mcp_servers.codebase-memory", False)
     return True, ""
 
-def apply_extra_tools(want):
-    name = local_tools_model()
-    mode = "local_tools" if want else "split"
-    if want and not name:
-        return False, "no local tools model"
-    STATE.mkdir(parents=True, exist_ok=True)
-    updates = {"TOOLS_MODE": mode}
-    if name:
-        updates["LOCAL_TOOLS_MODEL"] = name
-    upsert_env_file(TOOLS_ENV, updates)
-    text = TOOLS_ENV.read_text(encoding="utf-8") if TOOLS_ENV.is_file() else ""
-    if ("TOOLS_MODE=" + mode) not in text.replace("export ", ""):
-        return False, "tools-model.env not applied"
-    if want and "LOCAL_TOOLS_MODEL=" not in text.replace("export ", ""):
-        return False, "LOCAL_TOOLS_MODEL not applied"
-    (STATE / "tools-mode").write_text(mode + "\n", encoding="utf-8")
-    return True, ""
-
-def set_tool(tid, on):
-    tid = (tid or "").strip()
-    st = load_tools_state()
-    want = bool(on)
-    if tid in SKILL_IDS:
-        skill = SKILLS_ROOT / tid / "SKILL.md"
-        if want and not skill.is_file():
-            return {"ok": False, "live": "FAIL", "copy": "FAIL " + tid, "error": tid + " missing", "id": tid}
-        st["skills"][tid] = want
-        dest, enabled = apply_skills_dir(st)
-        if dest is None:
-            return {"ok": False, "live": "FAIL", "copy": "FAIL " + tid, "error": enabled, "id": tid}
-        save_tools_state(st)
-        copy = ("ON " if want else "OFF ") + tid
-        return {"ok": True, "live": "PASS", "copy": copy, "id": tid, "on": want, "tools": st}
-    if tid == "mcp":
-        ok, err = apply_mcp(want)
-        if not ok:
-            return {"ok": False, "live": "FAIL", "copy": "FAIL mcp", "error": err, "id": tid}
-        st["mcp"] = want
-        save_tools_state(st)
-        (STATE / "mcp-on").write_text("1\n" if want else "0\n", encoding="utf-8")
-        return {"ok": True, "live": "PASS", "copy": ("ON " if want else "OFF ") + "mcp", "id": tid, "on": want, "tools": st}
-    if tid in ("write-guard", "write_guard"):
-        ok, err = apply_write_guard(want)
-        if not ok:
-            return {"ok": False, "live": "FAIL", "copy": "FAIL write-guard", "error": err, "id": "write-guard"}
-        st["write_guard"] = want
-        save_tools_state(st)
-        return {"ok": True, "live": "PASS", "copy": ("ON " if want else "OFF ") + "write-guard", "id": "write-guard", "on": want, "tools": st}
-    if 
+def apply_write_guard(want):
+    wg = write_guard_root()
+    if want:
+        if wg is None or not (wg / "src" / "write_guard").is_dir():
+            return False, "write-guard missing"
+        if not WG_OVERLAY.is_file():
+            return False, "write-guard overlay missing"
+        STATE.mkdir(parents=True, exist_ok=True)
+        overlay = WG_OVERLAY.read_text(encoding="utf-8")
+        overlay = overlay.replace("enabled: false", "enabled: true").replace("WRITE_GUARD_MODE: audit", "WRITE_GUARD_MODE: enforce")
+        overlay = overlay.replace("PYTHONPATH: /workspace/.venvs/write-guard-smoke/lib/python3.12/site-packages", "PYTHONPATH: " + str(wg / "src"))
+        overlay = overlay.replace("WRITE_GUARD_ROOTS: /workspace", "WRITE_GUARD_ROOTS: " + str(ROOT))
+        (STATE / "mcp-servers.write-guard.yaml").write_text(overlay, encoding="utf-8")
+        cage = Path.home() / ".agentcage"
+        try:
+            cage.mkdir(parents=True, exist_ok=True)
+            (cage / "mcp-servers.write-guard.yaml").write_text(overlay, encoding="utf-8")
+        except OSError:
+            pass
+        gpath = grok_config_path()
+        block = (
+            "\n[mcp_servers.write-guard]\n"
+            'command = "python3"\n'
+            'args = ["-m", "write_guard", "serve"]\n'
+            "enabled = true\n"
+        )
+        for dest

@@ -1,120 +1,124 @@
-(str(pid) + chr(10), encoding="utf-8")
+)
 
-def sidecar_pid_live():
-    for hid in ("opencode", "grok"):
-        path = STATE / ("sidecar-%s.pid" % hid)
-        if not path.is_file():
-            continue
-        try:
-            pid = int(path.read_text(encoding="utf-8", errors="replace").strip())
-        except ValueError:
-            continue
-        if pid_alive(pid):
-            return pid
+def which_bin(*names):
+    for n in names:
+        found = shutil.which(n)
+        if found:
+            return found
     return ""
 
-def record_last_verb(verb):
-    STATE.mkdir(parents=True, exist_ok=True)
-    when = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    (STATE / "last-verb").write_text("verb: %s\nwhen: %s\n" % (verb, when), encoding="utf-8")
 
-def opencode_stub_line():
-    rec = next((h for h in (load_registry().get("harnesses") or []) if h.get("id") == "opencode"), {}) or {}
-    return one_liner("opencode", rec)
-
-
-def grok_stub_line():
-    rec = next((h for h in (load_registry().get("harnesses") or []) if h.get("id") == "grok"), {}) or {}
-    return one_liner("grok", rec)
-
-def grok_path_live():
-    return "ready" if which_bin("grok") else "missing"
-
-def monitor_pid_live():
-    path = STATE / "sidecar-grok.pid"
+def _load_enterable_162():
+    """Load pfy_enterable_162 or return (None, error). Cite #162."""
+    import importlib.util
+    path = ROOT / "scripts" / "pfy_enterable_162.py"
     if not path.is_file():
+        return None, str(path)
+    try:
+        spec = importlib.util.spec_from_file_location("pfy_enterable_162", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod, ""
+    except Exception as e:
+        return None, str(e)[:400]
+
+def _session_reach_live():
+    mod, err = _load_enterable_162()
+    if mod is None:
         return ""
     try:
-        pid = int(path.read_text(encoding="utf-8", errors="replace").strip())
-    except ValueError:
+        if hasattr(mod, "live_session_reach"):
+            return mod.live_session_reach(STATE, pid_alive) or ""
+        return mod.read_session_reach(STATE) or ""
+    except Exception:
         return ""
-    return pid if pid_alive(pid) else ""
 
-def last_monitor_note():
-    paths = (
-        STATE / "monitor-note",
-        ROOT / "examples" / "opencode-ollama" / ".generated" / "monitor-brief.md",
+def open_enterable_opencode_session():
+    """Attach + open/focus enterable OpenCode terminal. Cite #162."""
+    mod, err = _load_enterable_162()
+    stub = opencode_stub_line()
+    if mod is None:
+        return {
+            "ok": False, "id": "opencode", "live": "FAIL", "copy": stub,
+            "error": err or "enterable module missing", "session_reach": "FAIL",
+        }
+    def _set_active(hid):
+        (STATE / "active-harness").write_text(str(hid) + "\n", encoding="utf-8")
+    return mod.open_enterable_opencode_session(
+        ROOT=ROOT, STATE=STATE, which_bin=which_bin,
+        live_openai_base=live_openai_base, inspect_models=inspect_models,
+        write_opencode_config=write_opencode_config, load_tools_state=load_tools_state,
+        apply_skills_dir=apply_skills_dir, grok_home=grok_home, TOOLS_ENV=TOOLS_ENV,
+        record_sidecar_pid=record_sidecar_pid, record_last_verb=record_last_verb,
+        pid_alive=pid_alive, active_harness_setter=_set_active, stub_line=stub,
     )
-    for path in paths:
-        if not path.is_file():
-            continue
-        text = path.read_text(encoding="utf-8", errors="replace").strip()
-        if not text:
-            continue
-        for line in text.splitlines():
-            s = line.strip().lstrip("#").strip()
-            if not s:
-                continue
-            if s.lower().startswith("generated"):
-                continue
-            return s[:240]
-    return ""
 
-def write_monitor_note(text):
+
+def pid_alive(pid):
+    try:
+        pid = int(pid)
+    except (TypeError, ValueError):
+        return False
+    if pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+
+def live_openai_base():
+    det = detector_json()
+    base = str(det.get("base_url") or os.environ.get("LOCAL_OPENAI_BASE_URL") or "").strip()
+    if base == "(none)":
+        base = ""
+    if not base:
+        return "", det
+    b = base.rstrip("/")
+    if not b.endswith("/v1"):
+        b = b + "/v1"
+    return b, det
+
+
+def write_opencode_config(base, models):
     STATE.mkdir(parents=True, exist_ok=True)
-    (STATE / "monitor-note").write_text((text or "").strip()[:240] + "\n", encoding="utf-8")
-
-def start_monitor_sidecar():
-    stub = grok_stub_line()
-    profile = deploy_profile()
-    if profile == "local-only":
-        return {
-            "ok": False, "id": "grok", "live": "FAIL", "copy": "local-only",
-            "error": "local-only never auto-calls cloud", "role": "monitor",
+    name = ""
+    if models:
+        name = str(models[0]).strip()
+    if not name:
+        name = (os.environ.get("LOCAL_CODER_MODEL") or os.environ.get("PFY_FT_MODEL") or os.environ.get("PFY_OLLAMA_MODEL") or "local").strip() or "local"
+    opts = {}
+    opts["baseURL"] = base
+    opts["apiKey"] = "local"
+    localp = {}
+    localp["name"] = "local"
+    localp["options"] = opts
+    localp["models"] = {name: {"name": name}}
+    localp["npm"] = "@ai-sdk/openai-compatible"
+    cfg = {"provider": {"local": localp}, "model": "local/" + name}
+    tst = load_tools_state()
+    tools_name = local_tools_model()
+    if (tst.get("tools_mode") or "") == "local_tools" and tools_name:
+        name = tools_name
+        localp["models"][name] = {"name": name}
+        cfg["model"] = "local/" + name
+    mcp = {}
+    if tst.get("mcp"):
+        mcp["codebase-memory"] = {"type": "local", "command": ["codebase-memory-mcp"], "enabled": True}
+    if tst.get("write_guard"):
+        wg = write_guard_root()
+        src = str((wg / "src") if wg else "")
+        mcp["write-guard"] = {
+            "type": "local",
+            "command": ["python3", "-m", "write_guard", "serve"],
+            "enabled": True,
+            "environment": {
+                "WRITE_GUARD_MODE": "enforce",
+                "WRITE_GUARD_ROOTS": str(ROOT),
+                "PYTHONPATH": src,
+            },
         }
-    bin_path = which_bin("grok")
-    if not bin_path:
-        return {
-            "ok": False, "id": "grok", "live": "FAIL", "copy": stub,
-            "error": "grok missing", "role": "monitor",
-        }
-    brief = ROOT / "examples" / "opencode-ollama" / ".generated" / "monitor-brief.md"
-    note = last_monitor_note()
-    if not note:
-        note = "review / hard DoD"
-        if brief.is_file():
-            note = last_monitor_note() or note
-    log = STATE / "sidecar-grok.log"
-    env = os.environ.copy()
-    if brief.is_file():
-        env["PFY_MONITOR_BRIEF"] = str(brief)
-    with log.open("ab") as f:
-        proc = subprocess.Popen(
-            [bin_path],
-            cwd=str(ROOT),
-            env=env,
-            stdout=f,
-            stderr=subprocess.STDOUT,
-            start_new_session=True,
-        )
-    if not pid_alive(proc.pid):
-        err = ""
-        try:
-            err = log.read_text(encoding="utf-8", errors="replace")[-400:]
-        except Exception:
-            err = "grok exited"
-        return {
-            "ok": False, "id": "grok", "live": "FAIL", "copy": stub,
-            "error": err or "grok exited", "pid": proc.pid, "log": str(log),
-            "role": "monitor",
-        }
-    record_sidecar_pid("grok", proc.pid)
-    record_last_verb("start grok")
-    write_monitor_note("monitor pid %s · %s" % (proc.pid, note))
-    return {
-        "ok": True, "id": "grok", "live": "READY", "pid": proc.pid,
-        "sidecar": True, "log": str(log), "role": "monitor",
-        "note": last_monitor_note(),
-    }
-
-SKILL_IDS = ("one-shot", "investigate
+    if mcp:
+        cfg["mcp"] = mcp
+    path = STATE / "opencode.json"
+    path.write_text(json.dumps(cfg, indent=2) + chr(10

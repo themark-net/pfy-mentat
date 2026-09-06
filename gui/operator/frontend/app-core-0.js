@@ -104,6 +104,13 @@ async function postStart(id){
     return {ok:false,error:String(e),copy:GROK_USE,live:'FAIL'};
   }
 }
+function paintSessionReach(reach){
+  const r=(reach||'').trim()||'(none)';
+  ['loop-session','att-session'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.textContent=r;
+  });
+}
 async function attach(id){
   attachMsg='attaching '+id+'…';
   attachKind='';
@@ -112,15 +119,21 @@ async function attach(id){
     const j=await postStart(id);
     if(j && j.ok){
       const kind=(j.role==='monitor')?'monitor':id;
-      attachMsg='attached '+kind+(j.pid?(' pid '+j.pid):'');
+      const reach=(j.session_reach||'').trim();
+      attachMsg='attached '+kind+(j.pid?(' pid '+j.pid):'')+(reach?(' · '+reach):'');
       attachKind='ok';
+      if(reach) paintSessionReach(reach);
+      else if(id==='opencode') paintSessionReach('FAIL');
     }else{
-      attachMsg='FAIL Attach '+id+' — '+(j && (j.copy||j.error)||GROK_USE);
+      const detail=(j && (j.copy||j.error))||GROK_USE;
+      attachMsg='FAIL Attach '+id+' — '+detail;
       attachKind='fail';
+      if(id==='opencode') paintSessionReach((j&&j.session_reach)||'FAIL');
     }
   }catch(e){
     attachMsg='FAIL Attach '+id+' — '+GROK_USE;
     attachKind='fail';
+    if(id==='opencode') paintSessionReach('FAIL');
   }
   paintAttach();
   await tick();

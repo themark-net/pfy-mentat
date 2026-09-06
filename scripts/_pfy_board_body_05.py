@@ -1,4 +1,26 @@
-nch_env():
+ "PASS", "copy": "PASS eval", "stdout": str(text).strip()[:400]}
+
+def pull_model(name):
+    # Live-engine pull: FreeToken records; Ollama pulls; llama skip honest.
+    name = (name or "").strip()
+    if not name:
+        return {"ok": False, "live": "FAIL", "copy": "FAIL pull", "error": "no name"}
+    if not PFY.is_file():
+        return {"ok": False, "live": "FAIL", "copy": "FAIL pull", "error": "scripts/pfy missing"}
+    rc, out = _run(["bash", str(PFY), "models", "pull", name], timeout=180.0)
+    blob = (out or "")
+    low = blob.lower()
+    if rc != 0:
+        return {
+            "ok": False, "live": "FAIL", "copy": "FAIL pull",
+            "error": (blob or "pull failed")[-400:],
+            "stdout": blob[-800:],
+        }
+    if "honest skip" in low or "has no pull" in low or "no local engine" in low:
+        return {"ok": True, "live": "SKIP", "copy": "SKIP pull", "stdout": blob[-800:]}
+    return {"ok": True, "live": "PASS", "copy": "PASS pull", "stdout": blob[-800:]}
+
+def launch_env():
     """Same path as bare ./pfy before the window: inference then env-stage. No harness exec.
 
     Always record_last_verb so LOOP last/timestamp refresh even when already up.
@@ -18,7 +40,21 @@ nch_env():
             spec = importlib.util.spec_from_file_location("pfy_verify_159", path)
             mod = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(mod)
-            return mod.enrich_launch_env(res, live_openai_base, STATE, ROOT)
+            enriched = mod.enrich_launch_env(res, live_openai_base, STATE, ROOT)
+            emod, eerr = _load_enterable_162()
+            if emod is None:
+                out = dict(enriched or {})
+                steps = list(out.get("next_steps") or [])
+                reason = "SKIP enterable session · module missing"
+                steps.append({"id": "enterable", "label": reason, "value": reason})
+                out["next_steps"] = steps
+                out["session_reach"] = "SKIP"
+                out["enterable"] = False
+                what = str(out.get("what") or "")
+                if "enterable" not in what.lower():
+                    out["what"] = (what + " · " + reason).strip(" ·")
+                return out
+            return emod.arm_launch_env_session(enriched, open_enterable_opencode_session)
         except Exception as e:
             out = dict(res or {})
             out["ok"] = False
@@ -52,91 +88,4 @@ nch_env():
         "ok": True, "live": "PASS", "copy": "PASS env",
         "error": "",
         "stdout": blob[-800:],
-    })
-
-def which_bin(*names):
-    for n in names:
-        found = shutil.which(n)
-        if found:
-            return found
-    return ""
-
-def pid_alive(pid):
-    try:
-        pid = int(pid)
-    except (TypeError, ValueError):
-        return False
-    if pid <= 0:
-        return False
-    try:
-        os.kill(pid, 0)
-        return True
-    except OSError:
-        return False
-
-def live_openai_base():
-    det = detector_json()
-    base = str(det.get("base_url") or os.environ.get("LOCAL_OPENAI_BASE_URL") or "").strip()
-    if base == "(none)":
-        base = ""
-    if not base:
-        return "", det
-    b = base.rstrip("/")
-    if not b.endswith("/v1"):
-        b = b + "/v1"
-    return b, det
-
-
-def write_opencode_config(base, models):
-    STATE.mkdir(parents=True, exist_ok=True)
-    name = ""
-    if models:
-        name = str(models[0]).strip()
-    if not name:
-        name = (os.environ.get("LOCAL_CODER_MODEL") or os.environ.get("PFY_FT_MODEL") or os.environ.get("PFY_OLLAMA_MODEL") or "local").strip() or "local"
-    opts = {}
-    opts["baseURL"] = base
-    opts["apiKey"] = "local"
-    localp = {}
-    localp["name"] = "local"
-    localp["options"] = opts
-    localp["models"] = {name: {"name": name}}
-    localp["npm"] = "@ai-sdk/openai-compatible"
-    cfg = {"provider": {"local": localp}, "model": "local/" + name}
-    tst = load_tools_state()
-    tools_name = local_tools_model()
-    if (tst.get("tools_mode") or "") == "local_tools" and tools_name:
-        name = tools_name
-        localp["models"][name] = {"name": name}
-        cfg["model"] = "local/" + name
-    mcp = {}
-    if tst.get("mcp"):
-        mcp["codebase-memory"] = {"type": "local", "command": ["codebase-memory-mcp"], "enabled": True}
-    if tst.get("write_guard"):
-        wg = write_guard_root()
-        src = str((wg / "src") if wg else "")
-        mcp["write-guard"] = {
-            "type": "local",
-            "command": ["python3", "-m", "write_guard", "serve"],
-            "enabled": True,
-            "environment": {
-                "WRITE_GUARD_MODE": "enforce",
-                "WRITE_GUARD_ROOTS": str(ROOT),
-                "PYTHONPATH": src,
-            },
-        }
-    if mcp:
-        cfg["mcp"] = mcp
-    path = STATE / "opencode.json"
-    path.write_text(json.dumps(cfg, indent=2) + chr(10), encoding="utf-8")
-    gen = ROOT / "examples" / "opencode-ollama" / ".generated" / "opencode.json"
-    try:
-        gen.parent.mkdir(parents=True, exist_ok=True)
-        gen.write_text(json.dumps(cfg, indent=2) + chr(10), encoding="utf-8")
-    except OSError:
-        pass
-    return path, name
-
-def record_sidecar_pid(hid, pid):
-    STATE.mkdir(parents=True, exist_ok=True)
-    (STATE / ("sidecar-%s.pid" % hid)).write_text
+    }

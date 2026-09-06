@@ -1,113 +1,92 @@
-state="normal")
-        except Exception:
-            pass
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def done_si_open(self, res):
+        cur = dict(getattr(self, "_last_si", {}) or {})
+        cur.update(res or {})
+        self._last_si = cur
         if res.get("ok"):
-            copy = res.get("copy") or "PASS pull"
-            self.paint_pull(copy, False)
+            self.paint_si_open(res.get("copy") or "PASS Open game", False)
+            if res.get("abs_path"):
+                self.siabs.configure(text="abs " + str(res.get("abs_path") or ""))
+            if res.get("rel") or res.get("path"):
+                self.sirel.configure(text="rel " + str(res.get("rel") or res.get("path") or ""))
         else:
-            self.paint_pull("FAIL " + (res.get("copy") or res.get("error") or "pull"), True)
+            self.paint_si_open(res.get("copy") or ("FAIL Open game · " + str(res.get("error") or "")), True)
         self.refresh(user=True)
 
-    def paint_env(self, text, fail=False):
-        self.est.configure(text=text, style="F.TLabel" if fail else "Ok.TLabel")
+    def open_si_folder(self):
+        self.paint_si_open("opening folder…", False)
+        def work():
+            try:
+                res = self.board.open_space_invaders_folder() if self.board else {"ok": False, "copy": "FAIL Open folder · no board", "error": "no board"}
+            except Exception as e:
+                res = {"ok": False, "copy": "FAIL Open folder", "error": str(e)}
+            self.root.after(0, lambda: self.done_si_open(res))
+        threading.Thread(target=work, daemon=True).start()
 
-    def launch_env(self):
-        self.paint_env("launching env…", False)
+    def copy_si_task(self):
+        self.paint_si_open("copying TASK…", False)
+        def work():
+            try:
+                res = self.board.space_invaders_task() if self.board else {"ok": False, "copy": "FAIL Copy TASK · no board", "error": "no board", "task_text": ""}
+            except Exception as e:
+                res = {"ok": False, "copy": "FAIL Copy TASK", "error": str(e), "task_text": ""}
+            self.root.after(0, lambda: self.done_si_task(res))
+        threading.Thread(target=work, daemon=True).start()
+
+    def done_si_task(self, res):
+        text = str((res or {}).get("task_text") or (res or {}).get("value") or "")
+        preview = text if len(text) <= 240 else text[:240] + "…"
+        cur = dict(getattr(self, "_last_si", {}) or {})
+        cur.update(res or {})
+        if text:
+            cur["task_text"] = text
+        self._last_si = cur
+        if preview:
+            self.sitask.configure(text=preview)
+        if not (res or {}).get("ok"):
+            self.paint_si_open((res or {}).get("copy") or "FAIL Copy TASK", True)
+            self.refresh(user=True)
+            return
+        self._clip(text, self.paint_si_open, res.get("copy") or "PASS Copy TASK", "FAIL clipboard — select TASK")
+        self.refresh(user=True)
+
+    def copy_endpoint(self):
+        res = self._last_env or {}
+        val = str(res.get("base_url") or "")
+        if not val:
+            for s in (res.get("next_steps") or []):
+                if (s or {}).get("id") == "endpoint":
+                    val = str(s.get("value") or "")
+                    break
+        self._clip(val, self.paint_env, "PASS Copy endpoint", "FAIL no endpoint" if not val else "FAIL clipboard — select endpoint")
+
+    def copy_pfy_status(self):
+        res = self._last_env or {}
+        val = "./pfy status"
+        for s in (res.get("next_steps") or []):
+            if (s or {}).get("id") == "status" and s.get("value"):
+                val = str(s.get("value"))
+                break
+        self._clip(val, self.paint_env, "PASS Copy ./pfy status", "FAIL clipboard — select status")
+
+    def paint_stage(self, text, fail=False):
+        self.sst.configure(text=text, style="F.TLabel" if fail else "Ok.TLabel")
+
+    def paint_eval(self, text, fail=False):
+        self.tst.configure(text=text, style="F.TLabel" if fail else "Ok.TLabel")
+
+    def test_model(self):
+        self.paint_eval("testing…", False)
         self.meta.configure(text="refreshing…")
         try:
-            self.benv.configure(state="disabled")
+            self.btest.configure(state="disabled")
         except Exception:
             pass
         def work():
             try:
                 if self.board is None:
-                    res = {"ok": False, "copy": "FAIL env", "error": "no board"}
+                    res = {"ok": False, "copy": "FAIL eval", "error": "no board"}
                 else:
-                    res = self.board.launch_env()
-            except Exception as e:
-                res = {"ok": False, "copy": "FAIL env", "error": str(e)}
-            self.root.after(0, lambda r=res: self.done_env(r))
-        threading.Thread(target=work, daemon=True).start()
-
-    def done_env(self, res):
-        try:
-            self.benv.configure(state="normal")
-        except Exception:
-            pass
-        self._last_env = res or {}
-        what = str((res or {}).get("what") or "")
-        if what:
-            self.ewhat.configure(text=what)
-        if res.get("ok"):
-            copy = res.get("copy") or ("SKIP env" if str(res.get("live") or "") == "SKIP" else "PASS env")
-            if str(copy).startswith("SKIP"):
-                self.est.configure(text=copy, style="M.TLabel")
-            else:
-                self.paint_env(copy, False)
-        else:
-            self.paint_env("FAIL " + (res.get("copy") or res.get("error") or "env"), True)
-        self.refresh(user=True)
-
-    def run_stage(self):
-        self.paint_stage("running env-stage…", False)
-        self.meta.configure(text="refreshing…")
-        try:
-            self.bstage.configure(state="disabled")
-        except Exception:
-            pass
-        def work():
-            try:
-                if self.board is None:
-                    res = {"ok": False, "copy": "FAIL env-stage", "error": "no board"}
-                else:
-                    res = self.board.run_stage()
-            except Exception as e:
-                res = {"ok": False, "copy": "FAIL env-stage", "error": str(e)}
-            self.root.after(0, lambda r=res: self.done_stage(r))
-        threading.Thread(target=work, daemon=True).start()
-
-    def done_stage(self, res):
-        try:
-            self.bstage.configure(state="normal")
-        except Exception:
-            pass
-        if res.get("ok"):
-            copy = res.get("copy") or "PASS env-stage"
-            if str(copy).startswith("SKIP"):
-                self.sst.configure(text=copy, style="M.TLabel")
-            else:
-                self.paint_stage(copy, False)
-        else:
-            self.paint_stage("FAIL " + (res.get("copy") or res.get("error") or "env-stage"), True)
-        self.refresh(user=True)
-
-    def paint_refresh(self, text, fail=False, skip=False):
-        style = "M.TLabel" if skip else ("F.TLabel" if fail else "Ok.TLabel")
-        self.rst.configure(text=text, style=style)
-
-    def refresh_now(self):
-        if self.busy:
-            self.paint_refresh("SKIP refresh", fail=False, skip=True)
-        else:
-            self.paint_refresh("refreshing…", False)
-        self.refresh(user=True)
-
-    def refresh(self, user=False):
-        if self.board is None:
-            if user:
-                self.meta.configure(text="FAIL refresh")
-                self.fail.configure(text="FAIL  " + GROK_USE)
-                self.paint_refresh("FAIL refresh", True)
-            return
-        if self.busy:
-            if user:
-                self.pending_user = True
-                self.meta.configure(text="refreshing…")
-                try:
-                    self.brefresh.configure(state="disabled")
-                except Exception:
-                    pass
-            return
-        self.busy = True
-        if user:
-            self.m
+     

@@ -1,94 +1,81 @@
-tid in ("extra-tools", "local_tools", "tools_mode"):
-        ok, err = apply_extra_tools(want)
-        if not ok:
-            return {"ok": False, "live": "FAIL", "copy": "FAIL extra tools", "error": err, "id": "extra-tools"}
-        st["tools_mode"] = "local_tools" if want else "split"
-        save_tools_state(st)
-        copy = "ON extra tools" if want else "OFF extra tools"
-        return {"ok": True, "live": "PASS", "copy": copy, "id": "extra-tools", "on": want, "tools": st}
-    return {"ok": False, "live": "FAIL", "copy": "FAIL tools", "error": "unknown toggle", "id": tid}
-
-def start_sidecar(hid):
-    """Spawn grok/opencode as a separate process. OpenCode uses the live local endpoint."""
-    hid = (hid or "").strip()
-    if not hid:
-        hid = active_harness("grok")
-    cur = active_harness("grok")
-    if cur in STUB_ALWAYS:
-        return {
-            "ok": False, "id": hid, "live": "FAIL", "copy": GROK_USE,
-            "error": f"{cur} is active — no grok/opencode fallback",
-        }
-    if hid in STUB_ALWAYS:
-        return {
-            "ok": False, "id": hid, "live": "FAIL", "copy": GROK_USE,
-            "error": f"{hid} is not startable from the window",
-        }
-    if hid not in SIDECAR_OK:
-        return {
-            "ok": False, "id": hid, "live": "FAIL", "copy": GROK_USE,
-            "error": f"{hid} is not a sidecar",
-        }
-    STATE.mkdir(parents=True, exist_ok=True)
-    if hid == "grok":
-        return start_monitor_sidecar()
-    if hid == "opencode":
-        bin_path = which_bin("opencode", "opencode-cli")
-        stub = opencode_stub_line()
-        if not bin_path:
-            return {
-                "ok": False, "id": hid, "live": "FAIL", "copy": stub,
-                "error": "opencode missing",
-            }
-        base, _det = live_openai_base()
-        if not base:
-            return {
-                "ok": False, "id": hid, "live": "FAIL", "copy": stub,
-                "error": "no live local endpoint",
-            }
-        models = inspect_models(base)
-        cfg_path, model = write_opencode_config(base, models)
-        skills = ROOT / "bootstrap" / "grok-cli" / "skills"
+ in (STATE_GROK, gpath):
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            cur = dest.read_text(encoding="utf-8") if dest.is_file() else ""
+            if "[mcp_servers.write-guard]" not in cur:
+                dest.write_text(cur.rstrip() + block + "\n", encoding="utf-8")
+            else:
+                patch_toml_section_enabled(dest, "mcp_servers.write-guard", True)
         env = os.environ.copy()
-        env["LOCAL_OPENAI_BASE_URL"] = base
-        env["OPENAI_BASE_URL"] = base
-        env["OPENAI_API_KEY"] = env.get("OPENAI_API_KEY") or "local"
-        env["OPENCODE_CONFIG"] = str(cfg_path)
-        tst = load_tools_state()
-        dest, _enabled = apply_skills_dir(tst)
-        if dest is not None:
-            env["OPENCODE_SKILLS"] = str(dest)
-        elif skills.is_dir():
-            env["OPENCODE_SKILLS"] = str(skills)
-        env["TOOLS_MODE"] = str(tst.get("tools_mode") or "split")
-        env["WRITE_GUARD_MODE"] = "enforce" if tst.get("write_guard") else "off"
-        env["PFY_MCP"] = "1" if tst.get("mcp") else "0"
-        if TOOLS_ENV.is_file():
-            for line in TOOLS_ENV.read_text(encoding="utf-8", errors="replace").splitlines():
-                s = line.strip()
-                if s.startswith("export "):
-                    s = s[7:].strip()
-                if not s or s.startswith("#") or "=" not in s:
-                    continue
-                k, v = s.split("=", 1)
-                env[k.strip()] = v.strip().strip("'\"")
-        env["GROK_HOME"] = str(grok_home())
-        log = STATE / "sidecar-opencode.log"
-        with log.open("ab") as f:
-            proc = subprocess.Popen(
-                [bin_path],
-                cwd=str(ROOT),
-                env=env,
-                stdout=f,
-                stderr=subprocess.STDOUT,
-                start_new_session=True,
+        env["PYTHONPATH"] = str(wg / "src") + os.pathsep + env.get("PYTHONPATH", "")
+        env["WRITE_GUARD_MODE"] = "enforce"
+        env["WRITE_GUARD_ROOTS"] = str(ROOT)
+        policy = wg / "policy.default.yaml"
+        if policy.is_file():
+            env["WRITE_GUARD_POLICY"] = str(policy)
+        probe = ROOT / "README.md"
+        if not probe.is_file():
+            probe = wg / "README.md"
+        try:
+            p = subprocess.run(
+                ["python3", "-m", "write_guard", "check", "--path", str(probe), "--op", "write", "--mode", "enforce"],
+                cwd=str(ROOT), capture_output=True, text=True, timeout=20.0, env=env,
             )
-        if not pid_alive(proc.pid):
-            err = ""
-            try:
-                err = log.read_text(encoding="utf-8", errors="replace")[-400:]
-            except Exception:
-                err = "opencode exited"
-            return {
-                "ok": False, "id": hid, "live": "FAIL", "copy": stub,
-                "error": err or "opencode exited", "pid": proc.pid, "log"
+            rc, out = p.returncode, (p.stdout or "") + (("\n" + p.stderr) if p.stderr else "")
+        except (OSError, subprocess.TimeoutExpired) as e:
+            rc, out = 1, str(e)
+        if rc != 0:
+            return False, (out or "write-guard check failed")[-300:]
+        upsert_env_file(TOOLS_ENV, {"WRITE_GUARD_MODE": "enforce", "WRITE_GUARD_ROOTS": str(ROOT)})
+        (STATE / "write-guard-mode").write_text("enforce\n", encoding="utf-8")
+        return True, ""
+    for dest in (STATE_GROK, grok_config_path()):
+        patch_toml_section_enabled(dest, "mcp_servers.write-guard", False)
+    upsert_env_file(TOOLS_ENV, {"WRITE_GUARD_MODE": "off"}) if TOOLS_ENV.parent.is_dir() or TOOLS_ENV.is_file() else None
+    (STATE / "write-guard-mode").write_text("off\n", encoding="utf-8")
+    yml = STATE / "mcp-servers.write-guard.yaml"
+    if yml.is_file():
+        yml.write_text(yml.read_text(encoding="utf-8").replace("enabled: true", "enabled: false"), encoding="utf-8")
+    return True, ""
+
+def apply_extra_tools(want):
+    name = local_tools_model()
+    mode = "local_tools" if want else "split"
+    if want and not name:
+        return False, "no local tools model"
+    STATE.mkdir(parents=True, exist_ok=True)
+    updates = {"TOOLS_MODE": mode}
+    if name:
+        updates["LOCAL_TOOLS_MODEL"] = name
+    upsert_env_file(TOOLS_ENV, updates)
+    text = TOOLS_ENV.read_text(encoding="utf-8") if TOOLS_ENV.is_file() else ""
+    if ("TOOLS_MODE=" + mode) not in text.replace("export ", ""):
+        return False, "tools-model.env not applied"
+    if want and "LOCAL_TOOLS_MODEL=" not in text.replace("export ", ""):
+        return False, "LOCAL_TOOLS_MODEL not applied"
+    (STATE / "tools-mode").write_text(mode + "\n", encoding="utf-8")
+    return True, ""
+
+def set_tool(tid, on):
+    tid = (tid or "").strip()
+    st = load_tools_state()
+    want = bool(on)
+    if tid in SKILL_IDS:
+        skill = SKILLS_ROOT / tid / "SKILL.md"
+        if want and not skill.is_file():
+            return {"ok": False, "live": "FAIL", "copy": "FAIL " + tid, "error": tid + " missing", "id": tid}
+        st["skills"][tid] = want
+        dest, enabled = apply_skills_dir(st)
+        if dest is None:
+            return {"ok": False, "live": "FAIL", "copy": "FAIL " + tid, "error": enabled, "id": tid}
+        save_tools_state(st)
+        copy = ("ON " if want else "OFF ") + tid
+        return {"ok": True, "live": "PASS", "copy": copy, "id": tid, "on": want, "tools": st}
+    if tid == "mcp":
+        ok, err = apply_mcp(want)
+        if not ok:
+            return {"ok": False, "live": "FAIL", "copy": "FAIL mcp", "error": err, "id": tid}
+        st["mcp"] = want
+        save_tools_state(st)
+        (STATE / "mcp-on").write_text("1\n" if want else "0\n", encoding="utf-8")
+        return {"ok": True, "live": "PASS", "copy": ("ON " if want else "OFF ") + "mcp", "id": tid, "on": want, "tools": st}
+    

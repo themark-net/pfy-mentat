@@ -63,7 +63,7 @@ async function postTool(id, on){
 }
 async function runTool(id){
   const on=!toolOn(lastSnap,id);
-  paintTools('toggling\u2026','');
+  paintTools('toggling…','');
   try{
     const j=await postTool(id,on);
     if(j && j.ok){
@@ -127,6 +127,8 @@ async function tick(){
     const when=(s.last_verb&&s.last_verb.when)||'';
     const pid=s.sidecar_pid || '';
     document.getElementById('loop-attached').textContent=attached+(pid?(' pid '+pid):'');
+    const reach=(s.session_reach||'').trim()||'(none)';
+    paintSessionReach(reach);
     document.getElementById('loop-last').textContent=verb;
     const elv=envLive(s);
     const envEl=document.getElementById('loop-env');

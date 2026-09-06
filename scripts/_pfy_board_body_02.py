@@ -1,4 +1,4 @@
-"models"):
+        for key in ("data", "models"):
             for m in d.get(key) or []:
                 name = (m.get("id") or m.get("name") or m.get("model") if isinstance(m, dict) else str(m)) or ""
                 name = str(name).strip()
@@ -107,5 +107,4 @@ def snapshot():
     harnesses = list(reg.get("harnesses") or [])
     default = str(reg.get("default_harness") or "grok")
     det = detector_json()
-    status_text = pfy_status_stdout()
-   
+    status_te

@@ -25,6 +25,7 @@
         self.siopenst = ttk.Label(self.acts, text="", style="M.TLabel")
         self._last_env = {}
         self._last_si = {}
+        self._session_reach = ""
         self.chips = ttk.Frame(right); self.chips.pack(fill="both", expand=True, padx=12, pady=(0,10))
 
     def set_view(self, k):
@@ -50,48 +51,23 @@
         threading.Thread(target=work, daemon=True).start()
 
     def done(self, hid, res):
+        reach = str((res or {}).get("session_reach") or "").strip()
+        if reach:
+            self._session_reach = reach
         if res.get("ok"):
             pid = res.get("pid")
             kind = "monitor" if res.get("role") == "monitor" else hid
-            self.paint_attach(f"attached {kind}" + (f" pid {pid}" if pid else ""), False)
+            msg = f"attached {kind}" + (f" pid {pid}" if pid else "")
+            if reach:
+                msg += " · " + reach
+            self.paint_attach(msg, False)
         else:
             detail = res.get("error") or res.get("copy") or GROK_USE
             self.paint_attach(f"FAIL Attach {hid} — {detail}", True)
+            if hid == "opencode" and not reach:
+                self._session_reach = "FAIL"
         self.refresh()
 
 
     def paint_si(self, text, fail=False):
-        self.msg = text
-        style = "F.TLabel" if fail else "Ok.TLabel"
-        self.sist.configure(text=text, style=style)
-        self.ast.configure(text=text, style=style)
-
-    def space_invaders(self):
-        self.paint_si("Space Invaders…", False)
-        def work():
-            try:
-                res = self.board.run_space_invaders() if self.board else {"ok": False, "copy": "FAIL Space Invaders · no board", "error": "no board"}
-            except Exception as e:
-                res = {"ok": False, "copy": "FAIL Space Invaders", "error": str(e)}
-            self.root.after(0, lambda: self.done_si(res))
-        threading.Thread(target=work, daemon=True).start()
-
-    def done_si(self, res):
-        self._last_si = res or {}
-        if res.get("ok"):
-            self.paint_si(res.get("copy") or ("PASS Space Invaders · " + str(res.get("path") or "")), False)
-            self.siabs.configure(text="abs " + str(res.get("abs_path") or ""))
-            self.sirel.configure(text="rel " + str(res.get("rel") or res.get("path") or ""))
-            preview = str(res.get("task_text") or res.get("task_md") or "")
-            if len(preview) > 240:
-                preview = preview[:240] + "…"
-            self.sitask.configure(text=preview)
-        else:
-            self.paint_si(res.get("copy") or ("FAIL Space Invaders · " + str(res.get("error") or "")), True)
-        self.refresh(user=True)
-
-    def paint_copy(self, text, fail=False):
-        self.msg = text
-        style = "F.TLabel" if fail else "Ok.TLabel"
-        self.cst.configure(text=text, style=style)
-        self.ast.configure(text=text, style=
+        s

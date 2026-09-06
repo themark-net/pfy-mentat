@@ -1,68 +1,77 @@
-     "TOOLS\n"
-                f"one-shot         {onoff(skills.get('one-shot'))}\n"
-                f"investigate      {onoff(skills.get('investigate'))}\n"
-                f"agent-loops      {onoff(skills.get('agent-loops'))}\n"
-                f"hermes-feedback  {onoff(skills.get('hermes-feedback'))}\n"
-                f"mcp              {onoff(tools.get('mcp'))}\n"
-                f"write-guard      {onoff(tools.get('write_guard'))}\n"
-                f"extra tools      {extra}"
-            )
-            if self.msg: txt += "\n" + self.msg
-            self.pack_acts([])
-            for w in self.tool_btns.values():
-                w.pack(side="left", padx=(0, 8))
-            self.toolst.pack(side="left", padx=(0, 8))
+   self.refresh(user=True)
+
+    def paint_tools(self, text, fail=False):
+        self.toolst.configure(text=text, style="F.TLabel" if fail else "Ok.TLabel")
+        self.msg = text
+
+    def tool_on(self, tid):
+        tools = (self.snap or {}).get("tools") or {}
+        if tid == "mcp":
+            return bool(tools.get("mcp"))
+        if tid == "write-guard":
+            return bool(tools.get("write_guard"))
+        if tid == "extra-tools":
+            return (tools.get("tools_mode") or "") == "local_tools"
+        return bool((tools.get("skills") or {}).get(tid))
+
+    def toggle_tool(self, tid):
+        want = not self.tool_on(tid)
+        self.paint_tools("toggling…", False)
+        def work():
+            try:
+                if self.board is None:
+                    res = {"ok": False, "copy": "FAIL tools", "error": "no board"}
+                else:
+                    res = self.board.set_tool(tid, want)
+            except Exception as e:
+                res = {"ok": False, "copy": "FAIL tools", "error": str(e)}
+            self.root.after(0, lambda r=res: self.done_tool(r))
+        threading.Thread(target=work, daemon=True).start()
+
+    def done_tool(self, res):
+        if res.get("ok"):
+            self.paint_tools(res.get("copy") or "PASS tools", False)
         else:
-            rows = s.get("org_messages") or []
-            txt = "no org loop" if not rows else "ORG\n" + "\n".join(f"{m.get('from')} → {m.get('to')}  {m.get('state') or ''}" for m in rows)
-            self.pack_acts([])
-        self.body.configure(text=txt)
-        for c in self.chips.winfo_children(): c.destroy()
-        if self.view == "attach":
-            for c in chips:
-                hid, live, role, name = c.get("id") or "", honest(c.get("live")), c.get("role") or "", c.get("name") or ""
-                fr = tk.Frame(self.chips, bg="#18202c", highlightbackground="#243041", highlightthickness=1, padx=8, pady=6)
-                fr.pack(side="left", padx=4, pady=4, anchor="n")
-                tk.Label(fr, text=hid, bg="#18202c", fg=FG, font=("sans-serif", 10, "bold")).pack(anchor="w")
-                tk.Label(fr, text=live, bg="#18202c", fg=CHIP.get(live, CHIP["missing"]), font=("sans-serif", 9, "bold")).pack(anchor="w")
-                tk.Label(fr, text=f"{role} · {name}", bg="#18202c", fg=MUTED).pack(anchor="w")
-                if hid in BLOCKED:
-                    tk.Label(fr, text=GROK_USE, bg="#111823", fg=FG, font=("monospace", 9)).pack(anchor="w", pady=(4,0))
+            self.paint_tools("FAIL " + (res.get("copy") or res.get("error") or "tools"), True)
+        self.refresh(user=True)
 
-    def poll(self, ms=2000):
-        self.refresh()
-        def tick():
-            self.refresh(); self.root.after(ms, tick)
-        self.root.after(ms, tick)
+    def pack_acts(self, names):
+        forget = [self.bgrok, self.bopen, self.bsi, self.bsiopen, self.bsifold, self.bsitask, self.bcopyep, self.bcopyst, self.brefresh, self.bcopy, self.bstage, self.benv, self.bpull, self.btest, self.pullname, self.sst, self.est, self.pst, self.rst, self.tst, self.ast, self.cst, self.sist, self.siabs, self.sirel, self.sitask, self.ewhat, self.siopenst, self.toolst]
+        forget.extend(self.tool_btns.values())
+        for w in forget:
+            try: w.pack_forget()
+            except Exception: pass
+        order = {
+            "grok": self.bgrok, "open": self.bopen, "si": self.bsi, "refresh": self.brefresh,
+            "copy": self.bcopy, "stage": self.bstage, "env": self.benv,
+            "pull": self.bpull, "pullname": self.pullname, "pst": self.pst,
+            "test": self.btest, "tst": self.tst, "rst": self.rst,
+            "sst": self.sst, "est": self.est, "ast": self.ast, "cst": self.cst, "sist": self.sist,
+            "siopen": self.bsiopen, "sifold": self.bsifold, "sitask": self.bsitask,
+            "copyep": self.bcopyep, "copyst": self.bcopyst,
+            "siabs": self.siabs, "sirel": self.sirel, "sitxt": self.sitask, "ewhat": self.ewhat, "siopenst": self.siopenst,
+        }
+        for n in names:
+            w = order[n]
+            w.pack(side="left", padx=(0, 8))
 
-def selftest_snap():
-    return {"ts":"selftest","host":"selftest","profile":"","detector":{"engine":"none","status":"missing","base_url":""},
-            "engine_live":"missing","usage":[],"chips":[{"id":"grok","live":"missing","role":"harness","name":"Grok CLI"},
-            {"id":"continue","live":"stub","role":"harness","name":"Continue"}],
-            "tape":[{"id":"inference","label":"inference","live":"SKIP"},{"id":"env-stage","label":"env-stage","live":"SKIP"},
-                    {"id":"harness-attach","label":"harness attach","live":"SKIP"}],
-            "detect_order":[],"active":"grok","active_stub":False,"blocked_copy":GROK_USE,
-            "last_verb":{"verb":"gui","when":""},"now":"idle","processes":[],"agent_lane_collapsed":True,
-            "tools":{"skills":{"one-shot":True,"investigate":True,"agent-loops":True,"hermes-feedback":True},"mcp":False,"write_guard":False,"tools_mode":"split"}}
-
-def selftest_fresh_bind():
-    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-    from urllib.parse import urlparse
-    import urllib.request
-    class Dump(BaseHTTPRequestHandler):
-        def log_message(self, *a):
-            pass
-        def do_GET(self):
-            b = b"<!DOCTYPE html><html><head><title>pfy board</title></head><body>127.0.0.1:8765 start via CLI nimo honest-state</body></html>"
-            self.send_response(200)
-            self.send_header("Content-Type", "text/html; charset=utf-8")
-            self.send_header("Content-Length", str(len(b)))
-            self.end_headers()
-            self.wfile.write(b)
-    class Ours(BaseHTTPRequestHandler):
-        def log_message(self, *a):
-            pass
-        def do_GET(self):
-            b = b'<!DOCTYPE html><html data-pfy-ui="session"><head><title>pfy</title></head><body>LOOP Attach grok</body></html>'
-            self.send_response(200)
-            self.send_header("Content-T
+    def render(self):
+        tk = sys.modules["tkinter"]; s = self.snap
+        if s.get("error") and not s.get("chips"):
+            self.meta.configure(text=str(s.get("error"))); return
+        self.meta.configure(text=" · ".join(x for x in (s.get("host") or "", s.get("profile") or "", s.get("ts") or "") if x))
+        d, r = s.get("detector") or {}, s.get("status_runtime") or {}
+        eng_live = honest(s.get("engine_live") or d.get("status"))
+        engine = d.get("engine") or r.get("engine") or "none"
+        chips = s.get("chips") or []
+        grok = next((c for c in chips if c.get("id")=="grok"), {}) or {}
+        tape = s.get("tape") or []
+        stub = bool(s.get("active_stub")) or str(s.get("active") or "") in BLOCKED
+        self.bgrok.configure(state="disabled" if stub else "normal")
+        self.bopen.configure(state="disabled" if stub else "normal")
+        self.bsi.configure(state="disabled" if stub else "normal")
+        self.fail.configure(text=(f"FAIL  {s.get('blocked_copy') or GROK_USE}") if stub else "")
+        show_org = (not s.get("agent_lane_collapsed", True)) and bool(s.get("org_messages"))
+        if show_org: self.nav["org"].pack(fill="x")
+        else:
+            self.nav["org"].pa
