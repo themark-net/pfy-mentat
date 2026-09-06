@@ -70,6 +70,28 @@ f.paint_stage("running env-stage…", False)
                 snap = self.board.snapshot()
             except Exception as e:
                 snap = {"error": str(e)}
+            # User Refresh: force /usage parity with HTML postRefreshUsage (#165)
+            if user and isinstance(snap, dict) and not snap.get("error"):
+                try:
+                    uinfo = self.board.local_usage_info()
+                    if isinstance(uinfo, dict):
+                        snap = dict(snap)
+                        snap["usage"] = uinfo
+                        sr = dict(snap.get("status_runtime") or {})
+                        if uinfo.get("engine"):
+                            sr["engine"] = uinfo.get("engine")
+                        if uinfo.get("endpoint"):
+                            sr["endpoint"] = uinfo.get("endpoint")
+                            sr["base_url"] = uinfo.get("endpoint")
+                        sr["tok_path"] = uinfo.get("tok_path") or "SKIP"
+                        sr["vram"] = uinfo.get("vram") or "SKIP"
+                        snap["status_runtime"] = sr
+                        if uinfo.get("models"):
+                            snap["models"] = list(uinfo.get("models") or [])
+                        if not uinfo.get("ok"):
+                            snap["engine_live"] = "missing"
+                except Exception:
+                    pass
             self.root.after(0, lambda s=snap, u=user: self.apply(s, user=u))
         threading.Thread(target=work, daemon=True).start()
 
