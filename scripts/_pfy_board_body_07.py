@@ -1,117 +1,119 @@
-", "agent-loops", "hermes-feedback")
-SKILLS_ROOT = ROOT / "bootstrap" / "grok-cli" / "skills"
-TOOLS_FILE = STATE / "tools.json"
-MCP_FRAGMENT = ROOT / "bootstrap" / "grok-cli" / "config" / "config.fragment.toml"
-WRITE_GUARD_DIR = ROOT / "harness" / "write-guard-mcp"
-WRITE_GUARD_ALT = ROOT / "tools" / "write-guard-mcp"
-TOOLS_ENV = ROOT / "examples" / "opencode-ollama" / ".generated" / "tools-model.env"
-MERGE_PY = ROOT / "bootstrap" / "grok-cli" / "scripts" / "merge_config.py"
-WG_OVERLAY = ROOT / "harness" / "agent-cage" / "overlays" / "write-guard" / "mcp-servers.write-guard.yaml"
-OPENCODE_JSON = STATE / "opencode.json"
-STATE_GROK = STATE / "grok-config.toml"
+), encoding="utf-8")
+    gen = ROOT / "examples" / "opencode-ollama" / ".generated" / "opencode.json"
+    try:
+        gen.parent.mkdir(parents=True, exist_ok=True)
+        gen.write_text(json.dumps(cfg, indent=2) + chr(10), encoding="utf-8")
+    except OSError:
+        pass
+    return path, name
 
-def default_tools_state():
-    skills = {}
-    for sid in SKILL_IDS:
-        skills[sid] = (SKILLS_ROOT / sid / "SKILL.md").is_file()
-    return {
-        "skills": skills,
-        "mcp": False,
-        "write_guard": False,
-        "tools_mode": "split",
-    }
-
-def load_tools_state():
-    base = default_tools_state()
-    if TOOLS_FILE.is_file():
-        try:
-            raw = json.loads(TOOLS_FILE.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            raw = {}
-        if isinstance(raw, dict):
-            sk = raw.get("skills") if isinstance(raw.get("skills"), dict) else {}
-            for sid in SKILL_IDS:
-                if sid in sk:
-                    base["skills"][sid] = bool(sk[sid])
-            if "mcp" in raw:
-                base["mcp"] = bool(raw.get("mcp"))
-            if "write_guard" in raw:
-                base["write_guard"] = bool(raw.get("write_guard"))
-            mode = str(raw.get("tools_mode") or "").strip()
-            if mode in ("split", "local_tools"):
-                base["tools_mode"] = mode
-    return base
-
-def save_tools_state(st):
+def record_sidecar_pid(hid, pid):
     STATE.mkdir(parents=True, exist_ok=True)
-    TOOLS_FILE.write_text(json.dumps(st, indent=2) + "\n", encoding="utf-8")
+    (STATE / ("sidecar-%s.pid" % hid)).write_text(str(pid) + chr(10), encoding="utf-8")
 
-def apply_skills_dir(st):
-    dest = STATE / "opencode-skills"
-    dest.mkdir(parents=True, exist_ok=True)
-    for child in list(dest.iterdir()):
-        try:
-            child.unlink()
-        except OSError:
-            pass
-    enabled = []
-    for sid in SKILL_IDS:
-        if not st.get("skills", {}).get(sid):
+def sidecar_pid_live():
+    for hid in ("opencode", "grok"):
+        path = STATE / ("sidecar-%s.pid" % hid)
+        if not path.is_file():
             continue
-        src = SKILLS_ROOT / sid
-        if not (src / "SKILL.md").is_file():
-            continue
-        link = dest / sid
         try:
-            link.symlink_to(src)
-        except OSError:
-            return None, "cannot link " + sid
-        enabled.append(sid)
-    return dest, enabled
-
-def local_tools_model():
-    name = (os.environ.get("LOCAL_TOOLS_MODEL") or "").strip()
-    if name:
-        return name
-    if TOOLS_ENV.is_file():
-        for line in TOOLS_ENV.read_text(encoding="utf-8", errors="replace").splitlines():
-            s = line.strip()
-            if s.startswith("export LOCAL_TOOLS_MODEL="):
-                return s.split("=", 1)[1].strip().strip("'\"")
-            if s.startswith("LOCAL_TOOLS_MODEL="):
-                return s.split("=", 1)[1].strip().strip("'\"")
+            pid = int(path.read_text(encoding="utf-8", errors="replace").strip())
+        except ValueError:
+            continue
+        if pid_alive(pid):
+            return pid
     return ""
 
+def record_last_verb(verb):
+    STATE.mkdir(parents=True, exist_ok=True)
+    when = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    (STATE / "last-verb").write_text("verb: %s\nwhen: %s\n" % (verb, when), encoding="utf-8")
 
-def grok_home():
-    return Path(os.environ.get("GROK_HOME") or str(Path.home() / ".grok"))
+def opencode_stub_line():
+    rec = next((h for h in (load_registry().get("harnesses") or []) if h.get("id") == "opencode"), {}) or {}
+    return one_liner("opencode", rec)
 
-def grok_config_path():
-    return grok_home() / "config.toml"
 
-def write_guard_root():
-    if WRITE_GUARD_DIR.is_dir():
-        return WRITE_GUARD_DIR
-    if WRITE_GUARD_ALT.is_dir():
-        return WRITE_GUARD_ALT
-    return None
+def grok_stub_line():
+    rec = next((h for h in (load_registry().get("harnesses") or []) if h.get("id") == "grok"), {}) or {}
+    return one_liner("grok", rec)
 
-def upsert_env_file(path, updates):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    lines = []
-    if path.is_file():
-        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
-    seen = set()
-    out = []
-    for line in lines:
-        s = line.strip()
-        key = ""
-        raw = s[7:].strip() if s.startswith("export ") else s
-        if raw and not raw.startswith("#") and "=" in raw:
-            key = raw.split("=", 1)[0].strip()
-        if key in updates:
-            out.append("%s=%s" % (key, updates[key]))
-            seen.add(key)
-        else:
-            out.append(line)
-    for key, 
+def grok_path_live():
+    return "ready" if which_bin("grok") else "missing"
+
+def monitor_pid_live():
+    path = STATE / "sidecar-grok.pid"
+    if not path.is_file():
+        return ""
+    try:
+        pid = int(path.read_text(encoding="utf-8", errors="replace").strip())
+    except ValueError:
+        return ""
+    return pid if pid_alive(pid) else ""
+
+def last_monitor_note():
+    paths = (
+        STATE / "monitor-note",
+        ROOT / "examples" / "opencode-ollama" / ".generated" / "monitor-brief.md",
+    )
+    for path in paths:
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace").strip()
+        if not text:
+            continue
+        for line in text.splitlines():
+            s = line.strip().lstrip("#").strip()
+            if not s:
+                continue
+            if s.lower().startswith("generated"):
+                continue
+            return s[:240]
+    return ""
+
+def write_monitor_note(text):
+    STATE.mkdir(parents=True, exist_ok=True)
+    (STATE / "monitor-note").write_text((text or "").strip()[:240] + "\n", encoding="utf-8")
+
+def start_monitor_sidecar():
+    stub = grok_stub_line()
+    profile = deploy_profile()
+    if profile == "local-only":
+        return {
+            "ok": False, "id": "grok", "live": "FAIL", "copy": "local-only",
+            "error": "local-only never auto-calls cloud", "role": "monitor",
+        }
+    bin_path = which_bin("grok")
+    if not bin_path:
+        return {
+            "ok": False, "id": "grok", "live": "FAIL", "copy": stub,
+            "error": "grok missing", "role": "monitor",
+        }
+    brief = ROOT / "examples" / "opencode-ollama" / ".generated" / "monitor-brief.md"
+    note = last_monitor_note()
+    if not note:
+        note = "review / hard DoD"
+        if brief.is_file():
+            note = last_monitor_note() or note
+    log = STATE / "sidecar-grok.log"
+    env = os.environ.copy()
+    if brief.is_file():
+        env["PFY_MONITOR_BRIEF"] = str(brief)
+    with log.open("ab") as f:
+        proc = subprocess.Popen(
+            [bin_path],
+            cwd=str(ROOT),
+            env=env,
+            stdout=f,
+            stderr=subprocess.STDOUT,
+            start_new_session=True,
+        )
+    if not pid_alive(proc.pid):
+        err = ""
+        try:
+            err = log.read_text(encoding="utf-8", errors="replace")[-400:]
+        except Exception:
+            err = "grok exited"
+        return {
+            "ok": False, "id": "grok", "live": "FAIL", "copy": stub,
+            "error": err or "grok exited", "pid": proc.
