@@ -19,6 +19,7 @@ document.getElementById('btncopy').addEventListener('click',()=>copyStub());
 document.getElementById('btnstage').addEventListener('click',()=>runStage());
 document.getElementById('btnlaunch').addEventListener('click',()=>runEnv());
 document.getElementById('btncopyendpoint')&&document.getElementById('btncopyendpoint').addEventListener('click',()=>copyLaunchEndpoint());
+document.getElementById('btncopyendpoint-eng')&&document.getElementById('btncopyendpoint-eng').addEventListener('click',()=>copyLaunchEndpoint());
 document.getElementById('btncopystatus')&&document.getElementById('btncopystatus').addEventListener('click',()=>copyLaunchStatus());
 document.getElementById('btnpull').addEventListener('click',()=>runPull());
 document.getElementById('btntest').addEventListener('click',()=>runEval());
