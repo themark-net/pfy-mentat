@@ -1,4 +1,4 @@
-# G0: FAIL the PR if pfy / scripts/pfy are not 100755.
+# G0: FAIL the PR if pfy / scripts/pfy / scripts/detect-local-runtime.sh are not 100755.
 # Contents API writes 100644; this feature-branch job restores 100755 via git.
 # Check is ubuntu-hosted (nimo G0 red is not a substitute). No cargo/pip as UI.
 name: operator-launch-filemode
@@ -17,11 +17,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: FAIL unless pfy and scripts/pfy are 100755 and ./pfy help runs
+      - name: FAIL unless pfy, scripts/pfy, detect-local-runtime.sh are 100755 and ./pfy help runs
         run: |
           set -euo pipefail
           fail=0
-          for p in pfy scripts/pfy; do
+          for p in pfy scripts/pfy scripts/detect-local-runtime.sh; do
             mode="$(git ls-files -s -- "$p" | awk '{print $1}')"
             echo "$p gitmode=$mode"
             if [[ "$mode" != "100755" ]]; then
@@ -66,7 +66,7 @@ jobs:
       - name: git update-index --chmod=+x (no-op if already 100755)
         run: |
           set -euo pipefail
-          paths=(pfy scripts/pfy)
+          paths=(pfy scripts/pfy scripts/detect-local-runtime.sh)
           need=0
           for p in "${paths[@]}"; do
             [[ -e "$p" ]] || { echo "missing $p"; exit 1; }
@@ -84,5 +84,5 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "fix(#161): mark pfy and scripts/pfy executable (100755)"
+          git commit -m "fix(#169): mark pfy, scripts/pfy, detect-local-runtime.sh executable (100755)"
           git push
