@@ -144,11 +144,34 @@ async function tick(){
     const gpath=s.grok_path||g.live||'missing';
     const gEl=document.getElementById('loop-grok');
     if(gEl) setLive('loop-grok', gpath);
-    document.getElementById('eng-name').textContent=d.engine||r.engine||'none';
+    const u=(s.usage&&typeof s.usage==='object'&&!Array.isArray(s.usage))?s.usage:{};
+    const engName=u.engine||d.engine||r.engine||'none';
+    document.getElementById('eng-name').textContent=engName;
+    const ep=u.endpoint||r.endpoint||r.base_url||d.base_url||'(none)';
+    const epEl=document.getElementById('eng-endpoint');
+    if(epEl) epEl.textContent=ep||'(none)';
     setLive('eng-live', engLive);
     setLive('eng-grok', g.live);
-    const models=s.models||[];
+    const models=(u.models&&u.models.length)?u.models:(s.models||[]);
     document.getElementById('eng-models').textContent=models.length?models.join(' · '):'(none)';
+    const tok=u.tok_path||r.tok_path||'SKIP';
+    const tokEl=document.getElementById('eng-tok');
+    if(tokEl) tokEl.textContent=tok||'SKIP';
+    const vram=u.vram||r.vram||'SKIP';
+    const vramEl=document.getElementById('eng-vram');
+    if(vramEl) vramEl.textContent=vram||'SKIP';
+    const failEl=document.getElementById('eng-usage-fail');
+    if(failEl){
+      if(u && u.ok===false){
+        const fail=u.fail||'FAIL: no local engine up';
+        const nxt=u.next_step||'Launch env or ./pfy up';
+        failEl.style.display='block';
+        failEl.textContent=fail+' · next: '+nxt;
+      }else{
+        failEl.style.display='none';
+        failEl.textContent='';
+      }
+    }
     paintToolRow(s);
     const tape=s.tape||[];
     const stage=tape.find(t=>t.id==='env-stage'||t.label==='env-stage')||{};

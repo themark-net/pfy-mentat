@@ -50,6 +50,8 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, fp.read_bytes(), ctype); return
         if path == "/snapshot":
             self._send(200, json.dumps(snapshot(), indent=2).encode("utf-8"), "application/json; charset=utf-8"); return
+        if path == "/usage":
+            self._send(200, json.dumps(local_usage_info(), indent=2).encode("utf-8"), "application/json; charset=utf-8"); return
         if path == "/space-invaders/artifact":
             result = space_invaders_artifact()
             code = 200 if result.get("ok") else 404

@@ -76,7 +76,12 @@ def rsf_inference(det):
     return "SKIP"
 
 def rsf_env_stage(verb, usage):
-    blob = " ".join(usage).lower()
+    if isinstance(usage, dict):
+        blob = " ".join(str(x) for x in (usage.get("lines") or [])).lower()
+        if not blob:
+            blob = " ".join(str(usage.get(k) or "") for k in ("fail", "next_step", "engine")).lower()
+    else:
+        blob = " ".join(usage or []).lower()
     v = (verb.get("verb") or "").strip()
     if "fail" in blob or "error" in blob:
         return "FAIL"

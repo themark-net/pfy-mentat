@@ -73,9 +73,13 @@ noscript .fail{padding:16px;display:block}
   <section class=view id=view-engine>
     <h2>ENGINE</h2>
     <div class=row>engine <b id=eng-name>none</b></div>
+    <div class=row>endpoint <b id=eng-endpoint>(none)</b></div>
     <div class=row>live <span id=eng-live class=live>missing</span></div>
     <div class=row>grok <span id=eng-grok class=live>missing</span></div>
     <div class=row>models <span id=eng-models class=muted>(none)</span></div>
+    <div class=row>tok_path <b id=eng-tok>SKIP</b></div>
+    <div class=row>vram <b id=eng-vram>SKIP</b></div>
+    <div class=row id=eng-usage-fail class=fail style=display:none></div>
     <div class=acts>
       <button type=button class=primary id=btnrefresh>Refresh status</button>
       <button type=button class=primary id=btntest>Test model</button>
