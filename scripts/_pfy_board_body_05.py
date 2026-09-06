@@ -1,22 +1,25 @@
  "PASS", "copy": "PASS eval", "stdout": str(text).strip()[:400]}
 
 def pull_model(name):
-    # Live-engine pull: FreeToken records; Ollama pulls; llama skip honest.
+    # #173: FreeToken-first via ./pfy models pull (detect spine); no engine → FAIL+next.
     name = (name or "").strip()
     if not name:
-        return {"ok": False, "live": "FAIL", "copy": "FAIL pull", "error": "no name"}
+        return {"ok": False, "live": "FAIL", "copy": "FAIL pull", "error": "no name",
+                "next_step": "Launch env or ./pfy up"}
     if not PFY.is_file():
-        return {"ok": False, "live": "FAIL", "copy": "FAIL pull", "error": "scripts/pfy missing"}
+        return {"ok": False, "live": "FAIL", "copy": "FAIL pull", "error": "scripts/pfy missing",
+                "next_step": "Launch env or ./pfy up"}
     rc, out = _run(["bash", str(PFY), "models", "pull", name], timeout=180.0)
     blob = (out or "")
     low = blob.lower()
-    if rc != 0:
+    nxt = "Launch env or ./pfy up"
+    if rc != 0 or "fail: no local engine" in low or "no local engine to pull" in low:
+        err = (blob or "pull failed")[-400:]
         return {
-            "ok": False, "live": "FAIL", "copy": "FAIL pull",
-            "error": (blob or "pull failed")[-400:],
-            "stdout": blob[-800:],
+            "ok": False, "live": "FAIL", "copy": "FAIL pull — " + nxt,
+            "error": err, "stdout": blob[-800:], "next_step": nxt,
         }
-    if "honest skip" in low or "has no pull" in low or "no local engine" in low:
+    if "honest skip" in low or "has no pull" in low:
         return {"ok": True, "live": "SKIP", "copy": "SKIP pull", "stdout": blob[-800:]}
     return {"ok": True, "live": "PASS", "copy": "PASS pull", "stdout": blob[-800:]}
 

@@ -54,11 +54,22 @@
             self.bpull.configure(state="normal")
         except Exception:
             pass
+        # #173: no false success — FAIL paints fail; SKIP muted; PASS ok
         if res.get("ok"):
             copy = res.get("copy") or "PASS pull"
-            self.paint_pull(copy, False)
+            if str(copy).startswith("SKIP"):
+                self.pst.configure(text=copy, style="M.TLabel")
+            elif str(copy).startswith("FAIL"):
+                self.paint_pull(copy, True)
+            else:
+                self.paint_pull(copy, False)
         else:
-            self.paint_pull("FAIL " + (res.get("copy") or res.get("error") or "pull"), True)
+            nxt = res.get("next_step") or "Launch env or ./pfy up"
+            copy = res.get("copy") or res.get("error") or "pull"
+            msg = str(copy)
+            if "Launch env" not in msg and "./pfy up" not in msg:
+                msg = msg + " · next: " + nxt
+            self.paint_pull("FAIL " + msg if not msg.startswith("FAIL") else msg, True)
         self.refresh(user=True)
 
     def paint_env(self, text, fail=False):

@@ -32,7 +32,11 @@ async function runPull(){
       const c=j.copy||'PASS pull';
       paintPull(c, c.indexOf('SKIP')===0?'muted':(c.indexOf('PASS')===0?'ok':''));
     }else{
-      paintPull('FAIL '+(j && (j.copy||j.error)||'pull'),'fail');
+      // #173: FAIL + next (Launch env / ./pfy up) — no false success
+      const nxt=(j && j.next_step)||'Launch env or ./pfy up';
+      let msg=(j && (j.copy||j.error))||'pull';
+      if(String(msg).indexOf('Launch env')<0 && String(msg).indexOf('./pfy up')<0) msg=msg+' · next: '+nxt;
+      paintPull(String(msg).indexOf('FAIL')===0?msg:('FAIL '+msg),'fail');
     }
     await tick();
     const ts=(lastSnap&&lastSnap.ts)?lastSnap.ts:'';
