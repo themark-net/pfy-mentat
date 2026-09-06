@@ -1,4 +1,4 @@
-.0)
+(PFY), "status"], timeout=25.0)
     return out if out.strip() else f"(pfy status empty, exit {rc})"
 
 def parse_status(text):
@@ -102,4 +102,3 @@ def inspect_models(base_url):
             continue
         if not isinstance(d, dict):
             continue
-        for key in ("data", 

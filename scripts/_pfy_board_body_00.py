@@ -88,4 +88,4 @@ def detector_json():
     return {"engine": "none", "status": "missing", "base_url": ""}
 
 def pfy_status_stdout():
-    rc, out = _run(["bash", str(PFY), "status"], timeout=25
+    rc, out = _run(["bash", str
