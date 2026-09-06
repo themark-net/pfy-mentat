@@ -80,22 +80,48 @@ function paintLaunchWhat(j){
   window.__pfyLaunchNext=j||{};
 }
 function paintLaunchCopy(text, kind){
+  const cls='attach-result'+(kind?(' '+kind):'');
   const el=document.getElementById('launchcopymsg');
-  if(!el) return;
-  el.textContent=text||'';
-  el.className='attach-result'+(kind?(' '+kind):'');
+  if(el){ el.textContent=text||''; el.className=cls; }
+  const eng=document.getElementById('engcopymsg');
+  if(eng){ eng.textContent=text||''; eng.className=cls; }
 }
 async function copyLaunchEndpoint(){
-  const el=document.getElementById('launchwhat');
-  const j=window.__pfyLaunchNext||{};
-  let val=(j.base_url)||(el&&el.dataset.base)||'';
-  if(!val && j.next_steps){
-    const s=(j.next_steps||[]).find(x=>x&&x.id==='endpoint');
-    if(s) val=s.value||'';
+  // #175: FreeToken-first live base — not Launch env pin
+  const nxt='Launch env or ./pfy up';
+  const s=lastSnap||{};
+  const u=(s.usage&&typeof s.usage==='object'&&!Array.isArray(s.usage))?s.usage:{};
+  let val='';
+  if(u && u.ok===false){
+    const n=u.next_step||nxt;
+    paintLaunchCopy('FAIL copy · next: '+n,'fail');
+    return;
   }
-  if(!val){ paintLaunchCopy('FAIL no endpoint','fail'); return; }
+  if(u && u.ok!==false && u.endpoint){
+    val=String(u.endpoint||'').trim();
+  }
+  if(!val || val==='(none)'){
+    const d=s.detector||{};
+    const sr=s.status_runtime||{};
+    const st=String(d.status||sr.status||'').trim().toLowerCase();
+    let base=String(d.base_url||sr.base_url||sr.endpoint||'').trim();
+    if(st==='ready' && base && base!=='(none)'){
+      val=base;
+    }
+  }
+  if(!val || val==='(none)'){
+    const epEl=document.getElementById('eng-endpoint');
+    const ep=(epEl&&epEl.textContent||'').trim();
+    if(ep && ep!=='(none)') val=ep;
+  }
+  if(!val || val==='(none)'){
+    paintLaunchCopy('FAIL copy · next: '+nxt,'fail');
+    return;
+  }
+  val=val.replace(/\/+$/,'');
+  if(!val.endsWith('/v1')) val=val+'/v1';
   const ok=await copyText(val);
-  paintLaunchCopy(ok?'PASS Copy endpoint':'FAIL clipboard — select endpoint', ok?'ok':'fail');
+  paintLaunchCopy(ok?'PASS copied':'FAIL copy', ok?'ok':'fail');
 }
 async function copyLaunchStatus(){
   const el=document.getElementById('launchwhat');
