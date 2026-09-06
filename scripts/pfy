@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
-# scripts/pfy — self-extracting operator surface (#161). Expands beside this file so ROOT resolves.
+# scripts/pfy — expands #161 operator surface from scripts/pfy.payload.b64.* (gzip+base64).
 set -euo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BODY="$DIR/.pfy.expanded.sh"
-base64 -d <<'PFY_PAYLOAD_B64' | gzip -dc >"$BODY"
-PLACEHOLDER_B64
-PFY_PAYLOAD_B64
+cat "$DIR"/pfy.payload.b64.* | tr -d '\n' | base64 -d | gzip -dc >"$BODY"
 chmod +x "$BODY"
 exec bash "$BODY" "$@"
