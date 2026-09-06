@@ -36,20 +36,32 @@ ck_forget()
         elif self.view == "engine":
             u = s.get("usage") if isinstance(s.get("usage"), dict) else {}
             sr = s.get("status_runtime") or {}
-            engine = (u.get("engine") if u else None) or d.get("engine") or r.get("engine") or "none"
-            endpoint = (u.get("endpoint") if u else None) or sr.get("endpoint") or sr.get("base_url") or d.get("base_url") or "(none)"
-            if not endpoint:
-                endpoint = "(none)"
-            models = (u.get("models") if u else None) or s.get("models") or []
-            mtxt = " · ".join(str(x) for x in models) if models else "(none)"
-            tok = (u.get("tok_path") if u else None) or sr.get("tok_path") or "SKIP"
-            vram = (u.get("vram") if u else None) or sr.get("vram") or "SKIP"
+            # When usage present and not ok: do NOT fall back to detector (#165)
+            if u and u.get("ok") is False:
+                engine = u.get("engine") or "none"
+                endpoint = u.get("endpoint") or "(none)"
+                models = list(u.get("models") or [])
+                tok = u.get("tok_path") or "SKIP"
+                vram = u.get("vram") or "SKIP"
+                live_show = "missing"
+            else:
+                engine = (u.get("engine") if u else None) or d.get("engine") or r.get("engine") or "none"
+                endpoint = (u.get("endpoint") if u else None) or sr.get("endpoint") or sr.get("base_url") or d.get("base_url") or "(none)"
+                if not endpoint:
+                    endpoint = "(none)"
+                models = (u.get("models") if u else None) or s.get("models") or []
+                tok = (u.get("tok_path") if u else None) or sr.get("tok_path") or "SKIP"
+                vram = (u.get("vram") if u else None) or sr.get("vram") or "SKIP"
+                live_show = eng_live
             if not tok:
                 tok = "SKIP"
             if not vram:
                 vram = "SKIP"
+            if not endpoint:
+                endpoint = "(none)"
+            mtxt = " · ".join(str(x) for x in models) if models else "(none)"
             txt = (
-                f"ENGINE\nengine     {engine}\nendpoint   {endpoint}\nlive       {eng_live}"
+                f"ENGINE\nengine     {engine}\nendpoint   {endpoint}\nlive       {live_show}"
                 f"\ngrok       {honest(grok.get('live'))}\nmodels     {mtxt}"
                 f"\ntok_path   {tok}\nvram       {vram}"
             )
