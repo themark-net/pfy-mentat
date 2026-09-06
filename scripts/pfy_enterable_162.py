@@ -5,21 +5,21 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 
-def _load_lib():
-    path = Path(__file__).resolve().parent / "pfy_enterable_162_lib.py"
-    spec = importlib.util.spec_from_file_location("pfy_enterable_162_lib", path)
+def _load_b():
+    path = Path(__file__).resolve().parent / "pfy_enterable_162_b.py"
+    spec = importlib.util.spec_from_file_location("pfy_enterable_162_b", path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
 
-_lib = _load_lib()
-SESSION_REACH_OK = _lib.SESSION_REACH_OK
-SESSION_FILE = _lib.SESSION_FILE
-read_session_reach = _lib.read_session_reach
-write_session_reach = _lib.write_session_reach
-clear_session_reach = _lib.clear_session_reach
-spawn_terminal_opencode = _lib.spawn_terminal_opencode
-open_enterable_opencode_session = _lib.open_enterable_opencode_session
+_b = _load_b()
+SESSION_REACH_OK = _b.SESSION_REACH_OK
+SESSION_FILE = _b.SESSION_FILE
+read_session_reach = _b.read_session_reach
+write_session_reach = _b.write_session_reach
+clear_session_reach = _b.clear_session_reach
+spawn_terminal_opencode = _b.spawn_terminal_opencode
+open_enterable_opencode_session = _b.open_enterable_opencode_session
 
 def arm_launch_env_session(res, open_fn) -> dict:
     """After Launch env: open/arm enterable session OR honest SKIP. Cite #162.
