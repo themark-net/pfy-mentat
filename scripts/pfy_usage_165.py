@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local usage parse for operator GUI — cite #165. Reuses #161 `./pfy usage` output."""
+"""Local usage parse for operator GUI — cite #165/#187. Reuses #161 `./pfy usage` output."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -111,8 +111,9 @@ def parse_usage_text(text: str) -> Dict[str, Any]:
         if in_models:
             if s.startswith("(") and "none" in low:
                 continue
-            if ":" in s and not s.startswith("http") and s.split(":", 1)[0].isalpha():
-                # next top-level key
+            # #187: only end on known top-level keys — keep Ollama-style name:tag models
+            top = s.split(":", 1)[0].strip().lower()
+            if top in ("engine", "endpoint", "models", "tok_path", "vram", "fail", "next", "usage"):
                 in_models = False
             else:
                 models.append(s)
@@ -181,6 +182,9 @@ def enrich_status_runtime(runtime: Optional[dict], usage: Optional[dict]) -> Dic
     if u.get("endpoint"):
         sr["endpoint"] = u["endpoint"]
         sr["base_url"] = u["endpoint"]
+    # #187: feed models into status_runtime for HTML+tk Engine Models paint
+    if "models" in u:
+        sr["models"] = list(u.get("models") or [])
     sr["tok_path"] = u.get("tok_path") or SKIP
     sr["vram"] = u.get("vram") or SKIP
     if u.get("ok") is False:
