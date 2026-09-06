@@ -4,6 +4,7 @@
 # Detect order: freetoken → llama-swap → llama-server → ollama → shimmy
 # Ready engines beat PATH-only partials. llama-swap owns :9292, llama-server owns :8080.
 # Override: PFY_LOCAL_RUNTIME, LOCAL_OPENAI_BASE_URL
+# #167: LOCAL_OPENAI_BASE_URL must not skip FreeToken-first when FreeToken (or earlier spine) is live.
 set -euo pipefail
 while [[ "${1:-}" == -* ]]; do shift || true; done
 
@@ -24,7 +25,20 @@ probe() {
   return 1
 }
 
+# First live spine before Ollama / env overrides (#167).
+# FreeToken → llama-swap → llama-server (Ollama is later).
+emit_spine_ready() {
+  if have_ft && probe "http://127.0.0.1:1919"; then emit "freetoken" "http://127.0.0.1:1919" "ready"; return 0; fi
+  if probe "http://127.0.0.1:1919"; then emit "freetoken" "http://127.0.0.1:1919" "ready"; return 0; fi
+  if have llama-swap && probe "http://127.0.0.1:9292"; then emit "llama-swap" "http://127.0.0.1:9292" "ready"; return 0; fi
+  if have llama-server && probe "http://127.0.0.1:8080"; then emit "llama-server" "http://127.0.0.1:8080" "ready"; return 0; fi
+  if probe "http://127.0.0.1:8080"; then emit "llama-server" "http://127.0.0.1:8080" "ready"; return 0; fi
+  return 1
+}
+
 if [[ -n "${LOCAL_OPENAI_BASE_URL:-}" ]]; then
+  # Prefer FreeToken (etc.) when live — do not let an Ollama base_url win (#167).
+  if emit_spine_ready; then exit 0; fi
   eng="${PFY_LOCAL_RUNTIME:-openai-compat}"
   base="${LOCAL_OPENAI_BASE_URL%/}"
   if probe "$base"; then emit "$eng" "$base" "ready"; else emit "$eng" "$base" "partial"; fi
@@ -32,6 +46,12 @@ if [[ -n "${LOCAL_OPENAI_BASE_URL:-}" ]]; then
 fi
 
 if [[ -n "${PFY_LOCAL_RUNTIME:-}" ]]; then
+  # Hard pin still allowed, but if FreeToken is live and pin is ollama, FreeToken wins for usage (#167).
+  case "$PFY_LOCAL_RUNTIME" in
+    ollama|openai-compat)
+      if emit_spine_ready; then exit 0; fi
+      ;;
+  esac
   case "$PFY_LOCAL_RUNTIME" in
     freetoken|ft) bases=(http://127.0.0.1:1919) ;;
     llama-swap) bases=(http://127.0.0.1:9292) ;;
@@ -52,13 +72,7 @@ if [[ -n "${PFY_LOCAL_RUNTIME:-}" ]]; then
 fi
 
 # Ready first (do not exit on PATH-only partial).
-if have_ft && probe "http://127.0.0.1:1919"; then emit "freetoken" "http://127.0.0.1:1919" "ready"; exit 0; fi
-if probe "http://127.0.0.1:1919"; then emit "freetoken" "http://127.0.0.1:1919" "ready"; exit 0; fi
-
-if have llama-swap && probe "http://127.0.0.1:9292"; then emit "llama-swap" "http://127.0.0.1:9292" "ready"; exit 0; fi
-
-if have llama-server && probe "http://127.0.0.1:8080"; then emit "llama-server" "http://127.0.0.1:8080" "ready"; exit 0; fi
-if probe "http://127.0.0.1:8080"; then emit "llama-server" "http://127.0.0.1:8080" "ready"; exit 0; fi
+if emit_spine_ready; then exit 0; fi
 
 if have ollama && probe "http://127.0.0.1:11434"; then emit "ollama" "http://127.0.0.1:11434" "ready"; exit 0; fi
 if probe "http://127.0.0.1:11434"; then emit "ollama" "http://127.0.0.1:11434" "ready"; exit 0; fi
