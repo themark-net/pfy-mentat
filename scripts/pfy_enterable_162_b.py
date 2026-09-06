@@ -21,6 +21,8 @@ write_session_reach = _a.write_session_reach
 clear_session_reach = _a.clear_session_reach
 spawn_terminal_opencode = _a.spawn_terminal_opencode
 _focus_pid = _a._focus_pid
+write_terminal_pid = _a.write_terminal_pid
+read_terminal_pid = _a.read_terminal_pid
 
 def open_enterable_opencode_session(
     *,
@@ -42,7 +44,8 @@ def open_enterable_opencode_session(
 ):
     """Attach OpenCode + open/focus enterable terminal session. Cite #162.
 
-    Returns {ok, pid, session_reach, copy, error, id, live, ...}.
+    ok=True with session_reach only when a real enterable surface is up.
+    Headless sidecar alone is NOT enterable.
     """
     ROOT = Path(ROOT)
     STATE = Path(STATE)
@@ -70,16 +73,10 @@ def open_enterable_opencode_session(
             "error": "no live local endpoint",
             "session_reach": "FAIL",
         }
-    # Focus existing live session if we already have a sidecar pid
-    existing = ""
-    pid_path = STATE / "sidecar-opencode.pid"
-    if pid_path.is_file():
-        try:
-            existing = int(pid_path.read_text(encoding="utf-8", errors="replace").strip())
-        except ValueError:
-            existing = ""
-    if existing and pid_alive(existing):
-        focused = _focus_pid(existing)
+
+    # Only reuse a previously recorded *terminal* pid if we can focus its window.
+    term_pid = read_terminal_pid(STATE)
+    if term_pid and pid_alive(term_pid) and _focus_pid(term_pid):
         write_session_reach(STATE, SESSION_REACH_OK)
         if active_harness_setter:
             active_harness_setter("opencode")
@@ -88,14 +85,18 @@ def open_enterable_opencode_session(
             "ok": True,
             "id": hid,
             "live": "READY",
-            "pid": existing,
+            "pid": term_pid,
             "sidecar": True,
             "session_reach": SESSION_REACH_OK,
-            "focused": bool(focused),
-            "copy": "attached opencode pid %s · %s" % (existing, SESSION_REACH_OK),
+            "focused": True,
+            "copy": "attached opencode pid %s · %s" % (term_pid, SESSION_REACH_OK),
             "error": "",
             "base_url": base,
         }
+
+    # Headless sidecar-opencode.pid alone is NOT enterable — do not paint PASS.
+    # Always spawn/focus a real terminal below.
+
     models = inspect_models(base)
     cfg_path, model = write_opencode_config(base, models)
     skills = ROOT / "bootstrap" / "grok-cli" / "skills"
@@ -126,7 +127,7 @@ def open_enterable_opencode_session(
     env["GROK_HOME"] = str(grok_home())
     log = STATE / "sidecar-opencode.log"
     ok, pid, err = spawn_terminal_opencode(bin_path, str(ROOT), env, log, pid_alive)
-    if not ok:
+    if not ok or not pid:
         clear_session_reach(STATE)
         return {
             "ok": False,
@@ -135,12 +136,29 @@ def open_enterable_opencode_session(
             "copy": "FAIL open session — " + (err or "terminal cannot start"),
             "error": err or "terminal cannot start",
             "session_reach": "FAIL",
-            "pid": pid or "",
+            "pid": "",
+            "log": str(log),
+            "base_url": base,
+            "model": model,
+        }
+    # Require enterable evidence: process alive and/or focusable window
+    focused = _focus_pid(pid)
+    if not pid_alive(pid) and not focused:
+        clear_session_reach(STATE)
+        return {
+            "ok": False,
+            "id": hid,
+            "live": "FAIL",
+            "copy": "FAIL open session — terminal did not stay open",
+            "error": "terminal did not stay open",
+            "session_reach": "FAIL",
+            "pid": "",
             "log": str(log),
             "base_url": base,
             "model": model,
         }
     record_sidecar_pid("opencode", pid)
+    write_terminal_pid(STATE, pid)
     write_session_reach(STATE, SESSION_REACH_OK)
     if active_harness_setter:
         active_harness_setter("opencode")
@@ -160,8 +178,7 @@ def open_enterable_opencode_session(
         "base_url": base,
         "model": model,
         "session_reach": SESSION_REACH_OK,
+        "focused": bool(focused),
         "copy": "attached opencode pid %s · %s" % (pid, SESSION_REACH_OK),
         "error": "",
     }
-
-

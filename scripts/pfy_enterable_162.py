@@ -20,6 +20,7 @@ write_session_reach = _b.write_session_reach
 clear_session_reach = _b.clear_session_reach
 spawn_terminal_opencode = _b.spawn_terminal_opencode
 open_enterable_opencode_session = _b.open_enterable_opencode_session
+read_terminal_pid = _b.read_terminal_pid
 
 def arm_launch_env_session(res, open_fn) -> dict:
     """After Launch env: open/arm enterable session OR honest SKIP. Cite #162.
@@ -87,3 +88,34 @@ def arm_launch_env_session(res, open_fn) -> dict:
         out["copy"] = copy + " · " + reason
     return out
 
+
+
+def live_session_reach(STATE, pid_alive=None) -> str:
+    """Return session reach only if enterable terminal pid is still alive. Cite #162."""
+    reach = read_session_reach(STATE)
+    if not reach or reach in ("FAIL", "SKIP"):
+        return reach if reach in ("FAIL", "SKIP") else ""
+    try:
+        from pathlib import Path as P
+        import importlib.util
+        path = P(__file__).resolve().parent / "pfy_enterable_162_a.py"
+        spec = importlib.util.spec_from_file_location("pfy_enterable_162_a_live", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        pid = mod.read_terminal_pid(STATE)
+        alive = False
+        if pid and callable(pid_alive):
+            alive = bool(pid_alive(pid))
+        elif pid:
+            import os
+            try:
+                os.kill(int(pid), 0)
+                alive = True
+            except OSError:
+                alive = False
+        if not alive:
+            clear_session_reach(STATE)
+            return ""
+        return reach
+    except Exception:
+        return ""

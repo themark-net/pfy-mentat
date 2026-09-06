@@ -27,6 +27,8 @@ def _session_reach_live():
     if mod is None:
         return ""
     try:
+        if hasattr(mod, "live_session_reach"):
+            return mod.live_session_reach(STATE, pid_alive) or ""
         return mod.read_session_reach(STATE) or ""
     except Exception:
         return ""
