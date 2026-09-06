@@ -1,32 +1,32 @@
 tion as e:
-        return {"ok": false, "live": "FAIL", "copy": "FAIL Open game", "error": str(e)[:400]}
+        return {"ok": False, "live": "FAIL", "copy": "FAIL Open game", "error": str(e)[:400]}
 
 def open_space_invaders_folder():
     mod, err = _load_verify_159()
     if mod is None:
-        return {"ok": false, "live": "FAIL", "copy": "FAIL Open folder · module missing", "error": err}
+        return {"ok": False, "live": "FAIL", "copy": "FAIL Open folder · module missing", "error": err}
     try:
         return mod.open_folder(ROOT)
     except Exception as e:
-        return {"ok": false, "live": "FAIL", "copy": "FAIL Open folder", "error": str(e)[:400]}
+        return {"ok": False, "live": "FAIL", "copy": "FAIL Open folder", "error": str(e)[:400]}
 
 def space_invaders_task():
     mod, err = _load_verify_159()
     if mod is None:
-        return {"ok": false, "live": "FAIL", "copy": "FAIL Copy TASK · module missing", "error": err, "task_text": ""}
+        return {"ok": False, "live": "FAIL", "copy": "FAIL Copy TASK · module missing", "error": err, "task_text": ""}
     try:
         return mod.task_payload(ROOT)
     except Exception as e:
-        return {"ok": false, "live": "FAIL", "copy": "FAIL Copy TASK", "error": str(e)[:400], "task_text": ""}
+        return {"ok": False, "live": "FAIL", "copy": "FAIL Copy TASK", "error": str(e)[:400], "task_text": ""}
 
 def space_invaders_artifact():
     mod, err = _load_verify_159()
     if mod is None:
-        return {"ok": false, "live": "FAIL", "copy": "FAIL artifact · module missing", "error": err}
+        return {"ok": False, "live": "FAIL", "copy": "FAIL artifact · module missing", "error": err}
     try:
         return mod.artifact_get(ROOT)
     except Exception as e:
-        return {"ok": false, "live": "FAIL", "copy": "FAIL artifact", "error": str(e)[:400]}
+        return {"ok": False, "live": "FAIL", "copy": "FAIL artifact", "error": str(e)[:400]}
 
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
