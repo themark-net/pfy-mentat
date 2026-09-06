@@ -58,6 +58,16 @@ function paintAttach(){
     el.textContent=attachMsg;
     el.className='attach-result'+kind;
   });
+  // #171: visible Loop FAIL + next (no silent no-op)
+  const failEl=document.getElementById('fail');
+  if(failEl){
+    if(attachKind==='fail' && attachMsg){ failEl.textContent=attachMsg; failEl.style.display='block'; }
+    else if(attachKind==='ok'){ failEl.textContent=''; }
+  }
+  if(attachKind==='fail' && attachMsg){
+    const att=document.getElementById('loop-attached');
+    if(att) att.textContent='FAIL';
+  }
 }
 function paintCopy(text, kind){
   const el=document.getElementById('copymsg');
@@ -125,15 +135,23 @@ async function attach(id){
       if(reach) paintSessionReach(reach);
       else if(id==='opencode') paintSessionReach('FAIL');
     }else{
-      const detail=(j && (j.copy||j.error))||GROK_USE;
+      const nxt=(j && (j.next_step||''))||'Launch env or ./pfy up';
+      let detail=(j && (j.copy||j.error))||'no local engine';
+      detail=String(detail);
+      if(detail.indexOf(nxt)<0) detail=detail+' · '+nxt;
       attachMsg='FAIL Attach '+id+' — '+detail;
       attachKind='fail';
       if(id==='opencode') paintSessionReach((j&&j.session_reach)||'FAIL');
+      paintAttach();
+      Promise.resolve().then(()=>tick()).then(()=>paintAttach()).catch(()=>paintAttach());
+      return;
     }
   }catch(e){
-    attachMsg='FAIL Attach '+id+' — '+GROK_USE;
+    attachMsg='FAIL Attach '+id+' — no local engine · Launch env or ./pfy up';
     attachKind='fail';
     if(id==='opencode') paintSessionReach('FAIL');
+    paintAttach();
+    return;
   }
   paintAttach();
   await tick();

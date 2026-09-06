@@ -68,16 +68,22 @@ def pid_alive(pid):
         return False
 
 def live_openai_base():
+    """Fresh FreeToken-first detect at call time (#171). Ready detect base only.
+
+    Do not fall back to shell LOCAL_OPENAI_BASE_URL (often a stale Ollama Launch pin).
+    """
     det = detector_json()
-    base = str(det.get("base_url") or os.environ.get("LOCAL_OPENAI_BASE_URL") or "").strip()
+    status = str(det.get("status") or "").strip().lower()
+    base = str(det.get("base_url") or "").strip()
     if base == "(none)":
         base = ""
-    if not base:
-        return "", det
-    b = base.rstrip("/")
-    if not b.endswith("/v1"):
-        b = b + "/v1"
-    return b, det
+    # Ready + non-empty detect base wins — FreeToken before Ollama when both up.
+    if status == "ready" and base:
+        b = base.rstrip("/")
+        if not b.endswith("/v1"):
+            b = b + "/v1"
+        return b, det
+    return "", det
 
 
 def write_opencode_config(base, models):
