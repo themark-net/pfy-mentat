@@ -1,4 +1,5 @@
- parsed = parse_status(status_text)
+xt = pfy_status_stdout()
+    parsed = parse_status(status_text)
     parsed_chips = {c["id"]: c for c in parsed["chips"]}
     chips = []
     for h in harnesses:
@@ -67,6 +68,7 @@
         "active_stub": active in STUB_ALWAYS, "refresh_ms": REFRESH_MS,
         "sidecar_ok": sorted(SIDECAR_OK),
         "sidecar_pid": sidecar_pid_live(),
+        "session_reach": _session_reach_live(),
         "grok_path": grok_path_live(),
         "monitor_note": last_monitor_note(),
         "monitor_pid": monitor_pid_live(),
@@ -77,36 +79,4 @@ def html_page():
     if FRONTEND.is_file():
         return FRONTEND.read_text(encoding="utf-8")
     return (
-        "<!DOCTYPE html><html><body>error: gui/operator/frontend/index.html missing</body></html>"
-    )
-
-
-
-def frontend_static(path: str):
-    """Serve sibling assets from gui/operator/frontend (app-core-*.js, app-ui.js, …)."""
-    name = (path or "").lstrip("/")
-    if not name or "/" in name or "\\" in name or ".." in name or name.startswith("."):
-        return None
-    if not name.endswith((".js", ".css", ".map", ".svg", ".png", ".ico", ".woff2")):
-        return None
-    fp = (FRONTEND_DIR / name).resolve()
-    try:
-        fp.relative_to(FRONTEND_DIR.resolve())
-    except ValueError:
-        return None
-    if not fp.is_file():
-        return None
-    ctype = {
-        ".js": "application/javascript; charset=utf-8",
-        ".css": "text/css; charset=utf-8",
-        ".map": "application/json; charset=utf-8",
-        ".svg": "image/svg+xml",
-        ".png": "image/png",
-        ".ico": "image/x-icon",
-        ".woff2": "font/woff2",
-    }.get(fp.suffix.lower(), "application/octet-stream")
-    return fp, ctype
-
-
-def run_stage():
-    """Run product env-stage (./pfy stage). 
+        "<!DOCTYPE html><html><body>error: gui/operator/frontend/index.html missing</body></h
