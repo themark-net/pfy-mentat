@@ -139,6 +139,44 @@ async function attach(id){
   await tick();
   paintAttach();
 }
+
+async function postRefreshUsage(){
+  try{
+    if(isTauri()){
+      try{
+        const v=await window.__TAURI__.core.invoke('usage');
+        const u=typeof v==='string'?JSON.parse(v):v;
+        if(u && typeof u==='object'){
+          lastSnap=lastSnap||{};
+          lastSnap.usage=u;
+          if(!lastSnap.status_runtime) lastSnap.status_runtime={};
+          if(u.engine) lastSnap.status_runtime.engine=u.engine;
+          if(u.endpoint){ lastSnap.status_runtime.endpoint=u.endpoint; lastSnap.status_runtime.base_url=u.endpoint; }
+          lastSnap.status_runtime.tok_path=u.tok_path||'SKIP';
+          lastSnap.status_runtime.vram=u.vram||'SKIP';
+          if(u.models&&u.models.length) lastSnap.models=u.models;
+        }
+        return u;
+      }catch(e){ return null; }
+    }
+    if(noLiveApi()) return null;
+    const r=await fetch(apiRoot()+'/usage',{cache:'no-store'});
+    if(!r.ok) return null;
+    const u=await r.json();
+    if(u && typeof u==='object'){
+      lastSnap=lastSnap||{};
+      lastSnap.usage=u;
+      if(!lastSnap.status_runtime) lastSnap.status_runtime={};
+      if(u.engine) lastSnap.status_runtime.engine=u.engine;
+      if(u.endpoint){ lastSnap.status_runtime.endpoint=u.endpoint; lastSnap.status_runtime.base_url=u.endpoint; }
+      lastSnap.status_runtime.tok_path=u.tok_path||'SKIP';
+      lastSnap.status_runtime.vram=u.vram||'SKIP';
+      if(u.models&&u.models.length) lastSnap.models=u.models;
+    }
+    return u;
+  }catch(e){ return null; }
+}
+
 async function refreshNow(){
   const btn=document.getElementById('btnrefresh');
   if(refreshing){
@@ -150,6 +188,8 @@ async function refreshNow(){
   document.getElementById('meta').textContent='refreshing…';
   paintRefresh('refreshing…','');
   try{
+    await tick();
+    await postRefreshUsage();
     await tick();
     const err=lastSnap&&lastSnap.error&&!(lastSnap.chips||[]).length;
     if(err){
