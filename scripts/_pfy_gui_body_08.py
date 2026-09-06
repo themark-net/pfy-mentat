@@ -69,7 +69,7 @@ ck_forget()
                 fail = u.get("fail") or "FAIL: no local engine up"
                 nxt = u.get("next_step") or "Launch env or ./pfy up"
                 txt += f"\n{fail}\nnext       {nxt}"
-            self.pack_acts(["refresh", "test", "pullname", "pull", "tst", "pst", "rst"])
+            self.pack_acts(["refresh", "copyep", "est", "test", "pullname", "pull", "tst", "pst", "rst"])
         elif self.view == "stage":
             sl = stage.get("live") or "SKIP"
             txt = f"STAGE\nenv-stage   {sl}"
