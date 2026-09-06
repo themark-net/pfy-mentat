@@ -1,1 +1,10 @@
-@/workspace/pfy_push_content.txt
+#!/usr/bin/env bash
+# scripts/pfy — assembler for #161 (parts under scripts/pfy.d/)
+set -euo pipefail
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PARTS_DIR="$DIR/pfy.d"
+TMP="$(mktemp)"
+trap 'rm -f "$TMP"' EXIT
+cat "$PARTS_DIR"/*.part >"$TMP"
+chmod +x "$TMP"
+exec bash "$TMP" "$@"
