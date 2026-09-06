@@ -1,4 +1,36 @@
-Not --lab. Honest skip is PASS."""
+tml>"
+    )
+
+
+
+def frontend_static(path: str):
+    """Serve sibling assets from gui/operator/frontend (app-core-*.js, app-ui.js, …)."""
+    name = (path or "").lstrip("/")
+    if not name or "/" in name or "\\" in name or ".." in name or name.startswith("."):
+        return None
+    if not name.endswith((".js", ".css", ".map", ".svg", ".png", ".ico", ".woff2")):
+        return None
+    fp = (FRONTEND_DIR / name).resolve()
+    try:
+        fp.relative_to(FRONTEND_DIR.resolve())
+    except ValueError:
+        return None
+    if not fp.is_file():
+        return None
+    ctype = {
+        ".js": "application/javascript; charset=utf-8",
+        ".css": "text/css; charset=utf-8",
+        ".map": "application/json; charset=utf-8",
+        ".svg": "image/svg+xml",
+        ".png": "image/png",
+        ".ico": "image/x-icon",
+        ".woff2": "font/woff2",
+    }.get(fp.suffix.lower(), "application/octet-stream")
+    return fp, ctype
+
+
+def run_stage():
+    """Run product env-stage (./pfy stage). Not --lab. Honest skip is PASS."""
     if not PFY.is_file():
         return {"ok": False, "live": "FAIL", "copy": "FAIL env-stage", "error": "scripts/pfy missing"}
     rc, out = _run(["bash", str(PFY), "stage"], timeout=90.0)
@@ -73,26 +105,4 @@ def test_model():
         text = ""
     if len(str(text).strip()) < 2:
         return {"ok": False, "live": "FAIL", "copy": "FAIL eval", "error": "empty completion"}
-    return {"ok": True, "live": "PASS", "copy": "PASS eval", "stdout": str(text).strip()[:400]}
-
-def pull_model(name):
-    # Live-engine pull: FreeToken records; Ollama pulls; llama skip honest.
-    name = (name or "").strip()
-    if not name:
-        return {"ok": False, "live": "FAIL", "copy": "FAIL pull", "error": "no name"}
-    if not PFY.is_file():
-        return {"ok": False, "live": "FAIL", "copy": "FAIL pull", "error": "scripts/pfy missing"}
-    rc, out = _run(["bash", str(PFY), "models", "pull", name], timeout=180.0)
-    blob = (out or "")
-    low = blob.lower()
-    if rc != 0:
-        return {
-            "ok": False, "live": "FAIL", "copy": "FAIL pull",
-            "error": (blob or "pull failed")[-400:],
-            "stdout": blob[-800:],
-        }
-    if "honest skip" in low or "has no pull" in low or "no local engine" in low:
-        return {"ok": True, "live": "SKIP", "copy": "SKIP pull", "stdout": blob[-800:]}
-    return {"ok": True, "live": "PASS", "copy": "PASS pull", "stdout": blob[-800:]}
-
-def lau
+    return {"ok": True, "live":
