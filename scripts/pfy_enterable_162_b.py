@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Enterable OpenCode open_enterable — cite #162 (b)."""
+"""Enterable OpenCode open_enterable -- cite #162 (b) / #181."""
 from __future__ import annotations
 
 import os
@@ -43,9 +43,11 @@ def open_enterable_opencode_session(
     active_harness_setter=None,
     stub_line="",
 ):
-    """Attach OpenCode + open/focus enterable terminal session. Cite #162/#171.
+    """Attach OpenCode + open/focus enterable terminal session. Cite #162/#171/#181.
 
     Re-probes FreeToken-first detect immediately before open (#171).
+    Explicit :1919 FreeToken probe forces session env even if parent had
+    Ollama pin or detect briefly lags (#181).
     ok=True with session_reach only when a real enterable surface is up
     against the live detect base (not a stale Launch/Ollama pin alone).
     Tracks the real terminal/session pid (not a short-lived wrapper).
@@ -68,11 +70,40 @@ def open_enterable_opencode_session(
     base, det = live_openai_base()
     status = str((det or {}).get("status") or "").strip().lower()
     engine = str((det or {}).get("engine") or "").strip() or "none"
+    # #181: explicit FreeToken :1919 probe -- wins over parent Ollama pin / detect lag
+    try:
+        import urllib.request
+        ft_ok = False
+        for path in ("http://127.0.0.1:1919/v1/models", "http://127.0.0.1:1919/health"):
+            try:
+                req = urllib.request.Request(path, method="GET")
+                with urllib.request.urlopen(req, timeout=1) as r:
+                    if 200 <= int(getattr(r, "status", 200) or 200) < 300:
+                        ft_ok = True
+                        break
+            except Exception:
+                continue
+        if ft_ok:
+            base = "http://127.0.0.1:1919/v1"
+            engine = "freetoken"
+            status = "ready"
+            if isinstance(det, dict):
+                det = dict(det)
+                det["engine"] = "freetoken"
+                det["status"] = "ready"
+                det["base_url"] = "http://127.0.0.1:1919"
+    except Exception:
+        pass
+    if base:
+        b = str(base).rstrip("/")
+        if not b.endswith("/v1"):
+            b = b + "/v1"
+        base = b
     next_step = "Launch env or ./pfy up"
     if not base or status != "ready":
         clear_session_reach(STATE)
         reason = "no local engine" if status != "ready" else "no live local endpoint"
-        copy = "FAIL attach — %s · %s" % (reason, next_step)
+        copy = "FAIL attach -- %s \u00b7 %s" % (reason, next_step)
         return {
             "ok": False,
             "id": hid,
@@ -122,7 +153,7 @@ def open_enterable_opencode_session(
             "sidecar": True,
             "session_reach": SESSION_REACH_OK,
             "focused": bool(focused),
-            "copy": "attached opencode pid %s · %s · %s" % (real, SESSION_REACH_OK, engine),
+            "copy": "attached opencode pid %s \u00b7 %s \u00b7 %s" % (real, SESSION_REACH_OK, engine),
             "error": "",
             "base_url": base,
             "engine": engine,
@@ -155,13 +186,13 @@ def open_enterable_opencode_session(
                 continue
             k, v = s.split("=", 1)
             env[k.strip()] = v.strip().strip("'\"")
-    # #171: detect base wins over tools-model.env / stale shell Ollama pin
+    # #171/#181: FreeToken-first detect base wins over tools-model.env / stale shell Ollama pin
     env["LOCAL_OPENAI_BASE_URL"] = base
     env["OPENAI_BASE_URL"] = base
     env["GROK_HOME"] = str(grok_home())
     log = STATE / "sidecar-opencode.log"
     ok, pid, err = spawn_terminal_opencode(bin_path, str(ROOT), env, log, pid_alive)
-    # Resolve again — wrapper may have exited; opencode may still be live
+    # Resolve again -- wrapper may have exited; opencode may still be live
     real = resolve_enterable_pid(bin_path, pid if ok else 0, pid_alive)
     if real and pid_alive(real):
         focused = _focus_pid(real)
@@ -192,7 +223,7 @@ def open_enterable_opencode_session(
             "model": model,
             "session_reach": SESSION_REACH_OK,
             "focused": bool(focused),
-            "copy": "attached opencode pid %s · %s · %s" % (real, SESSION_REACH_OK, engine),
+            "copy": "attached opencode pid %s \u00b7 %s \u00b7 %s" % (real, SESSION_REACH_OK, engine),
             "error": "",
             "engine": engine,
         }
@@ -206,7 +237,7 @@ def open_enterable_opencode_session(
         "ok": False,
         "id": hid,
         "live": "FAIL",
-        "copy": "FAIL open session — " + (err or "terminal cannot start"),
+        "copy": "FAIL open session -- " + (err or "terminal cannot start"),
         "error": err or "terminal cannot start",
         "session_reach": "FAIL",
         "pid": "",
