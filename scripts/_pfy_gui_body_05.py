@@ -1,95 +1,108 @@
-eta.configure(text="refreshing…")
-            self.paint_refresh("refreshing…", False)
-            try:
-                self.brefresh.configure(state="disabled")
-            except Exception:
-                pass
-        def work():
-            try:
-                snap = self.board.snapshot()
+               res = self.board.test_model()
             except Exception as e:
-                snap = {"error": str(e)}
-            self.root.after(0, lambda s=snap, u=user: self.apply(s, user=u))
+                res = {"ok": False, "copy": "FAIL eval", "error": str(e)}
+            self.root.after(0, lambda r=res: self.done_eval(r))
         threading.Thread(target=work, daemon=True).start()
 
-    def apply(self, s, user=False):
-        pending = self.pending_user
-        self.pending_user = False
-        self.busy = False
+    def done_eval(self, res):
         try:
-            self.brefresh.configure(state="normal")
+            self.btest.configure(state="normal")
         except Exception:
             pass
-        self.snap = s or {}
-        self.render()
-        if user:
-            err = self.snap.get("error") and not (self.snap.get("chips") or [])
-            if err:
-                self.paint_refresh("FAIL refresh", True)
-                self.meta.configure(text="FAIL refresh")
+        if res.get("ok"):
+            copy = res.get("copy") or "PASS eval"
+            if str(copy).startswith("SKIP"):
+                self.tst.configure(text=copy, style="M.TLabel")
+            elif str(copy).startswith("FAIL"):
+                self.paint_eval(copy, True)
             else:
-                ts = self.snap.get("ts") or ""
-                host = self.snap.get("host") or ""
-                if ts:
-                    line = "PASS refresh · " + " · ".join(x for x in (host, ts) if x)
-                    self.paint_refresh(line, False)
-                    self.meta.configure(text=" · ".join(x for x in (host, self.snap.get("profile") or "", ts) if x))
-                else:
-                    self.paint_refresh("PASS refresh · refreshed", False)
-                    cur = str(self.meta.cget("text") or "")
-                    if "refreshed" not in cur:
-                        self.meta.configure(text=(cur + " · refreshed").strip(" ·"))
-        if pending:
-            self.refresh(user=True)
+                self.paint_eval(copy, False)
+        else:
+            self.paint_eval("FAIL " + (res.get("copy") or res.get("error") or "eval"), True)
+        self.refresh(user=True)
 
-    def paint_tools(self, text, fail=False):
-        self.toolst.configure(text=text, style="F.TLabel" if fail else "Ok.TLabel")
-        self.msg = text
+    def paint_pull(self, text, fail=False):
+        self.pst.configure(text=text, style="F.TLabel" if fail else "Ok.TLabel")
 
-    def tool_on(self, tid):
-        tools = (self.snap or {}).get("tools") or {}
-        if tid == "mcp":
-            return bool(tools.get("mcp"))
-        if tid == "write-guard":
-            return bool(tools.get("write_guard"))
-        if tid == "extra-tools":
-            return (tools.get("tools_mode") or "") == "local_tools"
-        return bool((tools.get("skills") or {}).get(tid))
-
-    def toggle_tool(self, tid):
-        want = not self.tool_on(tid)
-        self.paint_tools("toggling…", False)
+    def pull_model(self):
+        try:
+            name = (self.pullname.get() or "").strip()
+        except Exception:
+            name = ""
+        if not name:
+            self.paint_pull("FAIL pull", True)
+            return
+        self.paint_pull("pulling…", False)
+        self.meta.configure(text="refreshing…")
+        try:
+            self.bpull.configure(state="disabled")
+        except Exception:
+            pass
         def work():
             try:
                 if self.board is None:
-                    res = {"ok": False, "copy": "FAIL tools", "error": "no board"}
+                    res = {"ok": False, "copy": "FAIL pull", "error": "no board"}
                 else:
-                    res = self.board.set_tool(tid, want)
+                    res = self.board.pull_model(name)
             except Exception as e:
-                res = {"ok": False, "copy": "FAIL tools", "error": str(e)}
-            self.root.after(0, lambda r=res: self.done_tool(r))
+                res = {"ok": False, "copy": "FAIL pull", "error": str(e)}
+            self.root.after(0, lambda r=res: self.done_pull(r))
         threading.Thread(target=work, daemon=True).start()
 
-    def done_tool(self, res):
+    def done_pull(self, res):
+        try:
+            self.bpull.configure(state="normal")
+        except Exception:
+            pass
         if res.get("ok"):
-            self.paint_tools(res.get("copy") or "PASS tools", False)
+            copy = res.get("copy") or "PASS pull"
+            self.paint_pull(copy, False)
         else:
-            self.paint_tools("FAIL " + (res.get("copy") or res.get("error") or "tools"), True)
+            self.paint_pull("FAIL " + (res.get("copy") or res.get("error") or "pull"), True)
         self.refresh(user=True)
 
-    def pack_acts(self, names):
-        forget = [self.bgrok, self.bopen, self.bsi, self.bsiopen, self.bsifold, self.bsitask, self.bcopyep, self.bcopyst, self.brefresh, self.bcopy, self.bstage, self.benv, self.bpull, self.btest, self.pullname, self.sst, self.est, self.pst, self.rst, self.tst, self.ast, self.cst, self.sist, self.siabs, self.sirel, self.sitask, self.ewhat, self.siopenst, self.toolst]
-        forget.extend(self.tool_btns.values())
-        for w in forget:
-            try: w.pack_forget()
-            except Exception: pass
-        order = {
-            "grok": self.bgrok, "open": self.bopen, "si": self.bsi, "refresh": self.brefresh,
-            "copy": self.bcopy, "stage": self.bstage, "env": self.benv,
-            "pull": self.bpull, "pullname": self.pullname, "pst": self.pst,
-            "test": self.btest, "tst": self.tst, "rst": self.rst,
-            "sst": self.sst, "est": self.est, "ast": self.ast, "cst": self.cst, "sist": self.sist,
-            "siopen": self.bsiopen, "sifold": self.bsifold, "sitask": self.bsitask,
-            "copyep": self.bcopyep, "copyst": self.bcopyst,
-            "siabs": self.siabs, "sirel": self.sirel, "sitxt": self.sitask, "ewhat": self.ewhat, "siopenst": self.siopenst,
- 
+    def paint_env(self, text, fail=False):
+        self.est.configure(text=text, style="F.TLabel" if fail else "Ok.TLabel")
+
+    def launch_env(self):
+        self.paint_env("launching env…", False)
+        self.meta.configure(text="refreshing…")
+        try:
+            self.benv.configure(state="disabled")
+        except Exception:
+            pass
+        def work():
+            try:
+                if self.board is None:
+                    res = {"ok": False, "copy": "FAIL env", "error": "no board"}
+                else:
+                    res = self.board.launch_env()
+            except Exception as e:
+                res = {"ok": False, "copy": "FAIL env", "error": str(e)}
+            self.root.after(0, lambda r=res: self.done_env(r))
+        threading.Thread(target=work, daemon=True).start()
+
+    def done_env(self, res):
+        try:
+            self.benv.configure(state="normal")
+        except Exception:
+            pass
+        self._last_env = res or {}
+        reach = str((res or {}).get("session_reach") or "").strip()
+        if reach:
+            self._session_reach = reach
+        what = str((res or {}).get("what") or "")
+        if what:
+            self.ewhat.configure(text=what)
+        if res.get("ok"):
+            copy = res.get("copy") or ("SKIP env" if str(res.get("live") or "") == "SKIP" else "PASS env")
+            if str(copy).startswith("SKIP"):
+                self.est.configure(text=copy, style="M.TLabel")
+            else:
+                self.paint_env(copy, False)
+        else:
+            self.paint_env("FAIL " + (res.get("copy") or res.get("error") or "env"), True)
+        self.refresh(user=True)
+
+    def run_stage(self):
+        sel
