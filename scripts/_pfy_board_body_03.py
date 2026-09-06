@@ -45,18 +45,38 @@ xt = pfy_status_stdout()
     engine_live = honest_live((winner["live"] if winner else "") or det.get("status") or "missing")
     msgs = org_messages()
     nimo_note = ""
-    tape = tape_steps(det, verb, parsed.get("usage") or [], active, live_active)
+    usage_info = local_usage_info()
+    tape = tape_steps(det, verb, usage_info.get("lines") or parsed.get("usage") or [], active, live_active)
     tape_outcome = " then ".join(f"{t['label']} {t['live']}" for t in tape)
     env_stage_live = next((t["live"] for t in tape if t["id"] == "env-stage"), "SKIP")
     blocked_reason = GROK_USE if active in STUB_ALWAYS else ""
+    try:
+        import importlib.util as _ilu
+        _up = ROOT / "scripts" / "pfy_usage_165.py"
+        _sr = dict(parsed.get("runtime") or {})
+        if _up.is_file():
+            _sp = _ilu.spec_from_file_location("pfy_usage_165", _up)
+            _um = _ilu.module_from_spec(_sp); _sp.loader.exec_module(_um)
+            _sr = _um.enrich_status_runtime(_sr, usage_info)
+        else:
+            _sr = dict(_sr)
+            _sr["tok_path"] = usage_info.get("tok_path") or "SKIP"
+            _sr["vram"] = usage_info.get("vram") or "SKIP"
+    except Exception:
+        _sr = dict(parsed.get("runtime") or {})
+        _sr["tok_path"] = usage_info.get("tok_path") or "SKIP"
+        _sr["vram"] = usage_info.get("vram") or "SKIP"
+    models = list(usage_info.get("models") or []) or (inspect_models(base) if base else [])
+    if usage_info.get("endpoint"):
+        base = usage_info.get("endpoint") or base
     return {
         "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "host": host, "root": str(ROOT), "profile": profile, "local_only": profile == "local-only",
         "is_nimo": is_nimo,
-        "detector": det, "status_runtime": parsed.get("runtime") or {}, "usage": parsed.get("usage") or [],
+        "detector": det, "status_runtime": _sr, "usage": usage_info,
         "chips": chips, "active": active, "last_verb": verb, "now": now_state(active, live_active, procs, verb),
         "processes": procs, "detect_order": order, "engine_live": engine_live,
-        "models": inspect_models(base) if base else [],
+        "models": models,
         "models_note": "",
         "org_messages": msgs, "agent_lane_collapsed": not msgs,
         "honest": {"modes": modes, "note_nimo": nimo_note},
