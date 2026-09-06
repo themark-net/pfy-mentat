@@ -53,14 +53,37 @@
         self.refresh(user=True)
 
     def copy_endpoint(self):
-        res = self._last_env or {}
-        val = str(res.get("base_url") or "")
+        # #175: FreeToken-first live base — not Launch env pin
+        nxt = "Launch env or ./pfy up"
+        val = ""
+        try:
+            if self.board is not None and hasattr(self.board, "live_openai_base"):
+                base, _det = self.board.live_openai_base()
+                val = str(base or "").strip()
+        except Exception:
+            val = ""
         if not val:
-            for s in (res.get("next_steps") or []):
-                if (s or {}).get("id") == "endpoint":
-                    val = str(s.get("value") or "")
-                    break
-        self._clip(val, self.paint_env, "PASS Copy endpoint", "FAIL no endpoint" if not val else "FAIL clipboard — select endpoint")
+            s = getattr(self, "snap", None) or {}
+            u = s.get("usage") if isinstance(s.get("usage"), dict) else {}
+            if u and u.get("ok") is False:
+                nxt = str(u.get("next_step") or nxt)
+                self.paint_env("FAIL copy · next: " + nxt, True)
+                return
+            if u and u.get("ok") is not False:
+                val = str(u.get("endpoint") or "").strip()
+            if not val or val == "(none)":
+                d = s.get("detector") or {}
+                sr = s.get("status_runtime") or {}
+                st = str(d.get("status") or sr.get("status") or "").strip().lower()
+                base = str(d.get("base_url") or sr.get("base_url") or sr.get("endpoint") or "").strip()
+                if st == "ready" and base and base != "(none)":
+                    val = base
+                    if not val.rstrip("/").endswith("/v1"):
+                        val = val.rstrip("/") + "/v1"
+        if not val or val == "(none)":
+            self.paint_env("FAIL copy · next: " + nxt, True)
+            return
+        self._clip(val, self.paint_env, "PASS copied", "FAIL copy")
 
     def copy_pfy_status(self):
         res = self._last_env or {}
