@@ -110,7 +110,7 @@ async function tick(){
       const el=document.getElementById(id);
       if(el) el.disabled=stub;
     });
-    document.getElementById('fail').textContent=stub?('FAIL  '+(s.blocked_copy||GROK_USE)):'';
+    document.getElementById('fail').textContent=stub?('FAIL  '+(s.blocked_copy||GROK_USE)):(attachKind==='fail'&&attachMsg?attachMsg:'');
     if(stub && attachKind!=='fail'){
       attachMsg='FAIL  '+(s.blocked_copy||GROK_USE);
       attachKind='fail';
@@ -126,9 +126,14 @@ async function tick(){
     const verb=lastVerbLabel((s.last_verb&&s.last_verb.verb)||'(none)');
     const when=(s.last_verb&&s.last_verb.when)||'';
     const pid=s.sidecar_pid || '';
-    document.getElementById('loop-attached').textContent=attached+(pid?(' pid '+pid):'');
+    // #171: do not wipe HTML Attach FAIL back to (none) on tick
+    if(!(attachKind==='fail' && attachMsg)){
+      document.getElementById('loop-attached').textContent=attached+(pid?(' pid '+pid):'');
+    }
     const reach=(s.session_reach||'').trim()||'(none)';
-    paintSessionReach(reach);
+    if(!(attachKind==='fail' && attachMsg && (!reach || reach==='(none)'))){
+      paintSessionReach(reach);
+    }
     document.getElementById('loop-last').textContent=verb;
     const elv=envLive(s);
     const envEl=document.getElementById('loop-env');
@@ -179,7 +184,9 @@ async function tick(){
     const stageEl=document.getElementById('stage-live');
     stageEl.textContent=sl;
     stageEl.className='live '+cls((sl||'').toLowerCase());
-    document.getElementById('att-now').textContent=attached;
+    if(!(attachKind==='fail' && attachMsg)){
+      document.getElementById('att-now').textContent=attached;
+    }
     document.getElementById('att-last').textContent=verb;
     document.getElementById('att-rail').innerHTML=(s.chips||[]).map(chipHtml).join('');
     document.querySelectorAll('[data-start]').forEach(el=>el.addEventListener('click',e=>{e.preventDefault();attach(el.getAttribute('data-start'));}));
