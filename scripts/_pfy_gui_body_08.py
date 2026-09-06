@@ -34,9 +34,29 @@ ck_forget()
             if self.msg: txt += "\n" + self.msg
             self.pack_acts(["env", "copyep", "copyst", "open", "grok", "est", "ast"])
         elif self.view == "engine":
-            models = s.get("models") or []
+            u = s.get("usage") if isinstance(s.get("usage"), dict) else {}
+            sr = s.get("status_runtime") or {}
+            engine = (u.get("engine") if u else None) or d.get("engine") or r.get("engine") or "none"
+            endpoint = (u.get("endpoint") if u else None) or sr.get("endpoint") or sr.get("base_url") or d.get("base_url") or "(none)"
+            if not endpoint:
+                endpoint = "(none)"
+            models = (u.get("models") if u else None) or s.get("models") or []
             mtxt = " · ".join(str(x) for x in models) if models else "(none)"
-            txt = f"ENGINE\nengine     {engine}\nlive       {eng_live}\ngrok       {honest(grok.get('live'))}\nmodels     {mtxt}"
+            tok = (u.get("tok_path") if u else None) or sr.get("tok_path") or "SKIP"
+            vram = (u.get("vram") if u else None) or sr.get("vram") or "SKIP"
+            if not tok:
+                tok = "SKIP"
+            if not vram:
+                vram = "SKIP"
+            txt = (
+                f"ENGINE\nengine     {engine}\nendpoint   {endpoint}\nlive       {eng_live}"
+                f"\ngrok       {honest(grok.get('live'))}\nmodels     {mtxt}"
+                f"\ntok_path   {tok}\nvram       {vram}"
+            )
+            if u and not u.get("ok"):
+                fail = u.get("fail") or "FAIL: no local engine up"
+                nxt = u.get("next_step") or "Launch env or ./pfy up"
+                txt += f"\n{fail}\nnext       {nxt}"
             self.pack_acts(["refresh", "test", "pullname", "pull", "tst", "pst", "rst"])
         elif self.view == "stage":
             sl = stage.get("live") or "SKIP"
