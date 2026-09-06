@@ -1,90 +1,70 @@
-ype", "text/html; charset=utf-8")
-            self.send_header("X-Pfy-UI", "session")
-            self.send_header("Content-Length", str(len(b)))
-            self.end_headers()
-            self.wfile.write(b)
-    dump = ThreadingHTTPServer(("127.0.0.1", 0), Dump)
-    threading.Thread(target=dump.serve_forever, daemon=True).start()
-    dport = dump.server_address[1]
-    class Board:
-        HOST = "127.0.0.1"
-        PORT = dport
-        Handler = Ours
-    httpd, url = ensure_http(Board)
-    try:
-        got = urlparse(url).port
-        if got == dport:
-            return False
-        with urllib.request.urlopen(url, timeout=1) as r:
-            body = r.read().decode("utf-8", "replace")
-            hdr = (r.headers.get("X-Pfy-UI") or "")
-        return (
-            not leftover_dump(body, hdr)
-            and "pfy board" not in body.lower()
-            and "start via cli" not in body.lower()
-            and "<title>pfy</title>" in body
-        )
-    finally:
-        try:
-            httpd.shutdown()
-        except Exception:
-            pass
-        try:
-            dump.shutdown()
-        except Exception:
-            pass
-
-def run_tk(board, selftest=False) -> bool:
-    try:
-        import tkinter as tk; import tkinter.ttk  # noqa
-        root = tk.Tk()
-    except Exception:
-        return False
-    print("native window (tk)", flush=True)
-    w = Win(board, root)
-    if selftest:
-        w.apply(selftest_snap()); root.update_idletasks(); root.update()
-        title = root.title()
-        has = (
-            w.bgrok.cget("text") == "Attach grok"
-            and w.bopen.cget("text") == "Attach opencode"
-            and w.brefresh.cget("text") == "Refresh status"
-            and w.bcopy.cget("text") == "Copy stub one-liner"
-            and w.bstage.cget("text") == "Run stage"
-            and w.benv.cget("text") == "Launch env"
-            and w.bpull.cget("text") == "Pull"
-            and w.btest.cget("text") == "Test model"
-            and "tools" in w.nav
-        )
-        w.set_view("loop")
-        body = w.body.cget("text") or ""
-        loop_ok = "LOOP" in body and "env" in body.lower() and "LOCAL WORKER" not in body and "pfy board" not in body.lower()
-        w.copy_stub()
-        copied = (w.cst.cget("text") in ("copied", "PASS copied"))
-        try:
-            clip = root.clipboard_get()
-        except Exception:
-            clip = ""
-        root.destroy()
-        return title == "pfy" and has and loop_ok and copied and bool(clip)
-    w.poll(int(os.environ.get("PFY_BOARD_REFRESH_MS", "2000"))); root.mainloop(); return True
-
-def main() -> int:
-    if os.environ.get("PFY_GUI_SELFTEST")=="1" or "--selftest" in sys.argv:
-        return 0 if run_tk(None, True) and selftest_fresh_bind() else 1
-    try: board = load_board()
-    except Exception as e:
-        return stopped_exit(str(e))
-    httpd, url = ensure_http(board)
-    try:
-        if run_webkit(url): return 0
-        if run_tk(board, False): return 0
-        if os.environ.get("PFY_GUI_DEV")=="1" and run_pywebview(url): return 0
-        return stopped_exit("no already-on-box toolkit opened a native window")
-    finally:
-        if httpd is not None:
-            try: httpd.shutdown()
-            except Exception: pass
-
-if __name__ == "__main__":
-    raise SystemExit(main())
+ck_forget()
+            if self.view == "org": self.view = "loop"
+        for k,b in self.nav.items():
+            b.configure(bg="#243041" if k==self.view else SIDE)
+        attached = s.get("active") or "(none)"; verb = (s.get("last_verb") or {}).get("verb") or "(none)"
+        if verb in ("env", "launch-env"):
+            verb = "Launch env"
+        when = (s.get("last_verb") or {}).get("when") or ""
+        pid = s.get("sidecar_pid") or ""
+        att = attached + (f" pid {pid}" if pid else "")
+        stage = next((t for t in tape if t.get("id")=="env-stage"), {}) or {}
+        inf = next((t for t in tape if t.get("id")=="inference"), {}) or {}
+        lives = [str(inf.get("live") or "SKIP").upper(), str(stage.get("live") or "SKIP").upper()]
+        if "FAIL" in lives:
+            env_live = "FAIL"
+        elif "READY" in lives:
+            env_live = "READY"
+        else:
+            env_live = "SKIP"
+        if self.view == "loop":
+            note = s.get("monitor_note") or ""
+            mpid = s.get("monitor_pid") or ""
+            mon = note or (f"pid {mpid}" if mpid else "(none)")
+            gpath = s.get("grok_path") or honest(grok.get("live"))
+            reach = str(s.get("session_reach") or "").strip() or "(none)"
+            # Prefer last attach/env session_reach if snapshot empty
+            if reach == "(none)":
+                reach = str(getattr(self, "_session_reach", "") or "").strip() or "(none)"
+            txt = f"LOOP\nenv        {env_live}\nattached   {att}\nsession    {reach}\nlast       {verb}  {when}\nmonitor    {mon}\ngrok       {gpath}"
+            what = str((getattr(self, "_last_env", {}) or {}).get("what") or "")
+            if what:
+                txt += "\nwhat       " + what
+            if stub: txt += f"\nFAIL       {s.get('blocked_copy') or GROK_USE}"
+            if self.msg: txt += "\n" + self.msg
+            self.pack_acts(["env", "copyep", "copyst", "open", "grok", "est", "ast"])
+        elif self.view == "engine":
+            models = s.get("models") or []
+            mtxt = " · ".join(str(x) for x in models) if models else "(none)"
+            txt = f"ENGINE\nengine     {engine}\nlive       {eng_live}\ngrok       {honest(grok.get('live'))}\nmodels     {mtxt}"
+            self.pack_acts(["refresh", "test", "pullname", "pull", "tst", "pst", "rst"])
+        elif self.view == "stage":
+            sl = stage.get("live") or "SKIP"
+            txt = f"STAGE\nenv-stage   {sl}"
+            self.pack_acts(["stage", "sst"])
+        elif self.view == "attach":
+            reach = str(s.get("session_reach") or "").strip() or getattr(self, "_session_reach", "") or "(none)"
+            txt = f"ATTACH\nNOW     attached {attached} · last {verb}\nsession {reach}"
+            si = getattr(self, "_last_si", {}) or {}
+            abs_p = str(si.get("abs_path") or "")
+            rel_p = str(si.get("rel") or si.get("path") or "")
+            task_p = str(si.get("task_text") or si.get("task_md") or "")
+            if abs_p or rel_p or task_p:
+                if abs_p:
+                    txt += "\nabs       " + abs_p
+                if rel_p:
+                    txt += "\nrel       " + rel_p
+                if task_p:
+                    prev = task_p if len(task_p) <= 320 else task_p[:320] + "…"
+                    txt += "\nTASK      " + prev.replace("\n", " / ")
+                txt += "\nnote      Session proof: Attach OpenCode + disk artifact — not a board-hosted game"
+            if stub: txt += f"\nFAIL    {s.get('blocked_copy') or GROK_USE}"
+            if self.msg: txt += "\n" + self.msg
+            # Buttons only (no path labels in the side pack — they clipped off-screen)
+            self.pack_acts(["si", "siopen", "sifold", "sitask", "grok", "open", "copy", "ast", "sist", "cst"])
+        elif self.view == "tools":
+            tools = s.get("tools") or {}
+            skills = tools.get("skills") or {}
+            def onoff(v):
+                return "on" if v else "off"
+            extra = ono
