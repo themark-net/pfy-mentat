@@ -35,6 +35,28 @@ def parse_status(text):
             usage.append(line.rstrip())
     return {"active": active, "runtime": runtime, "usage": usage, "chips": chips}
 
+def local_usage_info():
+    """Run bash scripts/pfy usage and parse -- cite #165."""
+    import importlib.util
+    path = ROOT / "scripts" / "pfy_usage_165.py"
+    empty = {
+        "ok": False, "engine": "", "endpoint": "", "models": [],
+        "tok_path": "SKIP", "vram": "SKIP",
+        "fail": "FAIL: no local engine up",
+        "next_step": "Launch env or ./pfy up", "lines": [],
+    }
+    if not path.is_file():
+        return empty
+    try:
+        spec = importlib.util.spec_from_file_location("pfy_usage_165", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod.collect_usage(ROOT, _run)
+    except Exception as e:
+        empty = dict(empty)
+        empty["error"] = str(e)[:200]
+        return empty
+
 def process_table():
     rc, out = _run(["ps", "-eo", "pid,args"], timeout=5.0)
     if rc != 0:
