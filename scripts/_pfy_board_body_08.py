@@ -1,89 +1,115 @@
-val in updates.items():
-        if key not in seen:
-            out.append("%s=%s" % (key, val))
-    path.write_text("\n".join(out) + "\n", encoding="utf-8")
+pid, "log": str(log),
+            "role": "monitor",
+        }
+    record_sidecar_pid("grok", proc.pid)
+    record_last_verb("start grok")
+    write_monitor_note("monitor pid %s · %s" % (proc.pid, note))
+    return {
+        "ok": True, "id": "grok", "live": "READY", "pid": proc.pid,
+        "sidecar": True, "log": str(log), "role": "monitor",
+        "note": last_monitor_note(),
+    }
 
-def patch_toml_section_enabled(path, section, enabled):
-    if not path.is_file():
-        return False
-    text = path.read_text(encoding="utf-8")
-    header = "[" + section + "]"
-    if header not in text:
-        return False
-    parts = text.split(header, 1)
-    body = parts[1]
-    nxt = body.find("\n[")
-    chunk, rest = (body[:nxt], body[nxt:]) if nxt >= 0 else (body, "")
-    if "enabled = true" in chunk or "enabled = false" in chunk:
-        chunk = chunk.replace("enabled = true", "enabled = " + ("true" if enabled else "false"), 1)
-        if enabled:
-            chunk = chunk.replace("enabled = false", "enabled = true", 1)
-        else:
-            chunk = chunk.replace("enabled = true", "enabled = false", 1)
-    else:
-        chunk = chunk.rstrip() + "\nenabled = " + ("true" if enabled else "false") + "\n"
-    path.write_text(parts[0] + header + chunk + rest, encoding="utf-8")
-    return True
+SKILL_IDS = ("one-shot", "investigate", "agent-loops", "hermes-feedback")
+SKILLS_ROOT = ROOT / "bootstrap" / "grok-cli" / "skills"
+TOOLS_FILE = STATE / "tools.json"
+MCP_FRAGMENT = ROOT / "bootstrap" / "grok-cli" / "config" / "config.fragment.toml"
+WRITE_GUARD_DIR = ROOT / "harness" / "write-guard-mcp"
+WRITE_GUARD_ALT = ROOT / "tools" / "write-guard-mcp"
+TOOLS_ENV = ROOT / "examples" / "opencode-ollama" / ".generated" / "tools-model.env"
+MERGE_PY = ROOT / "bootstrap" / "grok-cli" / "scripts" / "merge_config.py"
+WG_OVERLAY = ROOT / "harness" / "agent-cage" / "overlays" / "write-guard" / "mcp-servers.write-guard.yaml"
+OPENCODE_JSON = STATE / "opencode.json"
+STATE_GROK = STATE / "grok-config.toml"
 
-def apply_mcp(want):
-    if want:
-        if not MCP_FRAGMENT.is_file():
-            return False, "mcp recipe missing"
-        if not MERGE_PY.is_file():
-            return False, "mcp merge missing"
-        STATE.mkdir(parents=True, exist_ok=True)
-        targets = [STATE_GROK, grok_config_path()]
-        last_err = ""
-        applied = False
-        for dest in targets:
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            rc, out = _run(["python3", str(MERGE_PY), "--config", str(dest), "--no-backup"], timeout=20.0)
-            if rc != 0:
-                last_err = (out or "mcp merge failed")[-300:]
-                continue
-            text = dest.read_text(encoding="utf-8", errors="replace") if dest.is_file() else ""
-            if "mcp_servers.codebase-memory" not in text:
-                last_err = "mcp not in config"
-                continue
-            applied = True
-        if not applied:
-            return False, last_err or "mcp merge failed"
-        return True, ""
-    for dest in (STATE_GROK, grok_config_path()):
-        patch_toml_section_enabled(dest, "mcp_servers.codebase-memory", False)
-    return True, ""
+def default_tools_state():
+    skills = {}
+    for sid in SKILL_IDS:
+        skills[sid] = (SKILLS_ROOT / sid / "SKILL.md").is_file()
+    return {
+        "skills": skills,
+        "mcp": False,
+        "write_guard": False,
+        "tools_mode": "split",
+    }
 
-def apply_write_guard(want):
-    wg = write_guard_root()
-    if want:
-        if wg is None or not (wg / "src" / "write_guard").is_dir():
-            return False, "write-guard missing"
-        if not WG_OVERLAY.is_file():
-            return False, "write-guard overlay missing"
-        STATE.mkdir(parents=True, exist_ok=True)
-        overlay = WG_OVERLAY.read_text(encoding="utf-8")
-        overlay = overlay.replace("enabled: false", "enabled: true").replace("WRITE_GUARD_MODE: audit", "WRITE_GUARD_MODE: enforce")
-        overlay = overlay.replace("PYTHONPATH: /workspace/.venvs/write-guard-smoke/lib/python3.12/site-packages", "PYTHONPATH: " + str(wg / "src"))
-        overlay = overlay.replace("WRITE_GUARD_ROOTS: /workspace", "WRITE_GUARD_ROOTS: " + str(ROOT))
-        (STATE / "mcp-servers.write-guard.yaml").write_text(overlay, encoding="utf-8")
-        cage = Path.home() / ".agentcage"
+def load_tools_state():
+    base = default_tools_state()
+    if TOOLS_FILE.is_file():
         try:
-            cage.mkdir(parents=True, exist_ok=True)
-            (cage / "mcp-servers.write-guard.yaml").write_text(overlay, encoding="utf-8")
+            raw = json.loads(TOOLS_FILE.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            raw = {}
+        if isinstance(raw, dict):
+            sk = raw.get("skills") if isinstance(raw.get("skills"), dict) else {}
+            for sid in SKILL_IDS:
+                if sid in sk:
+                    base["skills"][sid] = bool(sk[sid])
+            if "mcp" in raw:
+                base["mcp"] = bool(raw.get("mcp"))
+            if "write_guard" in raw:
+                base["write_guard"] = bool(raw.get("write_guard"))
+            mode = str(raw.get("tools_mode") or "").strip()
+            if mode in ("split", "local_tools"):
+                base["tools_mode"] = mode
+    return base
+
+def save_tools_state(st):
+    STATE.mkdir(parents=True, exist_ok=True)
+    TOOLS_FILE.write_text(json.dumps(st, indent=2) + "\n", encoding="utf-8")
+
+def apply_skills_dir(st):
+    dest = STATE / "opencode-skills"
+    dest.mkdir(parents=True, exist_ok=True)
+    for child in list(dest.iterdir()):
+        try:
+            child.unlink()
         except OSError:
             pass
-        gpath = grok_config_path()
-        block = (
-            "\n[mcp_servers.write-guard]\n"
-            'command = "python3"\n'
-            'args = ["-m", "write_guard", "serve"]\n'
-            "enabled = true\n"
-        )
-        for dest in (STATE_GROK, gpath):
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            cur = dest.read_text(encoding="utf-8") if dest.is_file() else ""
-            if "[mcp_servers.write-guard]" not in cur:
-                dest.write_text(cur.rstrip() + block + "\n", encoding="utf-8")
-            else:
-                patch_toml_section_enabled(dest, "mcp_servers.write-guard", True)
-        env = os.environ.copy()
+    enabled = []
+    for sid in SKILL_IDS:
+        if not st.get("skills", {}).get(sid):
+            continue
+        src = SKILLS_ROOT / sid
+        if not (src / "SKILL.md").is_file():
+            continue
+        link = dest / sid
+        try:
+            link.symlink_to(src)
+        except OSError:
+            return None, "cannot link " + sid
+        enabled.append(sid)
+    return dest, enabled
+
+def local_tools_model():
+    name = (os.environ.get("LOCAL_TOOLS_MODEL") or "").strip()
+    if name:
+        return name
+    if TOOLS_ENV.is_file():
+        for line in TOOLS_ENV.read_text(encoding="utf-8", errors="replace").splitlines():
+            s = line.strip()
+            if s.startswith("export LOCAL_TOOLS_MODEL="):
+                return s.split("=", 1)[1].strip().strip("'\"")
+            if s.startswith("LOCAL_TOOLS_MODEL="):
+                return s.split("=", 1)[1].strip().strip("'\"")
+    return ""
+
+
+def grok_home():
+    return Path(os.environ.get("GROK_HOME") or str(Path.home() / ".grok"))
+
+def grok_config_path():
+    return grok_home() / "config.toml"
+
+def write_guard_root():
+    if WRITE_GUARD_DIR.is_dir():
+        return WRITE_GUARD_DIR
+    if WRITE_GUARD_ALT.is_dir():
+        return WRITE_GUARD_ALT
+    return None
+
+def upsert_env_file(path, updates):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lines = []
+    if path.is_file():
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
