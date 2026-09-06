@@ -101,10 +101,13 @@ def parse_usage_text(text: str) -> Dict[str, Any]:
             in_vram = False
             continue
         if in_vram:
-            if s.startswith("gpu") or "/" in s or s[0].isdigit():
+            # Multi-line vram: gpuN / used/total / name: N MiB / metric labels (#183)
+            top = s.split(":", 1)[0].strip().lower()
+            if top in ("engine", "endpoint", "models", "tok_path", "vram", "fail", "next", "usage"):
+                in_vram = False
+            else:
                 vram_parts.append(s)
                 continue
-            in_vram = False
         if in_models:
             if s.startswith("(") and "none" in low:
                 continue
