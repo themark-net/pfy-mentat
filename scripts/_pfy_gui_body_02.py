@@ -64,7 +64,7 @@
         else:
             detail = res.get("error") or res.get("copy") or GROK_USE
             self.paint_attach(f"FAIL Attach {hid} — {detail}", True)
-            if hid in ("opencode", "hermes") and not reach:
+            if hid in ("opencode", "hermes", "grok") and not reach:
                 self._session_reach = "FAIL"
         self.refresh()
 

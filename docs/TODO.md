@@ -84,7 +84,7 @@ Active work is also tracked as issues: https://github.com/themark-net/pfy-mentat
 | ID | Priority | Status | Item | Open questions | Depends | Notes |
 |----|----------|--------|------|----------------|---------|-------|
 | T-0090 | P0 | todo | **Minimal product levers audit**: collapse end-user surface to onboard / stage / ship; cap public Make targets | — | — | [#1](https://github.com/themark-net/pfy-mentat/issues/1) · [product-operator-surface.md](ops/product-operator-surface.md) |
-| T-0110 | P1 | doing | **Pluggable local runtime** (OpenAI-compat: llama-swap / Shimmy / Ollama) | — | ADR-0014 | [#76](https://github.com/themark-net/pfy-mentat/issues/76) · partial: detector + registry; T-0101 Ollama adapter remains open |
+| T-0110 | P1 | doing | **Pluggable local runtime** (OpenAI-compat: llama-swap / Shimmy / Ollama) | — | ADR-0014 | [#76](https://github.com/themark-net/pfy-mentat/issues/76) stays OPEN · partial: detector + registry; T-0101 Ollama adapter remains open · [#202](https://github.com/themark-net/pfy-mentat/issues/202) Attach Grok usable slice |
 | T-0091 | P1 | doing | **Voice path** polish (session sticky / MCP deep) | — | ADR-0012 | [#2](https://github.com/themark-net/pfy-mentat/issues/2) · Orchestrator shipped; optional TTS |
 | T-0092 | P1 | done | Voice auto-agent local opencode path | — | T-0091 4b | still: `VOICE_AUTO_AGENT=opencode` |
 | T-0093 | P1 | done | Tools-capable Ollama select + tool-split | — | T-0080 | `eval-select-tools-model` |

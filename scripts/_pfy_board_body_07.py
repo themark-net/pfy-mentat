@@ -81,6 +81,7 @@ def write_monitor_note(text):
     (STATE / "monitor-note").write_text((text or "").strip()[:240] + "\n", encoding="utf-8")
 
 def start_monitor_sidecar():
+    """Separate monitor-role sidecar. Attach Grok uses open_enterable_grok_session (#202)."""
     stub = grok_stub_line()
     profile = deploy_profile()
     if profile == "local-only":

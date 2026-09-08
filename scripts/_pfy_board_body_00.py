@@ -2,7 +2,7 @@
 """Local operator board. Independent poller — not a daemon, not a supervisor.
 
 Serves the shared GUI at gui/operator/frontend/index.html.
-POST /start spawns OpenCode/Hermes worker or optional Grok monitor sidecar. local-only never auto-calls cloud.
+POST /start spawns OpenCode/Hermes/Grok enterable session (Grok prove-usable #202). start_monitor_sidecar remains a separate monitor role. local-only never auto-calls cloud.
 POST /stage runs ./pfy stage (env-stage).
 POST /env runs ./pfy env (inference + env-stage). No harness exec.
 POST /models/pull runs ./pfy models pull <name>.
