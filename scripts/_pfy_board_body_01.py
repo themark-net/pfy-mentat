@@ -114,6 +114,9 @@ def inspect_models(base_url):
     if not base_url:
         return []
     base = base_url.rstrip("/")
+    # FreeToken-first bases often already end with /v1; paths add /v1/models. Cite #193.
+    if base.endswith("/v1"):
+        base = base[:-3].rstrip("/") or base
     ids, seen = [], set()
     for path in ("/v1/models", "/api/tags"):
         try:
