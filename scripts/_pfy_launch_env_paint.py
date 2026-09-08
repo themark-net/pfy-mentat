@@ -18,11 +18,16 @@ def launch_env():
             "error": (blob or "env failed")[-400:],
             "stdout": blob[-800:],
         }
-    # Honest skip / no local runtime: paint SKIP, not a fake PASS that looks like silence.
+    # #191: ready engine is PASS even if an earlier cascade candidate printed honest skip.
+    if "status: ready" in low:
+        return {
+            "ok": True, "live": "PASS", "copy": "PASS env",
+            "error": "",
+            "stdout": blob[-800:],
+        }
+    # Stage-only skip (no ready engine line): paint SKIP, not a fake PASS.
     if (
-        "honest skip" in low
-        or "no local runtime" in low
-        or "skip: env-stage" in low
+        "skip: env-stage" in low
         or "env-stage.sh missing" in low
     ):
         return {"ok": True, "live": "SKIP", "copy": "SKIP env", "stdout": blob[-800:]}
