@@ -12,7 +12,7 @@ def record_sidecar_pid(hid, pid):
     (STATE / ("sidecar-%s.pid" % hid)).write_text(str(pid) + chr(10), encoding="utf-8")
 
 def sidecar_pid_live():
-    for hid in ("opencode", "grok"):
+    for hid in ("opencode", "grok", "hermes"):
         path = STATE / ("sidecar-%s.pid" % hid)
         if not path.is_file():
             continue
@@ -32,6 +32,11 @@ def record_last_verb(verb):
 def opencode_stub_line():
     rec = next((h for h in (load_registry().get("harnesses") or []) if h.get("id") == "opencode"), {}) or {}
     return one_liner("opencode", rec)
+
+
+def hermes_stub_line():
+    rec = next((h for h in (load_registry().get("harnesses") or []) if h.get("id") == "hermes"), {}) or {}
+    return one_liner("hermes", rec)
 
 
 def grok_stub_line():

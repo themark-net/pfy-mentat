@@ -12,8 +12,10 @@ function bindAttach(id, hid){
 }
 bindAttach('btngrok','grok');
 bindAttach('btnopen','opencode');
+bindAttach('btnhermes','hermes');
 bindAttach('att-grok','grok');
 bindAttach('att-open','opencode');
+bindAttach('att-hermes','hermes');
 document.getElementById('btnrefresh').addEventListener('click',()=>refreshNow());
 document.getElementById('btncopy').addEventListener('click',()=>copyStub());
 document.getElementById('btnstage').addEventListener('click',()=>runStage());
@@ -107,7 +109,7 @@ async function tick(){
     const engLive=live(s.engine_live||d.status||'missing');
     const g=(s.chips||[]).find(c=>c.id==='grok')||{};
     const stub=!!(s.active_stub || s.active==='continue' || s.active==='agent-cage');
-    ['btngrok','btnopen','att-grok','att-open','btnsi'].forEach(id=>{
+    ['btngrok','btnopen','btnhermes','att-grok','att-open','att-hermes','btnsi'].forEach(id=>{
       const el=document.getElementById(id);
       if(el) el.disabled=stub;
     });
