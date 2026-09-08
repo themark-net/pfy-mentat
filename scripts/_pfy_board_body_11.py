@@ -16,7 +16,7 @@ if tid in ("write-guard", "write_guard"):
     return {"ok": False, "live": "FAIL", "copy": "FAIL tools", "error": "unknown toggle", "id": tid}
 
 def start_sidecar(hid):
-    """Spawn grok/opencode/hermes sidecar. Hermes prove-usable (#196); OpenCode (#171/#193)."""
+    """Spawn grok/opencode/hermes sidecar. Grok (#201); Hermes (#196); OpenCode (#171/#193)."""
     hid = (hid or "").strip()
     if not hid:
         hid = active_harness("grok")
@@ -38,7 +38,7 @@ def start_sidecar(hid):
         }
     STATE.mkdir(parents=True, exist_ok=True)
     if hid == "grok":
-        return start_monitor_sidecar()
+        return open_enterable_grok_session()
     if hid == "opencode":
         return open_enterable_opencode_session()
     if hid == "hermes":
