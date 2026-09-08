@@ -1,112 +1,18 @@
 #!/usr/bin/env python3
-"""Enterable OpenCode open_enterable -- cite #162 (b) / #181 / #193."""
+"""Enterable OpenCode open_enterable -- cite #162 (b) / #181 / #193.
+
+Assembles pfy_enterable_162_b_p0.py + _p1a.py + _p1b.py (board-style parts).
+"""
 from __future__ import annotations
-
-import json
-import os
-import importlib.util
-import urllib.request
 from pathlib import Path
-
-def _load_a():
-    path = Path(__file__).resolve().parent / "pfy_enterable_162_a.py"
-    spec = importlib.util.spec_from_file_location("pfy_enterable_162_a", path)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod
-
-_a = _load_a()
-# #193: reach line only after models list + one smoke against live FreeToken-first base
-SESSION_REACH_OK = "terminal \u00b7 OpenCode \u00b7 models \u00b7 smoke"
-SESSION_FILE = _a.SESSION_FILE
-read_session_reach = _a.read_session_reach
-write_session_reach = _a.write_session_reach
-clear_session_reach = _a.clear_session_reach
-spawn_terminal_opencode = _a.spawn_terminal_opencode
-_focus_pid = _a._focus_pid
-write_terminal_pid = _a.write_terminal_pid
-read_terminal_pid = _a.read_terminal_pid
-resolve_enterable_pid = _a.resolve_enterable_pid
-
-
-def _prove_developer_usable(base, inspect_models):
-    """List models + one smoke prompt against live base. Cite #193.
-
-    Returns (ok, model_name, error). Fail => Attach must not paint attached.
-    """
-    models = []
-    try:
-        models = list(inspect_models(base) or [])
-    except Exception as e:
-        return False, "", "models list failed: %s" % str(e)[:200]
-    if not models:
-        return False, "", "no models on live endpoint"
-    name = str(models[0]).strip()
-    if not name:
-        return False, "", "empty model name"
-    root = str(base).rstrip("/")
-    if root.endswith("/v1"):
-        url = root + "/chat/completions"
-    else:
-        url = root + "/v1/chat/completions"
-    payload = json.dumps({
-        "model": name,
-        "messages": [{"role": "user", "content": "Reply with exactly: PFY_ATTACH_SMOKE_OK"}],
-        "max_tokens": 32,
-        "temperature": 0,
-    }).encode("utf-8")
-    try:
-        req = urllib.request.Request(
-            url,
-            data=payload,
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": "Bearer local",
-            },
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=60) as r:
-            data = json.loads(r.read().decode() or "{}")
-    except Exception as e:
-        return False, name, "smoke failed: %s" % str(e)[:200]
-    text = ""
-    try:
-        choice = (data.get("choices") or [{}])[0]
-        if not isinstance(choice, dict):
-            choice = {}
-        msg = choice.get("message") or {}
-        if isinstance(msg, dict):
-            text = msg.get("content") or ""
-        if not text:
-            text = choice.get("text") or ""
-    except Exception:
-        text = ""
-    if len(str(text).strip()) < 2:
-        return False, name, "smoke empty completion"
-    return True, name, ""
-
-
-def _fail_not_usable(STATE, hid, reason, next_step, engine, status, base="", model=""):
-    clear_session_reach(STATE)
-    attach_base_path = Path(STATE) / "opencode-attach-base"
-    try:
-        if attach_base_path.is_file():
-            attach_base_path.unlink()
-    except OSError:
-        pass
-    copy = "FAIL attach -- %s \u00b7 %s" % (reason, next_step)
-    return {
-        "ok": False,
-        "id": hid,
-        "live": "FAIL",
-        "copy": copy,
-        "error": reason,
-        "session_reach": "FAIL",
-        "next_step": next_step,
-        "next_steps": [{"id": "next", "label": next_step, "value": next_step}],
-        "engine": engine,
-        "detect_status": status or "missing",
-        "base_url": base,
-        "model": model,
-        "usable": False,
-    }
+_HERE = Path(__file__).resolve().parent
+_parts = []
+for _name in ("pfy_enterable_162_b_p0.py", "pfy_enterable_162_b_p1a.py", "pfy_enterable_162_b_p1b.py"):
+    _p = _HERE / _name
+    if not _p.is_file():
+        raise SystemExit("pfy_enterable_162_b: missing " + _name)
+    _parts.append(_p.read_text(encoding="utf-8"))
+_body = "".join(_parts)
+if len(_body) != 10467:
+    raise SystemExit(f"pfy_enterable_162_b: bad assembled len {len(_body)} want 10467")
+exec(compile(_body, str(Path(__file__).resolve()), "exec"), globals())
