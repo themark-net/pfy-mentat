@@ -2,6 +2,10 @@
 
 **Purpose:** Replayable **operator environment** for Grok CLI — skills, MCP wiring, config fragment — so a new machine matches this catalog’s agent process.
 
+
+**Attach usable (#201):** HTML+tk **Attach grok** (and `python3 scripts/pfy-board.py --start grok`) re-probes FreeToken-first (`:1919`), sets child `LOCAL_OPENAI_BASE_URL` / `OPENAI_BASE_URL` to the live detect base, then proves models list + one smoke (`pfy_attach_usable_201.prove_developer_usable`, same bar as Hermes #196 / OpenCode #193) before `ok:True` / READY / “attached”. Failures: `usable:false`, session/attach state cleared, FAIL + next (`Launch env or ./pfy up`). No false attached paint.
+
+CLI `./pfy start grok` uses the same honesty: no live engine → FAIL + next (does not exec); prove (`python3 scripts/pfy_attach_usable_201.py --prove $LOCAL_OPENAI_BASE_URL`) must pass before exec. Inspect equivalent: `./pfy models` (list) + Test model / `--prove` (smoke).
 ## Operator: how to run
 
 ```bash
@@ -54,3 +58,4 @@ ls ~/.grok/skills/
 
 - Replacing Grok’s binary, auth, or marketplace
 - Aborting `./pfy start` when grok is missing/unauth (env continues; next ready adapter may attach)
+
