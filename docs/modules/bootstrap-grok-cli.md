@@ -24,6 +24,10 @@ grok login   # OIDC → ~/.grok/auth.json (preferred over API key alone)
 
 Package README: [bootstrap/grok-cli/README.md](../../bootstrap/grok-cli/README.md)
 
+**Attach usable (#202):** HTML+tk **Attach grok** (and `python3 scripts/pfy-board.py --start grok`) re-probes FreeToken-first (`:1919`), sets child `LOCAL_OPENAI_BASE_URL` / `OPENAI_BASE_URL` to the live detect base, then proves models list + one smoke (`pfy_attach_usable_202.prove_developer_usable`, same bar as OpenCode #193 / Hermes #196) before `ok:True` / READY / “attached”. Failures: `usable:false`, session/attach state cleared, FAIL + next (`Launch env or ./pfy up`). No false attached paint. `start_monitor_sidecar` remains for a separate monitor role and is **not** used for Attach Grok.
+
+CLI `./pfy start grok` uses the same honesty: no live engine → FAIL + next (does not exec); prove (`python3 scripts/pfy_attach_usable_202.py --prove $LOCAL_OPENAI_BASE_URL`) must pass before exec. Inspect equivalent: `./pfy models` (list) + Test model / `--prove` (smoke).
+
 ## Where variables live
 
 | Variable / file | Role |

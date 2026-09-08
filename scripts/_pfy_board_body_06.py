@@ -36,8 +36,22 @@ def _load_attach_196():
     except Exception as e:
         return None, str(e)[:400]
 
+def _load_attach_202():
+    """Load pfy_attach_usable_202 or return (None, error). Cite #202."""
+    import importlib.util
+    path = ROOT / "scripts" / "pfy_attach_usable_202.py"
+    if not path.is_file():
+        return None, str(path)
+    try:
+        spec = importlib.util.spec_from_file_location("pfy_attach_usable_202", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod, ""
+    except Exception as e:
+        return None, str(e)[:400]
+
 def _session_reach_live():
-    oc, hm = "", ""
+    oc, hm, gk = "", "", ""
     mod, err = _load_enterable_162()
     if mod is not None:
         try:
@@ -54,15 +68,24 @@ def _session_reach_live():
                 hm = hmod.live_session_reach(STATE, pid_alive) or ""
         except Exception:
             hm = ""
+    gmod, _gerr = _load_attach_202()
+    if gmod is not None:
+        try:
+            if hasattr(gmod, "live_session_reach"):
+                gk = gmod.live_session_reach(STATE, pid_alive) or ""
+        except Exception:
+            gk = ""
     try:
         cur = active_harness("grok")
     except Exception:
         cur = ""
+    if cur == "grok" and gk:
+        return gk
     if cur == "hermes" and hm:
         return hm
     if cur == "opencode" and oc:
         return oc
-    return hm or oc or ""
+    return gk or hm or oc or ""
 
 def open_enterable_opencode_session():
     """Attach + open/focus enterable OpenCode terminal. Cite #162."""
@@ -98,6 +121,26 @@ def open_enterable_hermes_session():
     def _set_active(hid):
         (STATE / "active-harness").write_text(str(hid) + "\n", encoding="utf-8")
     return mod.open_enterable_hermes_session(
+        ROOT=ROOT, STATE=STATE, which_bin=which_bin,
+        live_openai_base=live_openai_base, inspect_models=inspect_models,
+        record_sidecar_pid=record_sidecar_pid, record_last_verb=record_last_verb,
+        pid_alive=pid_alive, active_harness_setter=_set_active, stub_line=stub,
+    )
+
+
+def open_enterable_grok_session():
+    """Attach Grok + prove models list + smoke. Cite #202."""
+    mod, err = _load_attach_202()
+    stub = grok_stub_line()
+    if mod is None:
+        return {
+            "ok": False, "id": "grok", "live": "FAIL", "copy": stub,
+            "error": err or "grok attach module missing", "session_reach": "FAIL",
+            "usable": False,
+        }
+    def _set_active(hid):
+        (STATE / "active-harness").write_text(str(hid) + "\n", encoding="utf-8")
+    return mod.open_enterable_grok_session(
         ROOT=ROOT, STATE=STATE, which_bin=which_bin,
         live_openai_base=live_openai_base, inspect_models=inspect_models,
         record_sidecar_pid=record_sidecar_pid, record_last_verb=record_last_verb,
