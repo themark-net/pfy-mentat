@@ -54,17 +54,27 @@
         reach = str((res or {}).get("session_reach") or "").strip()
         if reach:
             self._session_reach = reach
-        if res.get("ok"):
+        # #193/#171: never paint attached when ok=false or session_reach FAIL
+        reach_fail = hid == "opencode" and (not reach or reach == "FAIL")
+        if res.get("ok") and not reach_fail:
             pid = res.get("pid")
             kind = "monitor" if res.get("role") == "monitor" else hid
             msg = f"attached {kind}" + (f" pid {pid}" if pid else "")
             if reach:
                 msg += " · " + reach
+            smoke = str((res or {}).get("smoke") or "").strip()
+            if smoke:
+                msg += " · smoke: " + smoke
+            models = (res or {}).get("models") or []
+            if models:
+                msg += " · models: " + str(len(models))
             self.paint_attach(msg, False)
         else:
             detail = res.get("error") or res.get("copy") or GROK_USE
+            if reach_fail and "FAIL" not in str(detail):
+                detail = "session_reach FAIL · " + str(detail)
             self.paint_attach(f"FAIL Attach {hid} — {detail}", True)
-            if hid == "opencode" and not reach:
+            if hid == "opencode" and (not reach or reach == "FAIL"):
                 self._session_reach = "FAIL"
         self.refresh()
 
