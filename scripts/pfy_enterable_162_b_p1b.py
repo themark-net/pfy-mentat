@@ -43,7 +43,8 @@
             "smoke_ok": True,
         }
 
-    models = inspect_models(base)
+    # #193/#187: strip trailing /v1 before inspect_models (avoids /v1/v1/models)
+    models = inspect_models(openai_compat_root(base))
     cfg_path, model = write_opencode_config(base, models)
     skills = ROOT / "bootstrap" / "grok-cli" / "skills"
     env = os.environ.copy()

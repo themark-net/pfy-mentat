@@ -7,14 +7,26 @@ import urllib.request
 from pathlib import Path
 
 
+def openai_compat_root(base):
+    """Strip trailing /v1 so probes are not /v1/v1/models. Same class as #187."""
+    root = str(base or "").rstrip("/")
+    if root.endswith("/v1"):
+        root = root[:-3].rstrip("/")
+    return root
+
+
 def prove_developer_usable(base, inspect_models):
     """List models + one smoke prompt against live base. Cite #193.
 
     Returns (ok, model_name, error). Fail => Attach must not paint attached.
+    Normalize like #187 print_live_models: strip trailing /v1 before
+    probing /v1/models and /v1/chat/completions (live_openai_base often
+    returns .../v1; inspect_models appends /v1/models).
     """
+    root = openai_compat_root(base)
     models = []
     try:
-        models = list(inspect_models(base) or [])
+        models = list(inspect_models(root) or [])
     except Exception as e:
         return False, "", "models list failed: %s" % str(e)[:200]
     if not models:
@@ -22,11 +34,7 @@ def prove_developer_usable(base, inspect_models):
     name = str(models[0]).strip()
     if not name:
         return False, "", "empty model name"
-    root = str(base).rstrip("/")
-    if root.endswith("/v1"):
-        url = root + "/chat/completions"
-    else:
-        url = root + "/v1/chat/completions"
+    url = root + "/v1/chat/completions"
     payload = json.dumps({
         "model": name,
         "messages": [{"role": "user", "content": "Reply with exactly: PFY_ATTACH_SMOKE_OK"}],

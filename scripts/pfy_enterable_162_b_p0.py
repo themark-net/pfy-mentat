@@ -35,5 +35,4 @@ read_terminal_pid = _a.read_terminal_pid
 resolve_enterable_pid = _a.resolve_enterable_pid
 prove_developer_usable = _u.prove_developer_usable
 fail_not_usable = _u.fail_not_usable
-
-
+openai_compat_root = _u.openai_compat_root
