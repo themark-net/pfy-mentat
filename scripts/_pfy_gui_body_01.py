@@ -63,6 +63,7 @@ class Win:
         self.acts = ttk.Frame(right); self.acts.pack(fill="x", padx=12, pady=6)
         self.bgrok = ttk.Button(self.acts, text="Attach grok", command=lambda: self.attach("grok"))
         self.bopen = ttk.Button(self.acts, text="Attach opencode", command=lambda: self.attach("opencode"))
+        self.bhermes = ttk.Button(self.acts, text="Attach hermes", command=lambda: self.attach("hermes"))
         self.bsi = ttk.Button(self.acts, text="Space Invaders", command=self.space_invaders)
         self.brefresh = ttk.Button(self.acts, text="Refresh status", command=self.refresh_now)
         self.bcopy = ttk.Button(self.acts, text="Copy stub one-liner", command=self.copy_stub)

@@ -36,13 +36,13 @@
         self.refresh(user=True)
 
     def pack_acts(self, names):
-        forget = [self.bgrok, self.bopen, self.bsi, self.bsiopen, self.bsifold, self.bsitask, self.bcopyep, self.bcopyst, self.brefresh, self.bcopy, self.bstage, self.benv, self.bpull, self.btest, self.pullname, self.sst, self.est, self.pst, self.rst, self.tst, self.ast, self.cst, self.sist, self.siabs, self.sirel, self.sitask, self.ewhat, self.siopenst, self.toolst]
+        forget = [self.bgrok, self.bopen, self.bhermes, self.bsi, self.bsiopen, self.bsifold, self.bsitask, self.bcopyep, self.bcopyst, self.brefresh, self.bcopy, self.bstage, self.benv, self.bpull, self.btest, self.pullname, self.sst, self.est, self.pst, self.rst, self.tst, self.ast, self.cst, self.sist, self.siabs, self.sirel, self.sitask, self.ewhat, self.siopenst, self.toolst]
         forget.extend(self.tool_btns.values())
         for w in forget:
             try: w.pack_forget()
             except Exception: pass
         order = {
-            "grok": self.bgrok, "open": self.bopen, "si": self.bsi, "refresh": self.brefresh,
+            "grok": self.bgrok, "open": self.bopen, "hermes": self.bhermes, "si": self.bsi, "refresh": self.brefresh,
             "copy": self.bcopy, "stage": self.bstage, "env": self.benv,
             "pull": self.bpull, "pullname": self.pullname, "pst": self.pst,
             "test": self.btest, "tst": self.tst, "rst": self.rst,
@@ -69,6 +69,7 @@
         stub = bool(s.get("active_stub")) or str(s.get("active") or "") in BLOCKED
         self.bgrok.configure(state="disabled" if stub else "normal")
         self.bopen.configure(state="disabled" if stub else "normal")
+        self.bhermes.configure(state="disabled" if stub else "normal")
         self.bsi.configure(state="disabled" if stub else "normal")
         self.fail.configure(text=(f"FAIL  {s.get('blocked_copy') or GROK_USE}") if stub else "")
         show_org = (not s.get("agent_lane_collapsed", True)) and bool(s.get("org_messages"))

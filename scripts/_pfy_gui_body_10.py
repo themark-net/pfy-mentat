@@ -50,6 +50,7 @@ def run_tk(board, selftest=False) -> bool:
         has = (
             w.bgrok.cget("text") == "Attach grok"
             and w.bopen.cget("text") == "Attach opencode"
+            and w.bhermes.cget("text") == "Attach hermes"
             and w.brefresh.cget("text") == "Refresh status"
             and w.bcopy.cget("text") == "Copy stub one-liner"
             and w.bstage.cget("text") == "Run stage"
