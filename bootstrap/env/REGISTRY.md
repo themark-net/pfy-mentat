@@ -71,6 +71,9 @@ When integrating a new tool, **add a row here in the same PR** as the integratio
 | `VOICE_AGENT_TIMEOUT` | no | optional | `600` | agent_runner | Seconds |
 | `VOICE_AGENT_ALWAYS_APPROVE` | no | optional | `1` | agent_runner | Passes grok `--always-approve` when set |
 | `VOICE_AGENT_REPO` | no | optional | repo root | remote_server / runner | Grok `--cwd` |
+| `OPENCONTEXT_BIN` | no | optional | `oc` on PATH | `./pfy context`, Attach grok/opencode/hermes | Set when `oc` exists; skip if missing (#205) |
+| `OPENCONTEXT_CONTEXTS_ROOT` | no | optional | `$HOME/.opencontext/contexts` | `oc` CLI / Attach child env | Global context library |
+| `OPENCONTEXT_DB_PATH` | no | optional | `$HOME/.opencontext/opencontext.db` | `oc` CLI / Attach child env | OpenContext SQLite store |
 
 ## Profile affinity
 

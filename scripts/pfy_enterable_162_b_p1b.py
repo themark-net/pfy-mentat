@@ -51,6 +51,7 @@
     env["LOCAL_OPENAI_BASE_URL"] = base
     env["OPENAI_BASE_URL"] = base
     env["OPENAI_API_KEY"] = env.get("OPENAI_API_KEY") or "local"
+    _apply_opencontext_env(env)
     env["OPENCODE_CONFIG"] = str(cfg_path)
     tst = load_tools_state()
     dest, _enabled = apply_skills_dir(tst)

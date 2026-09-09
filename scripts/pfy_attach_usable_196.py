@@ -42,6 +42,19 @@ prove_developer_usable = _u.prove_developer_usable
 openai_compat_root = _u.openai_compat_root
 spawn_terminal_opencode = _a.spawn_terminal_opencode
 _focus_pid = _a._focus_pid
+
+
+def _apply_opencontext_env(env):
+    """Handoff OpenContext store env into Attach Hermes child. Cite #205."""
+    path = Path(__file__).resolve().parent / "pfy_opencontext_205.py"
+    if not path.is_file():
+        return env
+    spec = importlib.util.spec_from_file_location("pfy_opencontext_205_196", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.apply_child_env(env)
+
+
 resolve_enterable_pid = _a.resolve_enterable_pid
 
 
@@ -285,6 +298,7 @@ def open_enterable_hermes_session(
     env["LOCAL_OPENAI_BASE_URL"] = base
     env["OPENAI_BASE_URL"] = base
     env["OPENAI_API_KEY"] = env.get("OPENAI_API_KEY") or "local"
+    _apply_opencontext_env(env)
     log = STATE / "sidecar-hermes.log"
     ok, pid, err = spawn_terminal_opencode(bin_path, str(ROOT), env, log, pid_alive)
     if err:

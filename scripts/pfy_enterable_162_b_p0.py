@@ -36,3 +36,14 @@ resolve_enterable_pid = _a.resolve_enterable_pid
 prove_developer_usable = _u.prove_developer_usable
 fail_not_usable = _u.fail_not_usable
 openai_compat_root = _u.openai_compat_root
+
+
+def _apply_opencontext_env(env):
+    """Handoff OpenContext store env into Attach OpenCode child. Cite #205."""
+    path = Path(__file__).resolve().parent / "pfy_opencontext_205.py"
+    if not path.is_file():
+        return env
+    spec = importlib.util.spec_from_file_location("pfy_opencontext_205_162", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.apply_child_env(env)

@@ -6,6 +6,7 @@ Short structural maps for first-party packages in this repo. Deep design stays i
 |--------|------|-----|
 | Consultant eval pack | `docs/ops/consultant-eval.md` | [consultant-eval.md](../ops/consultant-eval.md) |
 | `./pfy` simple surface | `scripts/pfy` | [pfy.md](pfy.md) |
+| OpenContext `oc` handoff | `scripts/pfy_opencontext_205.py` | [opencontext.md](opencontext.md) · [ops/opencontext.md](../ops/opencontext.md) |
 | Local runtime detector | `scripts/detect-local-runtime.sh` | [detect-local-runtime.md](detect-local-runtime.md) |
 | Product env-stage | `scripts/env-stage.sh` | [env-stage.md](env-stage.md) |
 | Grok CLI bootstrap | `bootstrap/grok-cli/` | [bootstrap-grok-cli.md](bootstrap-grok-cli.md) |
