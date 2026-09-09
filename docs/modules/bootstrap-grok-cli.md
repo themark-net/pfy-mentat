@@ -28,6 +28,8 @@ Package README: [bootstrap/grok-cli/README.md](../../bootstrap/grok-cli/README.m
 
 CLI `./pfy start grok` uses the same honesty: no live engine → FAIL + next (does not exec); prove (`python3 scripts/pfy_attach_usable_202.py --prove $LOCAL_OPENAI_BASE_URL`) must pass before exec. Inspect equivalent: `./pfy models` (list) + Test model / `--prove` (smoke).
 
+**OpenContext handoff (#205):** Attach / `./pfy start grok` inherit `OPENCONTEXT_*` when `oc` is on PATH. Prove with `./pfy context`. Optional Grok MCP snippet is printed on PASS (not auto-merged into `config.fragment.toml`, so a missing `oc` cannot break Grok). No OpenContext GUI in pfy chrome. Runbook: [opencontext.md](../ops/opencontext.md).
+
 ## Where variables live
 
 | Variable / file | Role |

@@ -15,6 +15,8 @@ Detect: `hermes` or `hermes-agent` on PATH. When the local runtime is ready, `OP
 
 CLI `./pfy start hermes` uses the same honesty: no live engine → FAIL + next (does not exec); prove (`python3 scripts/pfy_attach_usable_196.py --prove $LOCAL_OPENAI_BASE_URL`) must pass before exec. Inspect equivalent: `./pfy models` (list) + Test model / `--prove` (smoke).
 
+**OpenContext handoff (#205):** Attach / `./pfy start hermes` inherit `OPENCONTEXT_BIN` / `OPENCONTEXT_CONTEXTS_ROOT` / `OPENCONTEXT_DB_PATH` when `oc` is on PATH. Prove OpenContext with `./pfy context` (operate-or-FAIL). Missing `oc` is a skip on Attach, not a false attached paint. No OpenContext GUI in pfy chrome. Runbook: [opencontext.md](../ops/opencontext.md).
+
 Missing binary: `STUB harness: hermes`, issue #56, installer one-liner, exit 2. No fake ready.
 
 ```bash

@@ -15,6 +15,7 @@
 ./pfy harness list|use <id>|show [id]
 ./pfy models
 ./pfy models pull <name>    # Ollama adapter only
+./pfy context              # OpenContext oc prove (#205); FAIL if node/oc missing
 ./pfy stage | eval | ship
 ```
 

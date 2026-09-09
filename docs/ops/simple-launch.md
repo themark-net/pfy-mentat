@@ -21,6 +21,7 @@ cd pfy-mentat
 ./pfy                      # native window; attach grok/opencode in-window
 ./pfy start grok            # named harness after inference/stage
 ./pfy models                # inspect-only (tag list is not success)
+./pfy context               # OpenContext oc capture/search/reuse prove (#205)
 ./pfy models pull deepseek-coder:6.7b
 ./pfy stage                 # re-run product stage
 ./pfy stage --lab           # optional personal cage lab (doctor → setup → up-mcp)
@@ -73,6 +74,8 @@ Registry: [`data/harnesses.json`](../../data/harnesses.json).
 `exo` is an **optional lab** adapter when `exo.sh` is at `$ROOT/exo.sh`, `$HOME/exo/exo.sh`, or on PATH (`./pfy start exo` execs it; missing: STUB + issue #60 + official setup.sh one-liner, exit 2). Not the default harness. Not a Grok replacement. `./pfy harness use exo` does not change `default_harness` (stays grok). Do not vendor Exo. Personal lab-IT only.
 
 Continue is a **config recipe** at `bootstrap/continue/` (`LOCAL_OPENAI_BASE_URL`, not Ollama-only). `./pfy start continue` stays STUB exit 2. Continue is never detected-stub. If continue or agent-cage is the active harness, bare `./pfy` / unnamed start is FAIL with no grok/opencode fallback; copy `pfy harness use grok`.
+
+`./pfy context` proves OpenContext `oc` capture / keyword search / manifest reuse and prints Attach handoff env (`OPENCONTEXT_*`). Missing node or `oc`: honest `FAIL` + `npm install -g @aicontextlab/cli`. Attach OpenCode|Hermes|Grok inherit that env when `oc` is on PATH. OpenContext GUI stays out of pfy chrome (#205).
 
 The native operator window **is** the main interface (`./pfy` with no args, `./pfy board`). Tauri 2 binary when `gui/operator/src-tauri/target/{release,debug}/pfy-operator` exists; else already-on-box webkit (`scripts/pfy-gui.py`) wrapping the same frontend; else stdlib tk with live chips from `./pfy status`. pywebview is PFY_GUI_DEV=1 only. The window always opens. Optional `./pfy board --open` is a browser hatch, not the main path. In-window attach for grok/opencode/hermes spawns a sidecar. Attach Grok (HTML+tk) and `./pfy start grok` require a FreeToken-first live endpoint, inherit `LOCAL_OPENAI_BASE_URL` / `OPENAI_BASE_URL`, and prove models list + one smoke before painting attached or exec (#202). No engine or prove fail: FAIL + next (`./pfy up`); inspect equivalent `./pfy models`. continue/agent-cage active: FAIL + copy `pfy harness use grok` (no fallback). Consultants should eval board chips against the `./pfy status` live column (same host; `missing` not `unknown`). Grok chip is PATH-only. nimo banner only if hostname contains `nimo`. Board is not a supervisor.
 
