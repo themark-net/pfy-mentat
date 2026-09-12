@@ -16,6 +16,7 @@ bindAttach('btnhermes','hermes');
 bindAttach('att-grok','grok');
 bindAttach('att-open','opencode');
 bindAttach('att-hermes','hermes');
+document.querySelectorAll('[data-mode]').forEach(el=>el.addEventListener('click',()=>selectMode(el.getAttribute('data-mode'))));
 document.getElementById('btnrefresh').addEventListener('click',()=>refreshNow());
 document.getElementById('btncopy').addEventListener('click',()=>copyStub());
 document.getElementById('btnstage').addEventListener('click',()=>runStage());
@@ -126,6 +127,7 @@ async function tick(){
     document.getElementById('orgnav').style.display=showOrg?'block':'none';
     if(!showOrg && view==='org') show('loop');
     const attached=s.active||'(none)';
+    paintUsing(s.using||s.attach_mode||selectedMode||'bare', s.attach_mode_when||'');
     const verb=lastVerbLabel((s.last_verb&&s.last_verb.verb)||'(none)');
     const when=(s.last_verb&&s.last_verb.when)||'';
     const pid=s.sidecar_pid || '';

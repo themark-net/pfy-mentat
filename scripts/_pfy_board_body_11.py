@@ -15,8 +15,8 @@ if tid in ("write-guard", "write_guard"):
         return {"ok": True, "live": "PASS", "copy": copy, "id": "extra-tools", "on": want, "tools": st}
     return {"ok": False, "live": "FAIL", "copy": "FAIL tools", "error": "unknown toggle", "id": tid}
 
-def start_sidecar(hid):
-    """Spawn grok/opencode/hermes sidecar. Grok prove-usable (#202); Hermes (#196); OpenCode (#171/#193)."""
+def start_sidecar(hid, mode=None):
+    """Spawn grok/opencode/hermes sidecar. Grok prove-usable (#202); Hermes (#196); OpenCode (#171/#193). Mode handoff (#208)."""
     hid = (hid or "").strip()
     if not hid:
         hid = active_harness("grok")
@@ -37,12 +37,36 @@ def start_sidecar(hid):
             "error": f"{hid} is not a sidecar",
         }
     STATE.mkdir(parents=True, exist_ok=True)
+    mmod, merr = _load_attach_mode_208()
+    if mmod is None:
+        return {
+            "ok": False, "id": hid, "live": "FAIL", "copy": "FAIL mode -- module missing",
+            "error": merr or "pfy_attach_mode_208 missing", "usable": False,
+            "session_reach": "FAIL", "next_step": "./pfy setup",
+        }
+    prepared = mmod.prepare(ROOT, STATE, hid, mode=mode, which=which_bin)
+    if not prepared.get("ok"):
+        return prepared
+    using = prepared.get("mode") or "bare"
     if hid == "grok":
-        return open_enterable_grok_session()
-    if hid == "opencode":
-        return open_enterable_opencode_session()
-    if hid == "hermes":
-        return open_enterable_hermes_session()
+        result = open_enterable_grok_session()
+    elif hid == "opencode":
+        result = open_enterable_opencode_session()
+    elif hid == "hermes":
+        result = open_enterable_hermes_session()
+    else:
+        result = None
+    if result is not None:
+        result = dict(result)
+        result["mode"] = using
+        result["using"] = using
+        if result.get("ok") and result.get("usable") is not False:
+            mmod.mark_live(STATE, using)
+            copy = str(result.get("copy") or "")
+            tag = "using: %s" % using
+            if tag not in copy:
+                result["copy"] = (copy + " · " + tag).strip(" ·")
+        return result
     log = STATE / f"sidecar-{hid}.log"
     with log.open("ab") as f:
         proc = subprocess.Popen(

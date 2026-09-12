@@ -67,7 +67,20 @@ class Handler(BaseHTTPRequestHandler):
             except json.JSONDecodeError:
                 body = {}
             hid = str((body or {}).get("id") or "")
-            result = start_sidecar(hid)
+            mode = (body or {}).get("mode")
+            result = start_sidecar(hid, mode=mode)
+            code = 200 if result.get("ok") else 400
+            self._send(code, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
+            return
+        if path == "/mode":
+            length = int(self.headers.get("Content-Length") or 0)
+            raw = self.rfile.read(length) if length else b"{}"
+            try:
+                body = json.loads(raw.decode() or "{}")
+            except json.JSONDecodeError:
+                body = {}
+            mode = str((body or {}).get("mode") or "")
+            result = set_attach_mode(mode)
             code = 200 if result.get("ok") else 400
             self._send(code, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
             return

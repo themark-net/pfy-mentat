@@ -55,6 +55,17 @@ def _apply_opencontext_env(env):
     return mod.apply_child_env(env)
 
 
+def _apply_attach_mode_env(env, STATE=None):
+    """Handoff attach mode into Attach Hermes child. Cite #208."""
+    path = Path(__file__).resolve().parent / "pfy_attach_mode_208.py"
+    if not path.is_file():
+        return env
+    spec = importlib.util.spec_from_file_location("pfy_attach_mode_208_196", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.apply_child_env(env, STATE)
+
+
 resolve_enterable_pid = _a.resolve_enterable_pid
 
 
@@ -299,6 +310,7 @@ def open_enterable_hermes_session(
     env["OPENAI_BASE_URL"] = base
     env["OPENAI_API_KEY"] = env.get("OPENAI_API_KEY") or "local"
     _apply_opencontext_env(env)
+    _apply_attach_mode_env(env, STATE)
     log = STATE / "sidecar-hermes.log"
     ok, pid, err = spawn_terminal_opencode(bin_path, str(ROOT), env, log, pid_alive)
     if err:

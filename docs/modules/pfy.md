@@ -9,7 +9,7 @@
 ./pfy help
 ./pfy setup [local-only|balanced|max-performance]
 ./pfy status
-./pfy start [harness]    # no name: native window; named: exec that harness
+./pfy start [harness]    # no name: native window; named: exec that harness (Attach mode #208)
 ./pfy up                 # same as bare ./pfy
 ./pfy board [--open]     # alias of the native window (Tauri / webkit / tk); --open browser hatch only
 ./pfy harness list|use <id>|show [id]
@@ -20,6 +20,8 @@
 ```
 
 Root `./pfy` is a 100755 wrapper that execs `scripts/pfy`. Detector is invoked with `bash`.
+
+**Attach mode (#208):** HTML+tk select `bare` | `orchestration` | `code-graph`; paint `using: <mode>`. Named start and in-window Attach hand off skills/AGENTS/prompts/env or FAIL+next. [attach-mode.md](attach-mode.md).
 
 ## Not yet
 

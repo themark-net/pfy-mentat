@@ -59,6 +59,7 @@
         env["OPENCODE_SKILLS"] = str(dest)
     elif skills.is_dir():
         env["OPENCODE_SKILLS"] = str(skills)
+    _apply_attach_mode_env(env, STATE)
     env["TOOLS_MODE"] = str(tst.get("tools_mode") or "split")
     env["WRITE_GUARD_MODE"] = "enforce" if tst.get("write_guard") else "off"
     env["PFY_MCP"] = "1" if tst.get("mcp") else "0"

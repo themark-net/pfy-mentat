@@ -47,3 +47,19 @@ def _apply_opencontext_env(env):
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod.apply_child_env(env)
+
+
+def _apply_attach_mode_env(env, STATE=None):
+    """Handoff attach mode (bare|orchestration|code-graph) into child. Cite #208."""
+    path = Path(__file__).resolve().parent / "pfy_attach_mode_208.py"
+    if not path.is_file():
+        return env
+    spec = importlib.util.spec_from_file_location("pfy_attach_mode_208_162", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    env = mod.apply_child_env(env, STATE)
+    try:
+        mod.decorate_opencode_config(STATE)
+    except Exception:
+        pass
+    return env

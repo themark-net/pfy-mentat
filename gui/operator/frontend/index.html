@@ -53,11 +53,15 @@ noscript .fail{padding:16px;display:block}
     <div class=row>env <span id=loop-env class=live>SKIP</span></div>
     <div class=row>attached <b id=loop-attached>(none)</b></div>
     <div class=row>session <b id=loop-session>(none)</b></div>
+    <div class=row>using: <b id=loop-using>bare</b> <span class=muted id=loop-mode-when></span></div>
     <div class=row>last <b id=loop-last>(none)</b> <span class=muted id=loop-when></span></div>
     <div class=row>monitor <b id=loop-monitor>(none)</b></div>
     <div class=row>grok <span id=loop-grok class=live>missing</span></div>
     <div class=acts>
       <button type=button class=primary id=btnlaunch>Launch env</button>
+      <button type=button data-mode=bare>bare</button>
+      <button type=button data-mode=orchestration>orchestration</button>
+      <button type=button data-mode=code-graph>code-graph</button>
       <button type=button class=primary id=btnopen>Attach opencode</button>
       <button type=button class=primary id=btnhermes>Attach hermes</button>
       <button type=button class=primary id=btngrok>Attach grok</button>
@@ -107,8 +111,12 @@ noscript .fail{padding:16px;display:block}
     <h2>ATTACH</h2>
     <div class=row>NOW attached <b id=att-now>(none)</b> · last <b id=att-last>(none)</b></div>
     <div class=row>session <b id=att-session>(none)</b></div>
+    <div class=row>using: <b id=att-using>bare</b> <span class=muted id=att-mode-when></span></div>
     <div class=chips id=att-rail></div>
     <div class=acts>
+      <button type=button data-mode=bare>bare</button>
+      <button type=button data-mode=orchestration>orchestration</button>
+      <button type=button data-mode=code-graph>code-graph</button>
       <button type=button class=primary id=att-grok>Attach grok</button>
       <button type=button class=primary id=att-open>Attach opencode</button>
       <button type=button class=primary id=att-hermes>Attach hermes</button>

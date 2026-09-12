@@ -74,6 +74,9 @@ When integrating a new tool, **add a row here in the same PR** as the integratio
 | `OPENCONTEXT_BIN` | no | optional | `oc` on PATH | `./pfy context`, Attach grok/opencode/hermes | Set when `oc` exists; skip if missing (#205) |
 | `OPENCONTEXT_CONTEXTS_ROOT` | no | optional | `$HOME/.opencontext/contexts` | `oc` CLI / Attach child env | Global context library |
 | `OPENCONTEXT_DB_PATH` | no | optional | `$HOME/.opencontext/opencontext.db` | `oc` CLI / Attach child env | OpenContext SQLite store |
+| `PFY_ATTACH_MODE` | no | optional | `bare` | Attach OpenCode/Hermes/Grok (#208) | `bare` \| `orchestration` \| `code-graph`; one mode at a time |
+| `PFY_ATTACH_HANDOFF` | no | optional | `$PFY_STATE_DIR/attach-mode-handoff.md` | Attach child env | Mode AGENTS/prompt artifact |
+| `PFY_ATTACH_PROMPT` | no | optional | `$PFY_STATE_DIR/attach-mode-prompt.md` | Attach child env | Short mode prompt |
 
 ## Profile affinity
 

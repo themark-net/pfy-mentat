@@ -26,6 +26,7 @@
         self._last_env = {}
         self._last_si = {}
         self._session_reach = ""
+        self._attach_mode = "bare"
         self.chips = ttk.Frame(right); self.chips.pack(fill="both", expand=True, padx=12, pady=(0,10))
 
     def set_view(self, k):
@@ -35,8 +36,28 @@
         self.msg = text
         self.ast.configure(text=text, style="F.TLabel" if fail else "Ok.TLabel")
 
+    def set_mode(self, mode):
+        mode = (mode or "bare").strip() or "bare"
+        self._attach_mode = mode
+        if self.board and hasattr(self.board, "set_attach_mode"):
+            try:
+                res = self.board.set_attach_mode(mode)
+            except Exception as e:
+                res = {"ok": False, "error": str(e), "copy": "FAIL mode"}
+            if res.get("ok"):
+                self._attach_mode = res.get("mode") or mode
+                self.paint_attach("using: "+self._attach_mode, False)
+            else:
+                nxt = res.get("next_step") or "select bare | orchestration | code-graph on Attach"
+                detail = res.get("copy") or res.get("error") or "mode"
+                self.paint_attach("FAIL mode — %s · %s" % (detail, nxt), True)
+        else:
+            self.paint_attach("using: "+self._attach_mode, False)
+        self.render()
+
     def attach(self, hid):
         self.paint_attach("attaching "+hid+"…", False)
+        mode = self._attach_mode or "bare"
         def work():
             try: snap = self.board.snapshot() if self.board else {}
             except Exception as e: snap, err = {}, str(e)
@@ -45,7 +66,14 @@
             if active in BLOCKED:
                 res = {"ok": False, "copy": GROK_USE, "error": f"{active} is active — no grok/opencode fallback"}
             else:
-                try: res = self.board.start_sidecar(hid) if self.board else {"ok": False, "copy": GROK_USE, "error": "no board"}
+                try:
+                    if self.board:
+                        res = self.board.start_sidecar(hid, mode=mode)
+                    else:
+                        res = {"ok": False, "copy": GROK_USE, "error": "no board"}
+                except TypeError:
+                    try: res = self.board.start_sidecar(hid) if self.board else {"ok": False, "copy": GROK_USE, "error": "no board"}
+                    except Exception as e: res = {"ok": False, "copy": GROK_USE, "error": str(e) or err}
                 except Exception as e: res = {"ok": False, "copy": GROK_USE, "error": str(e) or err}
             self.root.after(0, lambda: self.done(hid, res))
         threading.Thread(target=work, daemon=True).start()
@@ -62,7 +90,10 @@
                 msg += " · " + reach
             self.paint_attach(msg, False)
         else:
+            nxt = res.get("next_step") or ""
             detail = res.get("error") or res.get("copy") or GROK_USE
+            if nxt and nxt not in str(detail):
+                detail = f"{detail} · {nxt}"
             self.paint_attach(f"FAIL Attach {hid} — {detail}", True)
             if hid in ("opencode", "hermes", "grok") and not reach:
                 self._session_reach = "FAIL"

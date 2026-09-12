@@ -70,7 +70,13 @@ def main():
         return 0
     if args[:1] == ["--start"]:
         hid = args[1] if len(args) > 1 else ""
-        result = start_sidecar(hid)
+        mode = args[2] if len(args) > 2 else None
+        result = start_sidecar(hid, mode=mode)
+        print(json.dumps(result))
+        return 0 if result.get("ok") else 2
+    if args[:1] == ["--mode"]:
+        mode = args[1] if len(args) > 1 else ""
+        result = set_attach_mode(mode)
         print(json.dumps(result))
         return 0 if result.get("ok") else 2
     if args[:1] == ["--stage"]:

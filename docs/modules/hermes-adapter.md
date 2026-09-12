@@ -17,6 +17,8 @@ CLI `./pfy start hermes` uses the same honesty: no live engine → FAIL + next (
 
 **OpenContext handoff (#205):** Attach / `./pfy start hermes` inherit `OPENCONTEXT_BIN` / `OPENCONTEXT_CONTEXTS_ROOT` / `OPENCONTEXT_DB_PATH` when `oc` is on PATH. Prove OpenContext with `./pfy context` (operate-or-FAIL). Missing `oc` is a skip on Attach, not a false attached paint. No OpenContext GUI in pfy chrome. Runbook: [opencontext.md](../ops/opencontext.md).
 
+**Attach mode (#208):** `bare` and `orchestration` hand off prompt/env (orchestration also needs `/agent-loops`). `code-graph` is unwired for Hermes (no MCP) → FAIL + next: Attach grok or opencode. [attach-mode.md](../ops/attach-mode.md).
+
 Missing binary: `STUB harness: hermes`, issue #56, installer one-liner, exit 2. No fake ready.
 
 ```bash
