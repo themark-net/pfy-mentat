@@ -28,7 +28,9 @@ ck_forget()
                 reach = str(getattr(self, "_session_reach", "") or "").strip() or "(none)"
             using = str(s.get("using") or s.get("attach_mode") or getattr(self, "_attach_mode", "") or "bare")
             mode_when = str(s.get("attach_mode_when") or "")
-            txt = f"LOOP\nenv        {env_live}\nattached   {att}\nsession    {reach}\nusing: {using}" + (f"  {mode_when}" if mode_when else "") + f"\nlast       {verb}  {when}\nmonitor    {mon}\ngrok       {gpath}"
+            loop_ev = str(s.get("loop_copy") or "").strip() or "(none)"
+            loop_when = str(s.get("loop_when") or "")
+            txt = f"LOOP\nenv        {env_live}\nattached   {att}\nsession    {reach}\nusing: {using}" + (f"  {mode_when}" if mode_when else "") + f"\nloop       {loop_ev}" + (f"  {loop_when}" if loop_when else "") + f"\nlast       {verb}  {when}\nmonitor    {mon}\ngrok       {gpath}"
             what = str((getattr(self, "_last_env", {}) or {}).get("what") or "")
             if what:
                 txt += "\nwhat       " + what

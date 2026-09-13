@@ -92,6 +92,20 @@ def _load_catalog_209():
     except Exception as e:
         return None, str(e)[:400]
 
+def _load_orchestration_213():
+    """Load pfy_orchestration_213 or return (None, error). Cite #213."""
+    import importlib.util
+    path = ROOT / "scripts" / "pfy_orchestration_213.py"
+    if not path.is_file():
+        return None, str(path)
+    try:
+        spec = importlib.util.spec_from_file_location("pfy_orchestration_213", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod, ""
+    except Exception as e:
+        return None, str(e)[:400]
+
 def attach_mode_fields():
     mod, err = _load_attach_mode_208()
     if mod is None:
@@ -130,6 +144,24 @@ def recommend_fields(models, eng, det, base):
         )
     except Exception as e:
         empty["recommend_copy"] = "FAIL recommend -- %s" % str(e)[:160]
+        return empty
+
+def orchestration_fields():
+    """Snapshot last loop/monitor evidence. Cite #213. Not slogan-only."""
+    empty = {
+        "loop_ok": False, "loop_copy": "", "loop_when": "", "loop_model": "",
+        "loop_steps": 0, "loop_hid": "", "loop_status": "", "loop_evidence": "",
+        "loop_next": "Attach OpenCode | Hermes | Grok",
+    }
+    mod, err = _load_orchestration_213()
+    if mod is None:
+        empty["loop_copy"] = "FAIL orchestration -- module missing"
+        empty["loop_next"] = "./pfy setup"
+        return empty
+    try:
+        return mod.snapshot_fields(STATE)
+    except Exception as e:
+        empty["loop_copy"] = "FAIL orchestration -- %s" % str(e)[:160]
         return empty
 
 def catalog_fields(active=""):

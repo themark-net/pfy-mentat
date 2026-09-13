@@ -69,7 +69,7 @@ def run_tk(board, selftest=False) -> bool:
         )
         w.set_view("loop")
         body = w.body.cget("text") or ""
-        loop_ok = "LOOP" in body and "env" in body.lower() and "using:" in body.lower() and "LOCAL WORKER" not in body and "pfy board" not in body.lower()
+        loop_ok = "LOOP" in body and "env" in body.lower() and "using:" in body.lower() and "loop       " in body and "started 2/8" in body and "LOCAL WORKER" not in body and "pfy board" not in body.lower()
         w.set_view("attach")
         att_body = w.body.cget("text") or ""
         att_ok = "ATTACH" in att_body and "using:" in att_body.lower()

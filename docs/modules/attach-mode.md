@@ -1,6 +1,6 @@
 # Module: Attach mode (`scripts/pfy_attach_mode_208.py`)
 
-**Purpose:** Operator-selected Attach mode `bare` | `orchestration` | `code-graph` with `using: <mode>` paint and operate-or-FAIL handoff into OpenCode | Hermes | Grok. Cite #208.
+**Purpose:** Operator-selected Attach mode `bare` | `orchestration` | `code-graph` with `using: <mode>` paint and operate-or-FAIL handoff into OpenCode | Hermes | Grok. Cite #208. Orchestration is a started multi-step local loop (#213), not a thin skill inject.
 
 ## Human operator
 
@@ -11,10 +11,10 @@
 
 ## Agent
 
-- Entry: `scripts/pfy_attach_mode_208.py` (`--selftest` / `--set` / `--prepare` / `--export-env`).
+- Entry: `scripts/pfy_attach_mode_208.py` (`--selftest` / `--set` / `--prepare` / `--export-env`); `scripts/pfy_orchestration_213.py` (`--selftest` / `--start HID` / `--export-env`).
 - Callers: `start_sidecar` / `POST /mode` / `POST /start`; Attach 162/196/202 child env; `./pfy start` payload.
-- Invariants: one mode at a time; no Env nav tab; do not rewrite repo `AGENTS.md`; catalog HOLD; do not reopen #76.
-- Issue **#208** only.
+- Invariants: one mode at a time; no Env nav tab; do not rewrite repo `AGENTS.md`; catalog HOLD; do not reopen #76. Orchestration missing runtime → FAIL+next (never silent bare).
+- Issue **#208** (mode select) · **#213** (orchestration loop start).
 
 ## Architecture link
 
