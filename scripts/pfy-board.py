@@ -6,6 +6,6 @@ parts = sorted(HERE.glob("_pfy_board_body_*.py"))
 if not parts:
     raise SystemExit("pfy-board: missing _pfy_board_body_*.py parts")
 body = "".join(p.read_text() for p in parts)
-if len(body) != 85179:
-    raise SystemExit(f"pfy-board: bad assembled len {len(body)} want 85179")
+if len(body) != 87320:
+    raise SystemExit(f"pfy-board: bad assembled len {len(body)} want 87320")
 exec(compile(body, str(HERE / "pfy-board.py"), "exec"), globals())

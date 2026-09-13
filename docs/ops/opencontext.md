@@ -1,6 +1,6 @@
 # OpenContext handoff (`oc`) — #205
 
-**Goal:** usable knowledge handoff into FreeToken-first Attach OpenCode | Hermes | Grok.  
+**Goal:** usable knowledge handoff into FreeToken-first Attach OpenCode | Hermes | Grok | Codex | Claude.  
 **Not:** a second bot product; **not** OpenContext GUI inside pfy chrome.
 
 Upstream: [0xranx/OpenContext](https://github.com/0xranx/OpenContext) (MIT) · npm `@aicontextlab/cli` (`oc`).  
@@ -17,7 +17,7 @@ Nimo hello-world proof: [docs/sources/opencontext-205-hello.md](../sources/openc
 | If | Next |
 |----|------|
 | `FAIL: node missing` or `FAIL: oc missing` | `npm install -g @aicontextlab/cli` then `./pfy context` |
-| prove PASS | Attach OpenCode / Hermes / Grok inherit `OPENCONTEXT_*` |
+| prove PASS | Attach OpenCode / Hermes / Grok / Codex / Claude inherit `OPENCONTEXT_*` |
 
 Painted control is **only** `./pfy context` (and `python3 scripts/pfy_opencontext_205.py --prove`). It must operate-or-FAIL. No board/tk/HTML OpenContext button. Do not start `oc ui`.
 
@@ -37,7 +37,7 @@ oc context manifest pfy-205-hello --limit 10 --format json
 
 ## Attach handoff (env / config / `./pfy`)
 
-After a PASS prove, `./pfy start grok|opencode|hermes|codex` and HTML+tk **Attach** for those ids export:
+After a PASS prove, `./pfy start grok|opencode|hermes|codex|claude` and HTML+tk **Attach** for those ids export:
 
 | Variable | Default | Purpose |
 |----------|---------|---------|

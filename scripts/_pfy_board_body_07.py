@@ -12,7 +12,7 @@ def record_sidecar_pid(hid, pid):
     (STATE / ("sidecar-%s.pid" % hid)).write_text(str(pid) + chr(10), encoding="utf-8")
 
 def sidecar_pid_live():
-    for hid in ("opencode", "grok", "hermes", "codex"):
+    for hid in ("opencode", "grok", "hermes", "codex", "claude"):
         path = STATE / ("sidecar-%s.pid" % hid)
         if not path.is_file():
             continue
@@ -47,6 +47,11 @@ def grok_stub_line():
 def codex_stub_line():
     rec = next((h for h in (load_registry().get("harnesses") or []) if h.get("id") == "codex"), {}) or {}
     return one_liner("codex", rec)
+
+
+def claude_stub_line():
+    rec = next((h for h in (load_registry().get("harnesses") or []) if h.get("id") == "claude-code"), {}) or {}
+    return one_liner("claude-code", rec) or "npm install -g @anthropic-ai/claude-code"
 
 def grok_path_live():
     return "ready" if which_bin("grok") else "missing"

@@ -2,7 +2,7 @@
 """Local operator board. Independent poller — not a daemon, not a supervisor.
 
 Serves the shared GUI at gui/operator/frontend/index.html.
-POST /start spawns OpenCode/Hermes/Grok/Codex enterable session (Grok prove-usable #202; Codex #220). start_monitor_sidecar remains a separate monitor role. local-only never auto-calls cloud.
+POST /start spawns OpenCode/Hermes/Grok/Codex/Claude enterable session (Grok prove-usable #202; Codex #220; Claude #221). start_monitor_sidecar remains a separate monitor role. local-only never auto-calls cloud.
 POST /stage runs ./pfy stage (env-stage).
 POST /env runs ./pfy env (inference + env-stage). No harness exec.
 POST /models/pull runs ./pfy models pull <name>.
@@ -42,12 +42,12 @@ PS_MATCH = {
     "llama.cpp": ("llama-server",), "llama-server": ("llama-server",),
     "ollama": ("ollama",), "shimmy": ("shimmy",), "grok": ("grok",),
     "opencode": ("opencode", "opencode-cli"), "hermes": ("hermes", "hermes-agent"),
-    "claude-code": ("claude",), "codex": ("codex",), "gemini": ("gemini", "gemini-cli"),
+    "claude": ("claude",), "claude-code": ("claude",), "codex": ("codex",), "gemini": ("gemini", "gemini-cli"),
     "exo": ("exo.sh", "exo"),
 }
 STUB_ALWAYS = {"continue", "agent-cage"}
 NO_SPAWN = {"llama-swap", "llama.cpp", "llama-server", "shimmy"}
-SIDECAR_OK = {"grok", "opencode", "hermes", "codex"}
+SIDECAR_OK = {"grok", "opencode", "hermes", "codex", "claude", "claude-code"}
 ISSUE_BASE = "https://github.com/themark-net/pfy-mentat/issues/"
 GROK_USE = "pfy harness use grok"
 FRONTEND_DIR = ROOT / "gui" / "operator" / "frontend"

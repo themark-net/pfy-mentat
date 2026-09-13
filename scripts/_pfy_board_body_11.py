@@ -16,7 +16,7 @@ if tid in ("write-guard", "write_guard"):
     return {"ok": False, "live": "FAIL", "copy": "FAIL tools", "error": "unknown toggle", "id": tid}
 
 def start_sidecar(hid, mode=None):
-    """Spawn grok/opencode/hermes/codex sidecar. Grok prove-usable (#202); Hermes (#196); OpenCode (#171/#193); Codex (#220). Mode handoff (#208)."""
+    """Spawn grok/opencode/hermes/codex/claude sidecar. Grok prove-usable (#202); Hermes (#196); OpenCode (#171/#193); Codex (#220); Claude (#221). Mode handoff (#208)."""
     hid = (hid or "").strip()
     if not hid:
         hid = active_harness("grok")
@@ -36,6 +36,8 @@ def start_sidecar(hid, mode=None):
             "ok": False, "id": hid, "live": "FAIL", "copy": GROK_USE,
             "error": f"{hid} is not a sidecar",
         }
+    if hid == "claude-code":
+        hid = "claude"
     STATE.mkdir(parents=True, exist_ok=True)
     mmod, merr = _load_attach_mode_208()
     if mmod is None:
@@ -98,6 +100,8 @@ def start_sidecar(hid, mode=None):
         result = open_enterable_hermes_session()
     elif hid == "codex":
         result = open_enterable_codex_session()
+    elif hid == "claude":
+        result = open_enterable_claude_session()
     else:
         result = None
     if result is not None:

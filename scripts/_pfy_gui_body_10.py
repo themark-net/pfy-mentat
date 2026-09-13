@@ -52,6 +52,7 @@ def run_tk(board, selftest=False) -> bool:
             and w.bopen.cget("text") == "Attach opencode"
             and w.bhermes.cget("text") == "Attach hermes"
             and w.bcodex.cget("text") == "Attach codex"
+            and w.bclaude.cget("text") == "Attach claude"
             and w.brefresh.cget("text") == "Refresh status"
             and w.bcopy.cget("text") == "Copy stub one-liner"
             and w.bstage.cget("text") == "Run stage"

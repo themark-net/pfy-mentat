@@ -71,16 +71,16 @@ When integrating a new tool, **add a row here in the same PR** as the integratio
 | `VOICE_AGENT_TIMEOUT` | no | optional | `600` | agent_runner | Seconds |
 | `VOICE_AGENT_ALWAYS_APPROVE` | no | optional | `1` | agent_runner | Passes grok `--always-approve` when set |
 | `VOICE_AGENT_REPO` | no | optional | repo root | remote_server / runner | Grok `--cwd` |
-| `OPENCONTEXT_BIN` | no | optional | `oc` on PATH | `./pfy context`, Attach grok/opencode/hermes/codex | Set when `oc` exists; skip if missing (#205) |
+| `OPENCONTEXT_BIN` | no | optional | `oc` on PATH | `./pfy context`, Attach grok/opencode/hermes/codex/claude | Set when `oc` exists; skip if missing (#205) |
 | `OPENCONTEXT_CONTEXTS_ROOT` | no | optional | `$HOME/.opencontext/contexts` | `oc` CLI / Attach child env | Global context library |
 | `OPENCONTEXT_DB_PATH` | no | optional | `$HOME/.opencontext/opencontext.db` | `oc` CLI / Attach child env | OpenContext SQLite store |
-| `PFY_ATTACH_MODE` | no | optional | `bare` | Attach OpenCode/Hermes/Grok/Codex (#208) | `bare` \| `orchestration` \| `code-graph`; one mode at a time |
+| `PFY_ATTACH_MODE` | no | optional | `bare` | Attach OpenCode/Hermes/Grok/Codex/Claude (#208) | `bare` \| `orchestration` \| `code-graph`; one mode at a time |
 | `PFY_ATTACH_HANDOFF` | no | optional | `$PFY_STATE_DIR/attach-mode-handoff.md` | Attach child env | Mode AGENTS/prompt artifact |
 | `PFY_ATTACH_PROMPT` | no | optional | `$PFY_STATE_DIR/attach-mode-prompt.md` | Attach child env | Short mode prompt |
 | `PFY_LOOP_CARD` | no | optional | `$PFY_STATE_DIR/loop-card.md` | Attach child env / Loop (#213) | 8-exit card after orchestration start |
 | `PFY_LOOP_EVIDENCE` | no | optional | `$PFY_STATE_DIR/loop-evidence.json` | Attach child env / Loop (#213) | Last loop/monitor evidence (not slogan-only) |
 | `PFY_LOOP_PROMPT` | no | optional | `$PFY_STATE_DIR/loop-prompt.md` | Attach child env (#213) | Continue-from-card prompt |
-| `PFY_GRAPH_PATH` | no | optional | (unset) | `./pfy code-graph`, Attach grok/opencode/hermes/codex (#215) | `axon` \| `codebase-memory`; never invent axon |
+| `PFY_GRAPH_PATH` | no | optional | (unset) | `./pfy code-graph`, Attach grok/opencode/hermes/codex/claude (#215) | `axon` \| `codebase-memory`; never invent axon |
 | `AXON_BIN` | no | optional | `axon` on PATH | `./pfy code-graph`, Attach child env (#215) | Set only when path=axon |
 | `PFY_GRAPH_EVIDENCE` | no | optional | `$PFY_STATE_DIR/graph-evidence.json` | Attach child env / Loop (#215) | Last code-graph path evidence |
 | `PFY_CATALOG_ASK_PROMPT` | no | optional | `$PFY_STATE_DIR/catalog-ask-prompt.md` | Attach child env / Tools (#209) | Next-launch implement prompt |

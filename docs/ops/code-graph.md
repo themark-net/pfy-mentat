@@ -1,6 +1,6 @@
 # Code-graph handoff (Axon preferred) — #215
 
-**Goal:** usable code-graph path into FreeToken-first Attach OpenCode | Hermes | Grok.  
+**Goal:** usable code-graph path into FreeToken-first Attach OpenCode | Hermes | Grok | Codex | Claude.  
 **Not:** catalog PR merge; **not** Axon UI inside pfy chrome.
 
 Upstream: [harshkedia177/axon](https://github.com/harshkedia177/axon) (MIT) · PyPI `axoniq` (`axon`).  
@@ -40,7 +40,7 @@ Equivalent already on nimo when Axon is missing: `codebase-memory-mcp` (bootstra
 
 ## Attach handoff (env / config / `./pfy`)
 
-After a PASS prove or a successful Attach prepare, HTML+tk **Attach** and `./pfy start grok|opencode|hermes|codex` export:
+After a PASS prove or a successful Attach prepare, HTML+tk **Attach** and `./pfy start grok|opencode|hermes|codex|claude` export:
 
 | Variable | When | Purpose |
 |----------|------|---------|
