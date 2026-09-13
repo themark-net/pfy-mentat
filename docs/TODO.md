@@ -135,6 +135,7 @@ Active work is also tracked as issues: https://github.com/themark-net/pfy-mentat
 | — | P1 | done | Deepen Attach orchestration: multi-step local loops + Loop evidence (not thin inject) | [#213](https://github.com/themark-net/pfy-mentat/issues/213) · catalog HOLD 70–75 · #198 parked · do not reopen #76 |
 | — | P1 | done | Attach code-graph Axon usable path (or codebase-memory equivalent, painted) | [#215](https://github.com/themark-net/pfy-mentat/issues/215) · catalog HOLD 70–75 (do not merge PR #75) · #198 parked · #76 CLOSED |
 | — | P1 | done | Attach Codex usable FreeToken-first session (HTML+tk; prove models+smoke) | [#220](https://github.com/themark-net/pfy-mentat/issues/220) · catalog HOLD 70–75 · #198 parked · do not reopen #76 |
+| — | P1 | done | Attach Claude usable FreeToken-first session (HTML+tk; prove models+smoke) | [#221](https://github.com/themark-net/pfy-mentat/issues/221) · catalog HOLD 70–75 · #198 parked · do not reopen #76 |
 | T-0050 | P2 | done | First-party `/agent-loops` skill (8 exits + 4 types + Finn + rubric) | `bootstrap/grok-cli/skills/agent-loops/`; Entries 024/027/031/032/068; pairs with `/one-shot` |
 | T-0048 | P2 | done | Hermes feedback loops as first-party Grok skill | `bootstrap/grok-cli/skills/hermes-feedback/`; Entry 048 pattern port; not Hermes runtime |
 | T-0051 | P2 | done | First-party skill structural smoke + verification docs | `make smoke-grok-skills`; `bootstrap/grok-cli/scripts/verify_skills.py`; `docs/ops/skill-verification.md` |

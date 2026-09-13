@@ -40,7 +40,7 @@ ck_forget()
                 txt += "\nwhat       " + what
             if stub: txt += f"\nFAIL       {s.get('blocked_copy') or GROK_USE}"
             if self.msg: txt += "\n" + self.msg
-            self.pack_acts(["bare", "orch", "graph", "env", "copyep", "copyst", "open", "hermes", "grok", "codex", "est", "ast"])
+            self.pack_acts(["bare", "orch", "graph", "env", "copyep", "copyst", "open", "hermes", "grok", "codex", "claude", "est", "ast"])
         elif self.view == "engine":
             u = s.get("usage") if isinstance(s.get("usage"), dict) else {}
             sr = s.get("status_runtime") or {}
@@ -121,7 +121,7 @@ ck_forget()
             if stub: txt += f"\nFAIL    {s.get('blocked_copy') or GROK_USE}"
             if self.msg: txt += "\n" + self.msg
             # Buttons only (no path labels in the side pack — they clipped off-screen)
-            self.pack_acts(["bare", "orch", "graph", "si", "siopen", "sifold", "sitask", "grok", "open", "hermes", "codex", "copy", "ast", "sist", "cst"])
+            self.pack_acts(["bare", "orch", "graph", "si", "siopen", "sifold", "sitask", "grok", "open", "hermes", "codex", "claude", "copy", "ast", "sist", "cst"])
         elif self.view == "tools":
             tools = s.get("tools") or {}
             skills = tools.get("skills") or {}

@@ -31,6 +31,7 @@ ATTACH_BASES = (
     "hermes-attach-base",
     "grok-attach-base",
     "codex-attach-base",
+    "claude-attach-base",
 )
 NEXT_SELECT = "select bare | orchestration | code-graph on Attach"
 NEXT_SETUP = "./pfy setup"

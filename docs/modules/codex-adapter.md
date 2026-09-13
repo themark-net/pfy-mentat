@@ -40,4 +40,4 @@ Upstream: [openai/codex](https://github.com/openai/codex)
 
 - Vendoring Codex into git
 - Invented Codex flags
-- Claude attach (#221 — do not start here)
+- Other harness adapters

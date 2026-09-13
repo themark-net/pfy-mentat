@@ -4,7 +4,7 @@ Cite **#208** (mode select), **#213** (orchestration loop start), and **#215** (
 
 ## Operator
 
-On **Attach** (and Loop attach row) select a mode, then Attach OpenCode | Hermes | Grok | Codex.
+On **Attach** (and Loop attach row) select a mode, then Attach OpenCode | Hermes | Grok | Codex | Claude.
 
 The UI paints `using: <mode>`. Loop also paints last loop/monitor evidence (not slogan-only).
 
@@ -28,7 +28,7 @@ python3 scripts/pfy-board.py --start grok orchestration
 # or select orchestration in HTML/tk, then Attach
 ```
 
-Named `./pfy start grok|opencode|hermes|codex` prepares the selected mode from `$PFY_STATE_DIR` (default `bare`) and fails closed if that mode cannot be handed off. Orchestration also proves loop start before exec.
+Named `./pfy start grok|opencode|hermes|codex|claude` prepares the selected mode from `$PFY_STATE_DIR` (default `bare`) and fails closed if that mode cannot be handed off. Orchestration also proves loop start before exec.
 
 ## Variables
 
