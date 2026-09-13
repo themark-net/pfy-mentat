@@ -25,6 +25,10 @@ document.getElementById('btnrefresh').addEventListener('click',()=>refreshNow())
 document.getElementById('btncopy').addEventListener('click',()=>copyStub());
 document.getElementById('btnstage').addEventListener('click',()=>runStage());
 document.getElementById('btnlaunch').addEventListener('click',()=>runEnv());
+document.getElementById('btnlaunchsess')&&document.getElementById('btnlaunchsess').addEventListener('click',()=>runLaunchSession());
+document.querySelectorAll('[data-lane]').forEach(el=>el.addEventListener('click',()=>runWizard('lane', el.getAttribute('data-lane'))));
+document.querySelectorAll('[data-toolset]').forEach(el=>el.addEventListener('click',()=>runWizard('toolsets', el.getAttribute('data-toolset'))));
+document.querySelectorAll('[data-harness]').forEach(el=>el.addEventListener('click',()=>runWizard('harness', el.getAttribute('data-harness'))));
 document.getElementById('btncopyendpoint')&&document.getElementById('btncopyendpoint').addEventListener('click',()=>copyLaunchEndpoint());
 document.getElementById('btncopyendpoint-eng')&&document.getElementById('btncopyendpoint-eng').addEventListener('click',()=>copyLaunchEndpoint());
 document.getElementById('btncopystatus')&&document.getElementById('btncopystatus').addEventListener('click',()=>copyLaunchStatus());
@@ -245,6 +249,7 @@ async function tick(){
     }
     paintToolRow(s);
     paintCatalogRows(s);
+    paintWizard(s);
     const tape=s.tape||[];
     const stage=tape.find(t=>t.id==='env-stage'||t.label==='env-stage')||{};
     const sl=stage.live||'SKIP';

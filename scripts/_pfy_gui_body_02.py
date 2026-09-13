@@ -36,6 +36,16 @@
         self.bqueue = ttk.Button(self.acts, text="Queue for org", command=self.catalog_queue)
         self.bcatcopy = ttk.Button(self.acts, text="Copy prompt", command=self.copy_catalog_prompt)
         self.catst = ttk.Label(self.acts, text="", style="M.TLabel")
+        self.bsess = ttk.Button(self.acts, text="Launch session", command=self.launch_session)
+        self.blocal = ttk.Button(self.acts, text="local", command=lambda: self.wizard_step("lane", "local"))
+        self.bcloud = ttk.Button(self.acts, text="cloud/subscription", command=lambda: self.wizard_step("lane", "cloud/subscription"))
+        self.bofree = ttk.Button(self.acts, text="OpenCode free", command=lambda: self.wizard_step("lane", "opencode-free"))
+        self.bcatalog = ttk.Button(self.acts, text="catalog", command=lambda: self.wizard_step("toolsets", "catalog"))
+        self.bhopenc = ttk.Button(self.acts, text="OpenCode", command=lambda: self.wizard_step("harness", "opencode"))
+        self.bhgrok = ttk.Button(self.acts, text="Grok", command=lambda: self.wizard_step("harness", "grok"))
+        self.bhhermes = ttk.Button(self.acts, text="Hermes", command=lambda: self.wizard_step("harness", "hermes"))
+        self.bhcodex = ttk.Button(self.acts, text="Codex", command=lambda: self.wizard_step("harness", "codex"))
+        self.bhclaude = ttk.Button(self.acts, text="Claude", command=lambda: self.wizard_step("harness", "claude"))
         self.chips = ttk.Frame(right); self.chips.pack(fill="both", expand=True, padx=12, pady=(0,10))
 
     def set_view(self, k):
@@ -62,7 +72,74 @@
                 self.paint_attach("FAIL mode — %s · %s" % (detail, nxt), True)
         else:
             self.paint_attach("using: "+self._attach_mode, False)
+        if self.view == "loop":
+            self.wizard_step("toolsets", self._attach_mode)
+            return
         self.render()
+
+    def wizard_step(self, step, value=""):
+        self.paint_attach("wizard "+step+"…", False)
+        def work():
+            try:
+                if self.board and hasattr(self.board, "wizard_apply"):
+                    res = self.board.wizard_apply(step, value)
+                else:
+                    res = {"ok": False, "copy": "FAIL wizard", "error": "no board"}
+            except Exception as e:
+                res = {"ok": False, "copy": "FAIL wizard", "error": str(e)}
+            self.root.after(0, lambda r=res: self.done_wizard(r, step))
+        threading.Thread(target=work, daemon=True).start()
+
+    def done_wizard(self, res, step=""):
+        skip = str((res or {}).get("live") or "").upper() == "SKIP" or bool((res or {}).get("skipped"))
+        if res.get("ok"):
+            if res.get("mode"):
+                self._attach_mode = res.get("mode")
+            self.paint_attach(res.get("copy") or ("READY "+step), False)
+        else:
+            nxt = res.get("next_step") or "Launch env or ./pfy up"
+            detail = res.get("copy") or res.get("error") or "wizard"
+            if nxt and nxt not in str(detail):
+                detail = "%s · %s" % (detail, nxt)
+            self.paint_attach(detail if skip else ("FAIL wizard — %s" % detail), not skip)
+        self.refresh()
+
+    def launch_session(self):
+        self.paint_attach("Launch session…", False)
+        def work():
+            try:
+                if self.board and hasattr(self.board, "launch_wizard_session"):
+                    res = self.board.launch_wizard_session()
+                else:
+                    res = {"ok": False, "copy": "FAIL launch", "error": "no board", "next_step": "complete wizard review (runtime · lane · toolsets · harness)"}
+            except Exception as e:
+                res = {"ok": False, "copy": "FAIL launch", "error": str(e)}
+            self.root.after(0, lambda r=res: self.done_launch_session(r))
+        threading.Thread(target=work, daemon=True).start()
+
+    def done_launch_session(self, res):
+        reach = str((res or {}).get("session_reach") or "").strip()
+        if reach:
+            self._session_reach = reach
+        skip = str((res or {}).get("live") or "").upper() == "SKIP" or bool((res or {}).get("skipped"))
+        if res.get("ok") and res.get("usable") is not False:
+            pid = res.get("pid")
+            hid = res.get("id") or res.get("harness") or ""
+            msg = res.get("copy") or ("attached " + hid)
+            if pid and ("pid" not in msg):
+                msg += " pid %s" % pid
+            if reach and reach not in msg:
+                msg += " · " + reach
+            self.paint_attach(msg, False)
+        else:
+            nxt = res.get("next_step") or "complete wizard review (runtime · lane · toolsets · harness)"
+            detail = res.get("error") or res.get("copy") or "launch"
+            if nxt and nxt not in str(detail):
+                detail = "%s · %s" % (detail, nxt)
+            self.paint_attach(detail if skip else ("FAIL Launch session — %s" % detail), not skip)
+            if not reach:
+                self._session_reach = "FAIL"
+        self.refresh()
 
     def attach(self, hid):
         self.paint_attach("attaching "+hid+"…", False)

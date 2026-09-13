@@ -86,6 +86,7 @@ When integrating a new tool, **add a row here in the same PR** as the integratio
 | `PFY_CATALOG_ASK_PROMPT` | no | optional | `$PFY_STATE_DIR/catalog-ask-prompt.md` | Attach child env / Tools (#209) | Next-launch implement prompt |
 | `PFY_CATALOG_ASK_HANDOFF` | no | optional | `$PFY_STATE_DIR/catalog-ask-handoff.md` | Attach child env / Tools (#209) | Catalog ask handoff notes |
 | `GITHUB_TOKEN` / `GH_TOKEN` | no | optional | (unset) | Tools Queue for org (#214) | API create/refresh when `gh` missing |
+| `PFY_STATE_DIR` launch-wizard.json | no | optional | `$PFY_STATE_DIR/launch-wizard.json` | Loop launch wizard (#225) | composed runtime · lane · toolsets · harness |
 
 ## Profile affinity
 

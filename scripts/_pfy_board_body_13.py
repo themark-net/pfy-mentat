@@ -85,6 +85,27 @@
             code = 200 if result.get("ok") else 400
             self._send(code, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
             return
+        if path == "/wizard":
+            length = int(self.headers.get("Content-Length") or 0)
+            raw = self.rfile.read(length) if length else b"{}"
+            try:
+                body = json.loads(raw.decode() or "{}")
+            except json.JSONDecodeError:
+                body = {}
+            step = str((body or {}).get("step") or "")
+            value = str((body or {}).get("value") or (body or {}).get("id") or "")
+            result = wizard_apply(step, value)
+            code = 200 if result.get("ok") else 400
+            self._send(code, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
+            return
+        if path in ("/launch", "/launch-session"):
+            length = int(self.headers.get("Content-Length") or 0)
+            if length:
+                self.rfile.read(length)
+            result = launch_wizard_session()
+            code = 200 if result.get("ok") else 400
+            self._send(code, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
+            return
         self._send(405, b"POST disabled for this path\n", "text/plain; charset=utf-8")
 
 def main():
@@ -109,6 +130,16 @@ def main():
         return 0 if result.get("ok") else 2
     if args[:1] == ["--env"]:
         result = launch_env()
+        print(json.dumps(result))
+        return 0 if result.get("ok") else 2
+    if args[:1] == ["--wizard"]:
+        step = args[1] if len(args) > 1 else "runtime"
+        value = " ".join(args[2:]).strip()
+        result = wizard_apply(step, value)
+        print(json.dumps(result))
+        return 0 if result.get("ok") else 2
+    if args[:1] in (["--launch"], ["--launch-session"]):
+        result = launch_wizard_session()
         print(json.dumps(result))
         return 0 if result.get("ok") else 2
     if args[:1] == ["--pull"]:

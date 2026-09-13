@@ -243,6 +243,117 @@ async function runEnv(){
     btn.disabled=false;
   }
 }
+function paintWizard(s){
+  s=s||lastSnap||{};
+  const rt=s.wizard_runtime||'';
+  const rtEl=document.getElementById('wiz-runtime');
+  if(rtEl){
+    const live=rt?((String(rt).indexOf('ready')>=0||String(s.wizard_live||'').toUpperCase()==='READY')?'READY':'SKIP'):'SKIP';
+    rtEl.textContent=rt||live;
+    rtEl.className='live '+cls((live||'skip').toLowerCase());
+  }
+  const lane=document.getElementById('wiz-lane');
+  if(lane) lane.textContent=s.wizard_lane||'(none)';
+  const ts=document.getElementById('wiz-toolsets');
+  if(ts) ts.textContent=s.wizard_toolsets||'(none)';
+  const hs=document.getElementById('wiz-harness');
+  if(hs) hs.textContent=s.wizard_harness||'(none)';
+  const rv=document.getElementById('wiz-review');
+  if(rv) rv.textContent=s.wizard_review||'(none)';
+  document.querySelectorAll('[data-lane]').forEach(b=>b.classList.toggle('on', b.getAttribute('data-lane')===(s.wizard_lane||'')));
+  document.querySelectorAll('[data-toolset]').forEach(b=>b.classList.toggle('on', b.getAttribute('data-toolset')===(s.wizard_toolsets||'')));
+  document.querySelectorAll('[data-harness]').forEach(b=>b.classList.toggle('on', b.getAttribute('data-harness')===(s.wizard_harness||'')));
+}
+async function postWizard(step, value){
+  try{
+    if(isTauri()){
+      try{
+        const v=await window.__TAURI__.core.invoke('wizard',{step, value:value||''});
+        return typeof v==='string'?JSON.parse(v):v;
+      }catch(e){
+        return {ok:false,error:String(e),copy:'FAIL wizard',live:'FAIL'};
+      }
+    }
+    if(noLiveApi()) return {ok:false,error:'FAIL',copy:'FAIL wizard',live:'FAIL',next_step:'Launch env or ./pfy up'};
+    const r=await fetch(apiRoot()+'/wizard',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({step,value:value||''})});
+    try{return await r.json();}catch(e){return {ok:false,error:String(e),copy:'FAIL wizard',live:'FAIL'};}
+  }catch(e){
+    return {ok:false,error:String(e),copy:'FAIL wizard',live:'FAIL'};
+  }
+}
+async function postLaunchSession(){
+  try{
+    if(isTauri()){
+      try{
+        const v=await window.__TAURI__.core.invoke('launch_session');
+        return typeof v==='string'?JSON.parse(v):v;
+      }catch(e){
+        return {ok:false,error:String(e),copy:'FAIL launch',live:'FAIL'};
+      }
+    }
+    if(noLiveApi()) return {ok:false,error:'FAIL',copy:'FAIL launch',live:'FAIL',next_step:'complete wizard review (runtime · lane · toolsets · harness)'};
+    const r=await fetch(apiRoot()+'/launch',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+    try{return await r.json();}catch(e){return {ok:false,error:String(e),copy:'FAIL launch',live:'FAIL'};}
+  }catch(e){
+    return {ok:false,error:String(e),copy:'FAIL launch',live:'FAIL'};
+  }
+}
+async function runWizard(step, value){
+  paintLaunch('wizard '+step+'…','');
+  try{
+    const j=await postWizard(step, value);
+    if(j && j.ok){
+      paintLaunch(j.copy||('READY '+step),'ok');
+      if(lastSnap){
+        if(j.runtime) lastSnap.wizard_runtime=j.runtime;
+        if(j.lane) lastSnap.wizard_lane=j.lane;
+        if(j.toolsets) lastSnap.wizard_toolsets=j.toolsets;
+        if(j.harness) lastSnap.wizard_harness=j.harness;
+        if(j.review) lastSnap.wizard_review=j.review;
+        paintWizard(lastSnap);
+      }
+    }else{
+      const nxt=(j && j.next_step)||'Launch env or ./pfy up';
+      let msg=(j && (j.copy||j.error))||step;
+      if(String(msg).indexOf(nxt)<0) msg=msg+' · next: '+nxt;
+      const skip=String((j&&j.live)||msg).indexOf('SKIP')>=0;
+      paintLaunch(skip?msg:(String(msg).indexOf('FAIL')===0?msg:('FAIL '+msg)), skip?'muted':'fail');
+    }
+    await tick();
+  }catch(e){
+    paintLaunch('FAIL wizard','fail');
+  }
+}
+async function runLaunchSession(){
+  const btn=document.getElementById('btnlaunchsess');
+  if(btn) btn.disabled=true;
+  paintLaunch('Launch session…','');
+  try{
+    const j=await postLaunchSession();
+    if(j && j.ok && j.usable!==false){
+      const reach=(j.session_reach||'').trim();
+      paintLaunch(j.copy||('READY Launch session'+(reach?(' · '+reach):'')),'ok');
+      if(reach) paintSessionReach(reach);
+      attachMsg=j.copy||('attached '+(j.id||j.harness||''));
+      attachKind='ok';
+      paintAttach();
+    }else{
+      const nxt=(j && j.next_step)||'complete wizard review (runtime · lane · toolsets · harness)';
+      let msg=(j && (j.copy||j.error))||'launch';
+      if(String(msg).indexOf(nxt)<0) msg=msg+' · next: '+nxt;
+      const skip=String((j&&j.live)||msg).indexOf('SKIP')>=0;
+      paintLaunch(skip?msg:(String(msg).indexOf('FAIL')===0?msg:('FAIL '+msg)), skip?'muted':'fail');
+      attachMsg=String(msg);
+      attachKind=skip?'':'fail';
+      paintAttach();
+    }
+    await tick();
+  }catch(e){
+    paintLaunch('FAIL Launch session','fail');
+  }finally{
+    if(btn) btn.disabled=false;
+  }
+}
 async function postStage(){
   try{
     if(isTauri()){
