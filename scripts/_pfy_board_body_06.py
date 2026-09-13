@@ -50,6 +50,37 @@ def _load_attach_202():
     except Exception as e:
         return None, str(e)[:400]
 
+def _load_attach_mode_208():
+    """Load pfy_attach_mode_208 or return (None, error). Cite #208."""
+    import importlib.util
+    path = ROOT / "scripts" / "pfy_attach_mode_208.py"
+    if not path.is_file():
+        return None, str(path)
+    try:
+        spec = importlib.util.spec_from_file_location("pfy_attach_mode_208", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod, ""
+    except Exception as e:
+        return None, str(e)[:400]
+
+def attach_mode_fields():
+    mod, err = _load_attach_mode_208()
+    if mod is None:
+        return {"attach_mode": "bare", "using": "bare", "attach_mode_when": "", "attach_mode_live": ""}
+    try:
+        return mod.snapshot_fields(STATE)
+    except Exception:
+        return {"attach_mode": "bare", "using": "bare", "attach_mode_when": "", "attach_mode_live": ""}
+
+def set_attach_mode(mode):
+    """Select one attach mode (bare|orchestration|code-graph). Cite #208."""
+    mod, err = _load_attach_mode_208()
+    if mod is None:
+        return {"ok": False, "live": "FAIL", "copy": "FAIL mode -- module missing", "error": err or "missing", "usable": False, "next_step": "./pfy setup"}
+    STATE.mkdir(parents=True, exist_ok=True)
+    return mod.set_mode(STATE, mode)
+
 def _session_reach_live():
     oc, hm, gk = "", "", ""
     mod, err = _load_enterable_162()

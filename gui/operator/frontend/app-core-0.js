@@ -6,6 +6,7 @@ let attachKind="";
 let view='loop';
 let lastSnap={};
 let refreshing=false;
+let selectedMode="bare";
 function cls(s){return (s||'').replace(/[^a-z-]/g,'');}
 function live(s){s=(s||'').toLowerCase(); return LIVE.has(s)?s:'missing';}
 function isTauri(){return !!(window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke);}
@@ -108,11 +109,58 @@ async function postStart(id){
       return typeof v==='string'?JSON.parse(v):v;
     }
     if(noLiveApi()) return {ok:false,error:'FAIL',copy:GROK_USE,live:'FAIL'};
-    const r=await fetch(apiRoot()+'/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});
+    const r=await fetch(apiRoot()+'/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,mode:selectedMode||'bare'})});
     try{return await r.json();}catch(e){return {ok:false,error:String(e),copy:GROK_USE,live:'FAIL'};}
   }catch(e){
     return {ok:false,error:String(e),copy:GROK_USE,live:'FAIL'};
   }
+}
+function paintUsing(mode, when){
+  mode=(mode||selectedMode||'bare');
+  selectedMode=mode;
+  ['loop-using','att-using'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.textContent=mode;
+  });
+  ['loop-mode-when','att-mode-when'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.textContent=when||'';
+  });
+  document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('on', b.getAttribute('data-mode')===mode));
+}
+async function postMode(mode){
+  try{
+    if(isTauri()){
+      selectedMode=mode||'bare';
+      paintUsing(selectedMode,'');
+      return {ok:true,mode:selectedMode,using:selectedMode};
+    }
+    if(noLiveApi()) return {ok:false,error:'FAIL',copy:'FAIL mode',next_step:'select bare | orchestration | code-graph on Attach'};
+    const r=await fetch(apiRoot()+'/mode',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode})});
+    try{return await r.json();}catch(e){return {ok:false,error:String(e),copy:'FAIL mode'};}
+  }catch(e){
+    return {ok:false,error:String(e),copy:'FAIL mode'};
+  }
+}
+async function selectMode(mode){
+  attachMsg='selecting '+mode+'…';
+  attachKind='';
+  paintAttach();
+  const j=await postMode(mode);
+  if(j && j.ok){
+    selectedMode=j.mode||mode;
+    paintUsing(selectedMode, j.when||'');
+    attachMsg='using: '+selectedMode;
+    attachKind='ok';
+  }else{
+    const nxt=(j && (j.next_step||''))||'select bare | orchestration | code-graph on Attach';
+    let detail=(j && (j.copy||j.error))||'mode';
+    detail=String(detail);
+    if(detail.indexOf(nxt)<0) detail=detail+' · '+nxt;
+    attachMsg='FAIL mode — '+detail;
+    attachKind='fail';
+  }
+  paintAttach();
 }
 function paintSessionReach(reach){
   const r=(reach||'').trim()||'(none)';

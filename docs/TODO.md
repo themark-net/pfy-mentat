@@ -128,6 +128,7 @@ Active work is also tracked as issues: https://github.com/themark-net/pfy-mentat
 | T-0015 | P3 | done | Antigravity catalog-only skip install | #23; antigravity-catalog-posture.md |
 | — | P1 | done | golden_replay deterministic lane | #31; make eval-golden |
 | — | P1 | done | OpenContext `oc` usable handoff (Stage-0 + nimo hello-world + `./pfy context`) | [#205](https://github.com/themark-net/pfy-mentat/issues/205) · catalog HOLD · #198 parked |
+| — | P1 | done | Attach mode `bare` \| `orchestration` \| `code-graph` (using: paint + operate-or-FAIL handoff) | [#208](https://github.com/themark-net/pfy-mentat/issues/208) · catalog HOLD · #198 parked · do not reopen #76 |
 | T-0050 | P2 | done | First-party `/agent-loops` skill (8 exits + 4 types + Finn + rubric) | `bootstrap/grok-cli/skills/agent-loops/`; Entries 024/027/031/032/068; pairs with `/one-shot` |
 | T-0048 | P2 | done | Hermes feedback loops as first-party Grok skill | `bootstrap/grok-cli/skills/hermes-feedback/`; Entry 048 pattern port; not Hermes runtime |
 | T-0051 | P2 | done | First-party skill structural smoke + verification docs | `make smoke-grok-skills`; `bootstrap/grok-cli/scripts/verify_skills.py`; `docs/ops/skill-verification.md` |

@@ -93,6 +93,7 @@ xt = pfy_status_stdout()
         "monitor_note": last_monitor_note(),
         "monitor_pid": monitor_pid_live(),
         "tools": load_tools_state(),
+        **attach_mode_fields(),
     }
 
 def html_page():

@@ -44,6 +44,7 @@ def selftest_snap():
             "tape":[{"id":"inference","label":"inference","live":"SKIP"},{"id":"env-stage","label":"env-stage","live":"SKIP"},
                     {"id":"harness-attach","label":"harness attach","live":"SKIP"}],
             "detect_order":[],"active":"grok","active_stub":False,"blocked_copy":GROK_USE,
+            "attach_mode":"bare","using":"bare","attach_mode_when":"","attach_mode_live":"",
             "last_verb":{"verb":"gui","when":""},"now":"idle","processes":[],"agent_lane_collapsed":True,
             "tools":{"skills":{"one-shot":True,"investigate":True,"agent-loops":True,"hermes-feedback":True},"mcp":False,"write_guard":False,"tools_mode":"split"}}
 

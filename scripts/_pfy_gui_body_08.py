@@ -26,13 +26,15 @@ ck_forget()
             # Prefer last attach/env session_reach if snapshot empty
             if reach == "(none)":
                 reach = str(getattr(self, "_session_reach", "") or "").strip() or "(none)"
-            txt = f"LOOP\nenv        {env_live}\nattached   {att}\nsession    {reach}\nlast       {verb}  {when}\nmonitor    {mon}\ngrok       {gpath}"
+            using = str(s.get("using") or s.get("attach_mode") or getattr(self, "_attach_mode", "") or "bare")
+            mode_when = str(s.get("attach_mode_when") or "")
+            txt = f"LOOP\nenv        {env_live}\nattached   {att}\nsession    {reach}\nusing: {using}" + (f"  {mode_when}" if mode_when else "") + f"\nlast       {verb}  {when}\nmonitor    {mon}\ngrok       {gpath}"
             what = str((getattr(self, "_last_env", {}) or {}).get("what") or "")
             if what:
                 txt += "\nwhat       " + what
             if stub: txt += f"\nFAIL       {s.get('blocked_copy') or GROK_USE}"
             if self.msg: txt += "\n" + self.msg
-            self.pack_acts(["env", "copyep", "copyst", "open", "hermes", "grok", "est", "ast"])
+            self.pack_acts(["bare", "orch", "graph", "env", "copyep", "copyst", "open", "hermes", "grok", "est", "ast"])
         elif self.view == "engine":
             u = s.get("usage") if isinstance(s.get("usage"), dict) else {}
             sr = s.get("status_runtime") or {}
@@ -76,7 +78,9 @@ ck_forget()
             self.pack_acts(["stage", "sst"])
         elif self.view == "attach":
             reach = str(s.get("session_reach") or "").strip() or getattr(self, "_session_reach", "") or "(none)"
-            txt = f"ATTACH\nNOW     attached {attached} · last {verb}\nsession {reach}"
+            using = str(s.get("using") or s.get("attach_mode") or getattr(self, "_attach_mode", "") or "bare")
+            mode_when = str(s.get("attach_mode_when") or "")
+            txt = f"ATTACH\nNOW     attached {attached} · last {verb}\nsession {reach}\nusing: {using}" + (f"  {mode_when}" if mode_when else "")
             si = getattr(self, "_last_si", {}) or {}
             abs_p = str(si.get("abs_path") or "")
             rel_p = str(si.get("rel") or si.get("path") or "")
@@ -93,7 +97,7 @@ ck_forget()
             if stub: txt += f"\nFAIL    {s.get('blocked_copy') or GROK_USE}"
             if self.msg: txt += "\n" + self.msg
             # Buttons only (no path labels in the side pack — they clipped off-screen)
-            self.pack_acts(["si", "siopen", "sifold", "sitask", "grok", "open", "hermes", "copy", "ast", "sist", "cst"])
+            self.pack_acts(["bare", "orch", "graph", "si", "siopen", "sifold", "sitask", "grok", "open", "hermes", "copy", "ast", "sist", "cst"])
         elif self.view == "tools":
             tools = s.get("tools") or {}
             skills = tools.get("skills") or {}

@@ -57,11 +57,20 @@ def run_tk(board, selftest=False) -> bool:
             and w.benv.cget("text") == "Launch env"
             and w.bpull.cget("text") == "Pull"
             and w.btest.cget("text") == "Test model"
+            and w.bbare.cget("text") == "bare"
+            and w.borch.cget("text") == "orchestration"
+            and w.bgraph.cget("text") == "code-graph"
             and "tools" in w.nav
+            and "env" not in w.nav
         )
         w.set_view("loop")
         body = w.body.cget("text") or ""
-        loop_ok = "LOOP" in body and "env" in body.lower() and "LOCAL WORKER" not in body and "pfy board" not in body.lower()
+        loop_ok = "LOOP" in body and "env" in body.lower() and "using:" in body.lower() and "LOCAL WORKER" not in body and "pfy board" not in body.lower()
+        w.set_view("attach")
+        att_body = w.body.cget("text") or ""
+        att_ok = "ATTACH" in att_body and "using:" in att_body.lower()
+        w.set_view("loop")
+        loop_ok = loop_ok and att_ok
         w.copy_stub()
         copied = (w.cst.cget("text") in ("copied", "PASS copied"))
         try:
