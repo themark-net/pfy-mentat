@@ -253,9 +253,11 @@ function paintWizard(s){
     rtEl.className='live '+cls((live||'skip').toLowerCase());
   }
   const lane=document.getElementById('wiz-lane');
-  if(lane) lane.textContent=s.wizard_lane||'(none)';
+  if(lane) lane.textContent=s.wizard_lane_label||s.wizard_lane||'(none)';
   const ts=document.getElementById('wiz-toolsets');
   if(ts) ts.textContent=s.wizard_toolsets||'(none)';
+  const en=document.getElementById('wiz-enabled');
+  if(en) en.textContent=s.wizard_enabled||'(none)';
   const hs=document.getElementById('wiz-harness');
   if(hs) hs.textContent=s.wizard_harness||'(none)';
   const rv=document.getElementById('wiz-review');
@@ -307,7 +309,9 @@ async function runWizard(step, value){
       if(lastSnap){
         if(j.runtime) lastSnap.wizard_runtime=j.runtime;
         if(j.lane) lastSnap.wizard_lane=j.lane;
+        if(j.lane_label||j.wizard_lane_label) lastSnap.wizard_lane_label=j.lane_label||j.wizard_lane_label;
         if(j.toolsets) lastSnap.wizard_toolsets=j.toolsets;
+        if(j.enabled||j.wizard_enabled) lastSnap.wizard_enabled=j.enabled||j.wizard_enabled;
         if(j.harness) lastSnap.wizard_harness=j.harness;
         if(j.review) lastSnap.wizard_review=j.review;
         paintWizard(lastSnap);

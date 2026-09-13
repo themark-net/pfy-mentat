@@ -21,7 +21,9 @@
 ./pfy catalog ask [name]    # ask attached TUI to implement for next launch
 ./pfy catalog queue [name]  # REAL GitHub issue Design→DevBot (#214)
 ./pfy catalog status        # queued items + open/closed/PR
-./pfy launch               # Loop wizard Launch session (#225)
+./pfy launch               # Loop wizard Launch session (#225/#224)
+./pfy launch compose       # honest lane + enabled-tool paint (#224)
+./pfy launch brief         # write in-session AGENTS/prompt card (#224)
 ./pfy context              # OpenContext oc prove (#205); FAIL if node/oc missing
 ./pfy code-graph           # Axon prove or codebase-memory equivalent (#215)
 ./pfy axon                 # alias of code-graph
@@ -40,7 +42,7 @@ Root `./pfy` is a 100755 wrapper that execs `scripts/pfy`. Detector is invoked w
 
 **Catalog ask / queue (#209 / #214):** Tools browse (usable subset, not scores-only). Ask attached TUI to implement for next launch (prompt/artifact). **Queue for org** creates a real GitHub issue and paints open/closed/PR. HOLD 70–75 not auto-lifted. [catalog-ask-queue.md](catalog-ask-queue.md) · [live-org-queue.md](live-org-queue.md).
 
-**Launch wizard (#225):** Loop primary path is compose (runtime · lane · toolsets · harness) then **Launch session** into an enterable TUI, or FAIL+next. Attach X is secondary re-attach. Window stay-open. HTML+tk. No Env nav tab. [launch-wizard.md](launch-wizard.md).
+**Launch wizard (#225) / session compose (#224):** Loop primary path is compose (runtime · lane · toolsets · harness) then **Launch session** into an enterable TUI, or FAIL+next. Loop paints honest lane (`local FreeToken-first` vs `cloud/subscription (Grok-sub)` vs `OpenCode free`) and enabled toolsets (SKIP/FAIL if not wired). Launch writes an in-session brief (AGENTS/skills/prompt card). Attach X is secondary re-attach. Window stay-open. HTML+tk. No Env nav tab. [launch-wizard.md](launch-wizard.md) · [session-compose.md](session-compose.md).
 
 ## Not yet
 

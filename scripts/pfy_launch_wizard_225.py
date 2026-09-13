@@ -205,6 +205,22 @@ def paint_review(comp):
     )
 
 
+def _load_compose_224():
+    """Load pfy_session_compose_224 or return None. Cite #224."""
+    import importlib.util
+
+    path = Path(__file__).resolve().parent / "pfy_session_compose_224.py"
+    if not path.is_file():
+        return None
+    try:
+        spec = importlib.util.spec_from_file_location("pfy_session_compose_224", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+    except Exception:
+        return None
+
+
 def snapshot_fields(STATE):
     comp = load_comp(STATE)
     review = paint_review(comp)
@@ -214,12 +230,14 @@ def snapshot_fields(STATE):
         and comp.get("toolsets")
         and comp.get("harness")
     )
-    return {
+    out = {
         "wizard_ok": ready,
         "wizard_step": comp.get("step") or "runtime",
         "wizard_runtime": comp.get("runtime") or "",
         "wizard_lane": comp.get("lane") or "",
+        "wizard_lane_label": "",
         "wizard_toolsets": comp.get("toolsets") or "",
+        "wizard_enabled": "",
         "wizard_harness": comp.get("harness") or "",
         "wizard_mode": comp.get("mode") or "bare",
         "wizard_review": review,
@@ -229,6 +247,39 @@ def snapshot_fields(STATE):
         "wizard_live": "READY" if ready else "SKIP",
         "wizard_cta": "Launch session",
     }
+    mod = _load_compose_224()
+    if mod is not None:
+        try:
+            extra = mod.snapshot_fields(STATE)
+        except Exception:
+            extra = {}
+        if isinstance(extra, dict):
+            for key in (
+                "wizard_lane_label",
+                "wizard_enabled",
+                "compose_ok",
+                "compose_lane",
+                "compose_enabled",
+                "compose_copy",
+                "compose_brief",
+                "compose_when",
+            ):
+                if extra.get(key) not in (None, ""):
+                    out[key] = extra[key]
+    if not out.get("wizard_lane_label"):
+        lane = out.get("wizard_lane") or ""
+        hid = out.get("wizard_harness") or ""
+        if lane == "local":
+            out["wizard_lane_label"] = "local FreeToken-first"
+        elif lane == "opencode-free":
+            out["wizard_lane_label"] = "OpenCode free"
+        elif lane == "cloud/subscription" and hid == "grok":
+            out["wizard_lane_label"] = "cloud/subscription (Grok-sub)"
+        elif lane:
+            out["wizard_lane_label"] = lane
+        else:
+            out["wizard_lane_label"] = "(none)"
+    return out
 
 
 def _probe_ft():
@@ -544,21 +595,33 @@ def review(STATE, live_openai_base=None):
     }
 
 
+def _decorate_compose(STATE, rec):
+    extra = snapshot_fields(STATE)
+    rec = dict(rec or {})
+    rec["lane_label"] = extra.get("wizard_lane_label") or rec.get("lane_label") or ""
+    rec["enabled"] = extra.get("wizard_enabled") or rec.get("enabled") or ""
+    rec["wizard_lane_label"] = rec["lane_label"]
+    rec["wizard_enabled"] = rec["enabled"]
+    return rec
+
+
 def apply_step(STATE, step, value="", ROOT=None, which=None, live_openai_base=None):
     step = str(step or "").strip().lower()
     if step in ("runtime", "health", "probe"):
-        return probe_runtime(STATE, live_openai_base=live_openai_base, ROOT=ROOT)
-    if step == "lane":
-        return set_lane(STATE, value, live_openai_base=live_openai_base)
-    if step in ("toolsets", "toolset", "mode"):
-        return set_toolset(
+        rec = probe_runtime(STATE, live_openai_base=live_openai_base, ROOT=ROOT)
+    elif step == "lane":
+        rec = set_lane(STATE, value, live_openai_base=live_openai_base)
+    elif step in ("toolsets", "toolset", "mode"):
+        rec = set_toolset(
             STATE, value, ROOT=ROOT, which=which, live_openai_base=live_openai_base
         )
-    if step == "harness":
-        return set_harness(STATE, value, live_openai_base=live_openai_base)
-    if step == "review":
-        return review(STATE, live_openai_base=live_openai_base)
-    return fail("wizard", "unknown step %s" % (step or "(empty)"), NEXT_REVIEW)
+    elif step == "harness":
+        rec = set_harness(STATE, value, live_openai_base=live_openai_base)
+    elif step == "review":
+        rec = review(STATE, live_openai_base=live_openai_base)
+    else:
+        rec = fail("wizard", "unknown step %s" % (step or "(empty)"), NEXT_REVIEW)
+    return _decorate_compose(STATE, rec)
 
 
 def launch_session(
@@ -577,6 +640,15 @@ def launch_session(
     hid = normalize_harness(comp.get("harness") or "")
     toolset = normalize_toolset(comp.get("toolsets") or "bare")
     mode = "bare" if toolset == "catalog" else (comp.get("mode") or toolset or "bare")
+    c224 = _load_compose_224()
+    if c224 is None:
+        return fail("launch", "session compose helper missing", NEXT_SETUP, harness=hid, mode=mode)
+    try:
+        brief = c224.write_brief(STATE, ROOT=ROOT, hid=hid, which=which, comp=comp)
+    except Exception as e:
+        return fail("launch", "session brief: %s" % str(e)[:160], NEXT_SETUP, harness=hid, mode=mode)
+    if not brief.get("ok"):
+        return brief
     if callable(set_mode_fn) and toolset != "catalog":
         try:
             set_mode_fn(mode)
@@ -600,6 +672,9 @@ def launch_session(
             "issue": ISSUE,
             "cta": "Launch session",
             "window": "stay-open",
+            "brief": brief.get("brief") or "",
+            "lane_label": brief.get("lane") or "",
+            "enabled": brief.get("enabled") or "",
         }
     try:
         result = start_fn(hid, mode=mode)
@@ -617,6 +692,9 @@ def launch_session(
         result["using"] = result.get("using") or mode
         result["window"] = "stay-open"
         result["issue"] = ISSUE
+        result["brief"] = brief.get("brief") or ""
+        result["lane_label"] = brief.get("lane") or result.get("lane") or ""
+        result["enabled"] = brief.get("enabled") or ""
         copy = str(result.get("copy") or "")
         tag = rec.get("review") or ""
         if tag and tag not in copy:
@@ -767,9 +845,21 @@ def cmd_selftest():
             check(launched == [("grok", "bare")], "launch reused start_fn")
             check("runtime " in (out.get("review") or ""), "launch review paint")
             check(ISSUE in (out.get("issue") or ""), "cites 225")
+            brief_path = Path(state) / "session-compose.md"
+            check(brief_path.is_file(), "launch wrote session brief")
+            brief_txt = brief_path.read_text(encoding="utf-8")
+            check("Grok-sub" in brief_txt or "cloud/subscription" in brief_txt, "brief names lane")
+            check("How to invoke" in brief_txt, "brief how-to")
+            check("Enabled tools" in brief_txt, "brief enabled")
+            check("Not wired" in brief_txt, "brief never implies unwired")
+            check((Path(state) / "attach-agents.md").is_file(), "AGENTS card")
+            check((Path(state) / "attach-mode-prompt.md").is_file(), "prompt card")
+            check(out.get("brief"), "launch returns brief path")
 
             fields = snapshot_fields(state)
             check(fields.get("wizard_cta") == "Launch session", "snapshot CTA")
+            check("Grok-sub" in (fields.get("wizard_lane_label") or ""), "honest Grok-sub label")
+            check("bare READY" in (fields.get("wizard_enabled") or ""), "enabled paint")
             check("env" not in (fields or {}) or True, "no env tab field")
             check("#76" not in json.dumps(fields), "no reopen 76")
         finally:
