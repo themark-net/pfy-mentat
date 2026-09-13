@@ -12,6 +12,7 @@ Short structural maps for first-party packages in this repo. Deep design stays i
 | Orchestration loops | `scripts/pfy_orchestration_213.py` | [attach-mode.md](attach-mode.md) · [ops/attach-mode.md](../ops/attach-mode.md) |
 | Recommend / try models | `scripts/pfy_recommend_models_207.py` | [recommend-models.md](recommend-models.md) · [ops/recommend-models.md](../ops/recommend-models.md) |
 | Catalog ask / queue | `scripts/pfy_catalog_ask_queue_209.py` | [catalog-ask-queue.md](catalog-ask-queue.md) · [ops/catalog-ask-queue.md](../ops/catalog-ask-queue.md) |
+| Live org queue | `scripts/pfy_live_org_queue_214.py` | [live-org-queue.md](live-org-queue.md) · [ops/live-org-queue.md](../ops/live-org-queue.md) |
 | Local runtime detector | `scripts/detect-local-runtime.sh` | [detect-local-runtime.md](detect-local-runtime.md) |
 | Product env-stage | `scripts/env-stage.sh` | [env-stage.md](env-stage.md) |
 | Grok CLI bootstrap | `bootstrap/grok-cli/` | [bootstrap-grok-cli.md](bootstrap-grok-cli.md) |

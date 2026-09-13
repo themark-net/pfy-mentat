@@ -27,7 +27,7 @@ cd pfy-mentat
 ./pfy models try            # pull top recommendation — operate-or-FAIL (#207)
 ./pfy catalog               # usable catalog browse (#209)
 ./pfy catalog ask <name>    # ask attached TUI to implement for next launch
-./pfy catalog queue <name>  # queue GitHub issue Design→DevBot
+./pfy catalog queue <name>  # REAL GitHub issue Design→DevBot (#214; FAIL if no auth)
 ./pfy models pull deepseek-coder:6.7b
 ./pfy stage                 # re-run product stage
 ./pfy stage --lab           # optional personal cage lab (doctor → setup → up-mcp)

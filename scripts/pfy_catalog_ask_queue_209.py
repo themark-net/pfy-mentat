@@ -421,7 +421,7 @@ def save_queue(STATE, items):
 
 def pending_item(STATE):
     for it in load_queue(STATE):
-        if str(it.get("status") or "") in ("pending", "open", "asked"):
+        if str(it.get("status") or "") in ("pending", "open", "asked", "pr"):
             return it
     return None
 
@@ -841,13 +841,43 @@ def try_create_issue(title, body, create_fn=None):
     return None, err or "gh/api unavailable"
 
 
+def _load_live_214():
+    """Live org queue (#214). Optional; queue still FAILs closed without it."""
+    import importlib.util
+
+    path = Path(__file__).resolve().parent / "pfy_live_org_queue_214.py"
+    if not path.is_file():
+        return None
+    try:
+        spec = importlib.util.spec_from_file_location("pfy_live_org_queue_214", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+    except Exception:
+        return None
+
+
 def queue_org(
     ROOT=None,
     STATE=None,
     name="",
     create_fn=None,
     attach_mode="",
+    auth_fn=None,
+    gh_auth_fn=None,
 ):
+    live = _load_live_214()
+    if live is not None:
+        return live.queue_org(
+            ROOT=ROOT,
+            STATE=STATE,
+            name=name,
+            create_fn=create_fn,
+            attach_mode=attach_mode,
+            auth_fn=auth_fn,
+            gh_auth_fn=gh_auth_fn,
+            cat=sys.modules[__name__],
+        )
     ROOT = repo_root(ROOT)
     STATE = state_dir(STATE)
     rows = load_catalog(ROOT, attach_mode=attach_mode or current_attach_mode(STATE))
@@ -920,7 +950,12 @@ def queue_org(
     }
 
 
-def queue_status(STATE=None):
+def queue_status(STATE=None, fetch_fn=None):
+    live = _load_live_214()
+    if live is not None:
+        return live.queue_status(
+            STATE=STATE, fetch_fn=fetch_fn, cat=sys.modules[__name__]
+        )
     STATE = state_dir(STATE)
     items = load_queue(STATE)
     pend = pending_item(STATE)
@@ -936,13 +971,28 @@ def queue_status(STATE=None):
     }
 
 
-def snapshot_fields(STATE=None, ROOT=None, attached="", active="", attach_mode="", pid_alive=None):
+def snapshot_fields(
+    STATE=None,
+    ROOT=None,
+    attached="",
+    active="",
+    attach_mode="",
+    pid_alive=None,
+    fetch_fn=None,
+    _skip_live=False,
+):
     ROOT = repo_root(ROOT)
     STATE = state_dir(STATE)
     mode = attach_mode or current_attach_mode(STATE)
     rec = browse(ROOT, STATE, attach_mode=mode)
     hid = attached or attached_harness(STATE, pid_alive=pid_alive, active=active)
     q = rec.get("queue") or load_queue(STATE)
+    if not _skip_live:
+        live = _load_live_214()
+        if live is not None:
+            q = live.refresh_queue(
+                STATE, fetch_fn=fetch_fn, cat=sys.modules[__name__]
+            )
     pend = pending_item(STATE)
     prompt = _read(STATE / PROMPT_FILE)
     return {
@@ -1187,7 +1237,7 @@ def cmd_selftest():
             created.append((title, body))
             check("No Mark" in body or "No Mark" in title or "no Mark" in body.lower() or "No Mark git" in body, "issue forbids Mark git/npm/CI")
             check("70" in body and "HOLD" in body, "issue keeps 70-75 HOLD")
-            check("#209" in body, "issue cites #209")
+            check("#214" in body, "issue cites #214")
             check("Design" in body, "issue Design DoD")
             return "https://github.com/%s/issues/999" % REPO, ""
 

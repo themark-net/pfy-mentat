@@ -101,7 +101,7 @@ function paintCatalogRows(s){
   if(qel){
     const q=s.catalog_queue||[];
     if(!q.length) qel.textContent='(none)';
-    else qel.innerHTML=q.map(r=>'<div class=row>'+(r.name||r.id||'')+' · '+(r.kind||'')+' · <span class="live '+cls((r.status||'').toLowerCase())+'">'+(r.status||'')+'</span>'+(r.issue_url?(' <a class=issue href="'+r.issue_url+'">issue</a>'):'')+'</div>').join('');
+    else qel.innerHTML=q.map(r=>'<div class=row>'+(r.name||r.id||'')+' · '+(r.kind||'')+' · <span class="live '+cls((r.status||'').toLowerCase())+'">'+(r.status||'')+'</span>'+(r.issue_url?(' <a class=issue href="'+r.issue_url+'">issue</a>'):'')+(r.pr_url?(' <a class=issue href="'+r.pr_url+'">pr</a>'):'')+'</div>').join('');
   }
 }
 function chipHtml(c){
@@ -158,6 +158,11 @@ async function tick(){
       const el=document.getElementById(id);
       if(el) el.textContent=gev;
     });
+    const lq=document.getElementById('loop-queue');
+    if(lq){
+      const qq=s.catalog_queue||[];
+      lq.textContent=qq.length?qq.map(r=>((r.name||r.id||'')+' '+(r.status||'')).trim()).join(' · '):'(none)';
+    }
     const gwhen=s.graph_when||'';
     ['loop-graph-when','att-graph-when'].forEach(id=>{
       const el=document.getElementById(id);
