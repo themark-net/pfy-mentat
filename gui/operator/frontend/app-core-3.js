@@ -39,7 +39,7 @@ async function postCatalogAsk(name){
         return {ok:false,error:String(e),copy:'FAIL ask',live:'FAIL'};
       }
     }
-    if(noLiveApi()) return {ok:false,error:'FAIL',copy:'FAIL ask',live:'FAIL',next_step:'Attach grok | opencode | hermes'};
+    if(noLiveApi()) return {ok:false,error:'FAIL',copy:'FAIL ask',live:'FAIL',next_step:'Attach grok | opencode | hermes | codex'};
     const r=await fetch(apiRoot()+'/catalog/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name||''})});
     try{return await r.json();}catch(e){return {ok:false,error:String(e),copy:'FAIL ask',live:'FAIL'};}
   }catch(e){
@@ -75,7 +75,7 @@ async function runCatalogAsk(){
       }
       paintCatalog(j.copy||'PASS ask','ok');
     }else{
-      const nxt=(j && j.next_step)||'Attach grok | opencode | hermes';
+      const nxt=(j && j.next_step)||'Attach grok | opencode | hermes | codex';
       let msg=(j && (j.copy||j.error))||'ask';
       if(String(msg).indexOf(nxt)<0) msg=msg+' · next: '+nxt;
       const skip=String((j&&j.live)||msg).indexOf('SKIP')>=0;

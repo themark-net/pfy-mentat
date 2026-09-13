@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Deepen attach orchestration beyond thin skill inject -- cite #213.
 
-Selecting orchestration + Attach OpenCode|Hermes|Grok must start (or clearly
+Selecting orchestration + Attach OpenCode|Hermes|Grok|Codex must start (or clearly
 start) a multi-step agent loop on the FreeToken-first local endpoint -- not
 only inject /agent-loops. Prove two local turns, write loop/monitor evidence,
 and FAIL+next if the runtime is missing. Never a silent bare session claiming
@@ -25,8 +25,8 @@ PROMPT_FILE = "loop-prompt.md"
 MONITOR_FILE = "monitor-note"
 NEXT_UP = "Launch env or ./pfy up"
 NEXT_SETUP = "./pfy setup"
-NEXT_ATTACH = "Attach OpenCode | Hermes | Grok"
-SIDECARS = ("opencode", "hermes", "grok")
+NEXT_ATTACH = "Attach OpenCode | Hermes | Grok | Codex"
+SIDECARS = ("opencode", "hermes", "grok", "codex")
 FT_BASE = "http://127.0.0.1:1919"
 
 STEP1 = (

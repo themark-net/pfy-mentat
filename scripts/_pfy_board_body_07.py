@@ -12,7 +12,7 @@ def record_sidecar_pid(hid, pid):
     (STATE / ("sidecar-%s.pid" % hid)).write_text(str(pid) + chr(10), encoding="utf-8")
 
 def sidecar_pid_live():
-    for hid in ("opencode", "grok", "hermes"):
+    for hid in ("opencode", "grok", "hermes", "codex"):
         path = STATE / ("sidecar-%s.pid" % hid)
         if not path.is_file():
             continue
@@ -42,6 +42,11 @@ def hermes_stub_line():
 def grok_stub_line():
     rec = next((h for h in (load_registry().get("harnesses") or []) if h.get("id") == "grok"), {}) or {}
     return one_liner("grok", rec)
+
+
+def codex_stub_line():
+    rec = next((h for h in (load_registry().get("harnesses") or []) if h.get("id") == "codex"), {}) or {}
+    return one_liner("codex", rec)
 
 def grok_path_live():
     return "ready" if which_bin("grok") else "missing"

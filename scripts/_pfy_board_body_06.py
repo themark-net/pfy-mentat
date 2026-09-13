@@ -50,6 +50,20 @@ def _load_attach_202():
     except Exception as e:
         return None, str(e)[:400]
 
+def _load_attach_220():
+    """Load pfy_attach_usable_220 or return (None, error). Cite #220."""
+    import importlib.util
+    path = ROOT / "scripts" / "pfy_attach_usable_220.py"
+    if not path.is_file():
+        return None, str(path)
+    try:
+        spec = importlib.util.spec_from_file_location("pfy_attach_usable_220", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod, ""
+    except Exception as e:
+        return None, str(e)[:400]
+
 def _load_attach_mode_208():
     """Load pfy_attach_mode_208 or return (None, error). Cite #208."""
     import importlib.util
@@ -179,7 +193,7 @@ def orchestration_fields():
     empty = {
         "loop_ok": False, "loop_copy": "", "loop_when": "", "loop_model": "",
         "loop_steps": 0, "loop_hid": "", "loop_status": "", "loop_evidence": "",
-        "loop_next": "Attach OpenCode | Hermes | Grok",
+        "loop_next": "Attach OpenCode | Hermes | Grok | Codex",
     }
     mod, err = _load_orchestration_213()
     if mod is None:
@@ -236,7 +250,7 @@ def catalog_fields(active=""):
         return empty
 
 def _session_reach_live():
-    oc, hm, gk = "", "", ""
+    oc, hm, gk, cx = "", "", "", ""
     mod, err = _load_enterable_162()
     if mod is not None:
         try:
@@ -260,17 +274,26 @@ def _session_reach_live():
                 gk = gmod.live_session_reach(STATE, pid_alive) or ""
         except Exception:
             gk = ""
+    cmod, _cerr = _load_attach_220()
+    if cmod is not None:
+        try:
+            if hasattr(cmod, "live_session_reach"):
+                cx = cmod.live_session_reach(STATE, pid_alive) or ""
+        except Exception:
+            cx = ""
     try:
         cur = active_harness("grok")
     except Exception:
         cur = ""
+    if cur == "codex" and cx:
+        return cx
     if cur == "grok" and gk:
         return gk
     if cur == "hermes" and hm:
         return hm
     if cur == "opencode" and oc:
         return oc
-    return gk or hm or oc or ""
+    return cx or gk or hm or oc or ""
 
 def open_enterable_opencode_session():
     """Attach + open/focus enterable OpenCode terminal. Cite #162."""
@@ -326,6 +349,26 @@ def open_enterable_grok_session():
     def _set_active(hid):
         (STATE / "active-harness").write_text(str(hid) + "\n", encoding="utf-8")
     return mod.open_enterable_grok_session(
+        ROOT=ROOT, STATE=STATE, which_bin=which_bin,
+        live_openai_base=live_openai_base, inspect_models=inspect_models,
+        record_sidecar_pid=record_sidecar_pid, record_last_verb=record_last_verb,
+        pid_alive=pid_alive, active_harness_setter=_set_active, stub_line=stub,
+    )
+
+
+def open_enterable_codex_session():
+    """Attach Codex + prove models list + smoke. Cite #220."""
+    mod, err = _load_attach_220()
+    stub = codex_stub_line()
+    if mod is None:
+        return {
+            "ok": False, "id": "codex", "live": "FAIL", "copy": stub,
+            "error": err or "codex attach module missing", "session_reach": "FAIL",
+            "usable": False,
+        }
+    def _set_active(hid):
+        (STATE / "active-harness").write_text(str(hid) + "\n", encoding="utf-8")
+    return mod.open_enterable_codex_session(
         ROOT=ROOT, STATE=STATE, which_bin=which_bin,
         live_openai_base=live_openai_base, inspect_models=inspect_models,
         record_sidecar_pid=record_sidecar_pid, record_last_verb=record_last_verb,

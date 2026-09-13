@@ -193,7 +193,7 @@ async function attach(id){
       attachMsg='attached '+kind+(j.pid?(' pid '+j.pid):'')+(reach?(' · '+reach):'')+(j.loop_copy?(' · '+j.loop_copy):'')+(j.graph_copy?(' · '+j.graph_copy):'');
       attachKind='ok';
       if(reach) paintSessionReach(reach);
-      else if(id==='opencode'||id==='hermes'||id==='grok') paintSessionReach('FAIL');
+      else if(id==='opencode'||id==='hermes'||id==='grok'||id==='codex') paintSessionReach('FAIL');
     }else{
       const nxt=(j && (j.next_step||''))||'Launch env or ./pfy up';
       let detail=(j && (j.copy||j.error))||'no local engine';
@@ -201,7 +201,7 @@ async function attach(id){
       if(detail.indexOf(nxt)<0) detail=detail+' · '+nxt;
       attachMsg='FAIL Attach '+id+' — '+detail;
       attachKind='fail';
-      if(id==='opencode'||id==='hermes'||id==='grok') paintSessionReach((j&&j.session_reach)||'FAIL');
+      if(id==='opencode'||id==='hermes'||id==='grok'||id==='codex') paintSessionReach((j&&j.session_reach)||'FAIL');
       paintAttach();
       Promise.resolve().then(()=>tick()).then(()=>paintAttach()).catch(()=>paintAttach());
       return;
@@ -209,7 +209,7 @@ async function attach(id){
   }catch(e){
     attachMsg='FAIL Attach '+id+' — no local engine · Launch env or ./pfy up';
     attachKind='fail';
-    if(id==='opencode'||id==='hermes'||id==='grok') paintSessionReach('FAIL');
+    if(id==='opencode'||id==='hermes'||id==='grok'||id==='codex') paintSessionReach('FAIL');
     paintAttach();
     return;
   }

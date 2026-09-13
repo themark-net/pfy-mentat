@@ -29,7 +29,9 @@
 
 Root `./pfy` is a 100755 wrapper that execs `scripts/pfy`. Detector is invoked with `bash`.
 
-**Attach mode (#208 / #213 / #215):** HTML+tk select `bare` | `orchestration` | `code-graph`; paint `using: <mode>`. Orchestration starts a multi-step local loop (prove or FAIL+next) and Loop shows last evidence. Code-graph hands Axon or paints `path=codebase-memory (not axon)`. Named start and in-window Attach hand off skills/AGENTS/prompts/env or FAIL+next. [attach-mode.md](attach-mode.md) · [code-graph.md](code-graph.md).
+**Attach mode (#208 / #213 / #215):** HTML+tk select `bare` | `orchestration` | `code-graph`; paint `using: <mode>`. Orchestration starts a multi-step local loop (prove or FAIL+next) and Loop shows last evidence. Code-graph hands Axon or paints `path=codebase-memory (not axon)`. Named start and in-window Attach (OpenCode | Hermes | Grok | Codex) hand off skills/AGENTS/prompts/env or FAIL+next. [attach-mode.md](attach-mode.md) · [code-graph.md](code-graph.md).
+
+**Attach Codex usable (#220):** HTML+tk **Attach codex** and `./pfy start codex` prove models list + one smoke on the FreeToken-first live base before attached paint / exec. Missing Codex is FAIL + installer, never a silent stub. [codex-adapter.md](codex-adapter.md).
 
 **Recommend / try (#207):** Engine + `./pfy models recommend` ranks host-fit models not yet pulled. `try` pulls one FreeToken-first (operate-or-FAIL). Handoff: engine pin · Attach re-probe · TUI reload. [recommend-models.md](recommend-models.md).
 
@@ -38,5 +40,5 @@ Root `./pfy` is a 100755 wrapper that execs `scripts/pfy`. Detector is invoked w
 ## Not yet
 
 - Health-wait + default-model complete for Ollama (`./pfy start` still fire-and-forget serve)
-- Remaining harness adapters (hermes, claude-code, codex, gemini, exo, continue, agent-cage)
+- Remaining harness adapters (claude-code, gemini, exo, continue, agent-cage)
 - Treating `./pfy models` as success
