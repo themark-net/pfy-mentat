@@ -39,6 +39,38 @@ def try_recommended_model(name=""):
                 "error": err or "missing", "ranked": [], "next_step": "./pfy setup", "usable": False}
     return mod.try_model(ROOT, STATE, name, pull_fn=pull_model)
 
+def catalog_browse():
+    """Usable catalog subset (not scores-only). Cite #209."""
+    mod, err = _load_catalog_209()
+    if mod is None:
+        return {"ok": False, "live": "FAIL", "copy": "FAIL catalog -- module missing",
+                "error": err or "missing", "catalog": [], "next_step": "./pfy setup", "usable": False}
+    return mod.browse(ROOT, STATE)
+
+def catalog_ask(name=""):
+    """Ask attached TUI to implement for next launch. Cite #209."""
+    mod, err = _load_catalog_209()
+    if mod is None:
+        return {"ok": False, "live": "FAIL", "copy": "FAIL ask -- module missing",
+                "error": err or "missing", "next_step": "./pfy setup", "usable": False}
+    return mod.ask_implement(ROOT, STATE, name, active=active_harness("grok"), pid_alive=pid_alive)
+
+def catalog_queue(name=""):
+    """Queue catalog tool as a GitHub issue (Design->DevBot). Cite #209."""
+    mod, err = _load_catalog_209()
+    if mod is None:
+        return {"ok": False, "live": "FAIL", "copy": "FAIL queue -- module missing",
+                "error": err or "missing", "next_step": "./pfy setup", "usable": False}
+    return mod.queue_org(ROOT, STATE, name)
+
+def catalog_status():
+    """Queued catalog items + status. Cite #209."""
+    mod, err = _load_catalog_209()
+    if mod is None:
+        return {"ok": False, "live": "FAIL", "copy": "FAIL catalog-status -- module missing",
+                "error": err or "missing", "queue": [], "next_step": "./pfy setup", "usable": False}
+    return mod.queue_status(STATE)
+
 def launch_env():
     """Same path as bare ./pfy before the window: inference then env-stage. No harness exec.
 

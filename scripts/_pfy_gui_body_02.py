@@ -31,6 +31,11 @@
         self.btry = ttk.Button(self.acts, text="Try recommended", command=self.try_recommended)
         self.recst = ttk.Label(self.acts, text="", style="M.TLabel")
         self.tryst = ttk.Label(self.acts, text="", style="M.TLabel")
+        self.catname = ttk.Entry(self.acts, width=22)
+        self.bask = ttk.Button(self.acts, text="Ask TUI implement", command=self.catalog_ask)
+        self.bqueue = ttk.Button(self.acts, text="Queue for org", command=self.catalog_queue)
+        self.bcatcopy = ttk.Button(self.acts, text="Copy prompt", command=self.copy_catalog_prompt)
+        self.catst = ttk.Label(self.acts, text="", style="M.TLabel")
         self.chips = ttk.Frame(right); self.chips.pack(fill="both", expand=True, padx=12, pady=(0,10))
 
     def set_view(self, k):

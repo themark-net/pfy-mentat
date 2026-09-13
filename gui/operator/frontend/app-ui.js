@@ -85,6 +85,25 @@ async function runTool(id){
   }
 }
 document.querySelectorAll('[data-tool]').forEach(el=>el.addEventListener('click',()=>runTool(el.getAttribute('data-tool'))));
+document.getElementById('btncatask')&&document.getElementById('btncatask').addEventListener('click',()=>runCatalogAsk());
+document.getElementById('btncatqueue')&&document.getElementById('btncatqueue').addEventListener('click',()=>runCatalogQueue());
+document.getElementById('btncatcopy')&&document.getElementById('btncatcopy').addEventListener('click',()=>copyCatalogPrompt());
+function paintCatalogRows(s){
+  const list=document.getElementById('cat-list');
+  const qel=document.getElementById('cat-queue');
+  const att=document.getElementById('cat-attached');
+  if(att) att.textContent=s.catalog_attached||s.active||'(none)';
+  if(list){
+    const rows=s.catalog||[];
+    if(!rows.length) list.textContent='(none)';
+    else list.innerHTML=rows.slice(0,16).map(r=>'<div class=row><b>'+(r.name||'')+'</b> <span class=muted>'+(r.stage||'-')+'</span> <span class="live '+cls((r.status||'').toLowerCase())+'">'+(r.status||'')+'</span><div class=muted>'+(r.category||'')+' · '+(r.github||'')+'</div><div class=muted>'+(r.notes||'')+'</div></div>').join('')+(rows.length>16?('<div class=muted>… '+(rows.length-16)+' more</div>'):'');
+  }
+  if(qel){
+    const q=s.catalog_queue||[];
+    if(!q.length) qel.textContent='(none)';
+    else qel.innerHTML=q.map(r=>'<div class=row>'+(r.name||r.id||'')+' · '+(r.kind||'')+' · <span class="live '+cls((r.status||'').toLowerCase())+'">'+(r.status||'')+'</span>'+(r.issue_url?(' <a class=issue href="'+r.issue_url+'">issue</a>'):'')+'</div>').join('');
+  }
+}
 function chipHtml(c){
   const lv=live(c.live);
   return '<div class=chip><b>'+c.id+'</b> <span class="live '+cls(lv)+'">'+lv+'</span><div class=muted>'+c.role+' · '+c.name+'</div></div>';
@@ -202,6 +221,7 @@ async function tick(){
       }
     }
     paintToolRow(s);
+    paintCatalogRows(s);
     const tape=s.tape||[];
     const stage=tape.find(t=>t.id==='env-stage'||t.label==='env-stage')||{};
     const sl=stage.live||'SKIP';

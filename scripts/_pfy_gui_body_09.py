@@ -9,8 +9,28 @@ ff((tools.get("tools_mode") or "") == "local_tools")
                 f"write-guard      {onoff(tools.get('write_guard'))}\n"
                 f"extra tools      {extra}"
             )
+            cats = list(s.get("catalog") or [])
+            txt += "\nCATALOG"
+            if not cats:
+                txt += "\n(none)"
+            else:
+                for row in cats[:12]:
+                    txt += "\n%s  %s  %s" % (row.get("name") or "", row.get("stage") or "-", row.get("status") or "")
+                if len(cats) > 12:
+                    txt += "\n… %d more" % (len(cats) - 12)
+            qrows = list(s.get("catalog_queue") or [])
+            txt += "\nQUEUE"
+            if not qrows:
+                txt += "\n(none)"
+            else:
+                for q in qrows[:8]:
+                    txt += "\n%s  %s  %s" % (q.get("name") or q.get("id") or "", q.get("kind") or "", q.get("status") or "")
+            att = s.get("catalog_attached") or s.get("active") or "(none)"
+            txt += "\nattached   " + str(att)
+            if s.get("catalog_ok") is False:
+                txt += "\n" + (s.get("catalog_copy") or "FAIL catalog")
             if self.msg: txt += "\n" + self.msg
-            self.pack_acts([])
+            self.pack_acts(["catname", "ask", "queue", "catcopy", "catst"])
             for w in self.tool_btns.values():
                 w.pack(side="left", padx=(0, 8))
             self.toolst.pack(side="left", padx=(0, 8))
@@ -46,7 +66,9 @@ def selftest_snap():
             "detect_order":[],"active":"grok","active_stub":False,"blocked_copy":GROK_USE,
             "attach_mode":"bare","using":"bare","attach_mode_when":"","attach_mode_live":"",
             "last_verb":{"verb":"gui","when":""},"now":"idle","processes":[],"agent_lane_collapsed":True,
-            "tools":{"skills":{"one-shot":True,"investigate":True,"agent-loops":True,"hermes-feedback":True},"mcp":False,"write_guard":False,"tools_mode":"split"}}
+            "tools":{"skills":{"one-shot":True,"investigate":True,"agent-loops":True,"hermes-feedback":True},"mcp":False,"write_guard":False,"tools_mode":"split"},
+            "catalog":[{"name":"repowise","stage":"I1","status":"ready","github":"https://github.com/repowise-dev/repowise","notes":"usable","category":"Coding"}],
+            "catalog_ok":True,"catalog_queue":[],"catalog_attached":"grok","catalog_prompt":""}
 
 def selftest_fresh_bind():
     from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer

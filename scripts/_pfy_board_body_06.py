@@ -78,6 +78,20 @@ def _load_recommend_207():
     except Exception as e:
         return None, str(e)[:400]
 
+def _load_catalog_209():
+    """Load pfy_catalog_ask_queue_209 or return (None, error). Cite #209."""
+    import importlib.util
+    path = ROOT / "scripts" / "pfy_catalog_ask_queue_209.py"
+    if not path.is_file():
+        return None, str(path)
+    try:
+        spec = importlib.util.spec_from_file_location("pfy_catalog_ask_queue_209", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod, ""
+    except Exception as e:
+        return None, str(e)[:400]
+
 def attach_mode_fields():
     mod, err = _load_attach_mode_208()
     if mod is None:
@@ -116,6 +130,25 @@ def recommend_fields(models, eng, det, base):
         )
     except Exception as e:
         empty["recommend_copy"] = "FAIL recommend -- %s" % str(e)[:160]
+        return empty
+
+def catalog_fields(active=""):
+    """Snapshot catalog browse + queue. Cite #209. Never dump scores-only."""
+    empty = {
+        "catalog_ok": False, "catalog": [], "catalog_copy": "",
+        "catalog_next": "pick a catalog tool on Tools", "catalog_queue": [],
+        "catalog_pending": {}, "catalog_busy": False, "catalog_prompt": "",
+        "catalog_attached": "", "catalog_hold": "catalog 70-75 HOLD (do not auto-lift)",
+    }
+    mod, err = _load_catalog_209()
+    if mod is None:
+        empty["catalog_copy"] = "FAIL catalog -- module missing"
+        empty["catalog_next"] = "./pfy setup"
+        return empty
+    try:
+        return mod.snapshot_fields(STATE, ROOT, active=active or "", pid_alive=pid_alive)
+    except Exception as e:
+        empty["catalog_copy"] = "FAIL catalog -- %s" % str(e)[:160]
         return empty
 
 def _session_reach_live():

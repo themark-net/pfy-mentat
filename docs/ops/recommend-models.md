@@ -57,7 +57,7 @@ Registry: [bootstrap/env/REGISTRY.md](../../bootstrap/env/REGISTRY.md).
 
 ## Do not
 
-- Reopen #76 · unpark #198 · catalog 70–75 HOLD · do not start #209
+- Reopen #76 · unpark #198 · catalog 70–75 HOLD
 - Invent a best list when engine/host/fit is unknown
 - Paint a recorded FreeToken name as live before `./pfy up`
 - `LIVE_HARD_OFF`: no cloud catalog writes / no HF API from this path
