@@ -27,6 +27,10 @@
         self._last_si = {}
         self._session_reach = ""
         self._attach_mode = "bare"
+        self.breco = ttk.Button(self.acts, text="Recommend", command=self.recommend_models)
+        self.btry = ttk.Button(self.acts, text="Try recommended", command=self.try_recommended)
+        self.recst = ttk.Label(self.acts, text="", style="M.TLabel")
+        self.tryst = ttk.Label(self.acts, text="", style="M.TLabel")
         self.chips = ttk.Frame(right); self.chips.pack(fill="both", expand=True, padx=12, pady=(0,10))
 
     def set_view(self, k):

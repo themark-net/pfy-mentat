@@ -6,6 +6,8 @@ POST /start spawns OpenCode/Hermes/Grok enterable session (Grok prove-usable #20
 POST /stage runs ./pfy stage (env-stage).
 POST /env runs ./pfy env (inference + env-stage). No harness exec.
 POST /models/pull runs ./pfy models pull <name>.
+POST /models/recommend ranks host-fit models not yet pulled (#207).
+POST /models/try pulls a recommended model FreeToken-first (#207).
 POST /eval runs a live-endpoint chat/completions probe against LOCAL_OPENAI_BASE_URL.
 POST /tools toggles skills, MCP, write-guard, extra tools.
 POST /space-invaders runs session Space Invaders via Attach OpenCode (#155).

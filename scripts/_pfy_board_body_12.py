@@ -100,6 +100,26 @@ class Handler(BaseHTTPRequestHandler):
             code = 200 if result.get("ok") else 400
             self._send(code, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
             return
+        if path == "/models/recommend":
+            length = int(self.headers.get("Content-Length") or 0)
+            if length:
+                self.rfile.read(length)
+            result = recommend_models()
+            code = 200 if result.get("ok") else 400
+            self._send(code, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
+            return
+        if path == "/models/try":
+            length = int(self.headers.get("Content-Length") or 0)
+            raw = self.rfile.read(length) if length else b"{}"
+            try:
+                body = json.loads(raw.decode() or "{}")
+            except json.JSONDecodeError:
+                body = {}
+            name = str((body or {}).get("name") or "")
+            result = try_recommended_model(name)
+            code = 200 if result.get("ok") else 400
+            self._send(code, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
+            return
         if path == "/models/pull":
             length = int(self.headers.get("Content-Length") or 0)
      

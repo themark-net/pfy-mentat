@@ -40,6 +40,18 @@ function paintPull(text, kind){
   el.textContent=text;
   el.className='attach-result'+(kind?(' '+kind):'');
 }
+function paintReco(text, kind){
+  const el=document.getElementById('recomsg');
+  if(!el) return;
+  el.textContent=text;
+  el.className='attach-result'+(kind?(' '+kind):'');
+}
+function paintTry(text, kind){
+  const el=document.getElementById('trymsg');
+  if(!el) return;
+  el.textContent=text;
+  el.className='attach-result'+(kind?(' '+kind):'');
+}
 function paintRefresh(text, kind){
   const el=document.getElementById('refreshmsg');
   if(!el) return;

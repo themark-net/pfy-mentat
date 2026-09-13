@@ -1,4 +1,87 @@
 
+async function postRecommend(){
+  try{
+    if(isTauri()){
+      try{
+        const v=await window.__TAURI__.core.invoke('recommend_models');
+        return typeof v==='string'?JSON.parse(v):v;
+      }catch(e){
+        return {ok:false,error:String(e),copy:'FAIL recommend',live:'FAIL',ranked:[]};
+      }
+    }
+    if(noLiveApi()) return {ok:false,error:'FAIL',copy:'FAIL recommend',live:'FAIL',ranked:[],next_step:'Launch env or ./pfy up'};
+    const r=await fetch(apiRoot()+'/models/recommend',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+    try{return await r.json();}catch(e){return {ok:false,error:String(e),copy:'FAIL recommend',live:'FAIL',ranked:[]};}
+  }catch(e){
+    return {ok:false,error:String(e),copy:'FAIL recommend',live:'FAIL',ranked:[]};
+  }
+}
+async function runRecommend(){
+  const btn=document.getElementById('btnreco');
+  if(btn) btn.disabled=true;
+  paintReco('ranking…','');
+  document.getElementById('meta').textContent='refreshing…';
+  try{
+    const j=await postRecommend();
+    if(j && j.ok){
+      const names=(j.ranked||[]).map(x=>x.name||x).filter(Boolean);
+      if(lastSnap){ lastSnap.recommend=names; lastSnap.recommend_ok=true; lastSnap.recommend_copy=j.copy||''; lastSnap.recommend_next=j.next_step||''; lastSnap.recommend_top=j.top||''; }
+      paintReco(j.copy||'PASS recommend','ok');
+    }else{
+      const nxt=(j && j.next_step)||'Launch env or ./pfy up';
+      let msg=(j && (j.copy||j.error))||'recommend';
+      if(String(msg).indexOf(nxt)<0) msg=msg+' · next: '+nxt;
+      if(lastSnap){ lastSnap.recommend=[]; lastSnap.recommend_ok=false; lastSnap.recommend_copy=msg; lastSnap.recommend_next=nxt; }
+      paintReco(String(msg).indexOf('FAIL')===0?msg:('FAIL '+msg),'fail');
+    }
+    await tick();
+  }catch(e){
+    paintReco('FAIL recommend','fail');
+  }finally{
+    if(btn) btn.disabled=false;
+  }
+}
+async function postTry(name){
+  try{
+    if(isTauri()){
+      try{
+        const v=await window.__TAURI__.core.invoke('try_recommended_model',{name});
+        return typeof v==='string'?JSON.parse(v):v;
+      }catch(e){
+        return {ok:false,error:String(e),copy:'FAIL try',live:'FAIL'};
+      }
+    }
+    if(noLiveApi()) return {ok:false,error:'FAIL',copy:'FAIL try',live:'FAIL',next_step:'Launch env or ./pfy up'};
+    const r=await fetch(apiRoot()+'/models/try',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name||''})});
+    try{return await r.json();}catch(e){return {ok:false,error:String(e),copy:'FAIL try',live:'FAIL'};}
+  }catch(e){
+    return {ok:false,error:String(e),copy:'FAIL try',live:'FAIL'};
+  }
+}
+async function runTry(){
+  const btn=document.getElementById('btntry');
+  const name=((document.getElementById('pullname')||{}).value||'').trim();
+  if(btn) btn.disabled=true;
+  paintTry('trying…','');
+  document.getElementById('meta').textContent='refreshing…';
+  try{
+    const j=await postTry(name);
+    if(j && j.ok){
+      if(lastSnap && j.pinned) lastSnap.pinned_model=j.pinned;
+      paintTry(j.copy||'PASS try','ok');
+    }else{
+      const nxt=(j && j.next_step)||'Launch env or ./pfy up (engine pin) · Attach re-probe · TUI reload';
+      let msg=(j && (j.copy||j.error))||'try';
+      if(String(msg).indexOf('engine pin')<0 && String(msg).indexOf(nxt)<0) msg=msg+' · next: '+nxt;
+      paintTry(String(msg).indexOf('FAIL')===0?msg:('FAIL '+msg),'fail');
+    }
+    await tick();
+  }catch(e){
+    paintTry('FAIL try','fail');
+  }finally{
+    if(btn) btn.disabled=false;
+  }
+}
 async function postPull(name){
   try{
     if(isTauri()){

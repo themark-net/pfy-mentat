@@ -23,6 +23,22 @@ def pull_model(name):
         return {"ok": True, "live": "SKIP", "copy": "SKIP pull", "stdout": blob[-800:]}
     return {"ok": True, "live": "PASS", "copy": "PASS pull", "stdout": blob[-800:]}
 
+def recommend_models():
+    """Ranked host-fit models beyond already-pulled. Cite #207."""
+    mod, err = _load_recommend_207()
+    if mod is None:
+        return {"ok": False, "live": "FAIL", "copy": "FAIL recommend -- module missing",
+                "error": err or "missing", "ranked": [], "next_step": "./pfy setup", "usable": False}
+    return mod.recommend(ROOT, STATE)
+
+def try_recommended_model(name=""):
+    """One try/pull of a recommended model via FreeToken-first pull. Cite #207."""
+    mod, err = _load_recommend_207()
+    if mod is None:
+        return {"ok": False, "live": "FAIL", "copy": "FAIL try -- module missing",
+                "error": err or "missing", "ranked": [], "next_step": "./pfy setup", "usable": False}
+    return mod.try_model(ROOT, STATE, name, pull_fn=pull_model)
+
 def launch_env():
     """Same path as bare ./pfy before the window: inference then env-stage. No harness exec.
 

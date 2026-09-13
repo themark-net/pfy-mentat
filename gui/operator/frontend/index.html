@@ -84,7 +84,10 @@ noscript .fail{padding:16px;display:block}
     <div class=row>models <span id=eng-models class=muted>(none)</span></div>
     <div class=row>tok_path <b id=eng-tok>SKIP</b></div>
     <div class=row>vram <b id=eng-vram>SKIP</b></div>
+    <div class=row>recommend <span id=eng-reco class=muted>(none)</span></div>
+    <div class=row>pinned <b id=eng-pinned>(none)</b></div>
     <div class=row id=eng-usage-fail class=fail style=display:none></div>
+    <div class=row id=eng-reco-fail class=fail style=display:none></div>
     <div class=acts>
       <button type=button class=primary id=btnrefresh>Refresh status</button>
       <button type=button class=primary id=btncopyendpoint-eng>Copy endpoint</button>
@@ -94,10 +97,14 @@ noscript .fail{padding:16px;display:block}
     <div class=acts>
       <input id=pullname type=text placeholder=model autocomplete=off>
       <button type=button class=primary id=btnpull>Pull</button>
+      <button type=button class=primary id=btnreco>Recommend</button>
+      <button type=button class=primary id=btntry>Try recommended</button>
     </div>
     <span id=refreshmsg class=attach-result></span>
     <span id=evalmsg class=attach-result></span>
     <span id=pullmsg class=attach-result></span>
+    <span id=recomsg class=attach-result></span>
+    <span id=trymsg class=attach-result></span>
   </section>
   <section class=view id=view-stage>
     <h2>STAGE</h2>
