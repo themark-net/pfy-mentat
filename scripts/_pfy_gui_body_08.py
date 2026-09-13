@@ -30,7 +30,9 @@ ck_forget()
             mode_when = str(s.get("attach_mode_when") or "")
             loop_ev = str(s.get("loop_copy") or "").strip() or "(none)"
             loop_when = str(s.get("loop_when") or "")
-            txt = f"LOOP\nenv        {env_live}\nattached   {att}\nsession    {reach}\nusing: {using}" + (f"  {mode_when}" if mode_when else "") + f"\nloop       {loop_ev}" + (f"  {loop_when}" if loop_when else "") + f"\nlast       {verb}  {when}\nmonitor    {mon}\ngrok       {gpath}"
+            graph_ev = str(s.get("graph_copy") or "").strip() or "(none)"
+            graph_when = str(s.get("graph_when") or "")
+            txt = f"LOOP\nenv        {env_live}\nattached   {att}\nsession    {reach}\nusing: {using}" + (f"  {mode_when}" if mode_when else "") + f"\nloop       {loop_ev}" + (f"  {loop_when}" if loop_when else "") + f"\ngraph      {graph_ev}" + (f"  {graph_when}" if graph_when else "") + f"\nlast       {verb}  {when}\nmonitor    {mon}\ngrok       {gpath}"
             what = str((getattr(self, "_last_env", {}) or {}).get("what") or "")
             if what:
                 txt += "\nwhat       " + what
@@ -98,7 +100,9 @@ ck_forget()
             reach = str(s.get("session_reach") or "").strip() or getattr(self, "_session_reach", "") or "(none)"
             using = str(s.get("using") or s.get("attach_mode") or getattr(self, "_attach_mode", "") or "bare")
             mode_when = str(s.get("attach_mode_when") or "")
-            txt = f"ATTACH\nNOW     attached {attached} · last {verb}\nsession {reach}\nusing: {using}" + (f"  {mode_when}" if mode_when else "")
+            graph_ev = str(s.get("graph_copy") or "").strip() or "(none)"
+            graph_when = str(s.get("graph_when") or "")
+            txt = f"ATTACH\nNOW     attached {attached} · last {verb}\nsession {reach}\nusing: {using}" + (f"  {mode_when}" if mode_when else "") + f"\ngraph      {graph_ev}" + (f"  {graph_when}" if graph_when else "")
             si = getattr(self, "_last_si", {}) or {}
             abs_p = str(si.get("abs_path") or "")
             rel_p = str(si.get("rel") or si.get("path") or "")

@@ -34,7 +34,8 @@ ATTACH_BASES = (
 NEXT_SELECT = "select bare | orchestration | code-graph on Attach"
 NEXT_SETUP = "./pfy setup"
 NEXT_MCP = "./bootstrap/grok-cli/install.sh --with-codebase-memory"
-NEXT_HERMES_GRAPH = "Attach grok or opencode for code-graph MCP"
+NEXT_HERMES_GRAPH = "pip install axoniq · Attach grok or opencode for code-graph MCP"
+NEXT_GRAPH = "pip install axoniq · ./pfy catalog ask axon"
 
 
 def _now():
@@ -217,9 +218,10 @@ def _handoff_text(mode, hid):
             "Harness: %s\n" % hid
         )
     return (
-        "# Attach mode: code-graph (#208)\n\n"
-        "Use **codebase-memory MCP** as the code-graph for this session.\n"
-        "Command: `codebase-memory-mcp`. Do not claim this mode without MCP.\n"
+        "# Attach mode: code-graph (#208/#215)\n\n"
+        "Prefer **Axon** (`axon analyze` / `axon serve --watch`) when live.\n"
+        "If Axon is not live, use **codebase-memory MCP** as equivalent and "
+        "do not claim Axon.\n"
         "Harness: %s\n" % hid
     )
 
@@ -233,8 +235,8 @@ def _prompt_text(mode):
             "Load /agent-loops. Write the eight exits before iterating.\n"
         )
     return (
-        "PFY_ATTACH_MODE=code-graph. Use codebase-memory MCP as the code-graph. "
-        "Search the graph before broad file reads.\n"
+        "PFY_ATTACH_MODE=code-graph. Prefer Axon when PFY_GRAPH_PATH=axon. "
+        "If PFY_GRAPH_PATH=codebase-memory, Axon is not live — do not claim Axon.\n"
     )
 
 
@@ -293,6 +295,8 @@ def apply_child_env(env, STATE=None):
             env["OPENCODE_SKILLS"] = str(skills_dir)
             env["PFY_ATTACH_SKILL"] = "agent-loops"
         env = _apply_orchestration_213_env(env, STATE)
+    if mode == "code-graph":
+        env = _apply_code_graph_215_env(env, STATE)
     return env
 
 
@@ -310,32 +314,47 @@ def _apply_orchestration_213_env(env, STATE):
         return env
 
 
+def _load_code_graph_215():
+    path = Path(__file__).resolve().parent / "pfy_code_graph_215.py"
+    if not path.is_file():
+        return None
+    try:
+        spec = importlib.util.spec_from_file_location("pfy_code_graph_215_208", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+    except Exception:
+        return None
+
+
+def _apply_code_graph_215_env(env, STATE):
+    """Graph path/evidence into code-graph child. Cite #215."""
+    mod = _load_code_graph_215()
+    if mod is None:
+        return env
+    try:
+        return mod.apply_child_env(env, STATE)
+    except Exception:
+        return env
+
+
 def decorate_opencode_config(STATE):
-    """Inject codebase-memory MCP into STATE opencode.json when mode is code-graph."""
+    """Inject live code-graph MCP (Axon preferred) into STATE opencode.json. Cite #215."""
     STATE = Path(STATE)
     if current_mode(STATE) != "code-graph":
         return True, ""
-    path = STATE / "opencode.json"
-    if not path.is_file():
+    mod = _load_code_graph_215()
+    if mod is None:
         return True, ""
     try:
-        cfg = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return False, "opencode.json unreadable"
-    if not isinstance(cfg, dict):
-        return False, "opencode.json not an object"
-    mcp = cfg.get("mcp") if isinstance(cfg.get("mcp"), dict) else {}
-    mcp["codebase-memory"] = {
-        "type": "local",
-        "command": ["codebase-memory-mcp"],
-        "enabled": True,
-    }
-    cfg["mcp"] = mcp
-    try:
-        path.write_text(json.dumps(cfg, indent=2) + "\n", encoding="utf-8")
-    except OSError as e:
+        resolved = mod.resolve()
+        if not resolved.get("ok"):
+            return True, ""
+        return mod.decorate_opencode_config(
+            STATE, resolved.get("graph_path") or "", resolved.get("bin") or ""
+        )
+    except Exception as e:
         return False, str(e)[:200]
-    return True, ""
 
 
 def _apply_grok_mcp(ROOT, STATE):
@@ -418,32 +437,26 @@ def prepare(ROOT, STATE, hid, mode=None, which=None):
             _link_skill(gdest, src, "agent-loops")
 
     elif mode == "code-graph":
-        if hid == "hermes":
+        gmod = _load_code_graph_215()
+        if gmod is None:
             return fail(
                 hid,
-                "code-graph unwired for Hermes (no MCP handoff)",
-                NEXT_HERMES_GRAPH,
+                "code-graph unwired -- pfy_code_graph_215 missing",
+                NEXT_SETUP,
                 mode=mode,
             )
-        mcp_bin = which("codebase-memory-mcp") if callable(which) else which_bin("codebase-memory-mcp")
-        if not mcp_bin:
+        wired = gmod.prepare(ROOT, STATE, hid, which=which)
+        if not wired.get("ok"):
+            nxt = wired.get("next_step") or NEXT_GRAPH
             return fail(
                 hid,
-                "code-graph unwired -- codebase-memory-mcp missing",
-                NEXT_MCP,
+                wired.get("error") or "code-graph unwired",
+                nxt,
                 mode=mode,
             )
-        extra["PFY_MCP"] = "1"
-        extra["CODEBASE_MEMORY_MCP"] = mcp_bin
-        if hid == "grok":
-            ok, err = _apply_grok_mcp(ROOT, STATE)
-            if not ok:
-                return fail(
-                    hid,
-                    "code-graph unwired -- %s" % (err or "mcp merge failed"),
-                    NEXT_MCP,
-                    mode=mode,
-                )
+        extra.update(wired.get("env") or {})
+        extra["PFY_GRAPH_PATH"] = wired.get("graph_path") or ""
+        extra["PFY_GRAPH_COPY"] = wired.get("graph_copy") or ""
 
     if not reuse_ok(STATE, mode):
         _invalidate_reuse(STATE)
@@ -452,7 +465,7 @@ def prepare(ROOT, STATE, hid, mode=None, which=None):
     env = _env_from_state(STATE, extra)
     env_lines = ["%s=%s" % (k, env[k]) for k in sorted(env)]
     _write(STATE / ENV_FILE, "\n".join(env_lines))
-    return {
+    out = {
         "ok": True,
         "id": hid,
         "mode": mode,
@@ -462,6 +475,18 @@ def prepare(ROOT, STATE, hid, mode=None, which=None):
         "copy": "using: %s" % mode,
         "live": "READY",
     }
+    if mode == "code-graph":
+        gpath = extra.get("PFY_GRAPH_PATH") or ""
+        gcopy = extra.get("PFY_GRAPH_COPY") or (
+            "path=axon" if gpath == "axon" else "path=codebase-memory (not axon)" if gpath else ""
+        )
+        if gcopy and gcopy not in out["copy"]:
+            out["copy"] = "using: %s \u00b7 %s" % (mode, gcopy)
+        out["graph_ok"] = True
+        out["graph_path"] = gpath
+        out["graph_copy"] = gcopy
+        out["graph_when"] = extra.get("PFY_GRAPH_WHEN") or ""
+    return out
 
 
 def export_env_lines(STATE=None):
@@ -494,7 +519,10 @@ def cmd_prepare(hid, mode, root=None, state=None):
         if nxt and nxt not in str(res.get("copy") or ""):
             print("  next: %s" % nxt)
         return 1
-    print("PASS mode · using: %s" % res.get("mode"))
+    extra = ""
+    if res.get("graph_copy"):
+        extra = " \u00b7 %s" % res.get("graph_copy")
+    print("PASS mode \u00b7 using: %s%s" % (res.get("mode"), extra))
     for line in export_env_lines(state):
         print(line)
     return 0
@@ -547,19 +575,42 @@ def cmd_selftest():
             check(not res.get("ok"), "orch FAIL empty root")
             check("unwired" in (res.get("error") or ""), "orch unwired copy")
 
-        res = prepare(root, state, "hermes", mode="code-graph")
-        check(not res.get("ok"), "hermes code-graph FAIL")
-        check(NEXT_HERMES_GRAPH in (res.get("next_step") or ""), "hermes graph next")
+        res = prepare(
+            root, state, "hermes", mode="code-graph",
+            which=lambda *n: "/tmp/fake-mcp" if n and n[0] == "codebase-memory-mcp" else "",
+        )
+        check(not res.get("ok"), "hermes code-graph MCP-only FAIL")
         check("unwired" in (res.get("error") or ""), "hermes not silent bare")
+        check(
+            "axon" in (res.get("next_step") or "").lower()
+            or "opencode" in (res.get("next_step") or ""),
+            "hermes graph next",
+        )
 
         old_path = os.environ.get("PATH", "")
         try:
             os.environ["PATH"] = "/tmp/pfy-208-no-mcp"
             res = prepare(root, state, "opencode", mode="code-graph", which=lambda *n: "")
-            check(not res.get("ok"), "code-graph FAIL without mcp bin")
-            check(NEXT_MCP in (res.get("next_step") or ""), "code-graph next mcp")
+            check(not res.get("ok"), "code-graph FAIL without axon/mcp")
+            nxt = res.get("next_step") or ""
+            check("catalog" in nxt or "pip install" in nxt, "code-graph next catalog/install")
         finally:
             os.environ["PATH"] = old_path
+
+        res = prepare(
+            root, state, "opencode", mode="code-graph",
+            which=lambda *n: "/tmp/fake-mcp" if n and n[0] == "codebase-memory-mcp" else "",
+        )
+        check(res.get("ok"), "code-graph MCP fallback")
+        check(res.get("graph_path") == "codebase-memory", "mcp path")
+        check("not axon" in (res.get("graph_copy") or ""), "do not claim axon")
+
+        res = prepare(
+            root, state, "hermes", mode="code-graph",
+            which=lambda *n: "/tmp/fake-axon" if n and n[0] in ("axon", "axoniq") else "",
+        )
+        check(res.get("ok"), "hermes axon CLI ok")
+        check(res.get("graph_path") == "axon", "hermes axon path")
 
         again = set_mode(state, "bare")
         check(again.get("ok") and current_mode(state) == "bare", "one mode replaces")

@@ -7,6 +7,7 @@ Short structural maps for first-party packages in this repo. Deep design stays i
 | Consultant eval pack | `docs/ops/consultant-eval.md` | [consultant-eval.md](../ops/consultant-eval.md) |
 | `./pfy` simple surface | `scripts/pfy` | [pfy.md](pfy.md) |
 | OpenContext `oc` handoff | `scripts/pfy_opencontext_205.py` | [opencontext.md](opencontext.md) · [ops/opencontext.md](../ops/opencontext.md) |
+| Code-graph (Axon) | `scripts/pfy_code_graph_215.py` | [code-graph.md](code-graph.md) · [ops/code-graph.md](../ops/code-graph.md) |
 | Attach mode | `scripts/pfy_attach_mode_208.py` | [attach-mode.md](attach-mode.md) · [ops/attach-mode.md](../ops/attach-mode.md) |
 | Orchestration loops | `scripts/pfy_orchestration_213.py` | [attach-mode.md](attach-mode.md) · [ops/attach-mode.md](../ops/attach-mode.md) |
 | Recommend / try models | `scripts/pfy_recommend_models_207.py` | [recommend-models.md](recommend-models.md) · [ops/recommend-models.md](../ops/recommend-models.md) |

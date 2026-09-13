@@ -55,6 +55,24 @@ def start_sidecar(hid, mode=None):
             pass
     using = prepared.get("mode") or "bare"
     started = None
+    graph = None
+    if using == "code-graph":
+        graph = {
+            "graph_ok": bool(prepared.get("graph_ok")),
+            "graph_copy": prepared.get("graph_copy") or "",
+            "graph_path": prepared.get("graph_path") or "",
+            "graph_when": prepared.get("graph_when") or "",
+        }
+        if not prepared.get("graph_ok") and not prepared.get("graph_path"):
+            gmod, gerr = _load_code_graph_215()
+            if gmod is None:
+                return {
+                    "ok": False, "id": hid, "live": "FAIL",
+                    "copy": "FAIL code-graph -- module missing",
+                    "error": gerr or "pfy_code_graph_215 missing", "usable": False,
+                    "session_reach": "FAIL", "next_step": "./pfy setup",
+                    "mode": using, "using": using, "graph_ok": False,
+                }
     if using == "orchestration":
         omod, oerr = _load_orchestration_213()
         if omod is None:
@@ -101,6 +119,14 @@ def start_sidecar(hid, mode=None):
                 result["loop_steps"] = started.get("loop_steps") or 0
                 result["loop_status"] = started.get("loop_status") or ""
                 result["loop_evidence"] = started.get("loop_evidence") or ""
+            if graph and graph.get("graph_copy"):
+                gc = graph.get("graph_copy")
+                if gc and gc not in str(result.get("copy") or ""):
+                    result["copy"] = (result.get("copy") + " · " + gc).strip(" ·")
+                result["graph_ok"] = True
+                result["graph_copy"] = gc
+                result["graph_path"] = graph.get("graph_path") or ""
+                result["graph_when"] = graph.get("graph_when") or ""
         return result
     log = STATE / f"sidecar-{hid}.log"
     with log.open("ab") as f:

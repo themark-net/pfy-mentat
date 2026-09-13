@@ -106,6 +106,20 @@ def _load_orchestration_213():
     except Exception as e:
         return None, str(e)[:400]
 
+def _load_code_graph_215():
+    """Load pfy_code_graph_215 or return (None, error). Cite #215."""
+    import importlib.util
+    path = ROOT / "scripts" / "pfy_code_graph_215.py"
+    if not path.is_file():
+        return None, str(path)
+    try:
+        spec = importlib.util.spec_from_file_location("pfy_code_graph_215", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod, ""
+    except Exception as e:
+        return None, str(e)[:400]
+
 def attach_mode_fields():
     mod, err = _load_attach_mode_208()
     if mod is None:
@@ -162,6 +176,23 @@ def orchestration_fields():
         return mod.snapshot_fields(STATE)
     except Exception as e:
         empty["loop_copy"] = "FAIL orchestration -- %s" % str(e)[:160]
+        return empty
+
+def code_graph_fields():
+    """Snapshot live code-graph path (axon vs codebase-memory). Cite #215."""
+    empty = {
+        "graph_ok": False, "graph_copy": "", "graph_when": "", "graph_path": "",
+        "graph_bin": "", "graph_evidence": "", "graph_next": "pip install axoniq · ./pfy catalog ask axon",
+    }
+    mod, err = _load_code_graph_215()
+    if mod is None:
+        empty["graph_copy"] = "FAIL code-graph -- module missing"
+        empty["graph_next"] = "./pfy setup"
+        return empty
+    try:
+        return mod.snapshot_fields(STATE)
+    except Exception as e:
+        empty["graph_copy"] = "FAIL code-graph -- %s" % str(e)[:160]
         return empty
 
 def catalog_fields(active=""):

@@ -13,6 +13,7 @@ POST /tools toggles skills, MCP, write-guard, extra tools.
 POST /catalog/ask asks the attached TUI to implement a catalog tool for next launch (#209).
 POST /catalog/queue opens a GitHub issue with Design->DevBot DoD (#209).
 POST /start with mode orchestration starts a multi-step local loop (#213).
+POST /start with mode code-graph hands Axon (or codebase-memory equivalent) (#215).
 POST /space-invaders runs session Space Invaders via Attach OpenCode (#155).
 """
 from __future__ import annotations

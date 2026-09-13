@@ -153,6 +153,16 @@ async function tick(){
     if(lev) lev.textContent=s.loop_copy||'(none)';
     const lwhen=document.getElementById('loop-evidence-when');
     if(lwhen) lwhen.textContent=s.loop_when||'';
+    const gev=s.graph_copy||'(none)';
+    ['loop-graph','att-graph'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) el.textContent=gev;
+    });
+    const gwhen=s.graph_when||'';
+    ['loop-graph-when','att-graph-when'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) el.textContent=gwhen;
+    });
     const verb=lastVerbLabel((s.last_verb&&s.last_verb.verb)||'(none)');
     const when=(s.last_verb&&s.last_verb.when)||'';
     const pid=s.sidecar_pid || '';

@@ -66,6 +66,7 @@ def selftest_snap():
             "detect_order":[],"active":"grok","active_stub":False,"blocked_copy":GROK_USE,
             "attach_mode":"orchestration","using":"orchestration","attach_mode_when":"","attach_mode_live":"",
             "loop_ok":True,"loop_copy":"started 2/8 · grok · local-test","loop_when":"selftest",
+            "graph_ok":True,"graph_copy":"path=axon","graph_when":"selftest","graph_path":"axon",
             "last_verb":{"verb":"gui","when":""},"now":"idle","processes":[],"agent_lane_collapsed":True,
             "tools":{"skills":{"one-shot":True,"investigate":True,"agent-loops":True,"hermes-feedback":True},"mcp":False,"write_guard":False,"tools_mode":"split"},
             "catalog":[{"name":"repowise","stage":"I1","status":"ready","github":"https://github.com/repowise-dev/repowise","notes":"usable","category":"Coding"}],
