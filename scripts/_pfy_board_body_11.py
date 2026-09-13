@@ -54,6 +54,24 @@ def start_sidecar(hid, mode=None):
         except Exception:
             pass
     using = prepared.get("mode") or "bare"
+    started = None
+    if using == "orchestration":
+        omod, oerr = _load_orchestration_213()
+        if omod is None:
+            return {
+                "ok": False, "id": hid, "live": "FAIL",
+                "copy": "FAIL orchestration -- module missing",
+                "error": oerr or "pfy_orchestration_213 missing", "usable": False,
+                "session_reach": "FAIL", "next_step": "./pfy setup",
+                "mode": using, "using": using, "loop_ok": False,
+            }
+        started = omod.start_loop(
+            ROOT, STATE, hid,
+            live_openai_base=live_openai_base,
+            inspect_models_fn=inspect_models,
+        )
+        if not started.get("ok"):
+            return started
     if hid == "grok":
         result = open_enterable_grok_session()
     elif hid == "opencode":
@@ -72,6 +90,17 @@ def start_sidecar(hid, mode=None):
             tag = "using: %s" % using
             if tag not in copy:
                 result["copy"] = (copy + " · " + tag).strip(" ·")
+            if started and started.get("loop_copy"):
+                lc = started.get("loop_copy")
+                if lc and lc not in str(result.get("copy") or ""):
+                    result["copy"] = (result.get("copy") + " · " + lc).strip(" ·")
+                result["loop_ok"] = True
+                result["loop_copy"] = lc
+                result["loop_when"] = started.get("loop_when") or ""
+                result["loop_model"] = started.get("loop_model") or ""
+                result["loop_steps"] = started.get("loop_steps") or 0
+                result["loop_status"] = started.get("loop_status") or ""
+                result["loop_evidence"] = started.get("loop_evidence") or ""
         return result
     log = STATE / f"sidecar-{hid}.log"
     with log.open("ab") as f:

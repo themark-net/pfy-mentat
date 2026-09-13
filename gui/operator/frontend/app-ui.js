@@ -149,6 +149,10 @@ async function tick(){
     if(!showOrg && view==='org') show('loop');
     const attached=s.active||'(none)';
     paintUsing(s.using||s.attach_mode||selectedMode||'bare', s.attach_mode_when||'');
+    const lev=document.getElementById('loop-evidence');
+    if(lev) lev.textContent=s.loop_copy||'(none)';
+    const lwhen=document.getElementById('loop-evidence-when');
+    if(lwhen) lwhen.textContent=s.loop_when||'';
     const verb=lastVerbLabel((s.last_verb&&s.last_verb.verb)||'(none)');
     const when=(s.last_verb&&s.last_verb.when)||'';
     const pid=s.sidecar_pid || '';

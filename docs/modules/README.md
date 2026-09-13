@@ -8,6 +8,7 @@ Short structural maps for first-party packages in this repo. Deep design stays i
 | `./pfy` simple surface | `scripts/pfy` | [pfy.md](pfy.md) |
 | OpenContext `oc` handoff | `scripts/pfy_opencontext_205.py` | [opencontext.md](opencontext.md) · [ops/opencontext.md](../ops/opencontext.md) |
 | Attach mode | `scripts/pfy_attach_mode_208.py` | [attach-mode.md](attach-mode.md) · [ops/attach-mode.md](../ops/attach-mode.md) |
+| Orchestration loops | `scripts/pfy_orchestration_213.py` | [attach-mode.md](attach-mode.md) · [ops/attach-mode.md](../ops/attach-mode.md) |
 | Recommend / try models | `scripts/pfy_recommend_models_207.py` | [recommend-models.md](recommend-models.md) · [ops/recommend-models.md](../ops/recommend-models.md) |
 | Catalog ask / queue | `scripts/pfy_catalog_ask_queue_209.py` | [catalog-ask-queue.md](catalog-ask-queue.md) · [ops/catalog-ask-queue.md](../ops/catalog-ask-queue.md) |
 | Local runtime detector | `scripts/detect-local-runtime.sh` | [detect-local-runtime.md](detect-local-runtime.md) |

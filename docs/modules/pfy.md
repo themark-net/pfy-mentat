@@ -27,7 +27,7 @@
 
 Root `./pfy` is a 100755 wrapper that execs `scripts/pfy`. Detector is invoked with `bash`.
 
-**Attach mode (#208):** HTML+tk select `bare` | `orchestration` | `code-graph`; paint `using: <mode>`. Named start and in-window Attach hand off skills/AGENTS/prompts/env or FAIL+next. [attach-mode.md](attach-mode.md).
+**Attach mode (#208 / #213):** HTML+tk select `bare` | `orchestration` | `code-graph`; paint `using: <mode>`. Orchestration starts a multi-step local loop (prove or FAIL+next) and Loop shows last evidence. Named start and in-window Attach hand off skills/AGENTS/prompts/env or FAIL+next. [attach-mode.md](attach-mode.md).
 
 **Recommend / try (#207):** Engine + `./pfy models recommend` ranks host-fit models not yet pulled. `try` pulls one FreeToken-first (operate-or-FAIL). Handoff: engine pin · Attach re-probe · TUI reload. [recommend-models.md](recommend-models.md).
 

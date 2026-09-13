@@ -8,6 +8,7 @@ LIVE_HARD_OFF: no cloud embeddings / live catalog writes.
 """
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import shutil
@@ -291,7 +292,22 @@ def apply_child_env(env, STATE=None):
             _link_skill(skills_dir, src.resolve() if src.exists() else src, "agent-loops")
             env["OPENCODE_SKILLS"] = str(skills_dir)
             env["PFY_ATTACH_SKILL"] = "agent-loops"
+        env = _apply_orchestration_213_env(env, STATE)
     return env
+
+
+def _apply_orchestration_213_env(env, STATE):
+    """Loop card/evidence into orchestration child. Cite #213."""
+    path = Path(__file__).resolve().parent / "pfy_orchestration_213.py"
+    if not path.is_file():
+        return env
+    try:
+        spec = importlib.util.spec_from_file_location("pfy_orchestration_213_208", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod.apply_child_env(env, STATE)
+    except Exception:
+        return env
 
 
 def decorate_opencode_config(STATE):

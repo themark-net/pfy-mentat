@@ -77,6 +77,9 @@ When integrating a new tool, **add a row here in the same PR** as the integratio
 | `PFY_ATTACH_MODE` | no | optional | `bare` | Attach OpenCode/Hermes/Grok (#208) | `bare` \| `orchestration` \| `code-graph`; one mode at a time |
 | `PFY_ATTACH_HANDOFF` | no | optional | `$PFY_STATE_DIR/attach-mode-handoff.md` | Attach child env | Mode AGENTS/prompt artifact |
 | `PFY_ATTACH_PROMPT` | no | optional | `$PFY_STATE_DIR/attach-mode-prompt.md` | Attach child env | Short mode prompt |
+| `PFY_LOOP_CARD` | no | optional | `$PFY_STATE_DIR/loop-card.md` | Attach child env / Loop (#213) | 8-exit card after orchestration start |
+| `PFY_LOOP_EVIDENCE` | no | optional | `$PFY_STATE_DIR/loop-evidence.json` | Attach child env / Loop (#213) | Last loop/monitor evidence (not slogan-only) |
+| `PFY_LOOP_PROMPT` | no | optional | `$PFY_STATE_DIR/loop-prompt.md` | Attach child env (#213) | Continue-from-card prompt |
 | `PFY_CATALOG_ASK_PROMPT` | no | optional | `$PFY_STATE_DIR/catalog-ask-prompt.md` | Attach child env / Tools (#209) | Next-launch implement prompt |
 | `PFY_CATALOG_ASK_HANDOFF` | no | optional | `$PFY_STATE_DIR/catalog-ask-handoff.md` | Attach child env / Tools (#209) | Catalog ask handoff notes |
 
