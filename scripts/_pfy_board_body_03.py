@@ -94,6 +94,7 @@ xt = pfy_status_stdout()
         "monitor_pid": monitor_pid_live(),
         "tools": load_tools_state(),
         **attach_mode_fields(),
+        **recommend_fields(models, eng, det, base),
     }
 
 def html_page():

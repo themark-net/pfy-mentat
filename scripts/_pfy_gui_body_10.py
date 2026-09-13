@@ -57,6 +57,8 @@ def run_tk(board, selftest=False) -> bool:
             and w.benv.cget("text") == "Launch env"
             and w.bpull.cget("text") == "Pull"
             and w.btest.cget("text") == "Test model"
+            and w.breco.cget("text") == "Recommend"
+            and w.btry.cget("text") == "Try recommended"
             and w.bbare.cget("text") == "bare"
             and w.borch.cget("text") == "orchestration"
             and w.bgraph.cget("text") == "code-graph"

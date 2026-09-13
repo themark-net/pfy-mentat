@@ -26,6 +26,8 @@ document.getElementById('btncopyendpoint-eng')&&document.getElementById('btncopy
 document.getElementById('btncopystatus')&&document.getElementById('btncopystatus').addEventListener('click',()=>copyLaunchStatus());
 document.getElementById('btnpull').addEventListener('click',()=>runPull());
 document.getElementById('btntest').addEventListener('click',()=>runEval());
+document.getElementById('btnreco')&&document.getElementById('btnreco').addEventListener('click',()=>runRecommend());
+document.getElementById('btntry')&&document.getElementById('btntry').addEventListener('click',()=>runTry());
 function paintTools(text, kind){
   const el=document.getElementById('toolsmsg');
   if(!el) return;
@@ -170,6 +172,23 @@ async function tick(){
     const vram=u.vram||r.vram||'SKIP';
     const vramEl=document.getElementById('eng-vram');
     if(vramEl) vramEl.textContent=vram||'SKIP';
+    const reco=(s.recommend&&s.recommend.length)?s.recommend:[];
+    const recoEl=document.getElementById('eng-reco');
+    if(recoEl) recoEl.textContent=reco.length?reco.slice(0,5).join(' · '):'(none)';
+    const pinEl=document.getElementById('eng-pinned');
+    if(pinEl) pinEl.textContent=s.pinned_model||'(none)';
+    const recoFail=document.getElementById('eng-reco-fail');
+    if(recoFail){
+      if(s.recommend_ok===false){
+        const rc=s.recommend_copy||'FAIL recommend';
+        const rn=s.recommend_next||'Launch env or ./pfy up';
+        recoFail.style.display='block';
+        recoFail.textContent=rc+(rn && String(rc).indexOf(rn)<0?(' · next: '+rn):'');
+      }else{
+        recoFail.style.display='none';
+        recoFail.textContent='';
+      }
+    }
     const failEl=document.getElementById('eng-usage-fail');
     if(failEl){
       if(u && u.ok===false){

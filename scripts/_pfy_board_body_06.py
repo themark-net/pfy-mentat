@@ -64,6 +64,20 @@ def _load_attach_mode_208():
     except Exception as e:
         return None, str(e)[:400]
 
+def _load_recommend_207():
+    """Load pfy_recommend_models_207 or return (None, error). Cite #207."""
+    import importlib.util
+    path = ROOT / "scripts" / "pfy_recommend_models_207.py"
+    if not path.is_file():
+        return None, str(path)
+    try:
+        spec = importlib.util.spec_from_file_location("pfy_recommend_models_207", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod, ""
+    except Exception as e:
+        return None, str(e)[:400]
+
 def attach_mode_fields():
     mod, err = _load_attach_mode_208()
     if mod is None:
@@ -80,6 +94,29 @@ def set_attach_mode(mode):
         return {"ok": False, "live": "FAIL", "copy": "FAIL mode -- module missing", "error": err or "missing", "usable": False, "next_step": "./pfy setup"}
     STATE.mkdir(parents=True, exist_ok=True)
     return mod.set_mode(STATE, mode)
+
+def recommend_fields(models, eng, det, base):
+    """Snapshot recommend/try fields. Cite #207. Never invent a best list."""
+    empty = {
+        "recommend_ok": False, "recommend": [], "recommend_ranked": [],
+        "recommend_copy": "", "recommend_next": "Launch env or ./pfy up",
+        "recommend_top": "", "recommend_host": {}, "pinned_model": "",
+        "model_handoff": "",
+    }
+    mod, err = _load_recommend_207()
+    if mod is None:
+        empty["recommend_copy"] = "FAIL recommend -- module missing"
+        empty["recommend_next"] = "./pfy setup"
+        return empty
+    try:
+        st = str((det or {}).get("status") or "")
+        return mod.snapshot_fields(
+            STATE, ROOT, pulled=list(models or []), engine=eng or "",
+            status=st, base=base or "",
+        )
+    except Exception as e:
+        empty["recommend_copy"] = "FAIL recommend -- %s" % str(e)[:160]
+        return empty
 
 def _session_reach_live():
     oc, hm, gk = "", "", ""

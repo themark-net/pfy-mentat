@@ -92,6 +92,15 @@ def main():
         result = pull_model(name)
         print(json.dumps(result))
         return 0 if result.get("ok") else 2
+    if args[:1] == ["--recommend"]:
+        result = recommend_models()
+        print(json.dumps(result))
+        return 0 if result.get("ok") else 2
+    if args[:1] == ["--try"]:
+        name = args[1] if len(args) > 1 else ""
+        result = try_recommended_model(name)
+        print(json.dumps(result))
+        return 0 if result.get("ok") else 2
     if args[:1] == ["--eval"]:
         result = test_model()
         print(json.dumps(result))

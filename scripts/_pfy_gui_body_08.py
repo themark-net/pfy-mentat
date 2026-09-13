@@ -67,11 +67,27 @@ ck_forget()
                 f"\ngrok       {honest(grok.get('live'))}\nmodels     {mtxt}"
                 f"\ntok_path   {tok}\nvram       {vram}"
             )
+            reco = list(s.get("recommend") or [])
+            rtxt = " · ".join(str(x) for x in reco[:5]) if reco else "(none)"
+            txt += f"\nrecommend  {rtxt}"
+            if s.get("recommend_ok") is False:
+                rc = s.get("recommend_copy") or "FAIL recommend"
+                rn = s.get("recommend_next") or "Launch env or ./pfy up"
+                txt += f"\n{rc}"
+                if rn and rn not in str(rc):
+                    txt += f"\nnext       {rn}"
+            else:
+                nxt = s.get("recommend_next") or ""
+                if nxt:
+                    txt += f"\nnext       {nxt}"
+            pin = s.get("pinned_model") or ""
+            if pin:
+                txt += f"\npinned     {pin}"
             if u and not u.get("ok"):
                 fail = u.get("fail") or "FAIL: no local engine up"
                 nxt = u.get("next_step") or "Launch env or ./pfy up"
                 txt += f"\n{fail}\nnext       {nxt}"
-            self.pack_acts(["refresh", "copyep", "est", "test", "pullname", "pull", "tst", "pst", "rst"])
+            self.pack_acts(["refresh", "copyep", "est", "test", "pullname", "pull", "reco", "try", "tst", "pst", "rst", "recst", "tryst"])
         elif self.view == "stage":
             sl = stage.get("live") or "SKIP"
             txt = f"STAGE\nenv-stage   {sl}"

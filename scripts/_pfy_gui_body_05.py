@@ -72,6 +72,84 @@
             self.paint_pull("FAIL " + msg if not msg.startswith("FAIL") else msg, True)
         self.refresh(user=True)
 
+    def paint_recommend(self, text, fail=False):
+        self.recst.configure(text=text, style="F.TLabel" if fail else "Ok.TLabel")
+
+    def paint_try(self, text, fail=False):
+        self.tryst.configure(text=text, style="F.TLabel" if fail else "Ok.TLabel")
+
+    def recommend_models(self):
+        self.paint_recommend("ranking…", False)
+        self.meta.configure(text="refreshing…")
+        try:
+            self.breco.configure(state="disabled")
+        except Exception:
+            pass
+        def work():
+            try:
+                if self.board is None:
+                    res = {"ok": False, "copy": "FAIL recommend", "error": "no board", "ranked": []}
+                else:
+                    res = self.board.recommend_models()
+            except Exception as e:
+                res = {"ok": False, "copy": "FAIL recommend", "error": str(e), "ranked": []}
+            self.root.after(0, lambda r=res: self.done_recommend(r))
+        threading.Thread(target=work, daemon=True).start()
+
+    def done_recommend(self, res):
+        try:
+            self.breco.configure(state="normal")
+        except Exception:
+            pass
+        if res.get("ok"):
+            self.paint_recommend(res.get("copy") or "PASS recommend", False)
+        else:
+            nxt = res.get("next_step") or "Launch env or ./pfy up"
+            copy = res.get("copy") or res.get("error") or "recommend"
+            msg = str(copy)
+            if nxt not in msg:
+                msg = msg + " · next: " + nxt
+            self.paint_recommend("FAIL " + msg if not msg.startswith("FAIL") else msg, True)
+        self.refresh(user=True)
+
+    def try_recommended(self):
+        try:
+            name = (self.pullname.get() or "").strip()
+        except Exception:
+            name = ""
+        self.paint_try("trying…", False)
+        self.meta.configure(text="refreshing…")
+        try:
+            self.btry.configure(state="disabled")
+        except Exception:
+            pass
+        def work():
+            try:
+                if self.board is None:
+                    res = {"ok": False, "copy": "FAIL try", "error": "no board"}
+                else:
+                    res = self.board.try_recommended_model(name)
+            except Exception as e:
+                res = {"ok": False, "copy": "FAIL try", "error": str(e)}
+            self.root.after(0, lambda r=res: self.done_try(r))
+        threading.Thread(target=work, daemon=True).start()
+
+    def done_try(self, res):
+        try:
+            self.btry.configure(state="normal")
+        except Exception:
+            pass
+        if res.get("ok"):
+            self.paint_try(res.get("copy") or "PASS try", False)
+        else:
+            nxt = res.get("next_step") or "Launch env or ./pfy up (engine pin) · Attach re-probe · TUI reload"
+            copy = res.get("copy") or res.get("error") or "try"
+            msg = str(copy)
+            if "engine pin" not in msg.lower() and nxt not in msg:
+                msg = msg + " · next: " + nxt
+            self.paint_try("FAIL " + msg if not msg.startswith("FAIL") else msg, True)
+        self.refresh(user=True)
+
     def paint_env(self, text, fail=False):
         self.est.configure(text=text, style="F.TLabel" if fail else "Ok.TLabel")
 
