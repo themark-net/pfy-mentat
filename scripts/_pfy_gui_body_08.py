@@ -37,11 +37,12 @@ ck_forget()
             qrows = list(s.get("catalog_queue") or [])
             qtxt = "(none)" if not qrows else " · ".join("%s %s" % (q.get("name") or q.get("id") or "", q.get("status") or "") for q in qrows[:6])
             wiz_rt = str(s.get("wizard_runtime") or "").strip() or "(none)"
-            wiz_lane = str(s.get("wizard_lane") or "").strip() or "(none)"
+            wiz_lane = str(s.get("wizard_lane_label") or s.get("wizard_lane") or "").strip() or "(none)"
             wiz_ts = str(s.get("wizard_toolsets") or "").strip() or "(none)"
+            wiz_en = str(s.get("wizard_enabled") or "").strip() or "(none)"
             wiz_hs = str(s.get("wizard_harness") or "").strip() or "(none)"
             wiz_rv = str(s.get("wizard_review") or "").strip() or f"runtime {wiz_rt} · lane {wiz_lane} · toolsets {wiz_ts} · harness {wiz_hs}"
-            txt = f"LOOP\nenv        {env_live}\nruntime    {wiz_rt}\nlane       {wiz_lane}\ntoolsets   {wiz_ts}\nharness    {wiz_hs}\nreview     {wiz_rv}\nattached   {att}\nsession    {reach}\nusing: {using}" + (f"  {mode_when}" if mode_when else "") + f"\nloop       {loop_ev}" + (f"  {loop_when}" if loop_when else "") + f"\ngraph      {graph_ev}" + (f"  {graph_when}" if graph_when else "") + f"\nqueue      {qtxt}\nlast       {verb}  {when}\nmonitor    {mon}\ngrok       {gpath}"
+            txt = f"LOOP\nenv        {env_live}\nruntime    {wiz_rt}\nlane       {wiz_lane}\ntoolsets   {wiz_ts}\nenabled    {wiz_en}\nharness    {wiz_hs}\nreview     {wiz_rv}\nattached   {att}\nsession    {reach}\nusing: {using}" + (f"  {mode_when}" if mode_when else "") + f"\nloop       {loop_ev}" + (f"  {loop_when}" if loop_when else "") + f"\ngraph      {graph_ev}" + (f"  {graph_when}" if graph_when else "") + f"\nqueue      {qtxt}\nlast       {verb}  {when}\nmonitor    {mon}\ngrok       {gpath}"
             what = str((getattr(self, "_last_env", {}) or {}).get("what") or "")
             if what:
                 txt += "\nwhat       " + what

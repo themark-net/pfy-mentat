@@ -15,7 +15,7 @@ POST /catalog/queue opens a real GitHub issue with Design->DevBot DoD (#214).
 POST /start with mode orchestration starts a multi-step local loop (#213).
 POST /start with mode code-graph hands Axon (or codebase-memory equivalent) (#215).
 POST /wizard composes Loop launch wizard steps (#225).
-POST /launch Launch session: enterable TUI with composed env or FAIL+next (#225).
+POST /launch Launch session: enterable TUI with composed env or FAIL+next (#225/#224).
 POST /space-invaders runs session Space Invaders via Attach OpenCode (#155).
 """
 from __future__ import annotations

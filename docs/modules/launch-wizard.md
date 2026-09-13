@@ -1,6 +1,6 @@
 # Module: Operator launch wizard (`scripts/pfy_launch_wizard_225.py`)
 
-**Purpose:** Loop-primary compose-then-launch: pick runtime, model lane, toolsets, harness, review, then **Launch session** into an enterable TUI with the composed env. Cite **#225**. Attach X is secondary re-attach, not the front door.
+**Purpose:** Loop-primary compose-then-launch: pick runtime, model lane, toolsets, harness, review, then **Launch session** into an enterable TUI with the composed env. Cite **#225**. Honest lane + enabled-tool paint and in-session brief: **#224**. Attach X is secondary re-attach, not the front door.
 
 ## Human operator
 
@@ -13,7 +13,7 @@
 
 - Entry: `scripts/pfy_launch_wizard_225.py` (`--selftest` / `--runtime` / `--lane` / `--toolset` / `--harness` / `--review` / `--launch`); `./pfy launch`; board `POST /wizard` `POST /launch`; HTML+tk Loop.
 - Callers: Loop HTML/tk primary CTA; `start_sidecar` for Launch (OpenCode|Grok|Hermes|Codex|Claude); attach mode #208; catalog ask env #209.
-- Invariants: no Env nav tab; window stay-open; Attach X demoted on Loop; catalog 70–75 HOLD; LIVE_HARD_OFF; do not reopen #76. Cite **#225** only.
+- Invariants: no Env nav tab; window stay-open; Attach X demoted on Loop; catalog 70–75 HOLD; LIVE_HARD_OFF; do not reopen #76. Cite **#225**. Session brief / honest lane labels: **#224**.
 - Issue **#225** only.
 
 ## Architecture link

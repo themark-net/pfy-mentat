@@ -255,7 +255,8 @@ def wizard_fields():
     """Snapshot Loop launch wizard compose. Cite #225."""
     empty = {
         "wizard_ok": False, "wizard_step": "runtime", "wizard_runtime": "",
-        "wizard_lane": "", "wizard_toolsets": "", "wizard_harness": "",
+        "wizard_lane": "", "wizard_lane_label": "", "wizard_toolsets": "",
+        "wizard_enabled": "", "wizard_harness": "",
         "wizard_mode": "bare", "wizard_review": "", "wizard_when": "",
         "wizard_copy": "compose launch wizard", "wizard_next": "complete wizard review (runtime · lane · toolsets · harness)",
         "wizard_live": "SKIP", "wizard_cta": "Launch session",

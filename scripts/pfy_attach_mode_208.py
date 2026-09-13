@@ -242,17 +242,46 @@ def _prompt_text(mode):
     )
 
 
+def _load_session_compose_224():
+    """Load pfy_session_compose_224 or return None. Cite #224."""
+    path = Path(__file__).resolve().parent / "pfy_session_compose_224.py"
+    if not path.is_file():
+        return None
+    try:
+        spec = importlib.util.spec_from_file_location("pfy_session_compose_224_208", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+    except Exception:
+        return None
+
+
 def _write_handoff_files(STATE, mode, hid):
     STATE = Path(STATE)
-    _write(STATE / HANDOFF_FILE, _handoff_text(mode, hid))
-    _write(STATE / PROMPT_FILE, _prompt_text(mode))
-    _write(STATE / AGENTS_FILE, _handoff_text(mode, hid))
+    handoff = _handoff_text(mode, hid)
+    prompt = _prompt_text(mode)
+    agents = handoff
+    c224 = _load_session_compose_224()
+    if c224 is not None:
+        try:
+            handoff, prompt, agents = c224.merge_into_handoff(STATE, handoff, prompt)
+        except Exception:
+            agents = handoff
+    _write(STATE / HANDOFF_FILE, handoff)
+    _write(STATE / PROMPT_FILE, prompt)
+    _write(STATE / AGENTS_FILE, agents)
     env_lines = [
         "PFY_ATTACH_MODE=%s" % mode,
         "PFY_ATTACH_HANDOFF=%s" % (STATE / HANDOFF_FILE),
         "PFY_ATTACH_PROMPT=%s" % (STATE / PROMPT_FILE),
         "PFY_ATTACH_AGENTS=%s" % (STATE / AGENTS_FILE),
     ]
+    brief = STATE / "session-compose.md"
+    if brief.is_file():
+        env_lines.append("PFY_SESSION_BRIEF=%s" % brief)
+    card = STATE / "session-compose-prompt.md"
+    if card.is_file():
+        env_lines.append("PFY_SESSION_PROMPT=%s" % card)
     _write(STATE / ENV_FILE, "\n".join(env_lines))
     return env_lines
 
@@ -299,7 +328,19 @@ def apply_child_env(env, STATE=None):
         env = _apply_orchestration_213_env(env, STATE)
     if mode == "code-graph":
         env = _apply_code_graph_215_env(env, STATE)
+    env = _apply_session_compose_224_env(env, STATE)
     return env
+
+
+def _apply_session_compose_224_env(env, STATE):
+    """Session compose brief into child env. Cite #224."""
+    mod = _load_session_compose_224()
+    if mod is None:
+        return env
+    try:
+        return mod.apply_child_env(env, STATE)
+    except Exception:
+        return env
 
 
 def _apply_orchestration_213_env(env, STATE):

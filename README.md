@@ -10,7 +10,7 @@ Repository: https://github.com/themark-net/pfy-mentat
 
 ## Simple path
 
-Operator environment: local inference, then product stage (honest skip if a piece is missing), then the native operator window. Loop **Launch session** composes runtime / lane / toolsets / harness then opens an enterable TUI. Attach grok/opencode remains secondary re-attach. Do not exec a harness into the GUI process.
+Operator environment: local inference, then product stage (honest skip if a piece is missing), then the native operator window. Loop **Launch session** composes runtime / lane / toolsets / harness then opens an enterable TUI. Loop paints **local FreeToken-first** vs **cloud/subscription (Grok-sub)** vs **OpenCode free** and which toolsets are actually enabled; Launch writes an in-session AGENTS/prompt brief. Attach grok/opencode remains secondary re-attach. Do not exec a harness into the GUI process.
 
 ```bash
 ./pfy           # inference → env-stage → native window (no harness exec)
