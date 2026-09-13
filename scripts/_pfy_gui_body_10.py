@@ -59,6 +59,8 @@ def run_tk(board, selftest=False) -> bool:
             and w.btest.cget("text") == "Test model"
             and w.breco.cget("text") == "Recommend"
             and w.btry.cget("text") == "Try recommended"
+            and w.bask.cget("text") == "Ask TUI implement"
+            and w.bqueue.cget("text") == "Queue for org"
             and w.bbare.cget("text") == "bare"
             and w.borch.cget("text") == "orchestration"
             and w.bgraph.cget("text") == "code-graph"
@@ -71,8 +73,11 @@ def run_tk(board, selftest=False) -> bool:
         w.set_view("attach")
         att_body = w.body.cget("text") or ""
         att_ok = "ATTACH" in att_body and "using:" in att_body.lower()
+        w.set_view("tools")
+        tools_body = w.body.cget("text") or ""
+        tools_ok = "TOOLS" in tools_body and "CATALOG" in tools_body
         w.set_view("loop")
-        loop_ok = loop_ok and att_ok
+        loop_ok = loop_ok and att_ok and tools_ok
         w.copy_stub()
         copied = (w.cst.cget("text") in ("copied", "PASS copied"))
         try:

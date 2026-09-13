@@ -1,4 +1,22 @@
 n 0 if result.get("ok") else 2
+    if args[:1] in (["--catalog"], ["--browse"]):
+        result = catalog_browse()
+        print(json.dumps(result))
+        return 0 if result.get("ok") else 2
+    if args[:1] == ["--ask"]:
+        name = " ".join(args[1:]).strip()
+        result = catalog_ask(name)
+        print(json.dumps(result))
+        return 0 if result.get("ok") else 2
+    if args[:1] == ["--queue"]:
+        name = " ".join(args[1:]).strip()
+        result = catalog_queue(name)
+        print(json.dumps(result))
+        return 0 if result.get("ok") else 2
+    if args[:1] == ["--catalog-status"]:
+        result = catalog_status()
+        print(json.dumps(result))
+        return 0 if result.get("ok") else 2
     if args[:1] == ["--tool"]:
         tid = args[1] if len(args) > 1 else ""
         onraw = args[2] if len(args) > 2 else "1"

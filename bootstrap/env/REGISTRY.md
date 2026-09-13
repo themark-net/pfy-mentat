@@ -77,6 +77,8 @@ When integrating a new tool, **add a row here in the same PR** as the integratio
 | `PFY_ATTACH_MODE` | no | optional | `bare` | Attach OpenCode/Hermes/Grok (#208) | `bare` \| `orchestration` \| `code-graph`; one mode at a time |
 | `PFY_ATTACH_HANDOFF` | no | optional | `$PFY_STATE_DIR/attach-mode-handoff.md` | Attach child env | Mode AGENTS/prompt artifact |
 | `PFY_ATTACH_PROMPT` | no | optional | `$PFY_STATE_DIR/attach-mode-prompt.md` | Attach child env | Short mode prompt |
+| `PFY_CATALOG_ASK_PROMPT` | no | optional | `$PFY_STATE_DIR/catalog-ask-prompt.md` | Attach child env / Tools (#209) | Next-launch implement prompt |
+| `PFY_CATALOG_ASK_HANDOFF` | no | optional | `$PFY_STATE_DIR/catalog-ask-handoff.md` | Attach child env / Tools (#209) | Catalog ask handoff notes |
 
 ## Profile affinity
 

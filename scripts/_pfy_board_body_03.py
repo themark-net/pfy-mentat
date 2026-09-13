@@ -95,6 +95,7 @@ xt = pfy_status_stdout()
         "tools": load_tools_state(),
         **attach_mode_fields(),
         **recommend_fields(models, eng, det, base),
+        **catalog_fields(active),
     }
 
 def html_page():

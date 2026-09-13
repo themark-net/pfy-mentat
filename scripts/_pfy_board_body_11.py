@@ -47,6 +47,12 @@ def start_sidecar(hid, mode=None):
     prepared = mmod.prepare(ROOT, STATE, hid, mode=mode, which=which_bin)
     if not prepared.get("ok"):
         return prepared
+    cmod, _cerr = _load_catalog_209()
+    if cmod is not None:
+        try:
+            cmod.apply_child_env(os.environ, STATE)
+        except Exception:
+            pass
     using = prepared.get("mode") or "bare"
     if hid == "grok":
         result = open_enterable_grok_session()
