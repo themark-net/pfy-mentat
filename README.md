@@ -10,12 +10,13 @@ Repository: https://github.com/themark-net/pfy-mentat
 
 ## Simple path
 
-Operator environment: local inference, then product stage (honest skip if a piece is missing), then the native operator window. Attach grok/opencode from the window as a sidecar. Do not exec a harness into the GUI process.
+Operator environment: local inference, then product stage (honest skip if a piece is missing), then the native operator window. Loop **Launch session** composes runtime / lane / toolsets / harness then opens an enterable TUI. Attach grok/opencode remains secondary re-attach. Do not exec a harness into the GUI process.
 
 ```bash
 ./pfy           # inference → env-stage → native window (no harness exec)
 ./pfy board     # same native window (Tauri if built, else already-on-box webkit, else stdlib tk)
 ./pfy start grok  # named harness after inference/stage (still execs that harness)
+./pfy launch      # Loop wizard: compose then Launch session
 ./pfy models    # inspect-only: live GET /v1/models (and Ollama /api/tags); usage if exposed
 ```
 
@@ -25,7 +26,7 @@ If continue or agent-cage is the active harness: FAIL and copy `pfy harness use 
 
 `./pfy start <harness>` runs inference and stage, then that harness. Listing model tags is not success. Empty `ollama ps` is OK. A missing harness process is not. FreeToken model env: **`PFY_FT_MODEL`** (then `LOCAL_CODER_MODEL` or `FREETOKEN_MODEL`).
 
-Tauri is primary when `gui/operator/src-tauri/target/{release,debug}/pfy-operator` exists. Else already-on-box webkit (`scripts/pfy-gui.py`). Else stdlib tk with the same IA (engine status, env-stage, Attach grok / Attach opencode sidecar, loop/session). pywebview is PFY_GUI_DEV=1 only. The window always opens; not install-tips-as-UI.
+Tauri is primary when `gui/operator/src-tauri/target/{release,debug}/pfy-operator` exists. Else already-on-box webkit (`scripts/pfy-gui.py`). Else stdlib tk with the same IA (Loop launch wizard → Launch session, engine status, env-stage, secondary Attach grok / Attach opencode sidecar). pywebview is PFY_GUI_DEV=1 only. The window always opens; not install-tips-as-UI.
 
 ## What it is
 

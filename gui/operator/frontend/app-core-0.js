@@ -19,6 +19,7 @@ function noLiveApi(){ return apiRoot()===null; }
 function lastVerbLabel(v){
   v=(v||'').trim();
   if(v==='env'||v==='launch-env') return 'Launch env';
+  if(v==='launch'||v==='launch-session') return 'Launch session';
   return v||'(none)';
 }
 function envLive(s){

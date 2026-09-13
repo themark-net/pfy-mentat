@@ -98,6 +98,7 @@ xt = pfy_status_stdout()
         **catalog_fields(active),
         **orchestration_fields(),
         **code_graph_fields(),
+        **wizard_fields(),
     }
 
 def html_page():

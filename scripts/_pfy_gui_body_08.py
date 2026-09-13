@@ -5,6 +5,8 @@ ck_forget()
         attached = s.get("active") or "(none)"; verb = (s.get("last_verb") or {}).get("verb") or "(none)"
         if verb in ("env", "launch-env"):
             verb = "Launch env"
+        if verb in ("launch", "launch-session"):
+            verb = "Launch session"
         when = (s.get("last_verb") or {}).get("when") or ""
         pid = s.get("sidecar_pid") or ""
         att = attached + (f" pid {pid}" if pid else "")
@@ -34,13 +36,18 @@ ck_forget()
             graph_when = str(s.get("graph_when") or "")
             qrows = list(s.get("catalog_queue") or [])
             qtxt = "(none)" if not qrows else " · ".join("%s %s" % (q.get("name") or q.get("id") or "", q.get("status") or "") for q in qrows[:6])
-            txt = f"LOOP\nenv        {env_live}\nattached   {att}\nsession    {reach}\nusing: {using}" + (f"  {mode_when}" if mode_when else "") + f"\nloop       {loop_ev}" + (f"  {loop_when}" if loop_when else "") + f"\ngraph      {graph_ev}" + (f"  {graph_when}" if graph_when else "") + f"\nqueue      {qtxt}\nlast       {verb}  {when}\nmonitor    {mon}\ngrok       {gpath}"
+            wiz_rt = str(s.get("wizard_runtime") or "").strip() or "(none)"
+            wiz_lane = str(s.get("wizard_lane") or "").strip() or "(none)"
+            wiz_ts = str(s.get("wizard_toolsets") or "").strip() or "(none)"
+            wiz_hs = str(s.get("wizard_harness") or "").strip() or "(none)"
+            wiz_rv = str(s.get("wizard_review") or "").strip() or f"runtime {wiz_rt} · lane {wiz_lane} · toolsets {wiz_ts} · harness {wiz_hs}"
+            txt = f"LOOP\nenv        {env_live}\nruntime    {wiz_rt}\nlane       {wiz_lane}\ntoolsets   {wiz_ts}\nharness    {wiz_hs}\nreview     {wiz_rv}\nattached   {att}\nsession    {reach}\nusing: {using}" + (f"  {mode_when}" if mode_when else "") + f"\nloop       {loop_ev}" + (f"  {loop_when}" if loop_when else "") + f"\ngraph      {graph_ev}" + (f"  {graph_when}" if graph_when else "") + f"\nqueue      {qtxt}\nlast       {verb}  {when}\nmonitor    {mon}\ngrok       {gpath}"
             what = str((getattr(self, "_last_env", {}) or {}).get("what") or "")
             if what:
                 txt += "\nwhat       " + what
             if stub: txt += f"\nFAIL       {s.get('blocked_copy') or GROK_USE}"
             if self.msg: txt += "\n" + self.msg
-            self.pack_acts(["bare", "orch", "graph", "env", "copyep", "copyst", "open", "hermes", "grok", "codex", "claude", "est", "ast"])
+            self.pack_acts(["sess", "local", "cloud", "ofree", "bare", "orch", "graph", "catalog", "hopenc", "hgrok", "hhermes", "hcodex", "hclaude", "env", "copyep", "copyst", "open", "hermes", "grok", "codex", "claude", "est", "ast"])
         elif self.view == "engine":
             u = s.get("usage") if isinstance(s.get("usage"), dict) else {}
             sr = s.get("status_runtime") or {}

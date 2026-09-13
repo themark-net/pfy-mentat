@@ -4,7 +4,7 @@ Cite **#208** (mode select), **#213** (orchestration loop start), and **#215** (
 
 ## Operator
 
-On **Attach** (and Loop attach row) select a mode, then Attach OpenCode | Hermes | Grok | Codex | Claude.
+On **Attach** (and Loop attach row) select a mode, then Attach OpenCode | Hermes | Grok | Codex | Claude. Loop **Launch session** (#225) uses the same modes as wizard toolsets (`bare` · `orchestration` · `code-graph`; catalog is wizard-only SKIP/FAIL).
 
 The UI paints `using: <mode>`. Loop also paints last loop/monitor evidence (not slogan-only).
 

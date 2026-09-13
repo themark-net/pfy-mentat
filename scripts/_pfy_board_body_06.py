@@ -106,6 +106,20 @@ def _load_recommend_207():
     except Exception as e:
         return None, str(e)[:400]
 
+def _load_launch_225():
+    """Load pfy_launch_wizard_225 or return (None, error). Cite #225."""
+    import importlib.util
+    path = ROOT / "scripts" / "pfy_launch_wizard_225.py"
+    if not path.is_file():
+        return None, str(path)
+    try:
+        spec = importlib.util.spec_from_file_location("pfy_launch_wizard_225", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod, ""
+    except Exception as e:
+        return None, str(e)[:400]
+
 def _load_catalog_209():
     """Load pfy_catalog_ask_queue_209 or return (None, error). Cite #209."""
     import importlib.util
@@ -236,6 +250,52 @@ def code_graph_fields():
     except Exception as e:
         empty["graph_copy"] = "FAIL code-graph -- %s" % str(e)[:160]
         return empty
+
+def wizard_fields():
+    """Snapshot Loop launch wizard compose. Cite #225."""
+    empty = {
+        "wizard_ok": False, "wizard_step": "runtime", "wizard_runtime": "",
+        "wizard_lane": "", "wizard_toolsets": "", "wizard_harness": "",
+        "wizard_mode": "bare", "wizard_review": "", "wizard_when": "",
+        "wizard_copy": "compose launch wizard", "wizard_next": "complete wizard review (runtime · lane · toolsets · harness)",
+        "wizard_live": "SKIP", "wizard_cta": "Launch session",
+    }
+    mod, err = _load_launch_225()
+    if mod is None:
+        empty["wizard_copy"] = "FAIL wizard -- module missing"
+        empty["wizard_next"] = "./pfy setup"
+        return empty
+    try:
+        return mod.snapshot_fields(STATE)
+    except Exception as e:
+        empty["wizard_copy"] = "FAIL wizard -- %s" % str(e)[:160]
+        return empty
+
+def wizard_apply(step, value=""):
+    """Apply one Loop wizard step. Cite #225."""
+    mod, err = _load_launch_225()
+    if mod is None:
+        return {"ok": False, "live": "FAIL", "copy": "FAIL wizard -- module missing", "error": err or "missing", "usable": False, "next_step": "./pfy setup"}
+    STATE.mkdir(parents=True, exist_ok=True)
+    return mod.apply_step(
+        STATE, step, value=value, ROOT=ROOT, which=which_bin,
+        live_openai_base=live_openai_base,
+    )
+
+def launch_wizard_session():
+    """Primary CTA Launch session -- reuse attach-usable/mode/catalog. Cite #225."""
+    mod, err = _load_launch_225()
+    if mod is None:
+        return {"ok": False, "live": "FAIL", "copy": "FAIL launch -- module missing", "error": err or "missing", "usable": False, "next_step": "./pfy setup", "session_reach": "FAIL"}
+    STATE.mkdir(parents=True, exist_ok=True)
+
+    def _start(hid, mode=None):
+        return start_sidecar(hid, mode=mode)
+
+    return mod.launch_session(
+        ROOT, STATE, start_fn=_start, live_openai_base=live_openai_base,
+        which=which_bin, set_mode_fn=set_attach_mode,
+    )
 
 def catalog_fields(active=""):
     """Snapshot catalog browse + live queue status. Cite #214. Never dump scores-only."""
