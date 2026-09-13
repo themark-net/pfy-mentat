@@ -17,7 +17,7 @@ CLI `./pfy start hermes` uses the same honesty: no live engine → FAIL + next (
 
 **OpenContext handoff (#205):** Attach / `./pfy start hermes` inherit `OPENCONTEXT_BIN` / `OPENCONTEXT_CONTEXTS_ROOT` / `OPENCONTEXT_DB_PATH` when `oc` is on PATH. Prove OpenContext with `./pfy context` (operate-or-FAIL). Missing `oc` is a skip on Attach, not a false attached paint. No OpenContext GUI in pfy chrome. Runbook: [opencontext.md](../ops/opencontext.md).
 
-**Attach mode (#208 / #213):** `bare` hands off prompt/env. `orchestration` starts a multi-step local loop (`/agent-loops` + prove two turns + monitor evidence). `code-graph` is unwired for Hermes (no MCP) → FAIL + next: Attach grok or opencode. [attach-mode.md](../ops/attach-mode.md).
+**Attach mode (#208 / #213 / #215):** `bare` hands off prompt/env. `orchestration` starts a multi-step local loop (`/agent-loops` + prove two turns + monitor evidence). `code-graph` needs Axon CLI (`AXON_BIN`); MCP-only is unwired for Hermes → FAIL + `pip install axoniq` / Attach grok or opencode. [attach-mode.md](../ops/attach-mode.md) · [code-graph.md](code-graph.md).
 
 Missing binary: `STUB harness: hermes`, issue #56, installer one-liner, exit 2. No fake ready.
 

@@ -22,6 +22,7 @@ cd pfy-mentat
 ./pfy start grok            # named harness after inference/stage
 ./pfy models                # inspect-only (tag list is not success)
 ./pfy context               # OpenContext oc capture/search/reuse prove (#205)
+./pfy code-graph            # Axon prove or codebase-memory equivalent (#215)
 ./pfy models recommend      # ranked host-fit models not yet pulled (#207)
 ./pfy models try            # pull top recommendation — operate-or-FAIL (#207)
 ./pfy catalog               # usable catalog browse (#209)

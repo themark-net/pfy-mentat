@@ -80,6 +80,9 @@ When integrating a new tool, **add a row here in the same PR** as the integratio
 | `PFY_LOOP_CARD` | no | optional | `$PFY_STATE_DIR/loop-card.md` | Attach child env / Loop (#213) | 8-exit card after orchestration start |
 | `PFY_LOOP_EVIDENCE` | no | optional | `$PFY_STATE_DIR/loop-evidence.json` | Attach child env / Loop (#213) | Last loop/monitor evidence (not slogan-only) |
 | `PFY_LOOP_PROMPT` | no | optional | `$PFY_STATE_DIR/loop-prompt.md` | Attach child env (#213) | Continue-from-card prompt |
+| `PFY_GRAPH_PATH` | no | optional | (unset) | `./pfy code-graph`, Attach grok/opencode/hermes (#215) | `axon` \| `codebase-memory`; never invent axon |
+| `AXON_BIN` | no | optional | `axon` on PATH | `./pfy code-graph`, Attach child env (#215) | Set only when path=axon |
+| `PFY_GRAPH_EVIDENCE` | no | optional | `$PFY_STATE_DIR/graph-evidence.json` | Attach child env / Loop (#215) | Last code-graph path evidence |
 | `PFY_CATALOG_ASK_PROMPT` | no | optional | `$PFY_STATE_DIR/catalog-ask-prompt.md` | Attach child env / Tools (#209) | Next-launch implement prompt |
 | `PFY_CATALOG_ASK_HANDOFF` | no | optional | `$PFY_STATE_DIR/catalog-ask-handoff.md` | Attach child env / Tools (#209) | Catalog ask handoff notes |
 

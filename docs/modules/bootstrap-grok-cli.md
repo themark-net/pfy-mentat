@@ -30,7 +30,7 @@ CLI `./pfy start grok` uses the same honesty: no live engine → FAIL + next (do
 
 **OpenContext handoff (#205):** Attach / `./pfy start grok` inherit `OPENCONTEXT_*` when `oc` is on PATH. Prove with `./pfy context`. Optional Grok MCP snippet is printed on PASS (not auto-merged into `config.fragment.toml`, so a missing `oc` cannot break Grok). No OpenContext GUI in pfy chrome. Runbook: [opencontext.md](../ops/opencontext.md).
 
-**Attach mode (#208 / #213):** `bare` is a local TUI. `orchestration` starts a multi-step local loop (`/agent-loops` + prove + monitor evidence). `code-graph` requires `codebase-memory-mcp` and merges the MCP fragment. Unwired → FAIL + next. [attach-mode.md](../ops/attach-mode.md).
+**Attach mode (#208 / #213 / #215):** `bare` is a local TUI. `orchestration` starts a multi-step local loop (`/agent-loops` + prove + monitor evidence). `code-graph` prefers Axon MCP (`axon serve --watch`) and falls back to `codebase-memory-mcp` painted as not Axon. Unwired → FAIL + next. [attach-mode.md](../ops/attach-mode.md) · [code-graph.md](code-graph.md).
 
 ## Where variables live
 

@@ -97,6 +97,7 @@ xt = pfy_status_stdout()
         **recommend_fields(models, eng, det, base),
         **catalog_fields(active),
         **orchestration_fields(),
+        **code_graph_fields(),
     }
 
 def html_page():

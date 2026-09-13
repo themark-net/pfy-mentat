@@ -190,7 +190,7 @@ async function attach(id){
     if(j && j.ok && j.usable!==false){
       const kind=(j.role==='monitor')?'monitor':id;
       const reach=(j.session_reach||'').trim();
-      attachMsg='attached '+kind+(j.pid?(' pid '+j.pid):'')+(reach?(' · '+reach):'')+(j.loop_copy?(' · '+j.loop_copy):'');
+      attachMsg='attached '+kind+(j.pid?(' pid '+j.pid):'')+(reach?(' · '+reach):'')+(j.loop_copy?(' · '+j.loop_copy):'')+(j.graph_copy?(' · '+j.graph_copy):'');
       attachKind='ok';
       if(reach) paintSessionReach(reach);
       else if(id==='opencode'||id==='hermes'||id==='grok') paintSessionReach('FAIL');
