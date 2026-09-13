@@ -104,7 +104,7 @@
             if nxt and nxt not in str(detail):
                 detail = f"{detail} · {nxt}"
             self.paint_attach(f"FAIL Attach {hid} — {detail}", True)
-            if hid in ("opencode", "hermes", "grok") and not reach:
+            if hid in ("opencode", "hermes", "grok", "codex") and not reach:
                 self._session_reach = "FAIL"
         self.refresh()
 

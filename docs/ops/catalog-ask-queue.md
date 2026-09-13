@@ -19,7 +19,7 @@ Tools: pick a row, **Ask TUI implement** (copy or auto-handoff `PFY_CATALOG_ASK_
 
 | Condition | Result | Next |
 |-----------|--------|------|
-| No grok/opencode/hermes attached | **FAIL ask** | Attach grok \| opencode \| hermes |
+| No grok/opencode/hermes/codex attached | **FAIL ask** | Attach grok \| opencode \| hermes \| codex |
 | Entry X 070–075 / catalog PRs 70–75 | **SKIP** | catalog 70-75 HOLD (do not auto-lift) |
 | Incomplete (I0, skip install, no smoke, scores-only) | **SKIP** | pick a complete catalog entry |
 | Another item already asked/open | **FAIL** | finish or cancel the pending integration first |

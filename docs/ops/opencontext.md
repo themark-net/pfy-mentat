@@ -37,7 +37,7 @@ oc context manifest pfy-205-hello --limit 10 --format json
 
 ## Attach handoff (env / config / `./pfy`)
 
-After a PASS prove, `./pfy start grok|opencode|hermes` and HTML+tk **Attach** for those ids export:
+After a PASS prove, `./pfy start grok|opencode|hermes|codex` and HTML+tk **Attach** for those ids export:
 
 | Variable | Default | Purpose |
 |----------|---------|---------|

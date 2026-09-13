@@ -474,10 +474,11 @@ def prepare(ROOT, STATE, hid, which=None):
         )
     gpath = resolved["graph_path"]
     bin_path = resolved["bin"]
-    if hid == "hermes" and gpath != PATH_AXON:
+    if hid in ("hermes", "codex") and gpath != PATH_AXON:
+        who = "Hermes" if hid == "hermes" else "Codex"
         return fail(
             hid,
-            "code-graph unwired for Hermes (no Axon CLI; MCP-only)",
+            "code-graph unwired for %s (no Axon CLI; MCP-only)" % who,
             NEXT_HERMES,
             graph_path="",
         )

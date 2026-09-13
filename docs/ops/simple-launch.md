@@ -1,7 +1,7 @@
 # Simple launch surface (`./pfy`)
 
 **Goal G8 · ADR-0012**  
-**Feel:** install once → start inference → product stage → **native operator window**. Attach grok/opencode in-window as a sidecar.
+**Feel:** install once → start inference → product stage → **native operator window**. Attach grok/opencode/hermes/codex in-window as a sidecar.
 
 Consultant map (real vs stub vs catalog): [consultant-eval.md](consultant-eval.md).
 
@@ -85,13 +85,13 @@ Continue is a **config recipe** at `bootstrap/continue/` (`LOCAL_OPENAI_BASE_URL
 
 `./pfy models recommend` ranks local models that fit this host (VRAM/RAM/runtime) and are not already pulled. `./pfy models try` (Engine **Try recommended**) pulls one on the live FreeToken-first runtime — operate-or-FAIL. Honest FAIL if recommend/pull cannot run (no fake best list). Handoff when picking another model: engine pin, Attach re-probe, TUI reload (#207).
 
-The native operator window **is** the main interface (`./pfy` with no args, `./pfy board`). Tauri 2 binary when `gui/operator/src-tauri/target/{release,debug}/pfy-operator` exists; else already-on-box webkit (`scripts/pfy-gui.py`) wrapping the same frontend; else stdlib tk with live chips from `./pfy status`. pywebview is PFY_GUI_DEV=1 only. The window always opens. Optional `./pfy board --open` is a browser hatch, not the main path. In-window attach for grok/opencode/hermes spawns a sidecar. Attach Grok (HTML+tk) and `./pfy start grok` require a FreeToken-first live endpoint, inherit `LOCAL_OPENAI_BASE_URL` / `OPENAI_BASE_URL`, and prove models list + one smoke before painting attached or exec (#202). No engine or prove fail: FAIL + next (`./pfy up`); inspect equivalent `./pfy models`. continue/agent-cage active: FAIL + copy `pfy harness use grok` (no fallback). Consultants should eval board chips against the `./pfy status` live column (same host; `missing` not `unknown`). Grok chip is PATH-only. nimo banner only if hostname contains `nimo`. Board is not a supervisor.
+The native operator window **is** the main interface (`./pfy` with no args, `./pfy board`). Tauri 2 binary when `gui/operator/src-tauri/target/{release,debug}/pfy-operator` exists; else already-on-box webkit (`scripts/pfy-gui.py`) wrapping the same frontend; else stdlib tk with live chips from `./pfy status`. pywebview is PFY_GUI_DEV=1 only. The window always opens. Optional `./pfy board --open` is a browser hatch, not the main path. In-window attach for grok/opencode/hermes/codex spawns a sidecar. Attach Grok (HTML+tk) and `./pfy start grok` require a FreeToken-first live endpoint, inherit `LOCAL_OPENAI_BASE_URL` / `OPENAI_BASE_URL`, and prove models list + one smoke before painting attached or exec (#202). Attach Codex (HTML+tk) and `./pfy start codex` use the same bar (#220): prove before attached paint; missing Codex is FAIL + installer (never a silent stub). No engine or prove fail: FAIL + next (`./pfy up`); inspect equivalent `./pfy models`. continue/agent-cage active: FAIL + copy `pfy harness use grok` (no fallback). Consultants should eval board chips against the `./pfy status` live column (same host; `missing` not `unknown`). Grok chip is PATH-only. nimo banner only if hostname contains `nimo`. Board is not a supervisor.
 
 **Attach mode (#208 / #213):** operator selects `bare` | `orchestration` | `code-graph` on Attach (HTML+tk). Loop and Attach paint `using: <mode>`. Orchestration Attach starts a multi-step agent loop on the FreeToken-first local endpoint (exit card + prove + monitor evidence) — not a thin skill inject. Loop paints last loop/monitor evidence. Unwired mode or missing runtime is FAIL + next — never a silent bare session claiming orchestration or code-graph. One attach / one mode. No Env nav tab. Runbook: [attach-mode.md](attach-mode.md).
 
 `gemini` is a live adapter when `gemini` or `gemini-cli` is on PATH (`./pfy start gemini` execs it; missing: STUB + issue #59 + official install one-liner, exit 2). Login/credentials/2FA are owner-only.
 
-`codex` is a live adapter when `codex` is on PATH (`./pfy start codex` execs it; missing: STUB + issue #58 + official install one-liner, exit 2). Login/credentials/2FA are owner-only.
+`codex` is a live adapter when `codex` is on PATH. Attach Codex (HTML+tk) and `./pfy start codex` require a FreeToken-first live endpoint, inherit `LOCAL_OPENAI_BASE_URL` / `OPENAI_BASE_URL`, and prove models list + one smoke before painting attached or exec (#220). No engine or prove fail: FAIL + next (`./pfy up`); inspect equivalent `./pfy models`. Missing binary: FAIL + installer one-liner (`curl -fsSL https://chatgpt.com/codex/install.sh | sh`). Login/credentials/2FA are owner-only and never painted.
 
 `claude-code` is a live adapter when `claude` is on PATH (`./pfy start claude-code` execs it; missing: STUB + issue #57 + official install one-liner, exit 2). Login/credentials/2FA are owner-only. Optional skills-external path is documentation only.
 

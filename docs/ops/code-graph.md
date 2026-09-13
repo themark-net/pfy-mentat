@@ -40,7 +40,7 @@ Equivalent already on nimo when Axon is missing: `codebase-memory-mcp` (bootstra
 
 ## Attach handoff (env / config / `./pfy`)
 
-After a PASS prove or a successful Attach prepare, HTML+tk **Attach** and `./pfy start grok|opencode|hermes` export:
+After a PASS prove or a successful Attach prepare, HTML+tk **Attach** and `./pfy start grok|opencode|hermes|codex` export:
 
 | Variable | When | Purpose |
 |----------|------|---------|

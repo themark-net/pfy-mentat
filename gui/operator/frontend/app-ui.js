@@ -13,9 +13,11 @@ function bindAttach(id, hid){
 bindAttach('btngrok','grok');
 bindAttach('btnopen','opencode');
 bindAttach('btnhermes','hermes');
+bindAttach('btncodex','codex');
 bindAttach('att-grok','grok');
 bindAttach('att-open','opencode');
 bindAttach('att-hermes','hermes');
+bindAttach('att-codex','codex');
 document.querySelectorAll('[data-mode]').forEach(el=>el.addEventListener('click',()=>selectMode(el.getAttribute('data-mode'))));
 document.getElementById('btnrefresh').addEventListener('click',()=>refreshNow());
 document.getElementById('btncopy').addEventListener('click',()=>copyStub());
@@ -131,7 +133,7 @@ async function tick(){
     const engLive=live(s.engine_live||d.status||'missing');
     const g=(s.chips||[]).find(c=>c.id==='grok')||{};
     const stub=!!(s.active_stub || s.active==='continue' || s.active==='agent-cage');
-    ['btngrok','btnopen','btnhermes','att-grok','att-open','att-hermes','btnsi'].forEach(id=>{
+    ['btngrok','btnopen','btnhermes','btncodex','att-grok','att-open','att-hermes','att-codex','btnsi'].forEach(id=>{
       const el=document.getElementById(id);
       if(el) el.disabled=stub;
     });
