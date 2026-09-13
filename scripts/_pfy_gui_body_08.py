@@ -32,7 +32,9 @@ ck_forget()
             loop_when = str(s.get("loop_when") or "")
             graph_ev = str(s.get("graph_copy") or "").strip() or "(none)"
             graph_when = str(s.get("graph_when") or "")
-            txt = f"LOOP\nenv        {env_live}\nattached   {att}\nsession    {reach}\nusing: {using}" + (f"  {mode_when}" if mode_when else "") + f"\nloop       {loop_ev}" + (f"  {loop_when}" if loop_when else "") + f"\ngraph      {graph_ev}" + (f"  {graph_when}" if graph_when else "") + f"\nlast       {verb}  {when}\nmonitor    {mon}\ngrok       {gpath}"
+            qrows = list(s.get("catalog_queue") or [])
+            qtxt = "(none)" if not qrows else " · ".join("%s %s" % (q.get("name") or q.get("id") or "", q.get("status") or "") for q in qrows[:6])
+            txt = f"LOOP\nenv        {env_live}\nattached   {att}\nsession    {reach}\nusing: {using}" + (f"  {mode_when}" if mode_when else "") + f"\nloop       {loop_ev}" + (f"  {loop_when}" if loop_when else "") + f"\ngraph      {graph_ev}" + (f"  {graph_when}" if graph_when else "") + f"\nqueue      {qtxt}\nlast       {verb}  {when}\nmonitor    {mon}\ngrok       {gpath}"
             what = str((getattr(self, "_last_env", {}) or {}).get("what") or "")
             if what:
                 txt += "\nwhat       " + what

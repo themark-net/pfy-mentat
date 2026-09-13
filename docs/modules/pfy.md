@@ -19,8 +19,8 @@
 ./pfy models try [name]     # pull top/named recommendation — operate-or-FAIL (#207)
 ./pfy catalog               # usable catalog browse subset (#209)
 ./pfy catalog ask [name]    # ask attached TUI to implement for next launch
-./pfy catalog queue [name]  # GitHub issue Design→DevBot (no Mark git/npm/CI)
-./pfy catalog status        # queued catalog items
+./pfy catalog queue [name]  # REAL GitHub issue Design→DevBot (#214)
+./pfy catalog status        # queued items + open/closed/PR
 ./pfy context              # OpenContext oc prove (#205); FAIL if node/oc missing
 ./pfy code-graph           # Axon prove or codebase-memory equivalent (#215)
 ./pfy axon                 # alias of code-graph
@@ -33,7 +33,7 @@ Root `./pfy` is a 100755 wrapper that execs `scripts/pfy`. Detector is invoked w
 
 **Recommend / try (#207):** Engine + `./pfy models recommend` ranks host-fit models not yet pulled. `try` pulls one FreeToken-first (operate-or-FAIL). Handoff: engine pin · Attach re-probe · TUI reload. [recommend-models.md](recommend-models.md).
 
-**Catalog ask / queue (#209):** Tools browse (usable subset, not scores-only). Ask attached TUI to implement for next launch (prompt/artifact) or queue a GitHub issue with Design→DevBot DoD. HOLD 70–75 not auto-lifted. [catalog-ask-queue.md](catalog-ask-queue.md).
+**Catalog ask / queue (#209 / #214):** Tools browse (usable subset, not scores-only). Ask attached TUI to implement for next launch (prompt/artifact). **Queue for org** creates a real GitHub issue and paints open/closed/PR. HOLD 70–75 not auto-lifted. [catalog-ask-queue.md](catalog-ask-queue.md) · [live-org-queue.md](live-org-queue.md).
 
 ## Not yet
 

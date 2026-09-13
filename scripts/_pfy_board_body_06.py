@@ -92,6 +92,20 @@ def _load_catalog_209():
     except Exception as e:
         return None, str(e)[:400]
 
+def _load_live_org_214():
+    """Load pfy_live_org_queue_214 or return (None, error). Cite #214."""
+    import importlib.util
+    path = ROOT / "scripts" / "pfy_live_org_queue_214.py"
+    if not path.is_file():
+        return None, str(path)
+    try:
+        spec = importlib.util.spec_from_file_location("pfy_live_org_queue_214", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod, ""
+    except Exception as e:
+        return None, str(e)[:400]
+
 def _load_orchestration_213():
     """Load pfy_orchestration_213 or return (None, error). Cite #213."""
     import importlib.util
@@ -196,13 +210,20 @@ def code_graph_fields():
         return empty
 
 def catalog_fields(active=""):
-    """Snapshot catalog browse + queue. Cite #209. Never dump scores-only."""
+    """Snapshot catalog browse + live queue status. Cite #214. Never dump scores-only."""
     empty = {
         "catalog_ok": False, "catalog": [], "catalog_copy": "",
         "catalog_next": "pick a catalog tool on Tools", "catalog_queue": [],
         "catalog_pending": {}, "catalog_busy": False, "catalog_prompt": "",
         "catalog_attached": "", "catalog_hold": "catalog 70-75 HOLD (do not auto-lift)",
     }
+    live, _lerr = _load_live_org_214()
+    if live is not None:
+        try:
+            return live.snapshot_fields(STATE, ROOT, active=active or "", pid_alive=pid_alive)
+        except Exception as e:
+            empty["catalog_copy"] = "FAIL catalog -- %s" % str(e)[:160]
+            return empty
     mod, err = _load_catalog_209()
     if mod is None:
         empty["catalog_copy"] = "FAIL catalog -- module missing"

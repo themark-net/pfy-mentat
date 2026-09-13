@@ -85,6 +85,7 @@ When integrating a new tool, **add a row here in the same PR** as the integratio
 | `PFY_GRAPH_EVIDENCE` | no | optional | `$PFY_STATE_DIR/graph-evidence.json` | Attach child env / Loop (#215) | Last code-graph path evidence |
 | `PFY_CATALOG_ASK_PROMPT` | no | optional | `$PFY_STATE_DIR/catalog-ask-prompt.md` | Attach child env / Tools (#209) | Next-launch implement prompt |
 | `PFY_CATALOG_ASK_HANDOFF` | no | optional | `$PFY_STATE_DIR/catalog-ask-handoff.md` | Attach child env / Tools (#209) | Catalog ask handoff notes |
+| `GITHUB_TOKEN` / `GH_TOKEN` | no | optional | (unset) | Tools Queue for org (#214) | API create/refresh when `gh` missing |
 
 ## Profile affinity
 

@@ -56,7 +56,13 @@ def catalog_ask(name=""):
     return mod.ask_implement(ROOT, STATE, name, active=active_harness("grok"), pid_alive=pid_alive)
 
 def catalog_queue(name=""):
-    """Queue catalog tool as a GitHub issue (Design->DevBot). Cite #209."""
+    """Queue catalog tool as a real GitHub issue (Design->DevBot). Cite #214."""
+    live, err = _load_live_org_214()
+    if live is not None:
+        return live.queue_org(ROOT, STATE, name)
+    if err:
+        return {"ok": False, "live": "FAIL", "copy": "FAIL queue -- module missing",
+                "error": err, "next_step": "./pfy setup", "usable": False, "mock": False}
     mod, err = _load_catalog_209()
     if mod is None:
         return {"ok": False, "live": "FAIL", "copy": "FAIL queue -- module missing",
@@ -64,7 +70,10 @@ def catalog_queue(name=""):
     return mod.queue_org(ROOT, STATE, name)
 
 def catalog_status():
-    """Queued catalog items + status. Cite #209."""
+    """Queued catalog items + status (open/closed/PR). Cite #214."""
+    live, err = _load_live_org_214()
+    if live is not None:
+        return live.queue_status(STATE)
     mod, err = _load_catalog_209()
     if mod is None:
         return {"ok": False, "live": "FAIL", "copy": "FAIL catalog-status -- module missing",

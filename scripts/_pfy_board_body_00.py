@@ -11,7 +11,7 @@ POST /models/try pulls a recommended model FreeToken-first (#207).
 POST /eval runs a live-endpoint chat/completions probe against LOCAL_OPENAI_BASE_URL.
 POST /tools toggles skills, MCP, write-guard, extra tools.
 POST /catalog/ask asks the attached TUI to implement a catalog tool for next launch (#209).
-POST /catalog/queue opens a GitHub issue with Design->DevBot DoD (#209).
+POST /catalog/queue opens a real GitHub issue with Design->DevBot DoD (#214).
 POST /start with mode orchestration starts a multi-step local loop (#213).
 POST /start with mode code-graph hands Axon (or codebase-memory equivalent) (#215).
 POST /space-invaders runs session Space Invaders via Attach OpenCode (#155).

@@ -69,13 +69,13 @@ def run_tk(board, selftest=False) -> bool:
         )
         w.set_view("loop")
         body = w.body.cget("text") or ""
-        loop_ok = "LOOP" in body and "env" in body.lower() and "using:" in body.lower() and "loop       " in body and "started 2/8" in body and "graph      " in body and "path=axon" in body and "LOCAL WORKER" not in body and "pfy board" not in body.lower()
+        loop_ok = "LOOP" in body and "env" in body.lower() and "using:" in body.lower() and "loop       " in body and "started 2/8" in body and "graph      " in body and "path=axon" in body and "queue      " in body and "LOCAL WORKER" not in body and "pfy board" not in body.lower()
         w.set_view("attach")
         att_body = w.body.cget("text") or ""
         att_ok = "ATTACH" in att_body and "using:" in att_body.lower() and "graph      " in att_body
         w.set_view("tools")
         tools_body = w.body.cget("text") or ""
-        tools_ok = "TOOLS" in tools_body and "CATALOG" in tools_body
+        tools_ok = "TOOLS" in tools_body and "CATALOG" in tools_body and "QUEUE" in tools_body and "open" in tools_body.lower()
         w.set_view("loop")
         loop_ok = loop_ok and att_ok and tools_ok
         w.copy_stub()

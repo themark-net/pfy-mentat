@@ -24,7 +24,13 @@ ff((tools.get("tools_mode") or "") == "local_tools")
                 txt += "\n(none)"
             else:
                 for q in qrows[:8]:
-                    txt += "\n%s  %s  %s" % (q.get("name") or q.get("id") or "", q.get("kind") or "", q.get("status") or "")
+                    extra = q.get("pr_url") or q.get("issue_url") or ""
+                    txt += "\n%s  %s  %s%s" % (
+                        q.get("name") or q.get("id") or "",
+                        q.get("kind") or "",
+                        q.get("status") or "",
+                        ("  " + extra) if extra else "",
+                    )
             att = s.get("catalog_attached") or s.get("active") or "(none)"
             txt += "\nattached   " + str(att)
             if s.get("catalog_ok") is False:
@@ -70,7 +76,7 @@ def selftest_snap():
             "last_verb":{"verb":"gui","when":""},"now":"idle","processes":[],"agent_lane_collapsed":True,
             "tools":{"skills":{"one-shot":True,"investigate":True,"agent-loops":True,"hermes-feedback":True},"mcp":False,"write_guard":False,"tools_mode":"split"},
             "catalog":[{"name":"repowise","stage":"I1","status":"ready","github":"https://github.com/repowise-dev/repowise","notes":"usable","category":"Coding"}],
-            "catalog_ok":True,"catalog_queue":[],"catalog_attached":"grok","catalog_prompt":""}
+            "catalog_ok":True,"catalog_queue":[{"name":"repowise","kind":"queue","status":"open","issue_url":"https://github.com/themark-net/pfy-mentat/issues/214"}],"catalog_attached":"grok","catalog_prompt":""}
 
 def selftest_fresh_bind():
     from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
