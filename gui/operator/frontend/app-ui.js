@@ -15,6 +15,7 @@ bindAttach('btnopen','opencode');
 bindAttach('btnhermes','hermes');
 bindAttach('btncodex','codex');
 bindAttach('btnclaude','claude');
+bindAttach('btngab','gab');
 bindAttach('att-grok','grok');
 bindAttach('att-open','opencode');
 bindAttach('att-hermes','hermes');
@@ -139,7 +140,7 @@ async function tick(){
     const engLive=live(s.engine_live||d.status||'missing');
     const g=(s.chips||[]).find(c=>c.id==='grok')||{};
     const stub=!!(s.active_stub || s.active==='continue' || s.active==='agent-cage');
-    ['btngrok','btnopen','btnhermes','btncodex','btnclaude','att-grok','att-open','att-hermes','att-codex','att-claude','btnsi'].forEach(id=>{
+    ['btngrok','btnopen','btnhermes','btncodex','btnclaude','btngab','att-grok','att-open','att-hermes','att-codex','att-claude','att-gab','btnsi'].forEach(id=>{
       const el=document.getElementById(id);
       if(el) el.disabled=stub;
     });
@@ -277,3 +278,21 @@ async function tick(){
   }
 }
 tick(); setInterval(tick, REFRESH);
+
+document.getElementById('btngabsync')&&document.getElementById('btngabsync').addEventListener('click',async()=>{
+  const msg=document.getElementById('recomsg');
+  if(msg) msg.textContent='gab sync…';
+  try{
+    const r=await fetch((window.apiRoot?apiRoot():'')+'/gab/sync',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+    const j=await r.json();
+    const el=document.getElementById('eng-gab-sync');
+    const honest=document.getElementById('eng-gab-honest');
+    if(el){
+      const rows=(j.rows||[]).slice(0,6).map(x=>x.tag+'·'+x.fit+(x.local==='local'?'·local':'')).join(' · ')||'(none)';
+      el.textContent=rows;
+    }
+    if(honest) honest.textContent=(j.honesty||'gab auto ≠ local ranking');
+    if(msg) msg.textContent=j.copy||'gab sync';
+    if(lastSnap){ lastSnap.gab_sync_rows=j.rows||[]; lastSnap.gab_honesty=j.honesty||''; }
+  }catch(e){ if(msg) msg.textContent='FAIL gab sync'; }
+});

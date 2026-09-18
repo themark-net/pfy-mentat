@@ -34,3 +34,4 @@ Short structural maps for first-party packages in this repo. Deep design stays i
 
 **Catalog (not modules):** [TOOLS.md](../../TOOLS.md) · [data/tools.json](../../data/tools.json) · [sources/x-posts.md](../../sources/x-posts.md)  
 **Deploy map:** [docs/ops/DEPLOY.md](../ops/DEPLOY.md)
+- [gab-228.md](gab-228.md) — Gab cloud + local recommend sync (#228)

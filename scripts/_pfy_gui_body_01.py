@@ -66,6 +66,7 @@ class Win:
         self.bhermes = ttk.Button(self.acts, text="Attach hermes", command=lambda: self.attach("hermes"))
         self.bcodex = ttk.Button(self.acts, text="Attach codex", command=lambda: self.attach("codex"))
         self.bclaude = ttk.Button(self.acts, text="Attach claude", command=lambda: self.attach("claude"))
+        self.bgab = ttk.Button(self.acts, text="Attach gab", command=lambda: self.attach("gab"))
         self.bbare = ttk.Button(self.acts, text="bare", command=lambda: self.set_mode("bare"))
         self.borch = ttk.Button(self.acts, text="orchestration", command=lambda: self.set_mode("orchestration"))
         self.bgraph = ttk.Button(self.acts, text="code-graph", command=lambda: self.set_mode("code-graph"))

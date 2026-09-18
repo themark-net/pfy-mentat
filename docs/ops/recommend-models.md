@@ -55,6 +55,10 @@ python3 scripts/pfy-board.py --try
 
 Registry: [bootstrap/env/REGISTRY.md](../../bootstrap/env/REGISTRY.md).
 
+## Gab open-weight sync (#228)
+
+`./pfy models gab-sync` maps Gab open-weight families to Ollama tags with `fits|tight|won't-fit` for nimo. Surfaces beside FreeToken-first recommend; does not replace it. Chip: **gab auto ≠ local ranking**. Gab does not host GGUF.
+
 ## Do not
 
 - Reopen #76 · unpark #198 · catalog 70–75 HOLD

@@ -283,6 +283,64 @@ def wizard_apply(step, value=""):
         live_openai_base=live_openai_base,
     )
 
+
+def _load_gab_228():
+    """Load pfy_gab_228 or return (None, error). Cite #228."""
+    import importlib.util
+    path = ROOT / "scripts" / "pfy_gab_228.py"
+    if not path.is_file():
+        return None, str(path)
+    try:
+        spec = importlib.util.spec_from_file_location("pfy_gab_228", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod, ""
+    except Exception as e:
+        return None, str(e)[:400]
+
+def open_enterable_gab_session(model=None):
+    """Attach Gab cloud lane (https://gab.ai/v1, model=auto|pin). Cite #228."""
+    mod, err = _load_gab_228()
+    if mod is None:
+        return {
+            "ok": False, "id": "gab", "live": "FAIL",
+            "copy": "FAIL gab -- module missing",
+            "error": err or "missing", "usable": False,
+            "session_reach": "FAIL", "next_step": "./pfy setup",
+        }
+    model = str(model or "").strip() or "auto"
+    res = mod.attach_usable(ROOT, STATE, model=model)
+    res = dict(res or {})
+    res["id"] = "gab"
+    if res.get("ok") and res.get("usable") is not False:
+        try:
+            (STATE / "active-harness").write_text("gab\n", encoding="utf-8")
+            record_last_verb("attach-gab")
+        except Exception:
+            pass
+    return res
+
+def gab_local_sync(pulled=None):
+    """Gab open-weight → Ollama recommend sync. Cite #228."""
+    mod, err = _load_gab_228()
+    if mod is None:
+        return {"ok": False, "live": "FAIL", "copy": "FAIL sync -- module missing",
+                "error": err or "missing", "rows": [], "next_step": "./pfy setup"}
+    return mod.local_sync(ROOT, STATE, pulled=pulled, fixture_only=True)
+
+def gab_pull(tag, confirm_tight=False, opt_in_huge=False):
+    """Gated ollama pull for Gab→local recommend row. Cite #228."""
+    mod, err = _load_gab_228()
+    if mod is None:
+        return {"ok": False, "live": "FAIL", "copy": "FAIL pull -- module missing",
+                "error": err or "missing", "next_step": "./pfy setup"}
+    return mod.pull_gated(
+        tag, ROOT=ROOT, STATE=STATE,
+        confirm_tight=confirm_tight, opt_in_huge=opt_in_huge,
+        pull_fn=pull_model, fixture_only=True,
+    )
+
+
 def launch_wizard_session():
     """Primary CTA Launch session -- reuse attach-usable/mode/catalog. Cite #225."""
     mod, err = _load_launch_225()

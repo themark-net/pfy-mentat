@@ -25,18 +25,18 @@ REVIEW_FILE = "launch-wizard-review.md"
 STEPS = ("runtime", "lane", "toolsets", "harness", "review")
 LANES = ("local", "cloud/subscription", "opencode-free")
 TOOLSETS = ("bare", "orchestration", "code-graph", "catalog")
-HARNESSES = ("opencode", "grok", "hermes", "codex", "claude")
-CLOUD_HARNESS = frozenset({"grok", "claude", "codex"})
+HARNESSES = ("opencode", "grok", "hermes", "codex", "claude", "gab")
+CLOUD_HARNESS = frozenset({"grok", "claude", "codex", "gab"})
 NEXT_UP = "Launch env or ./pfy up"
 NEXT_LANE = "pick local | cloud/subscription | OpenCode free"
 NEXT_TOOL = "pick bare | orchestration | code-graph | catalog"
-NEXT_HARNESS = "pick OpenCode | Grok | Hermes | Codex | Claude"
+NEXT_HARNESS = "pick OpenCode | Grok | Hermes | Codex | Claude | Gab"
 NEXT_REVIEW = "complete wizard review (runtime · lane · toolsets · harness)"
 NEXT_SETUP = "./pfy setup"
 NEXT_GRAPH = "pip install axoniq · ./pfy catalog ask axon"
 NEXT_CATALOG = "pick a catalog tool on Tools"
 NEXT_HOLD = "catalog 70-75 HOLD (do not auto-lift)"
-NEXT_CLOUD = "pick Grok | Claude | Codex for cloud/subscription"
+NEXT_CLOUD = "pick Grok | Claude | Codex | Gab for cloud/subscription"
 NEXT_FREE = "pick OpenCode for OpenCode free"
 HOLD_ENTRIES = frozenset(range(70, 76))
 
@@ -143,6 +143,8 @@ def normalize_harness(raw):
         return "codex"
     if s in ("grok", "grok-cli"):
         return "grok"
+    if s in ("gab", "gab.ai", "gab-ai", "gabai"):
+        return "gab"
     return s
 
 
@@ -275,6 +277,8 @@ def snapshot_fields(STATE):
             out["wizard_lane_label"] = "OpenCode free"
         elif lane == "cloud/subscription" and hid == "grok":
             out["wizard_lane_label"] = "cloud/subscription (Grok-sub)"
+        elif lane == "cloud/subscription" and hid == "gab":
+            out["wizard_lane_label"] = "cloud/subscription (Gab · https://gab.ai/v1)"
         elif lane:
             out["wizard_lane_label"] = lane
         else:
@@ -524,7 +528,7 @@ def set_harness(STATE, hid, live_openai_base=None):
     if lane == "cloud/subscription" and hid not in CLOUD_HARNESS:
         return fail(
             "harness",
-            "cloud/subscription needs Grok|Claude|Codex",
+            "cloud/subscription needs Grok|Claude|Codex|Gab",
             NEXT_CLOUD,
             harness=hid,
             lane=lane,
