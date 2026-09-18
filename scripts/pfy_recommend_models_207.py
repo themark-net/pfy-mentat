@@ -423,6 +423,26 @@ def rank_catalog(engine, pulled, host, catalog=CATALOG):
     return ranked
 
 
+
+def _gab_merge(ROOT, STATE, rec, pulled=None, host=None):
+    """Surface #228 Gab open-weight → Ollama sync without replacing FreeToken-first."""
+    try:
+        import importlib.util
+        path = Path(__file__).resolve().parent / "pfy_gab_228.py"
+        if not path.is_file():
+            return rec
+        spec = importlib.util.spec_from_file_location("pfy_gab_228", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        sync = mod.local_sync(
+            ROOT, STATE, pulled=pulled, host=host,
+            fixture_only=str(__import__("os").environ.get("PFY_GAB_OFFLINE") or "1") != "0",
+        )
+        return mod.merge_recommend(rec, sync)
+    except Exception:
+        return rec
+
+
 def recommend(
     ROOT=None,
     STATE=None,
@@ -470,7 +490,7 @@ def recommend(
         return fail("recommend", "host VRAM/RAM unknown (no fake best list)", NEXT_UP, engine=engine, host=host)
     ranked = rank_catalog(engine, pulled, host, catalog=catalog)
     if not ranked:
-        return fail(
+        empty = fail(
             "recommend",
             "none fit this host beyond already-pulled",
             NEXT_HANDOFF,
@@ -478,6 +498,7 @@ def recommend(
             host=host,
             pulled=list(pulled or []),
         )
+        return _gab_merge(ROOT, STATE, empty, pulled=pulled, host=host)
     top = ranked[0]["name"]
     copy = "PASS recommend · %s" % " · ".join(x["name"] for x in ranked[:5])
     res = {
@@ -504,7 +525,7 @@ def recommend(
         }, indent=2))
     except OSError:
         pass
-    return res
+    return _gab_merge(ROOT, STATE, res, pulled=pulled, host=host)
 
 
 def handoff_text(name, engine, pull_live):

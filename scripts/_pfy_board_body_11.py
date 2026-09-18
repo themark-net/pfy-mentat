@@ -16,7 +16,7 @@ if tid in ("write-guard", "write_guard"):
     return {"ok": False, "live": "FAIL", "copy": "FAIL tools", "error": "unknown toggle", "id": tid}
 
 def start_sidecar(hid, mode=None):
-    """Spawn grok/opencode/hermes/codex/claude sidecar. Grok prove-usable (#202); Hermes (#196); OpenCode (#171/#193); Codex (#220); Claude (#221). Mode handoff (#208)."""
+    """Spawn grok/opencode/hermes/codex/claude/gab sidecar. Grok #202; Hermes #196; OpenCode #171/#193; Codex #220; Claude #221; Gab #228. Mode handoff (#208)."""
     hid = (hid or "").strip()
     if not hid:
         hid = active_harness("grok")
@@ -39,6 +39,13 @@ def start_sidecar(hid, mode=None):
     if hid == "claude-code":
         hid = "claude"
     STATE.mkdir(parents=True, exist_ok=True)
+    if hid == "gab":
+        # Cloud lane: key/auto prove; no local attach-mode MCP. Cite #228.
+        result = open_enterable_gab_session()
+        result = dict(result or {})
+        result["mode"] = (mode or "bare")
+        result["using"] = result["mode"]
+        return result
     mmod, merr = _load_attach_mode_208()
     if mmod is None:
         return {
@@ -102,6 +109,8 @@ def start_sidecar(hid, mode=None):
         result = open_enterable_codex_session()
     elif hid == "claude":
         result = open_enterable_claude_session()
+    elif hid == "gab":
+        result = open_enterable_gab_session()
     else:
         result = None
     if result is not None:

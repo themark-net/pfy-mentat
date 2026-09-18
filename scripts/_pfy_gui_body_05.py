@@ -102,7 +102,10 @@
         except Exception:
             pass
         if res.get("ok"):
-            self.paint_recommend(res.get("copy") or "PASS recommend", False)
+            copy = res.get("copy") or "PASS recommend"
+            if res.get("honesty") or (res.get("gab_sync") or {}).get("honesty"):
+                copy = copy + " · " + (res.get("honesty") or res["gab_sync"]["honesty"])
+            self.paint_recommend(copy, False)
         else:
             nxt = res.get("next_step") or "Launch env or ./pfy up"
             copy = res.get("copy") or res.get("error") or "recommend"

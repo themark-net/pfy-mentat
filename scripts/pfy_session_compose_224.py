@@ -29,8 +29,8 @@ TOOLS_FILE = "tools.json"
 SKILL_IDS = ("one-shot", "investigate", "agent-loops", "hermes-feedback")
 LANES = ("local", "cloud/subscription", "opencode-free")
 TOOLSETS = ("bare", "orchestration", "code-graph", "catalog")
-HARNESSES = ("opencode", "grok", "hermes", "codex", "claude")
-CLOUD_HARNESS = frozenset({"grok", "claude", "codex"})
+HARNESSES = ("opencode", "grok", "hermes", "codex", "claude", "gab")
+CLOUD_HARNESS = frozenset({"grok", "claude", "codex", "gab"})
 NEXT_UP = "Launch env or ./pfy up"
 NEXT_SETUP = "./pfy setup"
 NEXT_GRAPH = "pip install axoniq · ./pfy catalog ask axon"
@@ -142,6 +142,8 @@ def normalize_harness(raw):
         return "codex"
     if s in ("grok", "grok-cli"):
         return "grok"
+    if s in ("gab", "gab.ai", "gab-ai", "gabai"):
+        return "gab"
     return s
 
 
@@ -160,6 +162,8 @@ def lane_label(lane, harness=""):
             return "cloud/subscription (Claude-sub)"
         if hid == "codex":
             return "cloud/subscription (Codex-sub)"
+        if hid == "gab":
+            return "cloud/subscription (Gab · https://gab.ai/v1)"
         return "cloud/subscription"
     return lane or "(none)"
 
@@ -194,7 +198,15 @@ def harness_lane_note(lane, hid):
                 "Lane is **cloud/subscription (Codex-sub)**. Not Grok-sub, "
                 "not OpenCode free."
             )
-        return "Lane is **cloud/subscription**. Pick Grok | Claude | Codex."
+        if hid == "gab":
+            return (
+                "Lane is **cloud/subscription (Gab)**. Endpoint "
+                "`https://gab.ai/v1`, model=auto (cloud router) or pin-by-id. "
+                "gab auto ≠ local ranking; Gab does not host GGUF — we pull "
+                "open-weight families to Ollama. Key: GAB_API_KEY / Plus. "
+                "Docs: https://gab.ai/docs/api-auth"
+            )
+        return "Lane is **cloud/subscription**. Pick Grok | Claude | Codex | Gab."
     return "Lane not set."
 
 

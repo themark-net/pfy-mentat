@@ -46,6 +46,7 @@
         self.bhhermes = ttk.Button(self.acts, text="Hermes", command=lambda: self.wizard_step("harness", "hermes"))
         self.bhcodex = ttk.Button(self.acts, text="Codex", command=lambda: self.wizard_step("harness", "codex"))
         self.bhclaude = ttk.Button(self.acts, text="Claude", command=lambda: self.wizard_step("harness", "claude"))
+        self.bhgab = ttk.Button(self.acts, text="Gab", command=lambda: self.wizard_step("harness", "gab"))
         self.chips = ttk.Frame(right); self.chips.pack(fill="both", expand=True, padx=12, pady=(0,10))
 
     def set_view(self, k):

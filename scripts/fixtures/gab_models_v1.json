@@ -1,0 +1,906 @@
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "auto",
+      "object": "model",
+      "created": 1700000000,
+      "owned_by": "gab-ai",
+      "aliases": [
+        "gab/auto",
+        "gab-ai/auto"
+      ],
+      "recommended_for": [
+        "routing",
+        "agents",
+        "coding"
+      ],
+      "description": "Routes each chat request to the best Gab AI model. Coding work is classified as quick, standard, or hard. The slug mapped to each coding tier is configurable and can change \u2014 inspect response.model and X-Gab-Routed-Model rather than assuming a particular engine. In Cursor / Claude Code / Codex loops the kickoff model sticks. Chat endpoints only \u2014 do not send auto to images, audio, embeddings, or video.",
+      "routing": true,
+      "capabilities": {
+        "text": true,
+        "images": false,
+        "video": false,
+        "audio": false,
+        "streaming": true,
+        "thinking": true,
+        "web_search": true,
+        "function_calling": true,
+        "embeddings": false,
+        "image_input": true,
+        "file_input": true,
+        "audio_input": false,
+        "video_input": false
+      },
+      "context_window": 200000,
+      "embedding_dimensions": null,
+      "max_output_tokens": 8192,
+      "credit_cost": null,
+      "is_plus_only": false
+    },
+    {
+      "id": "arya",
+      "object": "model",
+      "created": 1745448179,
+      "owned_by": "Gab AI",
+      "aliases": [
+        "google/gemini-3.8-flash"
+      ],
+      "recommended_for": [
+        "coding",
+        "agents"
+      ],
+      "capabilities": {
+        "text": true,
+        "images": false,
+        "video": false,
+        "audio": false,
+        "streaming": true,
+        "thinking": true,
+        "web_search": true,
+        "function_calling": true,
+        "embeddings": false,
+        "image_input": true,
+        "file_input": true,
+        "audio_input": true,
+        "video_input": true
+      },
+      "context_window": 1048576,
+      "embedding_dimensions": null,
+      "max_output_tokens": 65536,
+      "credit_cost": null,
+      "is_plus_only": false
+    },
+    {
+      "id": "claude-sonnet-4-5",
+      "object": "model",
+      "created": 1759169002,
+      "owned_by": "Anthropic",
+      "aliases": [
+        "claude-sonnet-4.5",
+        "claude-sonnet-4-5-20250929",
+        "claude-sonnet-4.5-20250929",
+        "anthropic/claude-sonnet-4-5",
+        "anthropic/claude-sonnet-4.5"
+      ],
+      "recommended_for": [
+        "coding",
+        "agents"
+      ],
+      "capabilities": {
+        "text": true,
+        "images": false,
+        "video": false,
+        "audio": false,
+        "streaming": true,
+        "thinking": false,
+        "web_search": true,
+        "function_calling": true,
+        "embeddings": false,
+        "image_input": true,
+        "file_input": true,
+        "audio_input": false,
+        "video_input": false
+      },
+      "context_window": 200000,
+      "embedding_dimensions": null,
+      "max_output_tokens": 64000,
+      "credit_cost": {
+        "base_cost": 8,
+        "context_threshold": 50000
+      },
+      "is_plus_only": true
+    },
+    {
+      "id": "deepseek-v4-flash",
+      "object": "model",
+      "created": 1777080015,
+      "owned_by": "DeepSeek",
+      "aliases": [
+        "deepseek/deepseek-v4-flash"
+      ],
+      "recommended_for": [
+        "coding",
+        "agents"
+      ],
+      "capabilities": {
+        "text": true,
+        "images": false,
+        "video": false,
+        "audio": false,
+        "streaming": true,
+        "thinking": true,
+        "web_search": true,
+        "function_calling": true,
+        "embeddings": false,
+        "image_input": false,
+        "file_input": false,
+        "audio_input": false,
+        "video_input": false
+      },
+      "context_window": 1048576,
+      "embedding_dimensions": null,
+      "max_output_tokens": 32000,
+      "credit_cost": {
+        "base_cost": 2,
+        "context_threshold": 20000
+      },
+      "is_plus_only": true
+    },
+    {
+      "id": "deepseek-v4-flash-0731",
+      "object": "model",
+      "created": 1785542036,
+      "owned_by": "DeepSeek",
+      "aliases": [
+        "deepseek/deepseek-v4-flash-0731"
+      ],
+      "recommended_for": [
+        "coding",
+        "agents"
+      ],
+      "capabilities": {
+        "text": true,
+        "images": false,
+        "video": false,
+        "audio": false,
+        "streaming": true,
+        "thinking": true,
+        "web_search": true,
+        "function_calling": true,
+        "embeddings": false,
+        "image_input": false,
+        "file_input": false,
+        "audio_input": false,
+        "video_input": false
+      },
+      "context_window": 1048576,
+      "embedding_dimensions": null,
+      "max_output_tokens": 32000,
+      "credit_cost": {
+        "base_cost": 2,
+        "context_threshold": 20000
+      },
+      "is_plus_only": true
+    },
+    {
+      "id": "deepseek-v4-flash-vision-exp",
+      "object": "model",
+      "created": 1788848856,
+      "owned_by": "DeepSeek",
+      "aliases": [
+        "deepseek/deepseek-v4-flash-vision-exp"
+      ],
+      "recommended_for": [
+        "coding",
+        "agents"
+      ],
+      "capabilities": {
+        "text": true,
+        "images": false,
+        "video": false,
+        "audio": false,
+        "streaming": true,
+        "thinking": true,
+        "web_search": true,
+        "function_calling": true,
+        "embeddings": false,
+        "image_input": true,
+        "file_input": true,
+        "audio_input": false,
+        "video_input": false
+      },
+      "context_window": 1048576,
+      "embedding_dimensions": null,
+      "max_output_tokens": 65536,
+      "credit_cost": {
+        "base_cost": 2,
+        "context_threshold": 20000
+      },
+      "is_plus_only": true
+    },
+    {
+      "id": "deepseek-v4-pro",
+      "object": "model",
+      "created": 1777080015,
+      "owned_by": "DeepSeek",
+      "aliases": [
+        "deepseek/deepseek-v4-pro"
+      ],
+      "recommended_for": [
+        "coding",
+        "agents"
+      ],
+      "capabilities": {
+        "text": true,
+        "images": false,
+        "video": false,
+        "audio": false,
+        "streaming": true,
+        "thinking": true,
+        "web_search": true,
+        "function_calling": true,
+        "embeddings": false,
+        "image_input": false,
+        "file_input": false,
+        "audio_input": false,
+        "video_input": false
+      },
+      "context_window": 1048576,
+      "embedding_dimensions": null,
+      "max_output_tokens": 64000,
+      "credit_cost": {
+        "base_cost": 8,
+        "context_threshold": 20000
+      },
+      "is_plus_only": true
+    },
+    {
+      "id": "deepseek-v4-pro-0813",
+      "object": "model",
+      "created": 1786560440,
+      "owned_by": "DeepSeek",
+      "aliases": [
+        "deepseek-v4-pro",
+        "deepseek/deepseek-v4-pro-0813"
+      ],
+      "recommended_for": [
+        "coding",
+        "agents"
+      ],
+      "capabilities": {
+        "text": true,
+        "images": false,
+        "video": false,
+        "audio": false,
+        "streaming": true,
+        "thinking": true,
+        "web_search": true,
+        "function_calling": true,
+        "embeddings": false,
+        "image_input": false,
+        "file_input": false,
+        "audio_input": false,
+        "video_input": false
+      },
+      "context_window": 1048576,
+      "embedding_dimensions": null,
+      "max_output_tokens": 64000,
+      "credit_cost": {
+        "base_cost": 10,
+        "context_threshold": 20000
+      },
+      "is_plus_only": true
+    },
+    {
+      "id": "deepseek-v4-1-flash",
+      "object": "model",
+      "created": 1789051952,
+      "owned_by": "DeepSeek",
+      "aliases": [
+        "deepseek-v4.1-flash",
+        "deepseek/deepseek-v4.1-flash",
+        "deepseek/deepseek-v4-1-flash"
+      ],
+      "recommended_for": [
+        "coding",
+        "agents"
+      ],
+      "capabilities": {
+        "text": true,
+        "images": false,
+        "video": false,
+        "audio": false,
+        "streaming": true,
+        "thinking": true,
+        "web_search": true,
+        "function_calling": true,
+        "embeddings": false,
+        "image_input": true,
+        "file_input": true,
+        "audio_input": false,
+        "video_input": false
+      },
+      "context_window": 1048576,
+      "embedding_dimensions": null,
+      "max_output_tokens": 384000,
+      "credit_cost": {
+        "base_cost": 2,
+        "context_threshold": 20000
+      },
+      "is_plus_only": true
+    },
+    {
+      "id": "glm-5-1",
+      "object": "model",
+      "created": 1775601783,
+      "owned_by": "Z.ai",
+      "aliases": [
+        "glm-5.1",
+        "z-ai/glm-5.1"
+      ],
+      "recommended_for": [
+        "coding",
+        "agents"
+      ],
+      "capabilities": {
+        "text": true,
+        "images": false,
+        "video": false,
+        "audio": false,
+        "streaming": true,
+        "thinking": true,
+        "web_search": true,
+        "function_calling": true,
+        "embeddings": false,
+        "image_input": true,
+        "file_input": true,
+        "audio_input": false,
+        "video_input": false
+      },
+      "context_window": 202752,
+      "embedding_dimensions": null,
+      "max_output_tokens": 65535,
+      "credit_cost": {
+        "base_cost": 5,
+        "context_threshold": 20000
+      },
+      "is_plus_only": true
+    },
+    {
+      "id": "glm-5-2",
+      "object": "model",
+      "created": 1781635942,
+      "owned_by": "Z.ai",
+      "aliases": [
+        "glm-5.2",
+        "z-ai/glm-5.2"
+      ],
+      "recommended_for": [
+        "coding",
+        "agents"
+      ],
+      "capabilities": {
+        "text": true,
+        "images": false,
+        "video": false,
+        "audio": false,
+        "streaming": true,
+        "thinking": true,
+        "web_search": true,
+        "function_calling": true,
+        "embeddings": false,
+        "image_input": true,
+        "file_input": true,
+        "audio_input": false,
+        "video_input": false
+      },
+      "context_window": 1000000,
+      "embedding_dimensions": null,
+      "max_output_tokens": 65535,
+      "credit_cost": {
+        "base_cost": 5,
+        "context_threshold": 20000
+      },
+      "is_plus_only": true
+    },
+    {
+      "id": "glm-5-3",
+      "object": "model",
+      "created": 1787099404,
+      "owned_by": "Z.ai",
+      "aliases": [
+        "glm-5.3",
+        "z-ai/glm-5.3"
+      ],
+      "recommended_for": [
+        "coding",
+        "agents"
+      ],
+      "capabilities": {
+        "text": true,
+        "images": false,
+        "video": false,
+        "audio": false,
+        "streaming": true,
+        "thinking": true,
+        "web_search": true,
+        "function_calling": true,
+        "embeddings": false,
+        "image_input": false,
+        "file_input": true,
+        "audio_input": false,
+        "video_input": false
+      },
+      "context_window": 1048576,
+      "embedding_dimensions": null,
+      "max_output_tokens": 131072,
+      "credit_cost": {
+        "base_cost": 5,
+        "context_threshold": 20000
+      },
+      "is_plus_only": true
+    },
+    {
+      "id": "glm-5-3-flash",
+      "object": "model",
+      "created": 1787768412,
+      "owned_by": "Z.ai",
+      "aliases": [
+        "glm-5.3-flash",
+        "z-ai/glm-5.3-flash"
+      ],
+      "recommended_for": [
+        "coding",
+        "agents"
+      ],
+      "capabilities": {
+        "text": true,
+        "images": false,
+        "video": false,
+        "audio": false,
+        "streaming": true,
+        "thinking": true,
+        "web_search": true,
+        "function_calling": true,
+        "embeddings": false,
+        "image_input": true,
+        "file_input": true,
+        "audio_input": false,
+        "video_input": true
+      },
+      "context_window": 1048576,
+      "embedding_dimensions": null,
+      "max_output_tokens": 131072,
+      "credit_cost": {
+        "base_cost": 1,
+        "context_threshold": 20000
+      },
+      "is_plus_only": true
+    },
+    {
+      "id": "gpt-5-5",
+      "object": "model",
+      "created": 1777080015,
+      "owned_by": "OpenAI",
+      "aliases": [
+        "gpt-5.5",
+        "openai/gpt-5-5",
+        "openai/gpt-5.5"
+      ],
+      "recommended_for": [
+        "coding",
+        "agents"
+      ],
+      "capabilities": {
+        "text": true,
+        "images": false,
+        "video": false,
+        "audio": false,
+        "streaming": true,
+        "thinking": true,
+        "web_search": true,
+        "function_calling": true,
+        "embeddings": false,
+        "image_input": true,
+        "file_input": false,
+        "audio_input": false,
+        "video_input": false
+      },
+      "context_window": 1050000,
+      "embedding_dimensions": null,
+      "max_output_tokens": 128000,
+      "credit_cost": {
+        "base_cost": 15,
+        "context_threshold": 20000
+      },
+      "is_plus_only": true
+    },
+    {
+      "id": "gemma-4-26b",
+      "object": "model",
+      "created": 1775601719,
+      "owned_by": "Google",
+      "aliases": [
+        "gemma-4.26b",
+        "google/gemma-4-26b-a4b-it",
+        "google/gemma-4.26b-a4b-it",
+        "google/gemma-4-26b",
+        "google/gemma-4.26b"
+      ],
+      "recommended_for": [],
+      "capabilities": {
+        "text": true,
+        "images": false,
+        "video": false,
+        "audio": false,
+        "streaming": true,
+        "thinking": true,
+        "web_search": true,
+        "function_calling": true,
+        "embeddings": false,
+        "image_input": true,
+        "file_input": true,
+        "audio_input": false,
+        "video_input": true
+      },
+      "context_window": 262144,
+      "embedding_dimensions": null,
+      "max_output_tokens": 16384,
+      "credit_cost": {
+        "base_cost": 5,
+        "context_threshold": 20000
+      },
+      "is_plus_only": true
+    },
+    {
+      "id": "kimi-k2-6",
+      "object": "model",
+      "created": 1776715140,
+      "owned_by": "Moonshot",
+      "aliases": [
+        "kimi-k2.6",
+        "moonshotai/kimi-k2.6",
+        "moonshotai/kimi-k2-6"
+      ],
+      "recommended_for": [
+        "coding",
+        "agents"
+      ],
+      "capabilities": {
+        "text": true,
+        "images": false,
+        "video": false,
+        "audio": false,
+        "streaming": true,
+        "thinking": true,
+        "web_search": true,
+        "function_calling": true,
+        "embeddings": false,
+        "image_input": false,
+        "file_input": false,
+        "audio_input": false,
+        "video_input": false
+      },
+      "context_window": 262144,
+      "embedding_dimensions": null,
+      "max_output_tokens": 262144,
+      "credit_cost": {
+        "base_cost": 3,
+        "context_threshold": 20000
+      },
+      "is_plus_only": true
+    },
+    {
+      "id": "kimi-k3",
+      "object": "model",
+      "created": 1784230807,
+      "owned_by": "Moonshot",
+      "aliases": [
+        "moonshotai/kimi-k3"
+      ],
+      "recommended_for": [
+        "coding",
+        "agents"
+      ],
+      "capabilities": {
+        "text": true,
+        "images": false,
+        "video": false,
+        "audio": false,
+        "streaming": true,
+        "thinking": true,
+        "web_search": true,
+        "function_calling": true,
+        "embeddings": false,
+        "image_input": true,
+        "file_input": true,
+        "audio_input": false,
+        "video_input": false
+      },
+      "context_window": 1048576,
+      "embedding_dimensions": null,
+      "max_output_tokens": 32768,
+      "credit_cost": {
+        "base_cost": 8,
+        "context_threshold": 20000
+      },
+      "is_plus_only": true
+    },
+    {
+      "id": "qwen-3-5-397b",
+      "object": "model",
+      "created": 1771268038,
+      "owned_by": "Alibaba",
+      "aliases": [
+        "qwen-3.5-397b",
+        "qwen/qwen3.5-397b-a17b",
+        "qwen/qwen3.5.397b-a17b",
+        "qwen/qwen-3-5-397b",
+        "qwen/qwen-3.5-397b"
+      ],
+      "recommended_for": [
+        "coding",
+        "agents"
+      ],
+      "capabilities": {
+        "text": true,
+        "images": false,
+        "video": false,
+        "audio": false,
+        "streaming": true,
+        "thinking": false,
+        "web_search": true,
+        "function_calling": true,
+        "embeddings": false,
+        "image_input": false,
+        "file_input": false,
+        "audio_input": false,
+        "video_input": false
+      },
+      "context_window": 262144,
+      "embedding_dimensions": null,
+      "max_output_tokens": 65536,
+      "credit_cost": {
+        "base_cost": 2,
+        "context_threshold": 20000
+      },
+      "is_plus_only": true
+    },
+    {
+      "id": "qwen-3-5-397b-thinking",
+      "object": "model",
+      "created": 1771268057,
+      "owned_by": "Alibaba",
+      "aliases": [
+        "qwen-3.5-397b-thinking",
+        "qwen/qwen3.5-397b-a17b",
+        "qwen/qwen3.5.397b-a17b",
+        "qwen/qwen-3-5-397b-thinking",
+        "qwen/qwen-3.5-397b-thinking"
+      ],
+      "recommended_for": [
+        "coding",
+        "agents"
+      ],
+      "capabilities": {
+        "text": true,
+        "images": false,
+        "video": false,
+        "audio": false,
+        "streaming": true,
+        "thinking": true,
+        "web_search": true,
+        "function_calling": true,
+        "embeddings": false,
+        "image_input": false,
+        "file_input": false,
+        "audio_input": false,
+        "video_input": false
+      },
+      "context_window": 262144,
+      "embedding_dimensions": null,
+      "max_output_tokens": 65536,
+      "credit_cost": {
+        "base_cost": 2,
+        "context_threshold": 20000
+      },
+      "is_plus_only": true
+    },
+    {
+      "id": "qwen-3-7-flash",
+      "object": "model",
+      "created": 1785344044,
+      "owned_by": "Alibaba",
+      "aliases": [
+        "qwen-3.7-flash",
+        "qwen/qwen3.7-flash",
+        "qwen/qwen-3-7-flash",
+        "qwen/qwen-3.7-flash"
+      ],
+      "recommended_for": [
+        "coding",
+        "agents"
+      ],
+      "capabilities": {
+        "text": true,
+        "images": false,
+        "video": false,
+        "audio": false,
+        "streaming": true,
+        "thinking": true,
+        "web_search": true,
+        "function_calling": true,
+        "embeddings": false,
+        "image_input": true,
+        "file_input": true,
+        "audio_input": false,
+        "video_input": true
+      },
+      "context_window": 1000000,
+      "embedding_dimensions": null,
+      "max_output_tokens": 65536,
+      "credit_cost": {
+        "base_cost": 1,
+        "context_threshold": 20000
+      },
+      "is_plus_only": true
+    },
+    {
+      "id": "qwen-3-7-max",
+      "object": "model",
+      "created": 1779486626,
+      "owned_by": "Alibaba",
+      "aliases": [
+        "qwen-3.7-max",
+        "qwen/qwen3.7-max",
+        "qwen/qwen-3-7-max",
+        "qwen/qwen-3.7-max"
+      ],
+      "recommended_for": [
+        "coding",
+        "agents"
+      ],
+      "capabilities": {
+        "text": true,
+        "images": false,
+        "video": false,
+        "audio": false,
+        "streaming": true,
+        "thinking": true,
+        "web_search": true,
+        "function_calling": true,
+        "embeddings": false,
+        "image_input": false,
+        "file_input": false,
+        "audio_input": false,
+        "video_input": false
+      },
+      "context_window": 1000000,
+      "embedding_dimensions": null,
+      "max_output_tokens": 65536,
+      "credit_cost": {
+        "base_cost": 8,
+        "context_threshold": 20000
+      },
+      "is_plus_only": true
+    },
+    {
+      "id": "qwen-3-7-plus",
+      "object": "model",
+      "created": 1780503605,
+      "owned_by": "Alibaba",
+      "aliases": [
+        "qwen-3.7-plus",
+        "qwen/qwen3.7-plus",
+        "qwen/qwen-3-7-plus",
+        "qwen/qwen-3.7-plus"
+      ],
+      "recommended_for": [
+        "coding",
+        "agents"
+      ],
+      "capabilities": {
+        "text": true,
+        "images": false,
+        "video": false,
+        "audio": false,
+        "streaming": true,
+        "thinking": false,
+        "web_search": true,
+        "function_calling": true,
+        "embeddings": false,
+        "image_input": true,
+        "file_input": true,
+        "audio_input": false,
+        "video_input": false
+      },
+      "context_window": 1000000,
+      "embedding_dimensions": null,
+      "max_output_tokens": 65536,
+      "credit_cost": {
+        "base_cost": 2,
+        "context_threshold": 20000
+      },
+      "is_plus_only": true
+    },
+    {
+      "id": "qwen-3-8-flash",
+      "object": "model",
+      "created": 1787940486,
+      "owned_by": "Alibaba",
+      "aliases": [
+        "qwen-3.8-flash",
+        "qwen/qwen3.8-flash",
+        "qwen/qwen-3-8-flash",
+        "qwen/qwen-3.8-flash"
+      ],
+      "recommended_for": [
+        "coding",
+        "agents"
+      ],
+      "capabilities": {
+        "text": true,
+        "images": false,
+        "video": false,
+        "audio": false,
+        "streaming": true,
+        "thinking": true,
+        "web_search": true,
+        "function_calling": true,
+        "embeddings": false,
+        "image_input": true,
+        "file_input": true,
+        "audio_input": false,
+        "video_input": true
+      },
+      "context_window": 1000000,
+      "embedding_dimensions": null,
+      "max_output_tokens": 131072,
+      "credit_cost": {
+        "base_cost": 1,
+        "context_threshold": 20000
+      },
+      "is_plus_only": true
+    },
+    {
+      "id": "qwen-3-8-max",
+      "object": "model",
+      "created": 1785790035,
+      "owned_by": "Alibaba",
+      "aliases": [
+        "qwen-3.8-max",
+        "qwen/qwen3.8-max",
+        "qwen/qwen-3-8-max",
+        "qwen/qwen-3.8-max"
+      ],
+      "recommended_for": [
+        "coding",
+        "agents"
+      ],
+      "capabilities": {
+        "text": true,
+        "images": false,
+        "video": false,
+        "audio": false,
+        "streaming": true,
+        "thinking": true,
+        "web_search": true,
+        "function_calling": true,
+        "embeddings": false,
+        "image_input": true,
+        "file_input": true,
+        "audio_input": false,
+        "video_input": true
+      },
+      "context_window": 1000000,
+      "embedding_dimensions": null,
+      "max_output_tokens": 131072,
+      "credit_cost": {
+        "base_cost": 12,
+        "context_threshold": 20000
+      },
+      "is_plus_only": true
+    }
+  ]
+}

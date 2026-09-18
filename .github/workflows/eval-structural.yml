@@ -20,6 +20,11 @@ jobs:
         run: |
           python3 examples/eval-harness/run_structural.py --write-md pipelines/eval/structural.latest.md
           python3 examples/eval-harness/run_golden.py --write-md pipelines/eval/golden.latest.md
+      - name: Gab #228 offline selftest
+        if: always() && !cancelled()
+        run: |
+          set -euo pipefail
+          PFY_GAB_OFFLINE=1 python3 scripts/pfy_gab_228.py --selftest
       - name: Launcher must exec
         if: always() && !cancelled()
         run: |

@@ -81,11 +81,13 @@ noscript .fail{padding:16px;display:block}
       <button type=button data-harness=hermes>Hermes</button>
       <button type=button data-harness=codex>Codex</button>
       <button type=button data-harness=claude>Claude</button>
+      <button type=button data-harness=gab>Gab</button>
       <button type=button id=btnopen>Attach opencode</button>
       <button type=button id=btnhermes>Attach hermes</button>
       <button type=button id=btngrok>Attach grok</button>
       <button type=button id=btncodex>Attach codex</button>
       <button type=button id=btnclaude>Attach claude</button>
+      <button type=button id=btngab>Attach gab</button>
     </div>
     <span id=launchmsg class=attach-result></span>
     <div class=row id=launchwhat class=muted></div>
@@ -106,6 +108,7 @@ noscript .fail{padding:16px;display:block}
     <div class=row>tok_path <b id=eng-tok>SKIP</b></div>
     <div class=row>vram <b id=eng-vram>SKIP</b></div>
     <div class=row>recommend <span id=eng-reco class=muted>(none)</span></div>
+    <div class=row>gab sync <span id=eng-gab-sync class=muted>(none)</span> <span class=muted id=eng-gab-honest>gab auto ≠ local ranking</span></div>
     <div class=row>pinned <b id=eng-pinned>(none)</b></div>
     <div class=row id=eng-usage-fail class=fail style=display:none></div>
     <div class=row id=eng-reco-fail class=fail style=display:none></div>
@@ -120,6 +123,7 @@ noscript .fail{padding:16px;display:block}
       <button type=button class=primary id=btnpull>Pull</button>
       <button type=button class=primary id=btnreco>Recommend</button>
       <button type=button class=primary id=btntry>Try recommended</button>
+      <button type=button class=primary id=btngabsync>Refresh Gab sync</button>
     </div>
     <span id=refreshmsg class=attach-result></span>
     <span id=evalmsg class=attach-result></span>
@@ -151,6 +155,7 @@ noscript .fail{padding:16px;display:block}
       <button type=button class=primary id=att-hermes>Attach hermes</button>
       <button type=button class=primary id=att-codex>Attach codex</button>
       <button type=button class=primary id=att-claude>Attach claude</button>
+      <button type=button class=primary id=att-gab>Attach gab</button>
       <button type=button class=primary id=btnsi>Space Invaders</button>
       <button type=button class=primary id=btncopy>Copy stub one-liner</button>
     </div>

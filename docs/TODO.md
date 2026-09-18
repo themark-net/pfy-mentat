@@ -1,3 +1,7 @@
+## Done / shipping
+
+- #228 Gab cloud lane + local recommend sync (this PR)
+
 # TODO — next steps
 
 **Purpose:** Single ordered work queue for humans and agents.  

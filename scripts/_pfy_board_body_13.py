@@ -106,6 +106,44 @@
             code = 200 if result.get("ok") else 400
             self._send(code, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
             return
+        if path in ("/gab/sync", "/models/gab-sync"):
+            length = int(self.headers.get("Content-Length") or 0)
+            if length:
+                self.rfile.read(length)
+            result = gab_local_sync()
+            code = 200 if result.get("ok") else 400
+            self._send(code, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
+            return
+        if path in ("/gab/pull", "/models/gab-pull"):
+            length = int(self.headers.get("Content-Length") or 0)
+            raw = self.rfile.read(length) if length else b"{}"
+            try:
+                body = json.loads(raw.decode() or "{}")
+            except json.JSONDecodeError:
+                body = {}
+            tag = str((body or {}).get("tag") or (body or {}).get("name") or "")
+            confirm = bool((body or {}).get("confirm") or (body or {}).get("confirm_tight"))
+            opt_in = bool((body or {}).get("opt_in_huge"))
+            result = gab_pull(tag, confirm_tight=confirm, opt_in_huge=opt_in)
+            code = 200 if result.get("ok") else 400
+            self._send(code, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
+            return
+        if path == "/gab/cloud":
+            length = int(self.headers.get("Content-Length") or 0)
+            raw = self.rfile.read(length) if length else b"{}"
+            try:
+                body = json.loads(raw.decode() or "{}")
+            except json.JSONDecodeError:
+                body = {}
+            model = str((body or {}).get("model") or "auto")
+            mod, err = _load_gab_228()
+            if mod is None:
+                result = {"ok": False, "live": "FAIL", "copy": "FAIL gab -- module missing", "error": err or "missing"}
+            else:
+                result = mod.cloud_lane(STATE, model=model, ROOT=ROOT)
+            code = 200 if result.get("ok") else 400
+            self._send(code, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
+            return
         self._send(405, b"POST disabled for this path\n", "text/plain; charset=utf-8")
 
 def main():
@@ -154,6 +192,32 @@ def main():
     if args[:1] == ["--try"]:
         name = args[1] if len(args) > 1 else ""
         result = try_recommended_model(name)
+        print(json.dumps(result))
+        return 0 if result.get("ok") else 2
+    if args[:1] in (["--gab-sync"], ["--gab-local-sync"]):
+        result = gab_local_sync()
+        print(json.dumps(result))
+        return 0 if result.get("ok") else 2
+    if args[:1] == ["--gab-pull"]:
+        tag = args[1] if len(args) > 1 else ""
+        confirm = "--confirm" in args
+        opt_in = "--opt-in-huge" in args
+        result = gab_pull(tag, confirm_tight=confirm, opt_in_huge=opt_in)
+        print(json.dumps(result))
+        return 0 if result.get("ok") else 2
+    if args[:1] == ["--gab-cloud"]:
+        model = "auto"
+        if "--model" in args:
+            i = args.index("--model")
+            if i + 1 < len(args):
+                model = args[i + 1]
+        elif len(args) > 1 and not args[1].startswith("-"):
+            model = args[1]
+        mod, err = _load_gab_228()
+        if mod is None:
+            result = {"ok": False, "copy": "FAIL gab -- module missing", "error": err or "missing"}
+        else:
+            result = mod.cloud_lane(STATE, model=model, ROOT=ROOT)
         print(json.dumps(result))
         return 0 if result.get("ok") else 2
     if args[:1] == ["--eval"]:
