@@ -84,6 +84,12 @@
         "name": "worker-monitor",
         "origin": "first-party dual-session recipe (T-0085)",
         "purpose": "Local Ollama OpenCode worker + Grok monitor protocol"
+      },
+      {
+        "name": "jev-decision",
+        "origin": "first-party #230 decision layer",
+        "upstream": "https://github.com/typesafe-ai/skills",
+        "purpose": "Typed Choice/Score locks: CUA-S1-FORMS primary local, TypeSafe optional"
       }
     ]
   },

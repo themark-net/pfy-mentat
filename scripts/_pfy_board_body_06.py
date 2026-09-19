@@ -260,6 +260,9 @@ def wizard_fields():
         "wizard_mode": "bare", "wizard_review": "", "wizard_when": "",
         "wizard_copy": "compose launch wizard", "wizard_next": "complete wizard review (runtime · lane · toolsets · harness)",
         "wizard_live": "SKIP", "wizard_cta": "Launch session",
+        "wizard_decision": "○ off", "wizard_decision_path": "off",
+        "decision_honesty": "decision ≠ gab auto ≠ local",
+        "decision_core": "compact context · choose model/tool",
     }
     mod, err = _load_launch_225()
     if mod is None:
@@ -282,6 +285,30 @@ def wizard_apply(step, value=""):
         STATE, step, value=value, ROOT=ROOT, which=which_bin,
         live_openai_base=live_openai_base,
     )
+
+
+def _load_jev_230():
+    """Load pfy_jev_230 or return (None, error). Cite #230."""
+    import importlib.util
+    path = ROOT / "scripts" / "pfy_jev_230.py"
+    if not path.is_file():
+        return None, str(path)
+    try:
+        spec = importlib.util.spec_from_file_location("pfy_jev_230", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod, ""
+    except Exception as e:
+        return None, str(e)[:400]
+
+
+def decision_smoke(path=None):
+    """Mark-free CUA-S1-FORMS (or mini-jev) Choice smoke. Cite #230."""
+    mod, err = _load_jev_230()
+    if mod is None:
+        return {"ok": False, "live": "FAIL", "copy": "FAIL decision -- module missing",
+                "error": err or "missing", "next_step": "./pfy setup", "usable": False}
+    return mod.attach_usable(ROOT, STATE, path=path or "cua-s1-forms")
 
 
 def _load_gab_228():

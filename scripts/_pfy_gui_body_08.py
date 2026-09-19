@@ -41,14 +41,16 @@ ck_forget()
             wiz_ts = str(s.get("wizard_toolsets") or "").strip() or "(none)"
             wiz_en = str(s.get("wizard_enabled") or "").strip() or "(none)"
             wiz_hs = str(s.get("wizard_harness") or "").strip() or "(none)"
+            wiz_dec = str(s.get("wizard_decision") or s.get("decision_paint") or "").strip() or "○ off"
+            wiz_dchip = " · ".join(x for x in (s.get("decision_chip") or "", s.get("decision_conf") or "", s.get("decision_honesty") or "decision ≠ gab auto ≠ local") if x)
             wiz_rv = str(s.get("wizard_review") or "").strip() or f"runtime {wiz_rt} · lane {wiz_lane} · toolsets {wiz_ts} · harness {wiz_hs}"
-            txt = f"LOOP\nenv        {env_live}\nruntime    {wiz_rt}\nlane       {wiz_lane}\ntoolsets   {wiz_ts}\nenabled    {wiz_en}\nharness    {wiz_hs}\nreview     {wiz_rv}\nattached   {att}\nsession    {reach}\nusing: {using}" + (f"  {mode_when}" if mode_when else "") + f"\nloop       {loop_ev}" + (f"  {loop_when}" if loop_when else "") + f"\ngraph      {graph_ev}" + (f"  {graph_when}" if graph_when else "") + f"\nqueue      {qtxt}\nlast       {verb}  {when}\nmonitor    {mon}\ngrok       {gpath}"
+            txt = f"LOOP\nenv        {env_live}\nruntime    {wiz_rt}\nlane       {wiz_lane}\ntoolsets   {wiz_ts}\nenabled    {wiz_en}\nharness    {wiz_hs}\ndecision   {wiz_dec}\nchip       {wiz_dchip}\nreview     {wiz_rv}\nattached   {att}\nsession    {reach}\nusing: {using}" + (f"  {mode_when}" if mode_when else "") + f"\nloop       {loop_ev}" + (f"  {loop_when}" if loop_when else "") + f"\ngraph      {graph_ev}" + (f"  {graph_when}" if graph_when else "") + f"\nqueue      {qtxt}\nlast       {verb}  {when}\nmonitor    {mon}\ngrok       {gpath}"
             what = str((getattr(self, "_last_env", {}) or {}).get("what") or "")
             if what:
                 txt += "\nwhat       " + what
             if stub: txt += f"\nFAIL       {s.get('blocked_copy') or GROK_USE}"
             if self.msg: txt += "\n" + self.msg
-            self.pack_acts(["sess", "local", "cloud", "ofree", "bare", "orch", "graph", "catalog", "hopenc", "hgrok", "hhermes", "hcodex", "hclaude", "hgab", "env", "copyep", "copyst", "open", "hermes", "grok", "codex", "claude", "gab", "est", "ast"])
+            self.pack_acts(["sess", "local", "cloud", "ofree", "bare", "orch", "graph", "catalog", "hopenc", "hgrok", "hhermes", "hcodex", "hclaude", "hgab", "decoff", "deccua", "dects", "decmj", "env", "copyep", "copyst", "open", "hermes", "grok", "codex", "claude", "gab", "est", "ast"])
         elif self.view == "engine":
             u = s.get("usage") if isinstance(s.get("usage"), dict) else {}
             sr = s.get("status_runtime") or {}
@@ -84,6 +86,8 @@ ck_forget()
             reco = list(s.get("recommend") or [])
             rtxt = " · ".join(str(x) for x in reco[:5]) if reco else "(none)"
             txt += f"\nrecommend  {rtxt}"
+            txt += f"\nmiddleware {s.get('decision_core') or 'compact context · choose model/tool'}"
+            txt += f"\nchip       {s.get('decision_honesty') or 'decision ≠ gab auto ≠ local'}"
             if s.get("recommend_ok") is False:
                 rc = s.get("recommend_copy") or "FAIL recommend"
                 rn = s.get("recommend_next") or "Launch env or ./pfy up"

@@ -23,6 +23,7 @@
 | [0013](0013-optional-operator-tuis-empirical-preference.md) | Treat operator TUIs (incl. AgenC) as optional scored components; empirical preference dimension | Accepted | 2026-07-27 |
 | [0014](0014-pluggable-local-inference-spine.md) | Pluggable local inference spine (FreeToken → llama-swap/llama-server → Ollama) | Accepted | 2026-08-24 |
 | [0015](0015-catalog-json-slim-subset.md) | Catalog JSON is a slim machine subset of TOOLS.md (not a 1:1 dump) | Accepted | 2026-08-24 |
+| [0016](0016-jev-decision-layer.md) | Jev-style decision layer: typed Choice/Score; CUA-S1-FORMS primary local | Accepted | 2026-09-18 |
 
 ## How to add
 

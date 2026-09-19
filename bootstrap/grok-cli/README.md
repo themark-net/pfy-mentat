@@ -33,6 +33,7 @@ This is the first concrete integration under `pfy-mentat` — not another third-
 | `marketing-council` | Multi-advisor marketing perspectives (`/marketing-council`, T-0011) |
 | `agent-loops` | Loop types + eight exits + Finn spec/build/review (`/agent-loops`, T-0050) |
 | `hermes-feedback` | Self-improvement: auto-memory, auto-skill, curator (`/hermes-feedback`, T-0048) |
+| `jev-decision` | Typed Choice/Score locks: CUA-S1-FORMS primary local, TypeSafe optional (`/jev-decision`, #230) |
 
 ### External skills path (not copied into `~/.grok/skills`)
 

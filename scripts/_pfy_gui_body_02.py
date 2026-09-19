@@ -47,6 +47,10 @@
         self.bhcodex = ttk.Button(self.acts, text="Codex", command=lambda: self.wizard_step("harness", "codex"))
         self.bhclaude = ttk.Button(self.acts, text="Claude", command=lambda: self.wizard_step("harness", "claude"))
         self.bhgab = ttk.Button(self.acts, text="Gab", command=lambda: self.wizard_step("harness", "gab"))
+        self.bdecoff = ttk.Button(self.acts, text="decision off", command=lambda: self.wizard_step("decision", "off"))
+        self.bdeccua = ttk.Button(self.acts, text="CUA-S1-FORMS", command=lambda: self.wizard_step("decision", "cua-s1-forms"))
+        self.bdects = ttk.Button(self.acts, text="TypeSafe", command=lambda: self.wizard_step("decision", "typesafe"))
+        self.bdecmj = ttk.Button(self.acts, text="mini-jev", command=lambda: self.wizard_step("decision", "mini-jev"))
         self.chips = ttk.Frame(right); self.chips.pack(fill="both", expand=True, padx=12, pady=(0,10))
 
     def set_view(self, k):

@@ -106,6 +106,18 @@
             code = 200 if result.get("ok") else 400
             self._send(code, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
             return
+        if path in ("/decision/smoke", "/decision"):
+            length = int(self.headers.get("Content-Length") or 0)
+            raw = self.rfile.read(length) if length else b"{}"
+            try:
+                body = json.loads(raw.decode() or "{}")
+            except json.JSONDecodeError:
+                body = {}
+            dpath = str((body or {}).get("path") or (body or {}).get("value") or "cua-s1-forms")
+            result = decision_smoke(dpath)
+            code = 200 if result.get("ok") else 400
+            self._send(code, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
+            return
         if path in ("/gab/sync", "/models/gab-sync"):
             length = int(self.headers.get("Content-Length") or 0)
             if length:
@@ -192,6 +204,17 @@ def main():
     if args[:1] == ["--try"]:
         name = args[1] if len(args) > 1 else ""
         result = try_recommended_model(name)
+        print(json.dumps(result))
+        return 0 if result.get("ok") else 2
+    if args[:1] in (["--decision"], ["--decision-smoke"]):
+        dpath = "cua-s1-forms"
+        if "--path" in args:
+            i = args.index("--path")
+            if i + 1 < len(args):
+                dpath = args[i + 1]
+        elif len(args) > 1 and not args[1].startswith("-"):
+            dpath = args[1]
+        result = decision_smoke(dpath)
         print(json.dumps(result))
         return 0 if result.get("ok") else 2
     if args[:1] in (["--gab-sync"], ["--gab-local-sync"]):

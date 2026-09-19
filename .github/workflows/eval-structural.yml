@@ -25,6 +25,12 @@ jobs:
         run: |
           set -euo pipefail
           PFY_GAB_OFFLINE=1 python3 scripts/pfy_gab_228.py --selftest
+      - name: Jev #230 offline selftest
+        if: always() && !cancelled()
+        run: |
+          set -euo pipefail
+          PFY_JEV_OFFLINE=1 python3 scripts/pfy_jev_230.py --selftest
+          python3 scripts/pfy_launch_wizard_225.py --selftest
       - name: Launcher must exec
         if: always() && !cancelled()
         run: |
@@ -63,6 +69,12 @@ jobs:
           test -x pfy
           test -x scripts/pfy
           ./pfy help
+      - name: Jev #230 CUA-S1-FORMS smoke (nimo, no Mark)
+        if: always() && !cancelled()
+        run: |
+          set -euo pipefail
+          PFY_JEV_OFFLINE=1 python3 scripts/pfy_jev_230.py --selftest
+          PFY_JEV_OFFLINE=1 python3 scripts/pfy_jev_230.py --smoke cua-s1-forms
       - name: Catalog receipts
         # Catalog 70-75 HOLD. Separate step so a red dashboard/check cannot skip ./pfy.
         # Do not fake-pass. Do not unpark catalog to green this.

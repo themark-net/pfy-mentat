@@ -56,7 +56,9 @@ noscript .fail{padding:16px;display:block}
     <div class=row>toolsets <b id=wiz-toolsets>(none)</b></div>
     <div class=row>enabled <b id=wiz-enabled>(none)</b></div>
     <div class=row>harness <b id=wiz-harness>(none)</b></div>
+    <div class=row>decision <b id=wiz-decision>○ off</b></div>
     <div class=row>review <b id=wiz-review>(none)</b></div>
+    <div class=row>chip <span class=muted id=wiz-decision-chip>decision ≠ gab auto ≠ local</span></div>
     <div class=row>attached <b id=loop-attached>(none)</b></div>
     <div class=row>session <b id=loop-session>(none)</b></div>
     <div class=row>using: <b id=loop-using>bare</b> <span class=muted id=loop-mode-when></span></div>
@@ -82,6 +84,10 @@ noscript .fail{padding:16px;display:block}
       <button type=button data-harness=codex>Codex</button>
       <button type=button data-harness=claude>Claude</button>
       <button type=button data-harness=gab>Gab</button>
+      <button type=button data-decision=off>decision off</button>
+      <button type=button data-decision=cua-s1-forms>CUA-S1-FORMS</button>
+      <button type=button data-decision=typesafe>TypeSafe</button>
+      <button type=button data-decision=mini-jev>mini-jev</button>
       <button type=button id=btnopen>Attach opencode</button>
       <button type=button id=btnhermes>Attach hermes</button>
       <button type=button id=btngrok>Attach grok</button>
@@ -109,6 +115,7 @@ noscript .fail{padding:16px;display:block}
     <div class=row>vram <b id=eng-vram>SKIP</b></div>
     <div class=row>recommend <span id=eng-reco class=muted>(none)</span></div>
     <div class=row>gab sync <span id=eng-gab-sync class=muted>(none)</span> <span class=muted id=eng-gab-honest>gab auto ≠ local ranking</span></div>
+    <div class=row>middleware <span id=eng-decision class=muted>compact context · choose model/tool</span> <span class=muted id=eng-decision-honest>decision ≠ gab auto ≠ local</span></div>
     <div class=row>pinned <b id=eng-pinned>(none)</b></div>
     <div class=row id=eng-usage-fail class=fail style=display:none></div>
     <div class=row id=eng-reco-fail class=fail style=display:none></div>

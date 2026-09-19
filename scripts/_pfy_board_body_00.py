@@ -14,8 +14,9 @@ POST /catalog/ask asks the attached TUI to implement a catalog tool for next lau
 POST /catalog/queue opens a real GitHub issue with Design->DevBot DoD (#214).
 POST /start with mode orchestration starts a multi-step local loop (#213).
 POST /start with mode code-graph hands Axon (or codebase-memory equivalent) (#215).
-POST /wizard composes Loop launch wizard steps (#225).
-POST /launch Launch session: enterable TUI with composed env or FAIL+next (#225/#224).
+POST /wizard composes Loop launch wizard steps (#225). Decision toggle is wizard step decision (#230).
+POST /launch Launch session: enterable TUI with composed env or FAIL+next (#225/#224). Decision middleware may compact+route before Launch (#230).
+POST /decision/smoke Mark-free CUA-S1-FORMS Choice (#230).
 POST /space-invaders runs session Space Invaders via Attach OpenCode (#155).
 """
 from __future__ import annotations
