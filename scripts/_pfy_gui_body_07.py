@@ -106,7 +106,7 @@
             self.paint_catalog("FAIL clipboard — select the prompt", True)
 
     def pack_acts(self, names):
-        forget = [self.bgrok, self.bopen, self.bhermes, self.bcodex, self.bclaude, self.bgab, self.bbare, self.borch, self.bgraph, self.bsi, self.bsiopen, self.bsifold, self.bsitask, self.bcopyep, self.bcopyst, self.brefresh, self.bcopy, self.bstage, self.benv, self.bpull, self.btest, self.breco, self.btry, self.pullname, self.sst, self.est, self.pst, self.rst, self.tst, self.ast, self.cst, self.sist, self.siabs, self.sirel, self.sitask, self.ewhat, self.siopenst, self.toolst, self.recst, self.tryst, self.catname, self.bask, self.bqueue, self.bcatcopy, self.catst, self.bsess, self.blocal, self.bcloud, self.bofree, self.bcatalog, self.bhopenc, self.bhgrok, self.bhhermes, self.bhcodex, self.bhclaude, self.bhgab]
+        forget = [self.bgrok, self.bopen, self.bhermes, self.bcodex, self.bclaude, self.bgab, self.bbare, self.borch, self.bgraph, self.bsi, self.bsiopen, self.bsifold, self.bsitask, self.bcopyep, self.bcopyst, self.brefresh, self.bcopy, self.bstage, self.benv, self.bpull, self.btest, self.breco, self.btry, self.pullname, self.sst, self.est, self.pst, self.rst, self.tst, self.ast, self.cst, self.sist, self.siabs, self.sirel, self.sitask, self.ewhat, self.siopenst, self.toolst, self.recst, self.tryst, self.catname, self.bask, self.bqueue, self.bcatcopy, self.catst, self.bsess, self.blocal, self.bcloud, self.bofree, self.bcatalog, self.bhopenc, self.bhgrok, self.bhhermes, self.bhcodex, self.bhclaude, self.bhgab, self.bdecoff, self.bdeccua, self.bdects, self.bdecmj]
         forget.extend(self.tool_btns.values())
         for w in forget:
             try: w.pack_forget()
@@ -116,6 +116,7 @@
             "bare": self.bbare, "orch": self.borch, "graph": self.bgraph,
             "sess": self.bsess, "local": self.blocal, "cloud": self.bcloud, "ofree": self.bofree, "catalog": self.bcatalog,
             "hopenc": self.bhopenc, "hgrok": self.bhgrok, "hhermes": self.bhhermes, "hcodex": self.bhcodex, "hclaude": self.bhclaude, "hgab": self.bhgab,
+            "decoff": self.bdecoff, "deccua": self.bdeccua, "dects": self.bdects, "decmj": self.bdecmj,
             "si": self.bsi, "refresh": self.brefresh,
             "copy": self.bcopy, "stage": self.bstage, "env": self.benv,
             "pull": self.bpull, "pullname": self.pullname, "pst": self.pst,

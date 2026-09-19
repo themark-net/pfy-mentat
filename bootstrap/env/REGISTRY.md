@@ -26,6 +26,10 @@ When integrating a new tool, **add a row here in the same PR** as the integratio
 | `GAB_API_KEY` | **yes** | optional | — | Gab cloud lane (`https://gab.ai/v1`) | Plus/max plan; docs gab.ai/docs/api-auth. Not a local GGUF host |
 | `PFY_GAB_MODEL` | no | optional | `auto` | Gab cloud model id | `auto` (cloud router) or pin-by-id from GET /v1/models |
 | `PFY_GAB_OFFLINE` | no | CI | `1` in CI | Force Gab `/models` fixture | Offline fixture `scripts/fixtures/gab_models_v1.json` |
+| `TYPESAFE_API_KEY` | **yes** | optional | — | TypeSafe Jev cloud (`jev-1.13.0`) | Optional. Missing on TypeSafe path → FAIL+next or CUA-S1-FORMS. Never required for #230 smoke |
+| `PFY_JEV_MODEL` | no | optional | `jev-1.13.0` | TypeSafe model id | Cloud path only |
+| `PFY_JEV_CONF_GATE` | no | optional | `0.85` | Decision auto-act margin | Below gate → FAIL / escalate; not percent-correct |
+| `PFY_JEV_OFFLINE` | no | CI | `1` in CI | Skip TypeSafe network | Mark-free CUA-S1-FORMS selftest |
 | Host `~/.grok/auth.json` | **yes** | Grok Build default | created by `grok login` | Grok CLI OIDC/browser session | **Primary auth** for interactive Grok; mode `oidc` + refresh_token |
 | Cage `~/.agentcage/grok-home/auth.json` | **yes** | grok-in-cage | via `make cage-grok-auth-import` | Grok inside agent container | Copy of host session or device-login result; chmod 600 |
 | `GROK_HOME` | no | optional | `$HOME/.grok` | Grok CLI state dir | In cage: `/home/agent/.grok` (volume) |

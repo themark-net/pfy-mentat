@@ -1,6 +1,7 @@
 ## Done / shipping
 
-- #228 Gab cloud lane + local recommend sync (this PR)
+- #230 Jev-style decision layer (CUA-S1-FORMS primary local; TypeSafe optional)
+- #228 Gab cloud lane + local recommend sync
 
 # TODO — next steps
 

@@ -1,0 +1,15 @@
+{
+  "checkpoint": "cua-s1-form-v0",
+  "repo": "https://github.com/trycua/cua",
+  "note": "CUA-S1-FORMS form-fill specialist fixture. Weights unpublished; this is the Mark-free smoke state. Cite #230.",
+  "form_title": "Launch session",
+  "document": [
+    {"label": "model", "value": "qwen3-coder:30b"},
+    {"label": "lane", "value": "local"}
+  ],
+  "elements": [
+    {"id": "model", "role": "TextBox", "label": "model", "value": "", "placeholder": "tag"},
+    {"id": "decision", "role": "CheckBox", "label": "decision", "checked": false},
+    {"id": "launch", "role": "Button", "label": "Launch session"}
+  ]
+}

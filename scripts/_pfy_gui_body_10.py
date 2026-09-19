@@ -69,6 +69,10 @@ def run_tk(board, selftest=False) -> bool:
             and w.bhcodex.cget("text") == "Codex"
             and w.bhclaude.cget("text") == "Claude"
             and w.bhgab.cget("text") == "Gab"
+            and w.bdecoff.cget("text") == "decision off"
+            and w.bdeccua.cget("text") == "CUA-S1-FORMS"
+            and w.bdects.cget("text") == "TypeSafe"
+            and w.bdecmj.cget("text") == "mini-jev"
             and w.bpull.cget("text") == "Pull"
             and w.btest.cget("text") == "Test model"
             and w.breco.cget("text") == "Recommend"
@@ -83,7 +87,7 @@ def run_tk(board, selftest=False) -> bool:
         )
         w.set_view("loop")
         body = w.body.cget("text") or ""
-        loop_ok = "LOOP" in body and "env" in body.lower() and "using:" in body.lower() and "loop       " in body and "started 2/8" in body and "graph      " in body and "path=axon" in body and "queue      " in body and "runtime" in body.lower() and "lane" in body.lower() and "toolsets" in body.lower() and "enabled" in body.lower() and "FreeToken-first" in body and "harness" in body.lower() and "review" in body.lower() and "LOCAL WORKER" not in body and "pfy board" not in body.lower()
+        loop_ok = "LOOP" in body and "env" in body.lower() and "using:" in body.lower() and "loop       " in body and "started 2/8" in body and "graph      " in body and "path=axon" in body and "queue      " in body and "runtime" in body.lower() and "lane" in body.lower() and "toolsets" in body.lower() and "enabled" in body.lower() and "FreeToken-first" in body and "harness" in body.lower() and "review" in body.lower() and "decision" in body.lower() and "decision ≠ gab auto ≠ local" in body and "LOCAL WORKER" not in body and "pfy board" not in body.lower()
         w.set_view("attach")
         att_body = w.body.cget("text") or ""
         att_ok = "ATTACH" in att_body and "using:" in att_body.lower() and "graph      " in att_body

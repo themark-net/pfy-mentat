@@ -23,6 +23,7 @@
 ./pfy catalog status        # queued items + open/closed/PR
 ./pfy launch               # Loop wizard Launch session (#225/#224)
 ./pfy launch compose       # honest lane + enabled-tool paint (#224)
+./pfy decision smoke       # #230 CUA-S1-FORMS typed Choice (Mark-free)
 ./pfy launch brief         # write in-session AGENTS/prompt card (#224)
 ./pfy context              # OpenContext oc prove (#205); FAIL if node/oc missing
 ./pfy code-graph           # Axon prove or codebase-memory equivalent (#215)
@@ -41,6 +42,8 @@ Root `./pfy` is a 100755 wrapper that execs `scripts/pfy`. Detector is invoked w
 **Recommend / try (#207):** Engine + `./pfy models recommend` ranks host-fit models not yet pulled. `try` pulls one FreeToken-first (operate-or-FAIL). Handoff: engine pin · Attach re-probe · TUI reload. [recommend-models.md](recommend-models.md).
 
 **Catalog ask / queue (#209 / #214):** Tools browse (usable subset, not scores-only). Ask attached TUI to implement for next launch (prompt/artifact). **Queue for org** creates a real GitHub issue and paints open/closed/PR. HOLD 70–75 not auto-lifted. [catalog-ask-queue.md](catalog-ask-queue.md) · [live-org-queue.md](live-org-queue.md).
+
+**Decision layer (#230):** Loop toggle `off | CUA-S1-FORMS | TypeSafe | mini-jev`. Typed Choice/Score; CUA-S1-FORMS is primary local (Mark-free smoke). TypeSafe key optional. Honesty `decision ≠ gab auto ≠ local`. [jev-230.md](jev-230.md).
 
 **Launch wizard (#225) / session compose (#224):** Loop primary path is compose (runtime · lane · toolsets · harness) then **Launch session** into an enterable TUI, or FAIL+next. Loop paints honest lane (`local FreeToken-first` vs `cloud/subscription (Grok-sub)` vs `OpenCode free`) and enabled toolsets (SKIP/FAIL if not wired). Launch writes an in-session brief (AGENTS/skills/prompt card). Attach X is secondary re-attach. Window stay-open. HTML+tk. No Env nav tab. [launch-wizard.md](launch-wizard.md) · [session-compose.md](session-compose.md).
 

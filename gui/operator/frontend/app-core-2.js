@@ -260,11 +260,23 @@ function paintWizard(s){
   if(en) en.textContent=s.wizard_enabled||'(none)';
   const hs=document.getElementById('wiz-harness');
   if(hs) hs.textContent=s.wizard_harness||'(none)';
+  const dec=document.getElementById('wiz-decision');
+  if(dec) dec.textContent=s.wizard_decision||s.decision_paint||'○ off';
+  const dchip=document.getElementById('wiz-decision-chip');
+  if(dchip){
+    const bits=[s.decision_chip||'', s.decision_conf||'', s.decision_honesty||'decision ≠ gab auto ≠ local'].filter(Boolean);
+    dchip.textContent=bits.join(' · ');
+  }
   const rv=document.getElementById('wiz-review');
   if(rv) rv.textContent=s.wizard_review||'(none)';
+  const engd=document.getElementById('eng-decision');
+  if(engd) engd.textContent=s.decision_core||'compact context · choose model/tool';
+  const engh=document.getElementById('eng-decision-honest');
+  if(engh) engh.textContent=s.decision_honesty||'decision ≠ gab auto ≠ local';
   document.querySelectorAll('[data-lane]').forEach(b=>b.classList.toggle('on', b.getAttribute('data-lane')===(s.wizard_lane||'')));
   document.querySelectorAll('[data-toolset]').forEach(b=>b.classList.toggle('on', b.getAttribute('data-toolset')===(s.wizard_toolsets||'')));
   document.querySelectorAll('[data-harness]').forEach(b=>b.classList.toggle('on', b.getAttribute('data-harness')===(s.wizard_harness||'')));
+  document.querySelectorAll('[data-decision]').forEach(b=>b.classList.toggle('on', b.getAttribute('data-decision')===(s.wizard_decision_path||s.decision_path||'off')));
 }
 async function postWizard(step, value){
   try{
@@ -314,6 +326,11 @@ async function runWizard(step, value){
         if(j.enabled||j.wizard_enabled) lastSnap.wizard_enabled=j.enabled||j.wizard_enabled;
         if(j.harness) lastSnap.wizard_harness=j.harness;
         if(j.review) lastSnap.wizard_review=j.review;
+        if(j.path||j.wizard_decision_path) lastSnap.wizard_decision_path=j.path||j.wizard_decision_path;
+        if(j.paint||j.wizard_decision) lastSnap.wizard_decision=j.paint||j.wizard_decision;
+        if(j.chip_conf||j.decision_conf) lastSnap.decision_conf=j.chip_conf||j.decision_conf;
+        if(j.honesty||j.decision_honesty) lastSnap.decision_honesty=j.honesty||j.decision_honesty;
+        if(j.chip_decision||j.decision_chip) lastSnap.decision_chip=j.chip_decision||j.decision_chip;
         paintWizard(lastSnap);
       }
     }else{

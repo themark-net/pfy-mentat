@@ -30,6 +30,7 @@ document.getElementById('btnlaunchsess')&&document.getElementById('btnlaunchsess
 document.querySelectorAll('[data-lane]').forEach(el=>el.addEventListener('click',()=>runWizard('lane', el.getAttribute('data-lane'))));
 document.querySelectorAll('[data-toolset]').forEach(el=>el.addEventListener('click',()=>runWizard('toolsets', el.getAttribute('data-toolset'))));
 document.querySelectorAll('[data-harness]').forEach(el=>el.addEventListener('click',()=>runWizard('harness', el.getAttribute('data-harness'))));
+document.querySelectorAll('[data-decision]').forEach(el=>el.addEventListener('click',()=>runWizard('decision', el.getAttribute('data-decision'))));
 document.getElementById('btncopyendpoint')&&document.getElementById('btncopyendpoint').addEventListener('click',()=>copyLaunchEndpoint());
 document.getElementById('btncopyendpoint-eng')&&document.getElementById('btncopyendpoint-eng').addEventListener('click',()=>copyLaunchEndpoint());
 document.getElementById('btncopystatus')&&document.getElementById('btncopystatus').addEventListener('click',()=>copyLaunchStatus());

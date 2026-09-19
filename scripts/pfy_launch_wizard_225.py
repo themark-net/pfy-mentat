@@ -223,6 +223,22 @@ def _load_compose_224():
         return None
 
 
+def _load_jev_230():
+    """Load pfy_jev_230 or return None. Cite #230. Optional middleware."""
+    import importlib.util
+
+    path = Path(__file__).resolve().parent / "pfy_jev_230.py"
+    if not path.is_file():
+        return None
+    try:
+        spec = importlib.util.spec_from_file_location("pfy_jev_230", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+    except Exception:
+        return None
+
+
 def snapshot_fields(STATE):
     comp = load_comp(STATE)
     review = paint_review(comp)
@@ -248,6 +264,10 @@ def snapshot_fields(STATE):
         "wizard_next": "" if ready else NEXT_REVIEW,
         "wizard_live": "READY" if ready else "SKIP",
         "wizard_cta": "Launch session",
+        "wizard_decision": "○ off",
+        "wizard_decision_path": "off",
+        "decision_honesty": "decision ≠ gab auto ≠ local",
+        "decision_core": "compact context · choose model/tool",
     }
     mod = _load_compose_224()
     if mod is not None:
@@ -268,6 +288,14 @@ def snapshot_fields(STATE):
             ):
                 if extra.get(key) not in (None, ""):
                     out[key] = extra[key]
+    jev = _load_jev_230()
+    if jev is not None:
+        try:
+            dfields = jev.snapshot_fields(STATE)
+        except Exception:
+            dfields = {}
+        if isinstance(dfields, dict):
+            out.update({k: v for k, v in dfields.items() if v not in (None, "")})
     if not out.get("wizard_lane_label"):
         lane = out.get("wizard_lane") or ""
         hid = out.get("wizard_harness") or ""
@@ -623,6 +651,16 @@ def apply_step(STATE, step, value="", ROOT=None, which=None, live_openai_base=No
         rec = set_harness(STATE, value, live_openai_base=live_openai_base)
     elif step == "review":
         rec = review(STATE, live_openai_base=live_openai_base)
+    elif step in ("decision", "jev"):
+        jev = _load_jev_230()
+        if jev is None:
+            rec = fail("decision", "decision module missing", "./pfy setup")
+        else:
+            rec = jev.set_path(STATE, value)
+            rec = dict(rec or {})
+            rec["step"] = "decision"
+            rec["wizard_decision"] = rec.get("paint") or rec.get("path") or ""
+            rec["wizard_decision_path"] = rec.get("path") or ""
     else:
         rec = fail("wizard", "unknown step %s" % (step or "(empty)"), NEXT_REVIEW)
     return _decorate_compose(STATE, rec)
@@ -640,6 +678,31 @@ def launch_session(
     rec = review(STATE, live_openai_base=live_openai_base)
     if not rec.get("ok"):
         return rec
+    jev = _load_jev_230()
+    if jev is not None:
+        live = {
+            "wizard_lane": (load_comp(STATE) or {}).get("lane") or "",
+            "wizard_harness": (load_comp(STATE) or {}).get("harness") or "",
+            "wizard_toolsets": (load_comp(STATE) or {}).get("toolsets") or "",
+            "lane": (load_comp(STATE) or {}).get("lane") or "",
+            "harness": (load_comp(STATE) or {}).get("harness") or "",
+            "toolsets": (load_comp(STATE) or {}).get("toolsets") or "",
+        }
+        gated = jev.middleware_before_launch(STATE, live=live, ROOT=ROOT)
+        if gated.get("skipped"):
+            pass
+        elif not gated.get("ok"):
+            return gated
+        else:
+            rec = dict(rec)
+            rec["decision"] = gated
+            rec["decision_choice"] = gated.get("choice")
+            rec["decision_conf"] = gated.get("chip_conf")
+            rec["honesty"] = gated.get("honesty")
+            copy = str(rec.get("copy") or "")
+            extra = gated.get("copy") or ""
+            if extra and extra not in copy:
+                rec["copy"] = (copy + " · " + extra).strip(" ·")
     comp = load_comp(STATE)
     hid = normalize_harness(comp.get("harness") or "")
     toolset = normalize_toolset(comp.get("toolsets") or "bare")
@@ -898,7 +961,7 @@ def main(argv=None):
     if not args or args[0] in ("-h", "--help"):
         print(
             "usage: pfy_launch_wizard_225.py "
-            "[--selftest|--runtime|--lane LANE|--toolset SET|--harness ID|--review|--launch]",
+            "[--selftest|--runtime|--lane LANE|--toolset SET|--harness ID|--decision PATH|--review|--launch]",
             file=sys.stderr,
         )
         return 2
@@ -923,6 +986,10 @@ def main(argv=None):
         rec = set_harness(STATE, " ".join(args[1:]))
         print(json.dumps(rec))
         return 0 if rec.get("ok") else 2
+    if cmd in ("--decision", "--jev"):
+        rec = apply_step(STATE, "decision", " ".join(args[1:]), ROOT=ROOT)
+        print(json.dumps(rec))
+        return 0 if rec.get("ok") else 2
     if cmd == "--review":
         rec = review(STATE)
         print(json.dumps(rec))
@@ -933,7 +1000,7 @@ def main(argv=None):
         return 0 if rec.get("ok") else 2
     print(
         "usage: pfy_launch_wizard_225.py "
-        "[--selftest|--runtime|--lane LANE|--toolset SET|--harness ID|--review|--launch]",
+        "[--selftest|--runtime|--lane LANE|--toolset SET|--harness ID|--decision PATH|--review|--launch]",
         file=sys.stderr,
     )
     return 2
