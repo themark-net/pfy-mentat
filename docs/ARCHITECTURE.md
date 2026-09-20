@@ -1,6 +1,6 @@
 # Architecture snapshot
 
-**Last updated:** 2026-08-24
+**Last updated:** 2026-09-20
 **Design authority:** [DESIGN.md](DESIGN.md)
 **Decision authority:** [adr/](adr/README.md)
 
@@ -8,7 +8,26 @@ Keep this file short. If layering or boundaries change, accept an ADR and update
 
 ## Purpose
 
-Catalog + integration track for local-first LLM tooling. The product door is `./pfy` (G8 / [ADR-0012](adr/0012-simple-harness-agnostic-launch.md)). Local inference is pluggable per **[ADR-0014](adr/0014-pluggable-local-inference-spine.md)** (supersedes ADR-0011 as the inference fabric). Grok is the monitor harness; the local worker is OpenAI-compat.
+Product triad ([ADR-0017](adr/0017-product-catalog-evaluation-handoff-harness.md)): **scored catalog** + **evaluation** + **local handoff harness** (toolset × harness matrix, hedged local/cloud lanes). The CLI door is `./pfy` (G8 / [ADR-0012](adr/0012-simple-harness-agnostic-launch.md)). Local inference is pluggable per **[ADR-0014](adr/0014-pluggable-local-inference-spine.md)** (supersedes ADR-0011 as the inference fabric). Grok is the default harness; the lane (local vs cloud) is decided by the hedge, not by the harness.
+
+## `pfylib/` package layer (ADR-0017)
+
+```text
+data/toolsets.json ──┐                       data/harnesses.json
+                     ▼                              │
+            pfylib/registry.py  ◄───────────────────┘
+                     │
+        ┌────────────┼──────────────┐
+        ▼            ▼              ▼
+ pfylib/toolsets.py  pfylib/hedge.py   pfylib/cli.py  ◄── scripts/pfy  (toolset | hedge verbs, exec)
+ matrix / plan /     decide / record   argparse
+ apply               ledger JSON
+        │
+        └── reuses scripts/pfy_jev_230.py (import, not copy) for the Jev reference toolset
+tests/  (stdlib unittest; run in G0)
+```
+
+Named `pfylib` because the repo root already has an executable file `pfy`. `plan()` never writes; `apply --yes` writes only under `$PFY_STATE_DIR` or the harness's own config dir. Module doc: [modules/pfylib.md](modules/pfylib.md).
 
 ## Product loop
 
@@ -34,6 +53,8 @@ sources (X / aggregates / papers)
     → scoring (CATEGORIZATION rubric)
     → TOOLS.md + data/tools.json
     → bootstrap/grok-cli (skills SoT) + bootstrap/opencode (adapter)
+    → data/toolsets.json (catalog_tool ↔ tools.json implementation)
+    → pfylib: toolset plan/apply onto harness × lane (hedge decides lane)
     → ./pfy: inference (ADR-0014) → env-stage → active harness (default grok)
 ```
 
@@ -46,6 +67,7 @@ sources (X / aggregates / papers)
 | Bootstrap Grok | `bootstrap/grok-cli/` | Skills SoT + MCP + config merge |
 | Bootstrap OpenCode | `bootstrap/opencode/` | Thin adapter; no forked skills |
 | **Simple launch** | `./pfy`, `data/harnesses.json` | G8 / ADR-0012 operator surface |
+| **Toolsets + handoff** | `pfylib/`, `data/toolsets.json`, `tests/` | ADR-0017 matrix / plan / apply / hedge |
 | Local runtime | `scripts/detect-local-runtime.sh` | ADR-0014 detect |
 | Inference recipes | `config/litellm/`, `examples/litellm-ollama/` | Profile routers + cage smoke |
 | Harness | `harness/agent-cage/` | Lab + Grok-in-cage |

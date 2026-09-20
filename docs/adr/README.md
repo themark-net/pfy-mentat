@@ -24,6 +24,7 @@
 | [0014](0014-pluggable-local-inference-spine.md) | Pluggable local inference spine (FreeToken → llama-swap/llama-server → Ollama) | Accepted | 2026-08-24 |
 | [0015](0015-catalog-json-slim-subset.md) | Catalog JSON is a slim machine subset of TOOLS.md (not a 1:1 dump) | Accepted | 2026-08-24 |
 | [0016](0016-jev-decision-layer.md) | Jev-style decision layer: typed Choice/Score; CUA-S1-FORMS primary local | Accepted | 2026-09-18 |
+| [0017](0017-product-catalog-evaluation-handoff-harness.md) | Product = catalog + evaluation + local handoff harness; toolset × harness matrix; hedged lanes; catalog↔implementation link (refines 0011/0012/0015/0016; resolves OQ-0011) | Accepted | 2026-09-20 |
 
 ## How to add
 

@@ -1,7 +1,7 @@
 # OQ-0013: Code layout — `pfy/` Python package by concept + `tests/` + pytest in G0?
 
 - **Priority:** **P1**
-- **Status:** **open** (needs owner; 2026-09-20)
+- **Status:** **promoted-to-adr** → [ADR-0017](../adr/0017-product-catalog-evaluation-handoff-harness.md) § Consequences (layout forced by the OQ-0011 answer; **owner may still veto**, 2026-09-20)
 - **Blocks:** T-0111 (consolidation of `scripts/pfy_*_NNN.py`)
 - **Related:** [critical-review-2026-09-20.md](../ops/critical-review-2026-09-20.md) §3.2–3.3 · OQ-0011 · OQ-0012 · ADR-0012 (launch)
 
@@ -69,4 +69,14 @@ Rules that go with it: modules named by **concept**, issue numbers only in docst
 
 ## Resolution notes
 
-*(pending)*
+**2026-09-20 — forced by OQ-0011 / ADR-0017, not answered separately by the owner.** The owner's product answer ("any toolset … implementable with whatever harnesses we're wiring") requires a toolset abstraction that is independent of per-harness scripts, i.e. **Option A**: an importable package named by concept + thin bash `scripts/pfy` dispatcher + `tests/`.
+
+Engineering consequences recorded in ADR-0017:
+
+- Package name is **`pfylib/`**, not `pfy/` — the repo root already has an executable file `pfy`, and a directory and file of the same name cannot coexist. `./pfy` stays the user-facing name.
+- Tests are stdlib `unittest` (`python3 -m unittest discover -s tests`), no pytest dependency; run in G0 (`run_structural.py` + `eval-structural.yml`).
+- Python floor: **3.12** (CI's version).
+- `scripts/pfy` stays bash; new verbs `toolset` / `hedge` `exec python3 pfylib/cli.py`. Existing `--selftest` behaviour is kept until tests replace it (T-0121).
+- Tauri GUI location (question 2) is **not** decided here — it is lab per ADR-0017 and can move to its own repo later.
+
+**The owner may veto** the package name, the unittest-not-pytest choice, or the bash-stays decision; any veto reopens this OQ. Migration of the remaining `scripts/pfy_*_NNN.py` clones is T-0121.

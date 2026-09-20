@@ -1,7 +1,7 @@
 # OQ-0011: Product primacy — which of the three is THE product for the next horizon?
 
 - **Priority:** **P0**
-- **Status:** **open** (needs owner; 2026-09-20)
+- **Status:** **promoted-to-adr** → [ADR-0017](../adr/0017-product-catalog-evaluation-handoff-harness.md) (answered by owner 2026-09-20)
 - **Blocks:** T-0090 (surface collapse), T-0111 (consolidation), OQ-0012, OQ-0013, catalog HOLD 70–75 disposition, ADR-0012 duplicate cleanup
 - **Related:** [critical-review-2026-09-20.md](../ops/critical-review-2026-09-20.md) §1 · DESIGN §1 · ADR-0002 · ADR-0011 · ADR-0012 (launch) · ADR-0015
 
@@ -54,4 +54,14 @@ DESIGN §1 says (b) is the product and (a) is “how we choose pieces”. The re
 
 ## Resolution notes
 
-*(pending)*
+**2026-09-20 — owner answer (verbatim):**
+
+> "the product is catalog, evaluation, local handoff harness. implement valuable tools from catalog, allow local/remote handoff to any harness, any toolset. the toolset for example, newest is jev, should be 'implementable' with whatever harnesses we're wiring. the local/cloud handoff should allow 'hedging' cloud credits with local compute. the point is a catalog with an implementation not one or the other."
+
+**Reading encoded in ADR-0017:** none of A/B/C/D as written. The product is a **triad** — (1) scored catalog, (2) evaluation, (3) a local handoff harness that applies a **toolset** (jev, gab, opencontext, code-graph, orchestration, catalog-ask, …) to **any wired harness** (grok, opencode, claude-code, codex, hermes, gemini, exo, continue) on a **local or cloud lane**, with a **hedge** policy that spends local compute first and cloud credits only when local cannot (budgeted). Toolsets × harnesses are orthogonal: declare once in `data/toolsets.json`, apply to N harnesses. Catalog rows and implementations link both ways. "Not one or the other" = the catalog HOLD (70–75) is lifted as a standing policy and rows gain an `implementation` field.
+
+**Budgets for the non-primary parts (question 2):** GUI / voice / Tauri / Space Invaders become optional lab (not deleted, not led with). The process framework stays mandatory process, not product. No new `./pfy` verbs beyond `toolset` and `hedge` from this ADR; the surface question is OQ-0012's.
+
+**Stage 0 bar for our own surface (question 3):** not answered by the owner; ADR-0017 keeps the review's "clean box" bar as the eval target for the matrix (`stub` is an acceptable honest cell; a fake `implemented` is not).
+
+Promoted: [ADR-0017](../adr/0017-product-catalog-evaluation-handoff-harness.md). Work: T-0120..T-0123 in [TODO.md](../TODO.md).

@@ -1,7 +1,7 @@
 # Design: pfy-mentat
 
 **Status:** Active  
-**Last updated:** 2026-08-24  
+**Last updated:** 2026-09-20 (ADR-0017 triad)  
 **Authority for *why*:** [docs/adr/](adr/README.md)  
 **Next work:** [docs/TODO.md](TODO.md) · open items [docs/OPEN_QUESTIONS.md](OPEN_QUESTIONS.md)
 
@@ -15,7 +15,7 @@ Build a **living, scored catalog** of local-first LLM development tools and a **
 
 One-line purpose: **Track · Categorize · Rank · Integrate** tools for robust self-hosted agentic development.
 
-The **product you ship** is the operator stack (`./pfy` onboard / stage / ship). The catalog is how we choose pieces, not the end-user surface.
+The **product is a triad** ([ADR-0017](adr/0017-product-catalog-evaluation-handoff-harness.md)): (1) the **scored catalog**, (2) **evaluation**, and (3) a **local handoff harness** that applies any *toolset* (jev, gab, opencontext, code-graph, orchestration, catalog-ask, …) to any *wired harness* (grok, opencode, claude-code, codex, hermes, gemini, exo, continue) on a **local or cloud lane**, with a **hedge** policy that spends local compute first and cloud credits only when local cannot. Valuable catalog rows get implementations; implementations trace back to their catalog row. "Not one or the other." The operator window, voice and other GUI work are optional lab, not the product path.
 
 ---
 
@@ -31,6 +31,7 @@ The **product you ship** is the operator stack (`./pfy` onboard / stage / ship).
 | G6 | Lean tracking | Prefer pinned SHA + shallow clone; embed only when criteria in `SUBTREES.md` are met |
 | G7 | Durable process | Design + ADR + TODO + open questions keep multithreaded agents from re-litigating or losing TBDs |
 | **G8** | **Simple deploy path** | Bare clone → `./pfy setup` → `./pfy start` : **local inference up once** (FreeToken first, then llama-swap/llama-server, Ollama adapter), any harness attaches; stubs for unfinished adapters |
+| **G9** | **Toolset × harness handoff with hedge** | Every toolset in `data/toolsets.json` has an honest `implemented` / `partial` / `stub` cell for every wired harness in `data/harnesses.json`; `./pfy toolset matrix` shows it; `./pfy toolset plan <toolset> --harness <h>` yields a concrete env/files/brief plan or a truthful stub + next step; `./pfy hedge decide --task <bulk\|hard\|interactive>` picks `local` first and `cloud` only within `PFY_CLOUD_BUDGET`, never a fake lane ([ADR-0017](adr/0017-product-catalog-evaluation-handoff-harness.md)) |
 
 ### G8 detail — harness-agnostic simplicity
 
@@ -79,15 +80,24 @@ Grok stays **default harness** (ADR-0002). Local **worker** uses `LOCAL_OPENAI_B
                     │  Catalog                            │
                     │  TOOLS.md  ·  data/tools.json       │
                     │  CATEGORIZATION.md rubric           │
+                    │  rows ↔ implementation (ADR-0017)   │
                     └──────────────┬──────────────────────┘
-                                   │ integrate
+                                   │ implement valuable rows
+                    ┌──────────────▼──────────────────────┐
+                    │  Toolsets   data/toolsets.json      │
+                    │  jev · gab · opencontext · code-graph│
+                    │  orchestration · catalog-ask         │
+                    └──────────────┬──────────────────────┘
+                                   │ pfylib: plan / apply   (toolset × harness)
           ┌────────────────────────┼────────────────────────┐
           ▼                        ▼                        ▼
-   bootstrap/grok-cli/      pipelines/ (future)      examples/ (future)
-   skills · MCP · config    eval harnesses           compose / patterns
+   Handoff to harness       Hedge (lane)             Evaluation
+   grok · opencode ·        local first →            examples/eval-harness/
+   claude · codex ·         cloud within budget      structural · golden · matrix
+   hermes · gemini …        pfylib/hedge.py
           │
           ▼
-   Operator machine: Grok CLI (monitor) + local runtime (worker) + skills
+   Operator machine: chosen harness + local runtime (ADR-0014) + skills
           │
           ▼
    Downstream projects (e.g. gom-jobbar, ATG prototype) consume stack
@@ -99,7 +109,8 @@ Grok stays **default harness** (ADR-0002). Local **worker** uses `LOCAL_OPENAI_B
 |-------|----------|------|
 | Process | `docs/` | Design, ADR, TODO, open questions |
 | Catalog methodology | `CATEGORIZATION.md`, `SUBTREES.md` | How to score and track tools |
-| Catalog content | `TOOLS.md`, slim `data/tools.json`, `sources/` | Markdown catalog vs machine subset (ADR-0015) |
+| Catalog content | `TOOLS.md`, slim `data/tools.json`, `sources/` | Markdown catalog vs machine subset (ADR-0015); rows carry `implementation` when one exists (ADR-0017) |
+| Toolsets + handoff | `data/toolsets.json`, `pfylib/` | Toolset declarations; `matrix` / `plan` / `apply` / `hedge` (ADR-0017) |
 | Integration packages | `bootstrap/`, later `pipelines/`, `examples/` | How to run / replay stack pieces |
 | External tools | pins / rare `tools/` embeds | Upstream code not owned here |
 
@@ -119,10 +130,12 @@ Grok stays **default harness** (ADR-0002). Local **worker** uses `LOCAL_OPENAI_B
 - **Write-guard MCP** — ADR-0007; **implemented** (T-0031)
 - **One-shot workflow** — ADR-0008 · `/one-shot`
 - **`./pfy` simple surface** — ADR-0012 (G8)
+- **Toolset × harness matrix + hedge** — ADR-0017 (G9); `pfylib/`, `data/toolsets.json`, Jev reference implementation (T-0120)
 
 ### Near-term (see TODO)
 
-- **T-0090** product surface: onboard / stage / ship only
+- **T-0090** product surface: onboard / stage / ship only (measured on `./pfy help`; OQ-0012)
+- **T-0121..T-0123** migrate attach clones onto `pfylib/`, live hedge ledger, catalog HOLD lifted + `implementation` rows
 - **#76 / ADR-0014** pluggable local runtime (FreeToken preferred)
 - Keep **`make eval-structural`** + local **`eval-suite`** green
 - Platform Make complexity OK in MVP; product UX must stay ≤ ~3 levers
@@ -174,6 +187,7 @@ Skills: `/adr`, `/open-questions` (`/oq`), `/docs`.
 - [ARCHITECTURE.md](ARCHITECTURE.md)
 - [adr/README.md](adr/README.md)
 - [adr/0015-catalog-json-slim-subset.md](adr/0015-catalog-json-slim-subset.md)
+- [adr/0017-product-catalog-evaluation-handoff-harness.md](adr/0017-product-catalog-evaluation-handoff-harness.md) · [modules/pfylib.md](modules/pfylib.md)
 - [TODO.md](TODO.md)
 - [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md)
 - [ops/local-runtime.md](ops/local-runtime.md)

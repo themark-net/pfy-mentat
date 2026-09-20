@@ -2,13 +2,13 @@
 
 **pfy-mentat — Your PFY, a Mentat. It gets sent out, finds the tools, applies the standards, and reports back with receipts.**
 
-pfy-mentat is both a high-standard catalog of local LLM development tools *and* an orientation toward building the software that actually deploys and runs them reliably.
-
-The system (the PFY) is sent out to discover candidates, apply strict local-first standards, reject what doesn’t meet them, and deliver only the components that are worth using. The goal is not merely “tools that exist,” but tooling that helps people ship working local LLM systems instead of fighting endless “it works on my machine” problems — both for the tools themselves and for the products built with them.
+pfy-mentat is three things that link ([ADR-0017](docs/adr/0017-product-catalog-evaluation-handoff-harness.md)): a **scored, receipt-backed catalog** of local-first LLM dev tools; an **evaluation** lane (structural / golden / model) that keeps the scores honest; and a **local handoff harness** that takes any *toolset* from the catalog (jev, gab, opencontext, code-graph, orchestration, …) and applies it to any *wired harness* (grok, opencode, claude-code, codex, hermes, …) on a **local or cloud lane**, hedging cloud credits with local compute. Valuable catalog rows get implementations; implementations trace back to their row. A catalog *with* an implementation — not one or the other.
 
 Repository: https://github.com/themark-net/pfy-mentat
 
 ## Simple path
+
+`./pfy toolset matrix` shows which toolset runs on which harness today (`implemented` / `partial` / `stub` — most cells are honestly `stub`). `./pfy toolset plan jev --harness opencode` prints the env / files / brief that would be applied; `--yes` on `apply` writes them. `./pfy hedge decide --task bulk` picks the lane: local first, cloud only within `PFY_CLOUD_BUDGET`, otherwise FAIL with a next step. The operator window below is optional lab, not the product path.
 
 Operator environment: local inference, then product stage (honest skip if a piece is missing), then the native operator window. Loop **Launch session** composes runtime / lane / toolsets / harness then opens an enterable TUI. Loop paints **local FreeToken-first** vs **cloud/subscription (Grok-sub)** vs **OpenCode free** and which toolsets are actually enabled; Launch writes an in-session AGENTS/prompt brief. Attach grok/opencode remains secondary re-attach. Do not exec a harness into the GUI process.
 
@@ -18,6 +18,9 @@ Operator environment: local inference, then product stage (honest skip if a piec
 ./pfy start grok  # named harness after inference/stage (still execs that harness)
 ./pfy launch      # Loop wizard: compose then Launch session
 ./pfy models    # inspect-only: live GET /v1/models (and Ollama /api/tags); usage if exposed
+./pfy toolset matrix                       # toolset × harness: implemented | partial | stub (ADR-0017)
+./pfy toolset plan jev --harness opencode  # concrete env/files/brief plan, or honest stub + next
+./pfy hedge decide --task bulk             # lane: local first; cloud only within PFY_CLOUD_BUDGET
 ```
 
 Bare `./pfy` / `./pfy up` / `./pfy start` (no name) open the native window. `./pfy board` aliases it. Optional `./pfy board --open` is a browser hatch only (not the main path). Board is not a supervisor.
