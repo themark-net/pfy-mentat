@@ -38,7 +38,15 @@ jobs:
           git ls-files -s -- pfy scripts/pfy
           test -x pfy
           test -x scripts/pfy
+          bash -n scripts/pfy
+          python3 -m py_compile scripts/pfy-board.py scripts/pfy-gui.py
           ./pfy help
+      - name: No encoded payloads / sharded source
+        if: always() && !cancelled()
+        run: |
+          set -euo pipefail
+          python3 scripts/check_no_encoded_payloads.py --selftest
+          python3 scripts/check_no_encoded_payloads.py
       - name: Upload receipts
         if: always()
         uses: actions/upload-artifact@v4
@@ -68,6 +76,8 @@ jobs:
           git ls-files -s -- pfy scripts/pfy
           test -x pfy
           test -x scripts/pfy
+          bash -n scripts/pfy
+          python3 scripts/check_no_encoded_payloads.py
           ./pfy help
       - name: Jev #230 CUA-S1-FORMS smoke (nimo, no Mark)
         if: always() && !cancelled()

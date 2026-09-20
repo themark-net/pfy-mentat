@@ -10,6 +10,8 @@ Checks:
   4. Key design/coding skill SKILL.md files exist (agent-loops, investigate, one-shot, adr)
   5. Golden-task cards validate (validate_golden_tasks.py) when present
   6. pfy and scripts/pfy are git 100755, +x, and ./pfy help execs
+  7. No encoded payloads / runtime-assembled shards under scripts/, pfy, gui/
+     (scripts/check_no_encoded_payloads.py)
 
 Write summary to pipelines/eval/structural.latest.md when --write-md.
 """
@@ -227,6 +229,21 @@ def check_launcher_runs() -> tuple[bool, str]:
     return True, "ok ./pfy help"
 
 
+NO_PAYLOADS = ROOT / "scripts/check_no_encoded_payloads.py"
+
+
+def check_no_encoded_payloads() -> tuple[bool, str]:
+    """No base64/gzip payloads or runtime-concatenated shards under scripts/, pfy, gui/."""
+    if not NO_PAYLOADS.is_file():
+        return False, "check_no_encoded_payloads.py missing"
+    code, out = run([sys.executable, str(NO_PAYLOADS)])
+    lines = [ln for ln in out.splitlines() if ln.strip()]
+    if code == 0:
+        return True, lines[0].split(":", 1)[-1].strip() if lines else "ok"
+    offenders = [ln.strip()[2:] for ln in lines if ln.strip().startswith("- ")]
+    return False, f"{len(offenders)} offender(s): " + "; ".join(offenders[:4])
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--write-md", type=Path, default=None)
@@ -242,6 +259,7 @@ def main() -> int:
         ("golden_tasks", check_golden_tasks),
         ("launcher_filemode", check_launcher_filemode),
         ("launcher_runs", check_launcher_runs),
+        ("no_encoded_payloads", check_no_encoded_payloads),
     ]
     rows: list[tuple[str, bool, str]] = []
     for name, fn in checks:

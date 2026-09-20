@@ -381,7 +381,8 @@ eval-matrix:
 eval-v02:
 	@$(MAKE) -C $(HARNESS) eval-v02
 
-# Design/coding structural gates (skills, tools.json, text scorers) — no LLM/Ollama
+# Design/coding structural gates (skills, tools.json, text scorers, launcher, no encoded payloads) — no LLM/Ollama
+# Includes scripts/check_no_encoded_payloads.py (no base64/gzip payloads or runtime-assembled shards).
 eval-structural:
 	@python3 examples/eval-harness/run_structural.py --write-md pipelines/eval/structural.latest.md
 
