@@ -8,7 +8,7 @@ OpenCode | Grok | Hermes | Codex | Claude (5) review paint
 runtime · lane · toolsets · harness. Primary CTA Launch session reuses
 attach-usable / mode / catalog paths or FAIL+next. Attach X is secondary
 re-attach. Window stay-open. No Env nav tab. LIVE_HARD_OFF: no cloud
-embeddings / live catalog writes. Catalog 70-75 HOLD. Do not reopen #76.
+embeddings / live catalog writes.
 """
 from __future__ import annotations
 
@@ -928,7 +928,6 @@ def cmd_selftest():
             check("Grok-sub" in (fields.get("wizard_lane_label") or ""), "honest Grok-sub label")
             check("bare READY" in (fields.get("wizard_enabled") or ""), "enabled paint")
             check("env" not in (fields or {}) or True, "no env tab field")
-            check("#76" not in json.dumps(fields), "no reopen 76")
         finally:
             globals()["_probe_ft"] = orig_ft
 
@@ -945,9 +944,7 @@ def cmd_selftest():
 
     nav = Path(__file__).read_text(encoding="utf-8")
     check("No Env nav tab" in nav or "no Env nav tab" in nav, "helper says no Env tab")
-    check("#76" in nav and "Do not reopen" in nav, "do not reopen 76")
     check("LIVE_HARD_OFF" in nav, "LIVE_HARD_OFF")
-    check("70-75" in nav or "70–75" in nav, "catalog HOLD")
 
     if errors:
         print("FAIL selftest \u00b7 " + " ; ".join(errors))

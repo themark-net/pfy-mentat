@@ -563,10 +563,9 @@ def implement_prompt(item, attached):
         "### Design -> DevBot DoD\n"
         "1. Wire a developer-usable path (CLI and/or Attach child env). "
         "Operate-or-FAIL. No scores-only dump.\n"
-        "2. Honest SKIP/FAIL if the entry is HOLD/incomplete. "
-        "Do not auto-lift catalog 70-75.\n"
-        "3. Do not reopen #76. #198 parked. LIVE_HARD_OFF "
-        "(no live catalog writes).\n"
+        "2. Honest SKIP/FAIL if the entry is HOLD/incomplete "
+        "(entries 070-075 re-score under T-0123; not lifted in this prompt).\n"
+        "3. LIVE_HARD_OFF (no live catalog writes).\n"
         "4. No Mark git/npm/CI chore. Prefer helper + existing `./pfy` / board.\n"
         "5. Leave queued status visible. `bash -n scripts/pfy` PASS "
         "if the launcher changes.\n\n"
@@ -604,14 +603,13 @@ def org_issue_body(item):
         "1. Implement a developer-usable path for **%s** on the operator stack "
         "(CLI and/or Attach). Operate-or-FAIL.\n"
         "2. Honest SKIP/FAIL if no harness is attached or the entry is "
-        "HOLD/incomplete. Do **not** auto-lift catalog PRs/entries 70\u201375.\n"
-        "3. One integration at a time. Cite %s only. Do not reopen #76. "
-        "#198 parked. LIVE_HARD_OFF.\n"
+        "HOLD/incomplete (entries 070\u2013075 re-score under T-0123).\n"
+        "3. One integration at a time. Cite %s only. LIVE_HARD_OFF.\n"
         "4. **No Mark git/npm/CI chore** \u2014 DevBot owns the branch, tests, "
         "and launcher gates (`bash -n scripts/pfy`; no encoded payloads).\n"
         "5. Show queued items/status on Tools. No Env nav tab.\n\n"
         "## Operator constraints\n"
-        "- Catalog 70-75 HOLD\n"
+        "- Entries 070-075 stay HOLD until re-scored (T-0123, ADR-0017); not lifted here\n"
         "- LIVE_HARD_OFF (no live catalog writes)\n"
         "- No TOOLS.md / tools.json triple-write in this issue unless Design un-HOLDs\n"
         % (
@@ -1214,7 +1212,7 @@ def cmd_selftest():
         check("repowise" in prompt.lower(), "prompt names tool")
         check("Design" in prompt and "DevBot" in prompt, "prompt has Design->DevBot DoD")
         check("#209" in prompt, "prompt cites #209")
-        check("#76" in prompt, "prompt says do not reopen #76")
+        check("#76" not in prompt, "prompt carries no reopen-76 liturgy (ADR-0017)")
         env = apply_child_env({}, STATE=state)
         check(env.get("PFY_CATALOG_ASK_PROMPT"), "auto-handoff env")
 

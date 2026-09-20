@@ -10,8 +10,9 @@ Decision API, not chat. Confidence = calibrated margin chips, never
 painted as percent-correct. Core = coding-session compaction + model/tool
 middleware, not browser-use. Honesty: decision ≠ gab auto ≠ local.
 
-Catalog 70-75 HOLD. Do not reopen #76. #225 Launch intact. #228 Gab
-lane intact. No Env tab. LIVE_HARD_OFF: no TypeSafe call without key.
+#225 Launch intact. #228 Gab lane intact. No Env tab. LIVE_HARD_OFF: no
+TypeSafe call without key. Reference toolset for the toolset x harness
+matrix (ADR-0017): pfylib/toolsets.py imports this module.
 """
 from __future__ import annotations
 
@@ -989,8 +990,6 @@ def selftest():
     check("not chat" in src.lower() or "Decision API, not chat" in src, "decision API not chat")
     check("browser-use" in src and "not browser-use" in src, "browser-use not core")
     check(CHIP_HONEST in src, "honesty chip")
-    check("#76" in src and "Do not reopen" in src, "do not reopen 76")
-    check("70-75" in src or "70–75" in src, "catalog HOLD")
     check("No Env tab" in src, "no Env tab")
 
     import tempfile
@@ -1095,7 +1094,6 @@ def selftest():
             check(snap.get("decision_path") == "cua-s1-forms", "snapshot path")
             check(CHIP_HONEST in str(snap.get("decision_honesty") or ""), "snapshot honesty")
             check("CUA-S1-FORMS" in str(snap.get("decision_paint") or ""), "snapshot paint")
-            check("#76" not in json.dumps(snap), "snapshot does not reopen 76")
     finally:
         if old_key is not None:
             os.environ["TYPESAFE_API_KEY"] = old_key

@@ -5,8 +5,8 @@ Deepens the #225 launch wizard: Loop/pre-launch paint names the model lane
 (local FreeToken-first vs cloud/subscription Grok-sub vs OpenCode free) and
 which toolsets are actually enabled. Unwired = honest SKIP/FAIL, never implied.
 On Launch, write an in-session brief (AGENTS / skills / prompt card) into STATE
-so the harness can invoke only what it received. LIVE_HARD_OFF. Catalog 70-75
-HOLD. Do not reopen #76. Do not re-merge #226.
+so the harness can invoke only what it received. LIVE_HARD_OFF. Do not
+re-merge #226.
 """
 from __future__ import annotations
 
@@ -593,7 +593,6 @@ def brief_text(comp, probe, hid=""):
         "",
         "In-session brief. Only tools listed under **Enabled** are wired.",
         "Do not imply the rest. LIVE_HARD_OFF: no cloud embeddings / live catalog writes.",
-        "Catalog 70-75 HOLD. Do not reopen #76.",
         "",
         "## Lane",
         "",
@@ -656,7 +655,7 @@ def prompt_card(comp, probe, hid=""):
         "PFY session compose %s. Lane: %s. Harness: %s. "
         "Enabled: %s. Selected toolset: %s. "
         "Read $PFY_SESSION_BRIEF. Do not claim unwired tools. "
-        "LIVE_HARD_OFF. Catalog 70-75 HOLD.\n"
+        "LIVE_HARD_OFF.\n"
         % (ISSUE, label, hid or "(none)", names, selected or "(none)")
     )
 
@@ -833,8 +832,7 @@ def cmd_selftest():
         check("Not wired" in brief, "brief not-wired")
         check("How to invoke" in brief, "brief how-to")
         check("LIVE_HARD_OFF" in brief, "brief live hard off")
-        check("70-75" in brief, "brief HOLD")
-        check("#76" in brief and "Do not reopen" in brief, "brief no 76")
+        check("#76" not in brief, "brief carries no reopen-76 liturgy (ADR-0017)")
         check("oc ui" not in brief.lower() or "not oc ui" in brief, "no oc ui claim")
         # Unwired axon must not be instructed as live.
         check("Live path: **Axon**" not in brief, "no live axon claim")

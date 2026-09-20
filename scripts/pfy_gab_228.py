@@ -14,7 +14,7 @@ Honesty: gab auto ≠ local ranking; Gab does NOT host GGUF / local weights.
 We pull open-weight families Gab lists to run local (Ollama).
 
 LIVE_HARD_OFF for CI: offline fixture scripts/fixtures/gab_models_v1.json.
-Catalog 70-75 HOLD. Do not reopen #76. #225 Launch intact. No Env tab.
+#225 Launch intact. No Env tab.
 """
 from __future__ import annotations
 
