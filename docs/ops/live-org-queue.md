@@ -36,7 +36,7 @@ That is not a live catalog write (`LIVE_HARD_OFF` still holds for TOOLS.md / too
 python3 scripts/pfy_live_org_queue_214.py --selftest
 python3 scripts/pfy-gui.py --selftest
 python3 scripts/pfy-board.py --help >/dev/null
-gzip -t <(cat scripts/pfy.payload.b64.* | tr -d '\n' | base64 -d)
+bash -n scripts/pfy
 ```
 
 Selftest: FAIL without auth + PASS with stub `create_fn`. Optional live dry-run GET only if a token/`gh` auth is present — **does not create issues**.

@@ -1,8 +1,1925 @@
 #!/usr/bin/env bash
-# scripts/pfy — expands #161 operator surface from scripts/pfy.payload.b64.* (gzip+base64).
+# pfy — simple operator surface for pfy-mentat
+# Inference first (FreeToken / llama-swap / llama-server / Ollama), then native operator window.
+# Named ./pfy start <harness> still execs that harness. Bare ./pfy does not exec a harness.
+# Plain source. Do not re-encode or shard this file (gate: scripts/check_no_encoded_payloads.py).
 set -euo pipefail
-DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BODY="$DIR/.pfy.expanded.sh"
-cat "$DIR"/pfy.payload.b64.* | tr -d '\n' | base64 -d | gzip -dc >"$BODY"
-chmod +x "$BODY"
-exec bash "$BODY" "$@"
+SCRIPT_PATH="${BASH_SOURCE[0]:-$0}"
+while [[ -L "$SCRIPT_PATH" ]]; do
+  link="$(readlink "$SCRIPT_PATH")"
+  if [[ "$link" != /* ]]; then
+    SCRIPT_PATH="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)/$link"
+  else
+    SCRIPT_PATH="$link"
+  fi
+done
+ROOT="$(cd "$(dirname "$SCRIPT_PATH")/.." && pwd)"
+REG="$ROOT/data/harnesses.json"
+DETECT="$ROOT/scripts/detect-local-runtime.sh"
+STATE_DIR="${PFY_STATE_DIR:-$HOME/.pfy-mentat}"
+ACTIVE_FILE="$STATE_DIR/active-harness"
+mkdir -p "$STATE_DIR"
+
+die() { echo "error: $*" >&2; exit 1; }
+have() { command -v "$1" >/dev/null 2>&1; }
+
+board_url() {
+  echo "http://127.0.0.1:${PFY_BOARD_PORT:-8765}"
+}
+
+print_board_url() {
+  echo "board: $(board_url)"
+}
+
+open_board_url() {
+  local url
+  url="$(board_url)"
+  if have xdg-open; then
+    xdg-open "$url" >/dev/null 2>&1 && return 0
+  elif have open; then
+    open "$url" >/dev/null 2>&1 && return 0
+  fi
+  echo "note: could not open browser - $url"
+  return 0
+}
+
+tauri_bin() {
+  # Fresh only: not older than frontend HTML, and contains run_stage.
+  # Stale leftover binaries must not win. Never print a rebuild one-liner.
+  local html="$ROOT/gui/operator/frontend/index.html"
+  local cands=(
+    "$ROOT/gui/operator/src-tauri/target/release/pfy-operator"
+    "$ROOT/gui/operator/src-tauri/target/debug/pfy-operator"
+  )
+  local b
+  for b in "${cands[@]}"; do
+    [[ -x "$b" ]] || continue
+    if [[ -f "$html" && "$b" -ot "$html" ]]; then
+      continue
+    fi
+    if ! grep -a -F -q "run_stage" "$b" 2>/dev/null; then
+      continue
+    fi
+
+    if ! grep -a -F -q "launch_env" "$b" 2>/dev/null; then
+      continue
+    fi
+    echo "$b"
+    return 0
+  done
+  return 1
+}
+
+warn_if_active_stub() {
+  local preferred
+  preferred="$(cat "$ACTIVE_FILE" 2>/dev/null || json_field default)"
+  [[ -n "$preferred" ]] || preferred="grok"
+  case "$preferred" in
+    continue|agent-cage)
+      echo "FAIL: active harness is $preferred — no grok/opencode fallback"
+      echo "  pfy harness use grok"
+      ;;
+  esac
+}
+
+launch_native_gui() {
+  local tbin
+  tbin="$(tauri_bin || true)"
+  if [[ -n "$tbin" ]]; then
+    echo "native window (Tauri)"
+    export PFY_ROOT="$ROOT"
+    exec "$tbin"
+  fi
+  if [[ -f "$ROOT/scripts/pfy-gui.py" ]]; then
+    # print native window (webkit|tk); never pywebview as product path
+    exec python3 "$ROOT/scripts/pfy-gui.py"
+  fi
+  mkdir -p "$STATE_DIR"
+  art="$STATE_DIR/gui-stopped-exit.txt"
+  printf 'STOPPED_EXIT\nerror: scripts/pfy-gui.py missing\n' >"$art"
+  echo "STOPPED_EXIT: scripts/pfy-gui.py missing" >&2
+  echo "artifact: $art" >&2
+  exit 1
+}
+
+cmd_gui() {
+  # #191: surface ensure_inference FAIL in log; still open window (board Launch uses ./pfy env).
+  ensure_inference || true
+  run_product_stage || true
+  warn_if_active_stub
+  echo "native window is the main interface (no harness exec into this process)"
+  echo "  Attach grok / opencode / hermes / codex / claude / gab from the window (sidecar). Decision: CUA-S1-FORMS / TypeSafe / mini-jev (#230). named: ./pfy start <harness>"
+  launch_native_gui
+}
+
+usage() {
+  cat <<'U'
+pfy — simple setup & launch for the pfy-mentat stack
+
+  pfy                     inference → env-stage → native operator window (no harness exec)
+  pfy env                 inference + env-stage (no window, no harness exec)
+  pfy setup [local-only|balanced|max-performance]
+  pfy status              harness table + local usage block
+  pfy usage               local usage only (engine/endpoint/models/tok_path/vram)
+  pfy up                  same as bare pfy (native window; attach is in-window sidecar)
+  pfy harness list|use <id>|show [id]
+  pfy start [harness]     no name: same as bare pfy. named: exec that harness after inference/stage
+  pfy stage [--lab]       env-stage; --lab optional personal cage lab (doctor→setup→up-mcp)
+  pfy eval | ship
+  pfy endpoint              print FreeToken-first live OpenAI-compat base (one line)
+  pfy doctor               FreeToken-first one-shot health (detect+endpoint+tok/vram)
+  pfy smoke                FreeToken-first models list + one chat smoke
+  pfy context             prove oc capture/search/reuse (FAIL if node/oc missing)
+  pfy code-graph          prove Axon (or codebase-memory equivalent) (#215)
+  pfy axon                alias of code-graph
+  attach mode             Attach: bare | orchestration | code-graph (using: <mode>; #208)
+                          orchestration starts multi-step local loops (#213)
+                          code-graph hands Axon or equivalent (#215)
+  pfy models [list]       list FreeToken-first live engine models (inspect-only)
+  pfy models pull <name>  live engine (FreeToken records name; Ollama pulls; llama skip)
+  pfy models recommend    ranked host-fit models not yet pulled (VRAM/RAM/runtime)
+  pfy models try [name]   pull top (or named) recommendation — operate-or-FAIL
+  pfy models gab-sync     Gab open-weight → Ollama fit (#228; gab auto ≠ local ranking)
+  pfy models gab-pull <tag> [--confirm] [--opt-in-huge]  gated ollama pull from Gab sync
+  pfy catalog             usable catalog browse subset (not scores-only) (#209)
+  pfy catalog ask [name]  ask attached TUI to implement for next launch
+  pfy catalog queue [name] queue GitHub issue Design→DevBot (no Mark git/npm/CI)
+  pfy catalog status      queued catalog items
+  pfy launch              Launch session after Loop wizard compose (#225/#224)
+  pfy launch lane|toolset|harness|decision|review|compose
+  pfy decision            Jev-style typed Choice/Score (#230; CUA-S1-FORMS local)
+  pfy decision off|cua-s1-forms|typesafe|mini-jev
+  pfy decision smoke      Mark-free CUA-S1-FORMS Choice (no TypeSafe key)
+  pfy board [--open]      alias of the native operator window
+                          --open is an optional hatch (not the main path)
+  pfy help
+
+Native window is the main interface. Tauri when the binary is current; else already-on-box webkit or stdlib tk (scripts/pfy-gui.py). pywebview is PFY_GUI_DEV=1 only. Window always opens.
+Browser --open is not required. Board is not a supervisor.
+Continue/agent-cage active: FAIL, copy `pfy harness use grok` (no fallback).
+
+Inference detect: FreeToken (:1919) → llama-swap (:9292) → llama-server (:8080) → Ollama.
+Override: PFY_LOCAL_RUNTIME, LOCAL_OPENAI_BASE_URL.
+FreeToken model: PFY_FT_MODEL (then LOCAL_CODER_MODEL, FREETOKEN_MODEL).
+Ollama adapter model: PFY_OLLAMA_MODEL (then LOCAL_CODER_MODEL).
+llama-server model path: PFY_LLAMA_MODEL (then LOCAL_CODER_MODEL as a GGUF path).
+Detector is invoked with bash (no git +x required).
+Docker not required for basic start.
+U
+}
+
+json_field() {
+  python3 - "$REG" "$1" "${2:-}" <<'PY'
+import json,sys
+reg=json.load(open(sys.argv[1]))
+cmd=sys.argv[2]
+arg=sys.argv[3] if len(sys.argv)>3 else ""
+if cmd=="list":
+    for h in reg["harnesses"]:
+        print(f"{h['id']}\t{h['status']}\t{h['role']}\t{h['name']}")
+elif cmd=="default":
+    print(reg.get("default_harness","grok"))
+elif cmd=="get":
+    for h in reg["harnesses"]:
+        if h["id"]==arg:
+            print(json.dumps(h, indent=2)); break
+    else:
+        sys.exit(1)
+elif cmd=="detects":
+    for h in reg["harnesses"]:
+        if h["id"]==arg:
+            print("\n".join(h.get("detect") or [])); break
+elif cmd=="github_issue":
+    for h in reg["harnesses"]:
+        if h["id"]==arg:
+            gi=h.get("github_issue")
+            print("" if gi in (None,"") else gi)
+            break
+    else:
+        sys.exit(1)
+elif cmd=="adapter_ids":
+    for h in reg["harnesses"]:
+        if h.get("role")=="harness":
+            print(h["id"])
+PY
+}
+
+local_runtime() {
+  if [[ -f "$DETECT" ]]; then
+    bash "$DETECT" --json
+  else
+    echo '{"engine":"none","status":"missing","base_url":""}'
+  fi
+}
+
+rt_get() {
+  python3 -c "import json,sys; print(json.loads(sys.argv[1]).get(sys.argv[2],'') or '')" "$1" "$2"
+}
+
+ft_bin() {
+  if have ft; then echo ft
+  elif have freetoken; then echo freetoken
+  else echo ft
+  fi
+}
+
+ft_recorded_model() {
+  local f="${STATE_DIR}/ft-model" line=""
+  [[ -f "$f" ]] || return 0
+  IFS= read -r line <"$f" || true
+  printf '%s' "$line"
+}
+
+ft_default_model() {
+  local env_model recorded
+  env_model="${PFY_FT_MODEL:-${LOCAL_CODER_MODEL:-${FREETOKEN_MODEL:-}}}"
+  if [[ -n "$env_model" ]]; then
+    printf '%s\n' "$env_model"
+    return 0
+  fi
+  recorded="$(ft_recorded_model)"
+  printf '%s\n' "$recorded"
+}
+
+record_ft_pull_model() {
+  mkdir -p "$STATE_DIR"
+  printf '%s\n' "$1" >"$STATE_DIR/ft-model"
+}
+
+ft_health() {
+  curl -sf --max-time 2 http://127.0.0.1:1919/v1/models >/dev/null 2>&1 \
+    || curl -sf --max-time 2 http://127.0.0.1:1919/health >/dev/null 2>&1
+}
+
+wait_freetoken_health() {
+  local i
+  for i in $(seq 1 12); do
+    ft_health && return 0
+    sleep 0.5
+  done
+  return 1
+}
+
+ensure_freetoken() {
+  # #191: return 0 only when health probe passes — no stub-0 / partial-0 / skip-0.
+  local bin model
+  if ! have ft && ! have freetoken; then
+    echo "STUB: FreeToken not on PATH. One-liner:"
+    echo "  ft serve --model \$PFY_FT_MODEL"
+    return 1
+  fi
+  bin="$(ft_bin)"
+  if ft_health; then
+    echo "FreeToken API healthy"
+    return 0
+  fi
+  model="$(ft_default_model)"
+  if [[ -z "$model" ]]; then
+    echo "note: FreeToken has no model env (set PFY_FT_MODEL, or LOCAL_CODER_MODEL / FREETOKEN_MODEL) — honest skip"
+    echo "  ft serve --model \$PFY_FT_MODEL"
+    return 1
+  fi
+  echo "starting FreeToken in background (wait for /v1/models or /health on :1919)…"
+  ("$bin" serve --model "$model" >>"$STATE_DIR/freetoken.log" 2>&1 &) || true
+  if wait_freetoken_health; then
+    echo "FreeToken API healthy"
+    return 0
+  fi
+  echo "note: FreeToken launched but API not healthy (partial/timeout) — not fake ready"
+  return 1
+}
+
+ollama_health() {
+  curl -sf --max-time 2 http://127.0.0.1:11434/api/tags >/dev/null 2>&1 \
+    || curl -sf --max-time 2 http://127.0.0.1:11434/v1/models >/dev/null 2>&1
+}
+
+wait_ollama_health() {
+  local i
+  for i in $(seq 1 12); do
+    ollama_health && return 0
+    sleep 0.5
+  done
+  return 1
+}
+
+ollama_default_model() {
+  echo "${PFY_OLLAMA_MODEL:-${LOCAL_CODER_MODEL:-${OLLAMA_MODEL:-}}}"
+}
+
+ollama_has_model() {
+  local name="${1:-}"
+  [[ -z "$name" ]] && return 1
+  ollama show "$name" >/dev/null 2>&1 && return 0
+  ollama list 2>/dev/null | awk -v n="$name" 'NR>1 && $1!="" && index($1,n)==1 { found=1 } END { exit !found }'
+}
+
+ollama_any_model() {
+  ollama list 2>/dev/null | awk 'NR>1 && $1!="" { found=1 } END { exit !found }'
+}
+
+ensure_ollama_adapter() {
+  # #191: return 0 only when health probe passes (and a model is available) — no stub-0 / partial-0.
+  if ! have ollama; then
+    echo "STUB: ollama not on PATH. One-liner:"
+    echo "  ollama serve"
+    return 1
+  fi
+  if ollama_health; then
+    echo "ollama API healthy"
+  else
+    echo "starting Ollama serve (wait for /api/tags or /v1/models)…"
+    (ollama serve >>"$STATE_DIR/ollama.log" 2>&1 &) || true
+    if wait_ollama_health; then
+      echo "ollama API healthy"
+    else
+      echo "note: ollama serve launched but API not healthy (partial/timeout) — not fake ready"
+      return 1
+    fi
+  fi
+  local model
+  model="$(ollama_default_model)"
+  if [[ -n "$model" ]]; then
+    if ollama_has_model "$model"; then
+      echo "default model present: $model"
+      return 0
+    fi
+    echo "pulling default model: $model"
+    if ollama pull "$model"; then
+      return 0
+    fi
+    echo "note: ollama pull failed — honest skip"
+    return 1
+  elif ollama_any_model; then
+    echo "note: no PFY_OLLAMA_MODEL / LOCAL_CODER_MODEL — using already-installed tags"
+    return 0
+  fi
+  echo "note: no PFY_OLLAMA_MODEL / LOCAL_CODER_MODEL and no models installed — honest skip"
+  return 1
+}
+
+
+llama_swap_health() {
+  curl -sf --max-time 2 http://127.0.0.1:9292/v1/models >/dev/null 2>&1 \
+    || curl -sf --max-time 2 http://127.0.0.1:9292/health >/dev/null 2>&1
+}
+
+wait_llama_swap_health() {
+  local i
+  for i in $(seq 1 12); do
+    llama_swap_health && return 0
+    sleep 0.5
+  done
+  return 1
+}
+
+ensure_llama_swap() {
+  # #191: return 0 only when health probe passes — no stub-0 / partial-0.
+  if ! have llama-swap; then
+    echo "STUB: llama-swap not on PATH. One-liner:"
+    echo "  llama-swap"
+    return 1
+  fi
+  if llama_swap_health; then
+    echo "llama-swap API healthy"
+    return 0
+  fi
+  echo "starting llama-swap in background (wait for /v1/models or /health on :9292)…"
+  (llama-swap >>"$STATE_DIR/llama-swap.log" 2>&1 &) || true
+  if wait_llama_swap_health; then
+    echo "llama-swap API healthy"
+    return 0
+  fi
+  echo "note: llama-swap launched but API not healthy (partial/timeout) — not fake ready"
+  return 1
+}
+
+llama_server_health() {
+  curl -sf --max-time 2 http://127.0.0.1:8080/v1/models >/dev/null 2>&1 \
+    || curl -sf --max-time 2 http://127.0.0.1:8080/health >/dev/null 2>&1
+}
+
+wait_llama_server_health() {
+  local i
+  for i in $(seq 1 12); do
+    llama_server_health && return 0
+    sleep 0.5
+  done
+  return 1
+}
+
+llama_server_model_path() {
+  echo "${PFY_LLAMA_MODEL:-${LOCAL_CODER_MODEL:-}}"
+}
+
+ensure_llama_server() {
+  # #191: return 0 only when health probe passes — no stub-0 / partial-0 / missing-GGUF-0.
+  if ! have llama-server; then
+    echo "STUB: llama-server not on PATH. One-liner:"
+    echo "  llama-server -m \$PFY_LLAMA_MODEL --port 8080 --host 127.0.0.1"
+    return 1
+  fi
+  if llama_server_health; then
+    echo "llama-server API healthy"
+    return 0
+  fi
+  local model
+  model="$(llama_server_model_path)"
+  if [[ -z "$model" || ! -f "$model" ]]; then
+    echo "note: llama-server has no GGUF path (set PFY_LLAMA_MODEL or LOCAL_CODER_MODEL to an existing file) — honest skip"
+    echo "  llama-server -m \$PFY_LLAMA_MODEL --port 8080 --host 127.0.0.1"
+    return 1
+  fi
+  echo "starting llama-server in background (wait for /v1/models or /health on :8080)…"
+  (llama-server -m "$model" --port 8080 --host 127.0.0.1 >>"$STATE_DIR/llama-server.log" 2>&1 &) || true
+  if wait_llama_server_health; then
+    echo "llama-server API healthy"
+    return 0
+  fi
+  echo "note: llama-server launched but API not healthy (partial/timeout) — not fake ready"
+  return 1
+}
+
+print_live_models() {
+  # #187: list live engine models; strip trailing /v1 so probe is not /v1/v1/models
+  local base="${1:-}"
+  local indent="${2:-}"
+  echo "${indent}models:"
+  if [[ -z "$base" ]]; then
+    echo "${indent}  (none — no base_url)"
+    return 1
+  fi
+  python3 - "$base" "$indent" <<'PY'
+import json,sys,urllib.request
+base=sys.argv[1].rstrip("/")
+# #187: normalize — base may already be OpenAI-compat .../v1
+if base.endswith("/v1"):
+    base=base[:-3].rstrip("/")
+indent=sys.argv[2] if len(sys.argv)>2 else ""
+ids=[]
+seen=set()
+def add(x):
+    x=(x or "").strip()
+    if x and x not in seen:
+        seen.add(x); ids.append(x)
+for path in ("/v1/models", "/api/tags"):
+    try:
+        req=urllib.request.Request(base+path, method="GET")
+        with urllib.request.urlopen(req, timeout=2) as r:
+            d=json.loads(r.read().decode() or "{}")
+    except Exception:
+        continue
+    if not isinstance(d, dict):
+        continue
+    for m in d.get("data") or []:
+        if isinstance(m, dict):
+            add(m.get("id") or m.get("name"))
+        else:
+            add(str(m))
+    for m in d.get("models") or []:
+        if isinstance(m, dict):
+            add(m.get("name") or m.get("model") or m.get("id"))
+        else:
+            add(str(m))
+if ids:
+    for i in ids:
+        print(indent+"  "+i)
+else:
+    print(indent+"  (none — live endpoint not listing or not up)")
+PY
+}
+
+resolve_tok_path() {
+  # Honest tok/model path from env, recorded state, or live model id (#183).
+  # Empty = unknown (caller prints SKIP). Never invent.
+  local engine="${1:-}"
+  local base="${2:-}"
+  local p=""
+  # openai-compat on FreeToken port is FreeToken for tok resolution
+  if [[ "$engine" == "openai-compat" && "$base" == *":1919"* ]]; then
+    engine=freetoken
+  fi
+  case "$engine" in
+    llama-server|llama.cpp)
+      p="${PFY_LLAMA_MODEL:-${LOCAL_CODER_MODEL:-}}"
+      ;;
+    llama-swap)
+      p="${PFY_LLAMA_MODEL:-}"
+      ;;
+    freetoken|ft)
+      p="${PFY_FT_MODEL:-${LOCAL_CODER_MODEL:-${FREETOKEN_MODEL:-}}}"
+      if [[ -z "$p" ]]; then
+        p="$(ft_recorded_model)"
+      fi
+      if [[ -z "$p" && -n "$base" ]]; then
+        p="$(python3 - "$base" <<'PY'
+import json,sys,urllib.request
+base=sys.argv[1].rstrip("/")
+for path in ("/v1/models", "/api/tags"):
+    try:
+        with urllib.request.urlopen(base+path, timeout=2) as r:
+            d=json.loads(r.read().decode() or "{}")
+    except Exception:
+        continue
+    if not isinstance(d, dict):
+        continue
+    for m in d.get("data") or []:
+        if isinstance(m, dict):
+            x=(m.get("id") or m.get("name") or "").strip()
+            if x:
+                print(x); raise SystemExit(0)
+        else:
+            x=str(m).strip()
+            if x:
+                print(x); raise SystemExit(0)
+    for m in d.get("models") or []:
+        if isinstance(m, dict):
+            x=(m.get("name") or m.get("model") or m.get("id") or "").strip()
+            if x:
+                print(x); raise SystemExit(0)
+        else:
+            x=str(m).strip()
+            if x:
+                print(x); raise SystemExit(0)
+raise SystemExit(1)
+PY
+)" || true
+      fi
+      ;;
+    ollama)
+      p="${PFY_OLLAMA_MODEL:-${LOCAL_CODER_MODEL:-${OLLAMA_MODEL:-}}}"
+      ;;
+  esac
+  if [[ -n "$p" ]]; then
+    printf '%s' "$p"
+    return 0
+  fi
+  return 1
+}
+print_vram_line() {
+  # Never invent numbers. nvidia-smi / ollama / FreeToken|llama metrics when knowable; else SKIP (#183).
+  local engine="${1:-}"
+  local base="${2:-}"
+  local out="" line idx used total
+
+  if have nvidia-smi; then
+    out="$(nvidia-smi --query-gpu=index,memory.used,memory.total --format=csv,noheader,nounits 2>/dev/null || true)"
+    if [[ -n "${out//[$' \t\r\n']/}" ]]; then
+      echo "  vram:"
+      while IFS= read -r line; do
+        [[ -z "${line// }" ]] && continue
+        idx="$(printf '%s' "$line" | cut -d',' -f1 | tr -d '[:space:]')"
+        used="$(printf '%s' "$line" | cut -d',' -f2 | tr -d '[:space:]')"
+        total="$(printf '%s' "$line" | cut -d',' -f3 | tr -d '[:space:]')"
+        [[ -n "$used" && -n "$total" ]] || continue
+        echo "    gpu${idx}: ${used} MiB used / ${total} MiB total"
+      done <<< "$out"
+      return 0
+    fi
+  fi
+
+  if [[ "$engine" == "ollama" && -n "$base" ]]; then
+    out="$(python3 - "$base" <<'PY'
+import json,sys,urllib.request
+base=sys.argv[1].rstrip("/")
+try:
+    with urllib.request.urlopen(base+"/api/ps", timeout=2) as r:
+        d=json.loads(r.read().decode() or "{}")
+except Exception:
+    sys.exit(1)
+models=d.get("models") or []
+printed=False
+for m in models:
+    if not isinstance(m, dict):
+        continue
+    name=(m.get("name") or m.get("model") or "").strip() or "?"
+    sv=m.get("size_vram")
+    if isinstance(sv, (int, float)) and sv > 0:
+        print(f"{name}: {int(sv/1024/1024)} MiB")
+        printed=True
+sys.exit(0 if printed else 1)
+PY
+)" || true
+    if [[ -n "${out// }" ]]; then
+      echo "  vram:"
+      while IFS= read -r line; do
+        [[ -n "$line" ]] && echo "    $line"
+      done <<< "$out"
+      return 0
+    fi
+  fi
+
+  # FreeToken / llama-server / llama-swap: only print when engine exposes real metrics (#183)
+  case "$engine" in
+    freetoken|ft|llama-server|llama.cpp|llama-swap|openai-compat)
+      if [[ -n "$base" ]]; then
+        out="$(python3 - "$base" <<'PY'
+import json,re,sys,urllib.request
+base=sys.argv[1].rstrip("/")
+lines=[]
+
+def mib(n):
+    try:
+        n=float(n)
+    except Exception:
+        return None
+    if n <= 0:
+        return None
+    # treat huge values as bytes
+    if n >= 1024 * 1024:
+        return int(n / 1024 / 1024)
+    return int(n)
+
+# /metrics (prometheus text) — model_size / memory_* when present
+try:
+    with urllib.request.urlopen(base+"/metrics", timeout=2) as r:
+        body=r.read().decode(errors="replace")
+    for raw in body.splitlines():
+        s=raw.strip()
+        if not s or s.startswith("#"):
+            continue
+        # llamacpp:model_size_bytes 123
+        # llamacpp:memory_model_bytes{device="CUDA0"} 123
+        m=re.match(r'^([a-zA-Z0-9_:{}"=\-./]+)\s+([0-9.eE+\-]+)\s*$', s)
+        if not m:
+            continue
+        key, val = m.group(1), m.group(2)
+        kl=key.lower()
+        if "model_size" in kl or "memory_model" in kl or "memory_total" in kl or kl.endswith("vram") or "size_vram" in kl:
+            mb=mib(val)
+            if mb is None:
+                continue
+            label=key.split("{",1)[0]
+            if "{" in key:
+                lab=re.search(r'device="([^"]+)"', key)
+                if lab:
+                    label=f"{label}[{lab.group(1)}]"
+            lines.append(f"{label}: {mb} MiB")
+except Exception:
+    pass
+
+# /v1/models size / meta fields
+if not lines:
+    try:
+        with urllib.request.urlopen(base+"/v1/models", timeout=2) as r:
+            d=json.loads(r.read().decode() or "{}")
+        for m in (d.get("data") or []) if isinstance(d, dict) else []:
+            if not isinstance(m, dict):
+                continue
+            name=(m.get("id") or m.get("name") or "").strip() or "?"
+            sv=m.get("size_vram") or m.get("size") or m.get("n_bytes")
+            meta=m.get("meta") if isinstance(m.get("meta"), dict) else {}
+            if sv is None and meta:
+                sv=meta.get("size_vram") or meta.get("size") or meta.get("n_bytes")
+            mb=mib(sv) if sv is not None else None
+            if mb is None:
+                continue
+            lines.append(f"{name}: {mb} MiB")
+    except Exception:
+        pass
+
+# /health JSON memory fields (llama-server sometimes)
+if not lines:
+    try:
+        with urllib.request.urlopen(base+"/health", timeout=2) as r:
+            raw=r.read().decode(errors="replace")
+        d=json.loads(raw) if raw.strip().startswith("{") else None
+        if isinstance(d, dict):
+            for k in ("size_vram", "vram", "memory", "model_size", "model_size_bytes"):
+                if k in d:
+                    mb=mib(d[k])
+                    if mb is not None:
+                        lines.append(f"{k}: {mb} MiB")
+            slots=d.get("slots")
+            if isinstance(slots, list):
+                for i, sl in enumerate(slots):
+                    if not isinstance(sl, dict):
+                        continue
+                    for k in ("size_vram", "vram", "memory"):
+                        if k in sl:
+                            mb=mib(sl[k])
+                            if mb is not None:
+                                lines.append(f"slot{i}.{k}: {mb} MiB")
+    except Exception:
+        pass
+
+if lines:
+    for ln in lines:
+        print(ln)
+    raise SystemExit(0)
+raise SystemExit(1)
+PY
+)" || true
+        if [[ -n "${out// }" ]]; then
+          echo "  vram:"
+          while IFS= read -r line; do
+            [[ -n "$line" ]] && echo "    $line"
+          done <<< "$out"
+          return 0
+        fi
+      fi
+      ;;
+  esac
+
+  echo "  vram: SKIP"
+}
+print_local_usage() {
+  # #161 local usage surface: engine, endpoint, models, tok_path, vram.
+  # #183 FreeToken-first re-probe before engine/tok/vram (same spine as endpoint/models).
+  # Arg: full detector JSON, or empty to re-detect. Legacy engine-only arg ignored (re-detect).
+  local rt engine st base tok
+  if [[ -n "${1:-}" && "$1" == \{* ]]; then
+    rt="$1"
+  else
+    rt=$(local_runtime)
+  fi
+  engine=$(rt_get "$rt" engine)
+  st=$(rt_get "$rt" status)
+  base=$(rt_get "$rt" base_url)
+
+  # FreeToken-first live wins even if detector/env labeled something else
+  if curl -sf --max-time 1 http://127.0.0.1:1919/v1/models >/dev/null 2>&1 \
+    || curl -sf --max-time 1 http://127.0.0.1:1919/health >/dev/null 2>&1; then
+    engine=freetoken
+    base="http://127.0.0.1:1919"
+    st=ready
+  fi
+
+  echo "usage:"
+  if [[ -z "$engine" || "$engine" == "none" || "$st" != "ready" ]]; then
+    echo "  FAIL: no local engine up"
+    echo "  next: ./pfy up"
+    return 1
+  fi
+
+  echo "  engine: $engine"
+  echo "  endpoint: ${base:-(none)}"
+  print_live_models "$base" "  "
+  tok="$(resolve_tok_path "$engine" "$base" || true)"
+  if [[ -n "$tok" ]]; then
+    echo "  tok_path: $tok"
+  else
+    echo "  tok_path: SKIP"
+  fi
+  print_vram_line "$engine" "$base"
+  return 0
+}
+cmd_usage() {
+  local rt
+  rt=$(local_runtime)
+  print_local_usage "$rt"
+}
+
+detect_status() {
+  local id="$1"
+  local status_reg found=0 bins
+  status_reg=$(python3 -c "import json; d=json.load(open('$REG')); print(next(h['status'] for h in d['harnesses'] if h['id']=='$id'))")
+  bins=$(json_field detects "$id" || true)
+  if [[ -n "$bins" ]]; then
+    while IFS= read -r b; do
+      [[ -z "$b" ]] && continue
+      if [[ "$b" == "exo.sh" ]]; then
+        [[ -x "$ROOT/exo.sh" || -x "$HOME/exo/exo.sh" ]] && found=1
+        have exo.sh && found=1
+      elif have "$b"; then
+        found=1
+      fi
+    done <<< "$bins"
+  fi
+  case "$id" in
+    continue)
+      echo "stub"
+      return
+      ;;
+    agent-cage)
+      if [[ "$found" -eq 1 ]]; then echo "detected-stub"; else echo "stub"; fi
+      return
+      ;;
+    freetoken|ollama|shimmy|llama-swap|llama-server|llama.cpp)
+      python3 - "$(local_runtime)" "$id" "$found" <<'PY'
+import json,sys
+rt=json.loads(sys.argv[1]); id=sys.argv[2]; found=int(sys.argv[3])
+eng=rt.get("engine","")
+alias={"llama.cpp":"llama-server","llama-server":"llama.cpp","ft":"freetoken","freetoken":"ft"}
+if eng==id or alias.get(eng)==id or alias.get(id)==eng:
+    print(rt.get("status","missing")); sys.exit(0)
+print("partial" if found else "missing")
+PY
+      return
+      ;;
+  esac
+  if [[ "$status_reg" == "stub" ]]; then
+    if [[ "$found" -eq 1 ]]; then echo "detected-stub"; else echo "stub"; fi
+    return
+  fi
+  if [[ "$found" -eq 1 ]]; then echo "ready"
+  else echo "missing"
+  fi
+}
+
+cmd_status() {
+  echo "pfy-mentat simple surface"
+  echo "root: $ROOT"
+  echo "active harness: $(cat "$ACTIVE_FILE" 2>/dev/null || json_field default)"
+  rt=$(local_runtime)
+  python3 -c "import json,sys; d=json.loads(sys.argv[1]); print('local runtime: engine=%s status=%s base_url=%s'%(d.get('engine'),d.get('status'),d.get('base_url') or '(none)'))" "$rt"
+  print_local_usage "$rt" || true
+  echo ""
+  printf "%-14s %-14s %-8s %s\n" "ID" "STATUS" "ROLE" "NAME"
+  printf "%-14s %-14s %-8s %s\n" "----" "------" "----" "----"
+  json_field list | while IFS=$'\t' read -r id st role name; do
+    live=$(detect_status "$id")
+    printf "%-14s %-14s %-8s %s\n" "$id" "$live" "$role" "$name"
+  done
+  echo ""
+  echo "next: pfy setup   |   pfy   |   pfy start grok   |   pfy harness list"
+  echo "override: PFY_LOCAL_RUNTIME=freetoken|llama-swap|llama-server|ollama"
+}
+
+cmd_setup() {
+  local profile="${1:-balanced}"
+  echo "==> pfy setup (profile=$profile)"
+  (cd "$ROOT" && make env-init)
+  if [[ -f "$ROOT/.env" ]]; then
+    if grep -q '^DEPLOY_PROFILE=' "$ROOT/.env" 2>/dev/null; then
+      sed -i.bak "s/^DEPLOY_PROFILE=.*/DEPLOY_PROFILE=$profile/" "$ROOT/.env" 2>/dev/null \
+        || sed -i '' "s/^DEPLOY_PROFILE=.*/DEPLOY_PROFILE=$profile/" "$ROOT/.env" 2>/dev/null || true
+    else
+      echo "DEPLOY_PROFILE=$profile" >> "$ROOT/.env"
+    fi
+  fi
+  if have grok || [[ -x "$HOME/.local/bin/grok" ]]; then
+    echo "==> Grok CLI found — installing skills"
+    bash "$ROOT/bootstrap/grok-cli/install.sh" || echo "warn: grok install had issues"
+  else
+    echo "note: Grok CLI not on PATH — install then re-run: pfy setup"
+  fi
+  for bin in ft freetoken llama-swap llama-server ollama shimmy; do
+    if have "$bin"; then echo "==> $bin present"; fi
+  done
+  have ft || have freetoken || echo "note: FreeToken not installed (uv pip install \"freetoken[accel]\")"
+  have docker && echo "==> Docker present" || echo "note: Docker not found — cage lab skipped"
+  if [[ ! -f "$ACTIVE_FILE" ]]; then
+    echo "$(json_field default)" > "$ACTIVE_FILE"
+  fi
+  echo ""
+  cmd_status
+}
+
+cmd_harness_use() {
+  local id="${1:-}"
+  [[ -n "$id" ]] || die "usage: pfy harness use <id>"
+  python3 -c "import json,sys; d=json.load(open('$REG')); assert any(h['id']==sys.argv[1] for h in d['harnesses'])" "$id" \
+    || die "unknown harness: $id"
+  echo "$id" > "$ACTIVE_FILE"
+  echo "active harness → $id"
+  echo "live status: $(detect_status "$id")"
+}
+
+ensure_inference() {
+  # #179: cold start FreeToken → llama-swap → llama-server → Ollama.
+  # FreeToken already healthy ⇒ do not force-start Ollama as primary.
+  # #189: when FreeToken not live/not installable, try llama-swap then llama-server
+  # before Ollama — even if detect already shows ollama ready/partial.
+  # #191: cascade advances only when previous ensure returned nonzero / not healthy;
+  # ensure_* return 0 only after health probe passes (no stub-0).
+  local rt engine st base pref started
+  echo "==> pfy up"
+  rt=$(local_runtime)
+  engine=$(rt_get "$rt" engine)
+  st=$(rt_get "$rt" status)
+  base=$(rt_get "$rt" base_url)
+  echo "detected: engine=$engine status=$st base_url=${base:-(none)}"
+
+  if ft_health; then
+    ensure_freetoken || true
+  elif [[ -n "${PFY_LOCAL_RUNTIME:-}" ]]; then
+    pref="${PFY_LOCAL_RUNTIME}"
+    case "$pref" in
+      freetoken|ft) ensure_freetoken || true ;;
+      llama-swap) ensure_llama_swap || true ;;
+      llama-server|llama.cpp) ensure_llama_server || true ;;
+      ollama) ensure_ollama_adapter || true ;;
+      shimmy)
+        echo "STUB: shimmy HTTP not up. One-liner:"
+        echo "  shimmy"
+        ;;
+      *)
+        echo "note: unknown PFY_LOCAL_RUNTIME=$pref — install FreeToken / llama-swap / llama-server / ollama or ./pfy up"
+        ;;
+    esac
+  elif [[ "$st" == "ready" && "$engine" != "ollama" ]]; then
+    # Already-ready non-Ollama — keep it. Detect-ready Ollama falls through (#189).
+    case "$engine" in
+      llama-swap) ensure_llama_swap || true ;;
+      llama-server|llama.cpp) ensure_llama_server || true ;;
+      freetoken|ft) ensure_freetoken || true ;;
+      shimmy)
+        echo "inference already up (shimmy)"
+        ;;
+      *)
+        echo "inference already up"
+        ;;
+    esac
+  else
+    # Cold start / FT-unavailable fallthrough (#189/#191):
+    # Try next candidate only when previous ensure returned nonzero / not healthy.
+    started=0
+    if have ft || have freetoken; then
+      if ensure_freetoken; then started=1; fi
+    fi
+    if [[ "$started" -eq 0 ]] && have llama-swap; then
+      if ensure_llama_swap; then started=1; fi
+    fi
+    if [[ "$started" -eq 0 ]] && have llama-server; then
+      if ensure_llama_server; then started=1; fi
+    fi
+    if [[ "$started" -eq 0 ]] && have ollama; then
+      if ensure_ollama_adapter; then started=1; fi
+    fi
+  fi
+
+  rt=$(local_runtime)
+  engine=$(rt_get "$rt" engine)
+  st=$(rt_get "$rt" status)
+  base=$(rt_get "$rt" base_url)
+  # #169/#191: ready-only pin — do not export LOCAL_OPENAI from stale/non-ready detect.
+  if [[ "$st" == "ready" && -n "$base" ]]; then
+    export LOCAL_OPENAI_BASE_URL="$base"
+  fi
+  echo "engine: $engine"
+  echo "status: $st"
+  echo "base_url: ${LOCAL_OPENAI_BASE_URL:-${base:-(none)}}"
+  print_live_models "${LOCAL_OPENAI_BASE_URL:-$base}"
+
+  if [[ "$st" != "ready" ]]; then
+    echo "FAIL: no local engine"
+    echo "next: install FreeToken / llama-swap / llama-server / ollama or ./pfy up"
+    return 1
+  fi
+  return 0
+}
+
+run_product_stage() {
+  echo "==> env-stage (product; honest skip if a piece is missing)"
+  if [[ ! -f "$ROOT/scripts/env-stage.sh" ]]; then
+    echo "note: scripts/env-stage.sh missing — skip stage"
+    return 0
+  fi
+  bash "$ROOT/scripts/env-stage.sh" || echo "note: env-stage incomplete — continuing (honest skip)"
+}
+
+
+cmd_env() {
+  # Same path as bare ./pfy before the window. No harness exec. No native window.
+  # #191: nonzero when ensure_inference still not ready (Operate-or-FAIL; board paints FAIL).
+  ensure_inference || return $?
+  run_product_stage || true
+}
+
+grok_bin() {
+  if have grok; then command -v grok
+  elif [[ -x "$HOME/.local/bin/grok" ]]; then echo "$HOME/.local/bin/grok"
+  else return 1
+  fi
+}
+
+codex_bin() {
+  if have codex; then command -v codex
+  elif [[ -x "$HOME/.local/bin/codex" ]]; then echo "$HOME/.local/bin/codex"
+  else return 1
+  fi
+}
+
+exo_bin() {
+  if [[ -x "$ROOT/exo.sh" ]]; then echo "$ROOT/exo.sh"
+  elif [[ -x "$HOME/exo/exo.sh" ]]; then echo "$HOME/exo/exo.sh"
+  elif have exo.sh; then command -v exo.sh
+  else return 1
+  fi
+}
+
+print_grok_oneliner() {
+  local why="${1:-missing}"
+  if [[ "$why" == "unauth" ]]; then
+    echo "Grok CLI present but not authenticated — not stopping the env."
+    echo "  grok login"
+    echo "  (or export XAI_API_KEY — credentials/2FA are owner-only)"
+  else
+    echo "Grok CLI missing — not stopping the env."
+    echo "  curl -fsSL https://x.ai/cli/install.sh | bash"
+    echo "  grok login"
+  fi
+}
+
+grok_unauth() {
+  local bin="${1:-}"
+  [[ -n "${XAI_API_KEY:-}" ]] && return 1
+  [[ -z "$bin" ]] && return 0
+  local out rc=0
+  out="$("$bin" whoami 2>&1)" || rc=$?
+  [[ "$rc" -ne 0 ]] && return 0
+  [[ -z "${out// }" ]] && return 0
+  if printf '%s' "$out" | grep -qiE 'not (logged|authenticated)|please (log in|login)|grok login|unauthori[sz]ed'; then
+    return 0
+  fi
+  return 1
+}
+
+stub_harness() {
+  local id="$1"
+  local issue
+  issue="$(json_field github_issue "$id" 2>/dev/null || true)"
+  echo "STUB harness: $id"
+  if [[ -n "$issue" ]]; then
+    echo "  https://github.com/themark-net/pfy-mentat/issues/${issue}"
+  fi
+  case "$id" in
+    continue|agent-cage)
+      echo "  pfy harness use grok"
+      ;;
+  esac
+  exit 2
+}
+
+harness_attach_ready() {
+  local id="$1"
+  local live
+  live="$(detect_status "$id")"
+  [[ "$live" == "ready" ]] || return 1
+  if [[ "$id" == "grok" ]]; then
+    local gbin
+    gbin="$(grok_bin || true)"
+    if [[ -z "$gbin" ]]; then
+      print_grok_oneliner missing
+      return 1
+    fi
+    if grok_unauth "$gbin"; then
+      print_grok_oneliner unauth
+      return 1
+    fi
+  fi
+  return 0
+}
+
+apply_opencontext_env() {
+  # #205: inherit OpenContext store into Attach/start child. Skip if oc missing.
+  local out
+  [[ -f "$ROOT/scripts/pfy_opencontext_205.py" ]] || return 0
+  out="$(python3 "$ROOT/scripts/pfy_opencontext_205.py" --export-env 2>/dev/null || true)"
+  [[ -n "$out" ]] || return 0
+  eval "$out"
+  echo "opencontext: OPENCONTEXT_BIN=${OPENCONTEXT_BIN:-} store=${OPENCONTEXT_CONTEXTS_ROOT:-}"
+}
+
+apply_attach_mode_env() {
+  # #208: mode handoff into named start. Unwired mode = FAIL+next (no silent bare).
+  # #213: orchestration proves a multi-step local loop (not thin skill inject).
+  local hid="${1:-}"
+  [[ -f "$ROOT/scripts/pfy_attach_mode_208.py" ]] || return 0
+  if ! python3 "$ROOT/scripts/pfy_attach_mode_208.py" --prepare "$hid"; then
+    return 1
+  fi
+  local out
+  out="$(python3 "$ROOT/scripts/pfy_attach_mode_208.py" --export-env 2>/dev/null || true)"
+  [[ -n "$out" ]] || return 0
+  eval "$out"
+  echo "attach mode: using: ${PFY_ATTACH_MODE:-bare}"
+  if [[ "${PFY_ATTACH_MODE:-bare}" == "orchestration" ]]; then
+    [[ -f "$ROOT/scripts/pfy_orchestration_213.py" ]] || {
+      echo "FAIL orchestration -- module missing"
+      echo "  next: ./pfy setup"
+      return 1
+    }
+    if ! python3 "$ROOT/scripts/pfy_orchestration_213.py" --start "$hid"; then
+      return 1
+    fi
+    out="$(python3 "$ROOT/scripts/pfy_orchestration_213.py" --export-env 2>/dev/null || true)"
+    [[ -n "$out" ]] && eval "$out"
+  fi
+  if [[ "${PFY_ATTACH_MODE:-bare}" == "code-graph" ]]; then
+    # #215: Axon preferred; codebase-memory equivalent painted as not axon.
+    [[ -f "$ROOT/scripts/pfy_code_graph_215.py" ]] || {
+      echo "FAIL code-graph -- module missing"
+      echo "  next: ./pfy setup"
+      return 1
+    }
+    if ! python3 "$ROOT/scripts/pfy_code_graph_215.py" --prepare "$hid"; then
+      return 1
+    fi
+    out="$(python3 "$ROOT/scripts/pfy_code_graph_215.py" --export-env 2>/dev/null || true)"
+    [[ -n "$out" ]] && eval "$out"
+    echo "code-graph: ${PFY_GRAPH_PATH:-unwired}"
+  fi
+}
+
+exec_harness() {
+  local id="$1"
+  local live
+  live="$(detect_status "$id" 2>/dev/null || echo missing)"
+  echo "==> start harness: $id (live=$live)"
+  local rt engine st base
+  rt=$(local_runtime)
+  python3 -c "import json,sys; print('local runtime:', json.loads(sys.argv[1]))" "$rt"
+  engine=$(rt_get "$rt" engine)
+  st=$(rt_get "$rt" status)
+  base=$(rt_get "$rt" base_url)
+  # #181: FreeToken-first probe (same spine as cmd_endpoint/cmd_models_list) before any harness
+  if curl -sf --max-time 1 http://127.0.0.1:1919/v1/models >/dev/null 2>&1 \
+    || curl -sf --max-time 1 http://127.0.0.1:1919/health >/dev/null 2>&1; then
+    engine=freetoken
+    base="http://127.0.0.1:1919"
+    st=ready
+  fi
+  if [[ "$st" == "ready" && -n "$base" && "$base" != "(none)" ]]; then
+    base="${base%/}"
+    if [[ "$base" != */v1 ]]; then
+      base="${base}/v1"
+    fi
+    export LOCAL_OPENAI_BASE_URL="$base"
+    export OPENAI_BASE_URL="$base"
+  else
+    # #181: do not keep stale parent Ollama pin when detect not ready
+    unset LOCAL_OPENAI_BASE_URL OPENAI_BASE_URL 2>/dev/null || true
+    st="missing"
+    base=""
+  fi
+  apply_opencontext_env
+  case "$id" in
+    grok|opencode|hermes|codex|claude|claude-code)
+      apply_attach_mode_env "$id" || return 1
+      ;;
+    gab)
+      # #228 cloud lane — no local attach-mode MCP
+      ;;
+  esac
+
+  case "$id" in
+    grok)
+      local gbin
+      gbin="$(grok_bin || true)"
+      if [[ -z "$gbin" ]]; then
+        print_grok_oneliner missing
+        return 1
+      fi
+      if grok_unauth "$gbin"; then
+        print_grok_oneliner unauth
+        return 1
+      fi
+      # #202: FAIL+next before exec — no false attached without provider + prove
+      if [[ "$st" != "ready" || -z "${LOCAL_OPENAI_BASE_URL:-}" ]]; then
+        echo "FAIL: no local engine"
+        echo "  next: ./pfy up"
+        echo "  equiv: ./pfy models"
+        return 1
+      fi
+      export OPENAI_BASE_URL="$LOCAL_OPENAI_BASE_URL"
+      echo "model provider: OPENAI_BASE_URL=$OPENAI_BASE_URL (FreeToken-first live)"
+      if ! python3 "$ROOT/scripts/pfy_attach_usable_202.py" --prove "$LOCAL_OPENAI_BASE_URL"; then
+        return 1
+      fi
+      exec "$gbin"
+      ;;
+    freetoken|ollama|shimmy|llama-swap|llama-server|llama.cpp)
+      echo "inference spine: $id  LOCAL_OPENAI_BASE_URL=${LOCAL_OPENAI_BASE_URL:-}"
+      if [[ "$st" != "ready" ]]; then echo "honest stub: $id not healthy"; exit 2; fi
+      return 0
+      ;;
+    opencode)
+      if have opencode || have opencode-cli; then
+        local bin
+        bin=$(have opencode && echo opencode || echo opencode-cli)
+        export OPENCODE_SKILLS="${OPENCODE_SKILLS:-$ROOT/bootstrap/grok-cli/skills}"
+        echo "OPENCODE_SKILLS=$OPENCODE_SKILLS"
+        # #181: FAIL+next before open — no false enterable success without provider
+        if [[ "$st" != "ready" || -z "${LOCAL_OPENAI_BASE_URL:-}" ]]; then
+          echo "FAIL: no local engine"
+          echo "  next: ./pfy up"
+          return 1
+        fi
+        export OPENAI_BASE_URL="$LOCAL_OPENAI_BASE_URL"
+        echo "model provider: OPENAI_BASE_URL=$OPENAI_BASE_URL (FreeToken-first live)"
+        exec "$bin"
+      else
+        stub_harness opencode
+      fi
+      ;;
+    hermes)
+      if have hermes || have hermes-agent; then
+        local bin
+        bin=$(have hermes && echo hermes || echo hermes-agent)
+        # #196: FAIL+next before exec — no false attached without provider + prove
+        if [[ "$st" != "ready" || -z "${LOCAL_OPENAI_BASE_URL:-}" ]]; then
+          echo "FAIL: no local engine"
+          echo "  next: ./pfy up"
+          echo "  equiv: ./pfy models"
+          return 1
+        fi
+        export OPENAI_BASE_URL="$LOCAL_OPENAI_BASE_URL"
+        echo "model provider: OPENAI_BASE_URL=$OPENAI_BASE_URL (FreeToken-first live)"
+        echo "note: /hermes-feedback skill stays process-only (not this runtime)"
+        if ! python3 "$ROOT/scripts/pfy_attach_usable_196.py" --prove "$LOCAL_OPENAI_BASE_URL"; then
+          return 1
+        fi
+        exec "$bin"
+      else
+        echo "STUB harness: hermes"
+        echo "  https://github.com/themark-net/pfy-mentat/issues/56"
+        echo "  curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash"
+        exit 2
+      fi
+      ;;
+    claude|claude-code)
+      if ! have claude; then
+        echo "FAIL attach -- claude missing"
+        echo "  next: npm install -g @anthropic-ai/claude-code"
+        echo "  equiv: ./pfy models"
+        return 1
+      fi
+      # #221: FAIL+next before exec — no false attached without provider + prove
+      if [[ "$st" != "ready" || -z "${LOCAL_OPENAI_BASE_URL:-}" ]]; then
+        echo "FAIL: no local engine"
+        echo "  next: ./pfy up"
+        echo "  equiv: ./pfy models"
+        return 1
+      fi
+      export OPENAI_BASE_URL="$LOCAL_OPENAI_BASE_URL"
+      echo "model provider: OPENAI_BASE_URL=$OPENAI_BASE_URL (FreeToken-first live)"
+      echo "note: skills-external/claude-unified-agents is documentation only (not vendored)"
+      if ! python3 "$ROOT/scripts/pfy_attach_usable_221.py" --prove "$LOCAL_OPENAI_BASE_URL"; then
+        return 1
+      fi
+      exec claude
+      ;;
+    gab)
+      # #228: Gab cloud https://gab.ai/v1 · model=auto|pin · GAB_API_KEY
+      if [[ -z "${GAB_API_KEY:-}${GABAI_API_KEY:-}" ]]; then
+        echo "FAIL gab -- key missing"
+        echo "  next: set GAB_API_KEY · Plus/max plan · https://gab.ai/docs/api-auth"
+        echo "  honesty: gab auto ≠ local ranking · Gab does not host GGUF"
+        return 1
+      fi
+      export OPENAI_BASE_URL="https://gab.ai/v1"
+      export OPENAI_API_KEY="${GAB_API_KEY:-$GABAI_API_KEY}"
+      export PFY_GAB_MODEL="${PFY_GAB_MODEL:-auto}"
+      export LOCAL_CODER_MODEL="${PFY_GAB_MODEL}"
+      echo "gab cloud: OPENAI_BASE_URL=$OPENAI_BASE_URL model=$PFY_GAB_MODEL"
+      echo "  chip: gab auto · cloud router · gab auto ≠ local ranking"
+      if ! python3 "$ROOT/scripts/pfy_gab_228.py" --attach --model "$PFY_GAB_MODEL"; then
+        return 1
+      fi
+      # Enterable TUI only on a real tty — never hang CI / pipes.
+      if [[ -t 0 ]] && { have opencode || have opencode-cli; }; then
+        local bin
+        bin=$(have opencode && echo opencode || echo opencode-cli)
+        exec "$bin"
+      fi
+      echo "READY gab env set · OPENAI_BASE_URL=https://gab.ai/v1 model=$PFY_GAB_MODEL"
+      echo "  next: open TUI with that env · chip: gab auto ≠ local ranking"
+      return 0
+      ;;
+    codex)
+      local cbin
+      cbin="$(codex_bin || true)"
+      if [[ -z "$cbin" ]]; then
+        echo "FAIL attach -- codex missing"
+        echo "  next: curl -fsSL https://chatgpt.com/codex/install.sh | sh"
+        echo "  equiv: ./pfy models"
+        return 1
+      fi
+      # #220: FAIL+next before exec — no false attached without provider + prove
+      if [[ "$st" != "ready" || -z "${LOCAL_OPENAI_BASE_URL:-}" ]]; then
+        echo "FAIL: no local engine"
+        echo "  next: ./pfy up"
+        echo "  equiv: ./pfy models"
+        return 1
+      fi
+      export OPENAI_BASE_URL="$LOCAL_OPENAI_BASE_URL"
+      echo "model provider: OPENAI_BASE_URL=$OPENAI_BASE_URL (FreeToken-first live)"
+      if ! python3 "$ROOT/scripts/pfy_attach_usable_220.py" --prove "$LOCAL_OPENAI_BASE_URL"; then
+        return 1
+      fi
+      exec "$cbin"
+      ;;
+    gemini)
+      if have gemini || have gemini-cli; then
+        local bin
+        bin=$(have gemini && echo gemini || echo gemini-cli)
+        if [[ "$st" == "ready" && -n "${LOCAL_OPENAI_BASE_URL:-}" ]]; then
+          export OPENAI_BASE_URL="$LOCAL_OPENAI_BASE_URL"
+          echo "model provider: OPENAI_BASE_URL=$OPENAI_BASE_URL (from local runtime)"
+        else
+          echo "note: local runtime not ready — Gemini starts without a local model provider"
+        fi
+        exec "$bin"
+      else
+        echo "STUB harness: gemini"
+        echo "  https://github.com/themark-net/pfy-mentat/issues/59"
+        echo "  npm install -g @google/gemini-cli"
+        echo "  gemini   # login in the CLI; credentials/2FA are owner-only"
+        exit 2
+      fi
+      ;;
+    exo)
+      local ebin
+      ebin="$(exo_bin || true)"
+      if [[ -n "$ebin" ]]; then
+        if [[ "$st" == "ready" && -n "${LOCAL_OPENAI_BASE_URL:-}" ]]; then
+          export OPENAI_BASE_URL="$LOCAL_OPENAI_BASE_URL"
+          echo "model provider: OPENAI_BASE_URL=$OPENAI_BASE_URL (from local runtime)"
+        else
+          echo "note: local runtime not ready — Exo starts without a local model provider"
+        fi
+        exec "$ebin"
+      else
+        echo "STUB harness: exo"
+        echo "  https://github.com/themark-net/pfy-mentat/issues/60"
+        echo "  curl -fsSL https://raw.githubusercontent.com/exoharness/exo/main/setup.sh -o setup.sh"
+        echo "  bash setup.sh"
+        exit 2
+      fi
+      ;;
+    continue|agent-cage)
+      stub_harness "$id"
+      ;;
+    *) die "unknown harness: $id" ;;
+  esac
+}
+
+attach_operator_harness() {
+  local requested="${1:-}"
+  local preferred tried="" id
+  if [[ -n "$requested" ]]; then
+    preferred="$requested"
+  else
+    preferred="$(cat "$ACTIVE_FILE" 2>/dev/null || json_field default)"
+    [[ -n "$preferred" ]] || preferred="grok"
+  fi
+
+  case "$preferred" in
+    freetoken|ollama|shimmy|llama-swap|llama-server|llama.cpp)
+      exec_harness "$preferred"
+      return 0
+      ;;
+    exo)
+      if [[ -n "$requested" ]]; then
+        exec_harness exo || exit 2
+        return 0
+      fi
+      ;;
+    continue|agent-cage)
+      stub_harness "$preferred"
+      ;;
+    gemini)
+      if [[ -n "$requested" ]]; then
+        exec_harness gemini || exit 2
+        return 0
+      fi
+      ;;
+    codex)
+      if [[ -n "$requested" ]]; then
+        exec_harness codex || exit 2
+        return 0
+      fi
+      ;;
+    claude|claude-code)
+      if [[ -n "$requested" ]]; then
+        exec_harness "$preferred" || exit 2
+        return 0
+      fi
+      ;;
+    gab)
+      if [[ -n "$requested" ]]; then
+        exec_harness gab
+        local ec=$?
+        [[ $ec -eq 0 ]] || exit "$ec"
+        return 0
+      fi
+      ;;
+    hermes)
+      if [[ -n "$requested" ]]; then
+        exec_harness hermes || exit 2
+        return 0
+      fi
+      ;;
+    opencode)
+      if [[ -n "$requested" ]]; then
+        exec_harness opencode || exit 2
+        return 0
+      fi
+      ;;
+    grok)
+      if [[ -n "$requested" ]]; then
+        exec_harness grok || exit 2
+        return 0
+      fi
+      ;;
+  esac
+
+  if [[ -n "$preferred" ]]; then
+    if [[ "$preferred" == "grok" ]]; then
+      local gbin
+      gbin="$(grok_bin || true)"
+      if [[ -n "$gbin" ]] && ! grok_unauth "$gbin"; then
+        exec_harness grok
+      else
+        if [[ -z "$gbin" ]]; then
+          print_grok_oneliner missing
+        else
+          print_grok_oneliner unauth
+        fi
+        echo "note: preferred harness 'grok' not attached — trying next ready adapter"
+      fi
+    elif harness_attach_ready "$preferred"; then
+      exec_harness "$preferred"
+    else
+      echo "note: preferred harness '$preferred' not live-ready — trying next ready adapter"
+    fi
+    tried="$preferred"
+  fi
+
+  while IFS= read -r id; do
+    [[ -z "$id" ]] && continue
+    [[ "$id" == "$tried" ]] && continue
+    if harness_attach_ready "$id"; then
+      echo "attaching next ready adapter: $id"
+      exec_harness "$id"
+    fi
+  done < <(json_field adapter_ids)
+
+  echo "error: no ready harness to attach (missing harness process is not OK for start/up)"
+  echo "  install/login grok, or install opencode, then re-run: ./pfy start"
+  echo "  curl -fsSL https://x.ai/cli/install.sh | bash"
+  echo "  grok login"
+  exit 2
+}
+
+operator_bring_up() {
+  ensure_inference
+  run_product_stage
+  attach_operator_harness "${1:-}"
+}
+
+cmd_up() { cmd_gui; }
+cmd_start() {
+  if [[ -n "${1:-}" ]]; then
+    operator_bring_up "$1"
+  else
+    cmd_gui
+  fi
+}
+
+lab_stage() {
+  echo "lab: optional personal cage lab (doctor → setup → up-mcp)"
+  echo "lab: not product-ready; do not sell cage"
+  if ! have docker; then
+    echo "lab: Docker is missing"
+    echo "lab: lab skipped (not product-ready)"
+    echo "lab: basic ./pfy setup and ./pfy start do not require Docker"
+    return 0
+  fi
+  local target
+  for target in cage-doctor cage-setup cage-up-mcp; do
+    echo "lab: running make $target"
+    if ! (cd "$ROOT" && make "$target"); then
+      echo "lab: step failed: $target (make $target) — not fake ready"
+      return 1
+    fi
+  done
+  echo "lab: make cage-doctor, cage-setup, cage-up-mcp completed"
+}
+
+cmd_stage() {
+  if [[ "${1:-}" == "--lab" ]]; then
+    lab_stage
+  else
+    (cd "$ROOT" && make env-stage)
+  fi
+}
+cmd_eval() { (cd "$ROOT" && REASON="${REASON:-pfy eval}" make eval-integration-change); }
+cmd_ship() { (cd "$ROOT" && make product-ship); }
+cmd_models_pull() {
+  # #173: FreeToken-first same spine as detect/Attach; no engine → FAIL+next (no false success)
+  local m="${1:-}" rt engine st base
+  [[ -n "$m" ]] || die "usage: pfy models pull <name>"
+  rt=$(local_runtime)
+  engine=$(rt_get "$rt" engine)
+  st=$(rt_get "$rt" status)
+  base=$(rt_get "$rt" base_url)
+  if [[ "$st" == "ready" && -n "$base" ]]; then
+    export LOCAL_OPENAI_BASE_URL="$base"
+  fi
+  # Live FreeToken wins even if a stale Ollama/openai-compat label slipped through
+  if curl -sf --max-time 1 http://127.0.0.1:1919/v1/models >/dev/null 2>&1 \
+    || curl -sf --max-time 1 http://127.0.0.1:1919/health >/dev/null 2>&1; then
+    engine=freetoken
+    base="http://127.0.0.1:1919"
+    st=ready
+    export LOCAL_OPENAI_BASE_URL="$base"
+  fi
+  echo "engine: ${engine:-(none)}"
+  echo "status: ${st:-(none)}"
+  echo "base_url: ${LOCAL_OPENAI_BASE_URL:-${base:-(none)}}"
+
+  ft_record_pull() {
+    record_ft_pull_model "$m"
+    echo "recorded FreeToken model: $m"
+    echo "  next ./pfy / ./pfy up will: ft serve --model $m"
+    echo "  (HF/path load happens at serve; no ft pull)"
+  }
+
+  if [[ "$st" != "ready" || "$engine" == "none" || -z "$engine" ]]; then
+    echo "FAIL: no local engine to pull"
+    echo "  next: Launch env or ./pfy up"
+    return 1
+  fi
+
+  case "$engine" in
+    ollama|openai-compat)
+      if [[ "$engine" == "openai-compat" ]] && [[ "${base}" == *":1919"* ]]; then
+        ft_record_pull
+        return 0
+      fi
+      if have ollama; then
+        ollama pull "$m"
+      else
+        echo "STUB: ollama not on PATH — honest skip"
+        echo "  https://github.com/themark-net/pfy-mentat/issues/112"
+        echo "  ollama pull $m"
+      fi
+      return 0
+      ;;
+    freetoken|ft)
+      ft_record_pull
+      return 0
+      ;;
+    llama-swap|llama-server|llama.cpp)
+      echo "note: $engine has no pull — honest skip (no GGUF download)"
+      echo "  https://github.com/themark-net/pfy-mentat/issues/112"
+      echo "  set PFY_LLAMA_MODEL to an existing GGUF path"
+      return 0
+      ;;
+    shimmy)
+      echo "STUB: shimmy has no pull — honest skip"
+      echo "  https://github.com/themark-net/pfy-mentat/issues/112"
+      echo "  shimmy"
+      return 0
+      ;;
+  esac
+
+  if have ft || have freetoken; then
+    ft_record_pull
+    return 0
+  fi
+  if have ollama; then
+    ollama pull "$m"
+    return 0
+  fi
+  echo "FAIL: no local engine to pull"
+  echo "  next: Launch env or ./pfy up"
+  return 1
+}
+
+cmd_models_recommend() {
+  # #207: ranked host-fit models beyond already-pulled. Honest FAIL, no fake best list.
+  python3 "$ROOT/scripts/pfy_recommend_models_207.py" --recommend "$@"
+}
+
+cmd_models_try() {
+  # #207: one try/pull of a recommended model via FreeToken-first models pull.
+  python3 "$ROOT/scripts/pfy_recommend_models_207.py" --try "$@"
+}
+
+cmd_models_gab_sync() {
+  # #228: Gab open-weight family signal → Ollama tags + nimo fit. Offline fixture in CI.
+  export PFY_GAB_OFFLINE="${PFY_GAB_OFFLINE:-1}"
+  python3 "$ROOT/scripts/pfy_gab_228.py" --sync --offline "$@"
+}
+
+cmd_models_gab_pull() {
+  # #228: gated pull (fits ok; tight=--confirm; won't-fit / 405B blocked without --opt-in-huge)
+  export PFY_GAB_OFFLINE="${PFY_GAB_OFFLINE:-1}"
+  python3 "$ROOT/scripts/pfy_gab_228.py" --pull "$@"
+}
+
+cmd_catalog() {
+  # #209: usable catalog browse / ask TUI / queue org. HOLD 70-75 not auto-lifted.
+  local sub="${1:-browse}"; shift || true
+  case "$sub" in
+    browse|list|"") python3 "$ROOT/scripts/pfy_catalog_ask_queue_209.py" --browse "$@" ;;
+    ask) python3 "$ROOT/scripts/pfy_catalog_ask_queue_209.py" --ask "$@" ;;
+    queue) python3 "$ROOT/scripts/pfy_catalog_ask_queue_209.py" --queue "$@" ;;
+    status) python3 "$ROOT/scripts/pfy_catalog_ask_queue_209.py" --status "$@" ;;
+    *) echo "catalog subcommands: browse|ask|queue|status" >&2; return 2 ;;
+  esac
+}
+
+
+cmd_decision() {
+  # #230: Jev-style typed Choice/Score. Primary local = CUA-S1-FORMS. TypeSafe optional.
+  local sub="${1:-smoke}"; shift || true
+  case "$sub" in
+    smoke|"" ) python3 "$ROOT/scripts/pfy_jev_230.py" --smoke cua-s1-forms "$@" ;;
+    off|cua-s1-forms|cua|typesafe|mini-jev|path)
+      if [[ "$sub" == "path" ]]; then
+        python3 "$ROOT/scripts/pfy_jev_230.py" --path "$@"
+      else
+        python3 "$ROOT/scripts/pfy_jev_230.py" --path "$sub" "$@"
+      fi
+      ;;
+    compact) python3 "$ROOT/scripts/pfy_jev_230.py" --compact "$@" ;;
+    route) python3 "$ROOT/scripts/pfy_jev_230.py" --route "$@" ;;
+    attach) python3 "$ROOT/scripts/pfy_jev_230.py" --attach "$@" ;;
+    queue) python3 "$ROOT/scripts/pfy_jev_230.py" --queue "$@" ;;
+    selftest) python3 "$ROOT/scripts/pfy_jev_230.py" --selftest "$@" ;;
+    *) echo "decision subcommands: smoke|off|cua-s1-forms|typesafe|mini-jev|compact|route|queue" >&2; return 2 ;;
+  esac
+}
+
+cmd_launch() {
+  # #225: Loop launch wizard compose then Launch session. #224: honest lane+tools brief.
+  local sub="${1:-session}"; shift || true
+  case "$sub" in
+    session|go|"") python3 "$ROOT/scripts/pfy-board.py" --launch "$@" ;;
+    runtime|health) python3 "$ROOT/scripts/pfy_launch_wizard_225.py" --runtime "$@" ;;
+    lane) python3 "$ROOT/scripts/pfy_launch_wizard_225.py" --lane "$@" ;;
+    toolset|toolsets|mode) python3 "$ROOT/scripts/pfy_launch_wizard_225.py" --toolset "$@" ;;
+    harness) python3 "$ROOT/scripts/pfy_launch_wizard_225.py" --harness "$@" ;;
+    review) python3 "$ROOT/scripts/pfy_launch_wizard_225.py" --review "$@" ;;
+    decision|jev) python3 "$ROOT/scripts/pfy_launch_wizard_225.py" --decision "$@" ;;
+    compose|paint) python3 "$ROOT/scripts/pfy_session_compose_224.py" --paint "$@" ;;
+    brief) python3 "$ROOT/scripts/pfy_session_compose_224.py" --brief "$@" ;;
+    *) echo "launch subcommands: session|runtime|lane|toolset|harness|decision|review|compose|brief" >&2; return 2 ;;
+  esac
+}
+
+cmd_models_list() {
+  # #187: FreeToken-first list (same spine as usage/Attach); no false empty success
+  local rt engine st base
+  rt=$(local_runtime)
+  engine=$(rt_get "$rt" engine)
+  st=$(rt_get "$rt" status)
+  base=$(rt_get "$rt" base_url)
+  if curl -sf --max-time 1 http://127.0.0.1:1919/v1/models >/dev/null 2>&1 \
+    || curl -sf --max-time 1 http://127.0.0.1:1919/health >/dev/null 2>&1; then
+    engine=freetoken
+    base="http://127.0.0.1:1919"
+    st=ready
+  fi
+  if [[ "$st" == "ready" && -n "$base" ]]; then
+    export LOCAL_OPENAI_BASE_URL="$base"
+  fi
+  echo "engine: $engine"
+  echo "status: ${st:-(none)}"
+  echo "base_url: ${LOCAL_OPENAI_BASE_URL:-${base:-(none)}}"
+  if [[ "$st" != "ready" || -z "$base" ]]; then
+    echo "FAIL: no local engine to list"
+    echo "  next: Launch env or ./pfy up"
+    return 1
+  fi
+  # List only — do not call print_local_usage (|| true would mask FAIL) (#187)
+  print_live_models "${LOCAL_OPENAI_BASE_URL:-$base}"
+}
+
+
+cmd_endpoint() {
+  # #177: one-line FreeToken-first live OpenAI-compat base (copy-friendly)
+  local rt engine st base
+  rt=$(local_runtime)
+  engine=$(rt_get "$rt" engine)
+  st=$(rt_get "$rt" status)
+  base=$(rt_get "$rt" base_url)
+  if curl -sf --max-time 1 http://127.0.0.1:1919/v1/models >/dev/null 2>&1 \
+    || curl -sf --max-time 1 http://127.0.0.1:1919/health >/dev/null 2>&1; then
+    engine=freetoken
+    base="http://127.0.0.1:1919"
+    st=ready
+  fi
+  if [[ "$st" != "ready" || -z "$base" || "$base" == "(none)" ]]; then
+    echo "FAIL: no local engine" >&2
+    echo "  next: ./pfy up" >&2
+    return 1
+  fi
+  # OpenAI-compat /v1 base (match live_openai_base)
+  base="${base%/}"
+  if [[ "$base" != */v1 ]]; then
+    base="${base}/v1"
+  fi
+  printf '%s\n' "$base"
+}
+
+cmd_doctor() {
+  # #185: one-shot FreeToken-first health — exit 0 only when live ready
+  local rt engine st base tok
+  echo "pfy doctor"
+  rt=$(local_runtime)
+  engine=$(rt_get "$rt" engine)
+  st=$(rt_get "$rt" status)
+  base=$(rt_get "$rt" base_url)
+  # FreeToken-first probe (same spine as endpoint/models/usage)
+  if curl -sf --max-time 1 http://127.0.0.1:1919/v1/models >/dev/null 2>&1 \
+    || curl -sf --max-time 1 http://127.0.0.1:1919/health >/dev/null 2>&1; then
+    engine=freetoken
+    base="http://127.0.0.1:1919"
+    st=ready
+  fi
+  echo "detect: engine=${engine:-(none)} status=${st:-(none)}"
+  if [[ "$st" != "ready" || -z "$base" || "$base" == "(none)" ]]; then
+    echo "endpoint: (none)"
+    echo "FAIL: no local engine"
+    echo "  next: ./pfy up"
+    return 1
+  fi
+  base="${base%/}"
+  local ep="$base"
+  if [[ "$ep" != */v1 ]]; then ep="${ep}/v1"; fi
+  echo "endpoint: $ep"
+  # optional models (best-effort; do not fail doctor solely on empty list if engine ready)
+  print_live_models "$base" "" || true
+  tok="$(resolve_tok_path "$engine" "$base" || true)"
+  if [[ -n "$tok" ]]; then echo "tok_path: $tok"; else echo "tok_path: SKIP"; fi
+  print_vram_line "$engine" "$base"
+  echo "PASS doctor · $engine ready"
+  return 0
+}
+
+cmd_context() {
+  # #205: OpenContext oc capture/search/reuse prove. Honest FAIL if node/oc missing.
+  python3 "$ROOT/scripts/pfy_opencontext_205.py" --prove "$@"
+}
+
+cmd_code_graph() {
+  # #215: Axon prove (or codebase-memory equivalent). Honest FAIL if neither.
+  python3 "$ROOT/scripts/pfy_code_graph_215.py" --prove "$@"
+}
+
+cmd_smoke() {
+  # #197: FreeToken-first models list + one chat/completions smoke (reuse Attach #193 prove)
+  local rt engine st base
+  rt=$(local_runtime)
+  engine=$(rt_get "$rt" engine)
+  st=$(rt_get "$rt" status)
+  base=$(rt_get "$rt" base_url)
+  # FreeToken-first probe (same spine as doctor/endpoint/models)
+  if curl -sf --max-time 1 http://127.0.0.1:1919/v1/models >/dev/null 2>&1 \
+    || curl -sf --max-time 1 http://127.0.0.1:1919/health >/dev/null 2>&1; then
+    engine=freetoken
+    base="http://127.0.0.1:1919"
+    st=ready
+  fi
+  if [[ "$st" != "ready" || -z "$base" || "$base" == "(none)" ]]; then
+    echo "FAIL: no local engine"
+    echo "  next: ./pfy up"
+    return 1
+  fi
+  # Prefer live base; prove helper openai_compat_root strips trailing /v1
+  base="${base%/}"
+  local out rc
+  set +e
+  out="$(python3 - "$ROOT" "$base" "$engine" <<'PY'
+import importlib.util
+import json
+import sys
+import urllib.request
+from pathlib import Path
+
+root, base, engine = sys.argv[1], sys.argv[2], sys.argv[3]
+path = Path(root) / "scripts" / "pfy_attach_usable_193.py"
+if not path.is_file():
+    print("FAIL: prove helper missing · ./pfy up")
+    raise SystemExit(2)
+spec = importlib.util.spec_from_file_location("pfy_attach_usable_193", path)
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+
+def inspect_models(root_url):
+    root_url = mod.openai_compat_root(root_url)
+    ids, seen = [], set()
+    for path_suffix in ("/v1/models", "/api/tags"):
+        try:
+            req = urllib.request.Request(root_url + path_suffix, method="GET")
+            with urllib.request.urlopen(req, timeout=2) as r:
+                d = json.loads(r.read().decode() or "{}")
+        except Exception:
+            continue
+        if not isinstance(d, dict):
+            continue
+        for m in d.get("data") or []:
+            if isinstance(m, dict):
+                x = (m.get("id") or m.get("name") or "").strip()
+            else:
+                x = str(m).strip()
+            if x and x not in seen:
+                seen.add(x)
+                ids.append(x)
+        for m in d.get("models") or []:
+            if isinstance(m, dict):
+                x = (m.get("name") or m.get("model") or m.get("id") or "").strip()
+            else:
+                x = str(m).strip()
+            if x and x not in seen:
+                seen.add(x)
+                ids.append(x)
+    return ids
+
+ok, model, err = mod.prove_developer_usable(base, inspect_models)
+if ok:
+    print("PASS smoke · %s · %s" % (model, engine))
+    raise SystemExit(0)
+reason = (err or "smoke failed").strip() or "smoke failed"
+print("FAIL: %s" % reason)
+print("  next: ./pfy up")
+raise SystemExit(1)
+PY
+)"
+  rc=$?
+  set -e
+  printf '%s\n' "$out"
+  return "$rc"
+}
+
+record_verb() {
+  mkdir -p "$STATE_DIR"
+  {
+    printf 'verb: %s\n' "$*"
+    printf 'when: %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  } > "$STATE_DIR/last-verb"
+}
+
+cmd_board() {
+  [[ -f "$ROOT/scripts/pfy-board.py" ]] || die "scripts/pfy-board.py missing"
+  local open_flag=0
+  local -a args=()
+  local a
+  for a in "$@"; do
+    if [[ "$a" == "--open" ]]; then
+      open_flag=1
+    else
+      args+=("$a")
+    fi
+  done
+  if [[ "$open_flag" -eq 1 ]]; then
+    echo "note: --open is a hatch; native window is the main path"
+    open_board_url || true
+    if [[ ${#args[@]} -gt 0 ]]; then
+      exec python3 "$ROOT/scripts/pfy-board.py" "${args[@]}"
+    else
+      exec python3 "$ROOT/scripts/pfy-board.py"
+    fi
+  fi
+  launch_native_gui
+}
+
+main() {
+  local cmd="${1:-gui}"
+  shift || true
+  if [[ "$cmd" != "help" && "$cmd" != "-h" && "$cmd" != "--help" ]]; then
+    record_verb "$cmd" "$@"
+  fi
+  case "$cmd" in
+    help|-h|--help) usage ;;
+    gui|"") cmd_gui ;;
+    setup) cmd_setup "${1:-balanced}" ;;
+    status) cmd_status ;;
+    usage) cmd_usage ;;
+    endpoint) cmd_endpoint ;;
+    doctor) cmd_doctor ;;
+    smoke) cmd_smoke ;;
+    context) cmd_context "$@" ;;
+    code-graph|axon) cmd_code_graph "$@" ;;
+    board) cmd_board "$@" ;;
+    up) cmd_up ;;
+    harness)
+      local sub="${1:-list}"; shift || true
+      case "$sub" in
+        list) json_field list | column -t -s $'\t' 2>/dev/null || json_field list ;;
+        use) cmd_harness_use "$@" ;;
+        show) json_field get "${1:-$(cat "$ACTIVE_FILE" 2>/dev/null || json_field default)}" ;;
+        *) die "harness subcommands: list|use|show" ;;
+      esac
+      ;;
+    start) cmd_start "$@" ;;
+    stage) cmd_stage "$@" ;;
+    env|launch-env) cmd_env ;;
+    eval) cmd_eval ;;
+    ship) cmd_ship ;;
+    models)
+      local sub="${1:-list}"; shift || true
+      case "$sub" in
+        list|"") cmd_models_list ;;
+        pull) cmd_models_pull "$@" ;;
+        recommend) cmd_models_recommend "$@" ;;
+        try) cmd_models_try "$@" ;;
+        gab-sync|gab_sync) cmd_models_gab_sync "$@" ;;
+        gab-pull|gab_pull) cmd_models_gab_pull "$@" ;;
+        *) die "models subcommands: list|pull|recommend|try|gab-sync|gab-pull" ;;
+      esac
+      ;;
+    catalog) cmd_catalog "$@" ;;
+    launch) cmd_launch "$@" ;;
+    decision|jev) cmd_decision "$@" ;;
+    *) usage; die "unknown command: $cmd" ;;
+  esac
+}
+
+main "$@"
