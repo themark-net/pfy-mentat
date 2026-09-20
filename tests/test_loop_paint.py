@@ -1,0 +1,87 @@
+"""Loop paint: modules + local/cloud hedge (not a harness picker)."""
+from __future__ import annotations
+
+import os
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from pfylib import loop_paint, registry  # noqa: E402
+
+
+class LoopPaintTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="pfylib-loop-"))
+        self.state = self.tmp / "state"
+        self._saved = {k: os.environ.get(k) for k in ("PFY_STATE_DIR", "PFY_CLOUD_BUDGET", "DEPLOY_PROFILE", "GAB_API_KEY")}
+        os.environ["PFY_STATE_DIR"] = str(self.state)
+        os.environ.pop("PFY_CLOUD_BUDGET", None)
+        os.environ.pop("DEPLOY_PROFILE", None)
+        os.environ.pop("GAB_API_KEY", None)
+
+    def tearDown(self):
+        for k, v in self._saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+    def test_fields_lists_every_toolset_and_hedge_split(self):
+        local = {"engine": "freetoken", "base_url": "http://127.0.0.1:1919/v1", "status": "ready"}
+        f = loop_paint.fields(state=self.state, root_dir=ROOT, local=local)
+        ids = [m["id"] for m in f["modules"]]
+        self.assertEqual(ids, registry.toolset_ids(ROOT))
+        self.assertTrue(any(m["status"] == "implemented" for m in f["modules"]))
+        self.assertTrue(any(m["status"] == "stub" for m in f["modules"]))
+        h = f["hedge"]
+        self.assertTrue(h["local_ready"])
+        self.assertEqual(h["lane"], "local")
+        self.assertEqual(h["routes"]["interactive"]["lane"], "local")
+        self.assertIn(h["routes"]["hard"]["lane"], ("local", "cloud", None))
+
+    def test_toggle_rejects_stub_and_enables_implementable(self):
+        r = loop_paint.toggle("jev", True, state=self.state, root_dir=ROOT)
+        self.assertTrue(r["ok"], r)
+        self.assertIn("jev", r["enabled"])
+        r = loop_paint.toggle("orchestration", True, state=self.state, root_dir=ROOT)
+        self.assertTrue(r["ok"], r)
+        stub_id = next(m["id"] for m in loop_paint.fields(state=self.state, root_dir=ROOT)["modules"] if m["status"] == "stub")
+        r = loop_paint.toggle(stub_id, True, state=self.state, root_dir=ROOT)
+        self.assertFalse(r["ok"])
+        self.assertEqual(r["live"], "STUB")
+        self.assertNotIn(stub_id, loop_paint.load_selection(self.state)["enabled"])
+
+    def test_hedge_without_local_and_without_budget_fails_honestly(self):
+        local = {"engine": "none", "base_url": "", "status": "missing"}
+        f = loop_paint.fields(state=self.state, root_dir=ROOT, local=local)
+        self.assertFalse(f["hedge"]["ok"])
+        self.assertFalse(f["hedge"]["local_ready"])
+        self.assertIn("PFY_CLOUD_BUDGET", f["hedge"]["next_step"] or f["hedge"]["copy"])
+
+    def test_hedge_cloud_when_local_missing_and_budget_set(self):
+        os.environ["PFY_CLOUD_BUDGET"] = "3"
+        local = {"engine": "none", "base_url": "", "status": "missing"}
+        f = loop_paint.fields(state=self.state, root_dir=ROOT, local=local)
+        self.assertEqual(f["hedge"]["lane"], "cloud")
+        self.assertEqual(f["hedge"]["routes"]["interactive"]["lane"], "cloud")
+        self.assertEqual(f["hedge"]["routes"]["hard"]["lane"], "cloud")
+
+    def test_set_task_persists(self):
+        r = loop_paint.set_task("hard", state=self.state)
+        self.assertTrue(r["ok"], r)
+        self.assertEqual(loop_paint.load_selection(self.state)["task"], "hard")
+        f = loop_paint.fields(state=self.state, root_dir=ROOT, local={"engine": "none", "base_url": "", "status": "missing"})
+        self.assertEqual(f["modules_task"], "hard")
+
+    def test_apply_enabled_empty_is_noop(self):
+        out = loop_paint.apply_enabled(hid="grok", state=self.state, root_dir=ROOT, yes=True)
+        self.assertEqual(out, [])
+
+
+if __name__ == "__main__":
+    unittest.main()

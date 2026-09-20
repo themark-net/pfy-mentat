@@ -15,7 +15,9 @@ POST /catalog/queue opens a real GitHub issue with Design->DevBot DoD (#214).
 POST /start with mode orchestration starts a multi-step local loop (#213).
 POST /start with mode code-graph hands Axon (or codebase-memory equivalent) (#215).
 POST /wizard composes Loop launch wizard steps (#225). Decision toggle is wizard step decision (#230).
-POST /launch Launch session: enterable TUI with composed env or FAIL+next (#225/#224). Decision middleware may compact+route before Launch (#230).
+POST /launch Launch session: enterable TUI with composed env or FAIL+next (#225/#224). Applies enabled Loop modules first (pfylib.loop_paint).
+POST /module toggles a catalog toolset on Loop (stub modules cannot be enabled).
+POST /loop/task sets hedge task class bulk|interactive|hard.
 POST /decision/smoke Mark-free CUA-S1-FORMS Choice (#230).
 POST /space-invaders runs session Space Invaders via Attach OpenCode (#155).
 """
@@ -27,6 +29,8 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 PFY = ROOT / "scripts" / "pfy"
 DETECT = ROOT / "scripts" / "detect-local-runtime.sh"
 REG = ROOT / "data" / "harnesses.json"
@@ -441,6 +445,7 @@ def snapshot():
         **orchestration_fields(),
         **code_graph_fields(),
         **wizard_fields(),
+        **loop_paint_fields(det),
     }
 
 def html_page():
@@ -963,6 +968,69 @@ def code_graph_fields():
         empty["graph_copy"] = "FAIL code-graph -- %s" % str(e)[:160]
         return empty
 
+def loop_paint_fields(det=None):
+    """Loop front door: catalog modules + live local/cloud hedge. Not a harness picker."""
+    local = None
+    if isinstance(det, dict):
+        local = {
+            "engine": det.get("engine") or "none",
+            "base_url": det.get("base_url") or "",
+            "status": det.get("status") or "missing",
+        }
+    empty = {
+        "modules": [], "modules_enabled": [], "modules_task": "interactive",
+        "hedge": {
+            "ok": False, "live": "FAIL", "lane": None, "local_ready": False,
+            "local_engine": "none", "local_status": "missing", "local_base_url": "",
+            "budget": 0, "spent": 0, "remaining": 0, "reason": "", "next_step": "",
+            "copy": "", "routes": {}, "gab_key": False, "profile": "(unset)", "task": "interactive",
+        },
+    }
+    try:
+        from pfylib import loop_paint
+        return loop_paint.fields(state=STATE, root_dir=ROOT, local=local)
+    except Exception as e:
+        empty["hedge"]["reason"] = str(e)[:160]
+        empty["hedge"]["copy"] = "FAIL loop paint -- %s" % str(e)[:160]
+        return empty
+
+
+def toggle_loop_module(tid, on=True):
+    try:
+        from pfylib import loop_paint
+        rec = loop_paint.toggle(str(tid or ""), bool(on), state=STATE, root_dir=ROOT)
+    except Exception as e:
+        return {"ok": False, "live": "FAIL", "copy": "FAIL module -- %s" % str(e)[:160], "error": str(e)[:160]}
+    mode = rec.get("wizard_mode")
+    if rec.get("ok") and rec.get("on") and mode:
+        wiz = wizard_apply("toolsets", mode)
+        rec["wizard"] = {"ok": wiz.get("ok"), "copy": wiz.get("copy")}
+    return rec
+
+
+def set_loop_task(task):
+    try:
+        from pfylib import loop_paint
+        return loop_paint.set_task(str(task or ""), state=STATE)
+    except Exception as e:
+        return {"ok": False, "live": "FAIL", "copy": "FAIL task -- %s" % str(e)[:160], "error": str(e)[:160]}
+
+
+def _apply_loop_modules_before_launch():
+    """Write enabled modules into the session Launch will spawn (proof, not a harness picker)."""
+    try:
+        from pfylib import loop_paint
+    except Exception as e:
+        return [{"live": "FAIL", "copy": "pfylib.loop_paint missing: %s" % str(e)[:120]}]
+    wiz = wizard_fields()
+    hid = str(wiz.get("wizard_harness") or "grok").strip() or "grok"
+    if hid == "claude":
+        hid = "claude-code"
+    if hid == "gab":
+        hid = "opencode"
+    return loop_paint.apply_enabled(hid=hid, state=STATE, root_dir=ROOT, yes=True)
+
+
 def wizard_fields():
     """Snapshot Loop launch wizard compose. Cite #225."""
     empty = {
@@ -1086,14 +1154,18 @@ def launch_wizard_session():
     if mod is None:
         return {"ok": False, "live": "FAIL", "copy": "FAIL launch -- module missing", "error": err or "missing", "usable": False, "next_step": "./pfy setup", "session_reach": "FAIL"}
     STATE.mkdir(parents=True, exist_ok=True)
+    applied = _apply_loop_modules_before_launch()
 
     def _start(hid, mode=None):
         return start_sidecar(hid, mode=mode)
 
-    return mod.launch_session(
+    result = mod.launch_session(
         ROOT, STATE, start_fn=_start, live_openai_base=live_openai_base,
         which=which_bin, set_mode_fn=set_attach_mode,
     )
+    if isinstance(result, dict):
+        result["modules_applied"] = applied
+    return result
 
 def catalog_fields(active=""):
     """Snapshot catalog browse + live queue status. Cite #214. Never dump scores-only."""
@@ -2183,6 +2255,32 @@ class Handler(BaseHTTPRequestHandler):
             if length:
                 self.rfile.read(length)
             result = space_invaders_task()
+            code = 200 if result.get("ok") else 400
+            self._send(code, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
+            return
+        if path in ("/module", "/modules"):
+            length = int(self.headers.get("Content-Length") or 0)
+            raw = self.rfile.read(length) if length else b"{}"
+            try:
+                body = json.loads(raw.decode() or "{}")
+            except json.JSONDecodeError:
+                body = {}
+            tid = str((body or {}).get("id") or (body or {}).get("module") or "")
+            on = (body or {}).get("on")
+            if on is None:
+                on = str((body or {}).get("value") or "on").lower() not in ("0", "off", "false", "no")
+            result = toggle_loop_module(tid, bool(on))
+            code = 200 if result.get("ok") else 400
+            self._send(code, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
+            return
+        if path in ("/loop/task", "/hedge/task"):
+            length = int(self.headers.get("Content-Length") or 0)
+            raw = self.rfile.read(length) if length else b"{}"
+            try:
+                body = json.loads(raw.decode() or "{}")
+            except json.JSONDecodeError:
+                body = {}
+            result = set_loop_task(str((body or {}).get("task") or (body or {}).get("value") or ""))
             code = 200 if result.get("ok") else 400
             self._send(code, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
             return

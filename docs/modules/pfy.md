@@ -50,7 +50,7 @@ Root `./pfy` is a 100755 wrapper that execs `scripts/pfy`. Detector is invoked w
 
 **Decision layer (#230):** Loop toggle `off | CUA-S1-FORMS | TypeSafe | mini-jev`. Typed Choice/Score; CUA-S1-FORMS is primary local (Mark-free smoke). TypeSafe key optional. Honesty `decision ≠ gab auto ≠ local`. [jev-230.md](jev-230.md).
 
-**Launch wizard (#225) / session compose (#224):** Loop primary path is compose (runtime · lane · toolsets · harness) then **Launch session** into an enterable TUI, or FAIL+next. Loop paints honest lane (`local FreeToken-first` vs `cloud/subscription (Grok-sub)` vs `OpenCode free`) and enabled toolsets (SKIP/FAIL if not wired). Launch writes an in-session brief (AGENTS/skills/prompt card). Attach X is secondary re-attach. Window stay-open. HTML+tk. No Env nav tab. [launch-wizard.md](launch-wizard.md) · [session-compose.md](session-compose.md).
+**Launch wizard (#225) / session compose (#224) / Loop modules (T-0125):** Loop paints **LOCAL COMPUTE | CLOUD ORCHESTRATION** plus gathered catalog **MODULES**. Hedge chooses the lane; Launch session applies enabled modules into an enterable TUI (proof). Attach X is on the Attach tab. Window stay-open. HTML+tk. No Env nav tab. [launch-wizard.md](launch-wizard.md) · [session-compose.md](session-compose.md) · [pfylib.md](pfylib.md).
 
 ## Not yet
 
