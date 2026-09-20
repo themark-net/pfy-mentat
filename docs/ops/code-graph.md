@@ -82,5 +82,5 @@ Hermes: Axon CLI on PATH (env). MCP-only is unwired for Hermes.
 python3 scripts/pfy_code_graph_215.py --selftest
 python3 scripts/pfy_attach_mode_208.py --selftest
 ./pfy code-graph
-gzip -t <(cat scripts/pfy.payload.b64.* | tr -d '\n' | base64 -d)
+bash -n scripts/pfy
 ```
