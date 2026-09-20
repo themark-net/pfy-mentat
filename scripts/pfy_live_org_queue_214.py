@@ -915,15 +915,15 @@ def cmd_selftest():
         here = Path(__file__).resolve().parents[1]
         html = _read(here / "gui" / "operator" / "frontend" / "index.html")
         js = _read(here / "gui" / "operator" / "frontend" / "app-ui.js")
-        gui_tools = _read(here / "scripts" / "_pfy_gui_body_09.py")
-        gui_loop = _read(here / "scripts" / "_pfy_gui_body_08.py")
+        gui_src = _read(here / "scripts" / "pfy-gui.py")
+        gui_tools = gui_loop = gui_src
         check("id=loop-queue" in html, "HTML Loop queue row")
         check(".open,.OPEN" in html and ".closed,.CLOSED" in html and ".pr,.PR" in html, "HTML open/closed/PR styles")
         check("pr_url" in js and "loop-queue" in js, "HTML paints pr + Loop queue")
         check("QUEUE" in gui_tools and "pr_url" in gui_tools, "tk Tools QUEUE paints pr/issue")
         check("queue      " in gui_loop, "tk Loop paints queue")
-        check("Queue for org" in _read(here / "scripts" / "_pfy_gui_body_02.py"), "tk Queue for org button")
-        board = _read(here / "scripts" / "_pfy_board_body_05.py")
+        check("Queue for org" in gui_src, "tk Queue for org button")
+        board = _read(here / "scripts" / "pfy-board.py")
         check("_load_live_org_214" in board or "live.queue_org" in board, "board queue uses #214")
 
     if errors:
