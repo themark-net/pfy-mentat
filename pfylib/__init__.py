@@ -6,7 +6,7 @@ Named ``pfylib`` because the repo root already has an executable file ``pfy``;
 
 Modules:
   registry  -- load data/harnesses.json + data/toolsets.json; validate shape
-  toolsets  -- matrix() / plan() / apply(); Jev reference implementation
+  toolsets  -- matrix() / plan() / apply(); planners wrap scripts/pfy_*_NNN.py via _legacy (T-0121)
   hedge     -- deterministic local-first lane policy + ledger
   attach    -- one harness-parameterised Attach (data/harnesses.json[].attach); the
                scripts/pfy_attach_usable_*.py files are thin shims over it (T-0121)
