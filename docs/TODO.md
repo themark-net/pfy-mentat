@@ -1,8 +1,3 @@
-## Done / shipping
-
-- #230 Jev-style decision layer (CUA-S1-FORMS primary local; TypeSafe optional)
-- #228 Gab cloud lane + local recommend sync
-
 # TODO — next steps
 
 **Purpose:** Single ordered work queue for humans and agents.  
@@ -23,7 +18,7 @@
 | T-0107 | Exo optional lab path | open · [#60](https://github.com/themark-net/pfy-mentat/issues/60) |
 | T-0108 | Continue + Ollama recipe | open · [#61](https://github.com/themark-net/pfy-mentat/issues/61) |
 | T-0109 | Fold agent-cage into `pfy stage --lab` | open · [#62](https://github.com/themark-net/pfy-mentat/issues/62) |
-| T-0110 | Pluggable local runtime (llama-swap / Shimmy / Ollama) | **doing** (partial) · [#76](https://github.com/themark-net/pfy-mentat/issues/76) |
+| T-0110 | Pluggable local runtime (llama-swap / Shimmy / Ollama) | **done** (detector + registry; [#76](https://github.com/themark-net/pfy-mentat/issues/76) CLOSED 2026-09-08) · T-0101 Ollama adapter still open |
 
 Authority: ADR-0012 · ADR-0014 · issues labeled `harness-adapter`.
 
@@ -33,12 +28,12 @@ Active work is also tracked as issues: https://github.com/themark-net/pfy-mentat
 
 | TODO | Issue | Priority |
 |------|-------|----------|
-| T-0090 | [#1](https://github.com/themark-net/pfy-mentat/issues/1) | P0 |
-| T-0110 | [#76](https://github.com/themark-net/pfy-mentat/issues/76) | P1 doing/partial |
+| T-0111 | — (this review; see OQ-0011..0014) | P0 |
+| T-0090 | [#1](https://github.com/themark-net/pfy-mentat/issues/1) | P0 · **GitHub #1 CLOSED 2026-07-30 (Make levers ≤5); `./pfy` surface not collapsed — see OQ-0012** |
+| T-0110 | [#76](https://github.com/themark-net/pfy-mentat/issues/76) | P1 **done** (#76 CLOSED 2026-09-08) |
 | T-0091 | [#2](https://github.com/themark-net/pfy-mentat/issues/2) | P1 doing |
 | T-0070 | [#3](https://github.com/themark-net/pfy-mentat/issues/3) | P1 doing |
 | T-0074 | [#4](https://github.com/themark-net/pfy-mentat/issues/4) | P1 doing |
-| T-0075 | [#5](https://github.com/themark-net/pfy-mentat/issues/5) | P2 |
 | T-0076 | [#6](https://github.com/themark-net/pfy-mentat/issues/6) | P2 |
 | T-0081 | [#7](https://github.com/themark-net/pfy-mentat/issues/7) | P2 |
 | T-0040 | [#8](https://github.com/themark-net/pfy-mentat/issues/8) | P2 |
@@ -48,7 +43,6 @@ Active work is also tracked as issues: https://github.com/themark-net/pfy-mentat
 | T-0043 | [#12](https://github.com/themark-net/pfy-mentat/issues/12) | P3 parked |
 | T-0062 | [#13](https://github.com/themark-net/pfy-mentat/issues/13) | P3 |
 | T-0046 | [#14](https://github.com/themark-net/pfy-mentat/issues/14) | P3 |
-| T-0007 | [#15](https://github.com/themark-net/pfy-mentat/issues/15) | P3 |
 | T-0002 | [#16](https://github.com/themark-net/pfy-mentat/issues/16) | P3 |
 | T-0005 | [#21](https://github.com/themark-net/pfy-mentat/issues/21) | P2 todo |
 | T-0004 | [#22](https://github.com/themark-net/pfy-mentat/issues/22) | P2 **done** |
@@ -82,14 +76,15 @@ Active work is also tracked as issues: https://github.com/themark-net/pfy-mentat
 
 ## Active (sorted P0 → P3)
 
-**Session (2026-07-26):** **T-0096** dual-tier orchestrator (high-first default). Smoke: `make smoke-voice-orchestrate`.
+**Session (2026-09-20):** critical review + de-shard — [critical-review-2026-09-20.md](ops/critical-review-2026-09-20.md). **Owner decisions pending: OQ-0011 (product primacy), OQ-0012 (feature freeze), OQ-0013 (code layout), OQ-0014 (sharding constraint).**
 
 ### Active — design / coding + local path (agent may pick freely)
 
 | ID | Priority | Status | Item | Open questions | Depends | Notes |
 |----|----------|--------|------|----------------|---------|-------|
-| T-0090 | P0 | todo | **Minimal product levers audit**: collapse end-user surface to onboard / stage / ship; cap public Make targets | — | — | [#1](https://github.com/themark-net/pfy-mentat/issues/1) · [product-operator-surface.md](ops/product-operator-surface.md) |
-| T-0110 | P1 | doing | **Pluggable local runtime** (OpenAI-compat: llama-swap / Shimmy / Ollama) | — | ADR-0014 | [#76](https://github.com/themark-net/pfy-mentat/issues/76) stays OPEN · partial: detector + registry; T-0101 Ollama adapter remains open · [#202](https://github.com/themark-net/pfy-mentat/issues/202) Attach Grok usable slice |
+| T-0111 | P0 | blocked | **De-shard + consolidate operator source**: (a) plain-source entry points + G0 payload gate — **done** (this PR); (b) move `scripts/pfy_*_NNN.py` into a `pfy/` package by concept, one Attach implementation, `tests/` + pytest in G0 — **blocked** on layout + primacy decisions | OQ-0011, OQ-0013, OQ-0014 | T-0090 | [critical-review-2026-09-20.md](ops/critical-review-2026-09-20.md) §3, §6 · gate: `scripts/check_no_encoded_payloads.py` |
+| T-0090 | P0 | blocked | **Minimal product levers audit**: collapse end-user surface to onboard / stage / ship (≤3 levers **measured on `./pfy help`**, not only `make`) | OQ-0011, OQ-0012 | — | [#1](https://github.com/themark-net/pfy-mentat/issues/1) **CLOSED COMPLETED 2026-07-30** (Make ≤5 targets) — `./pfy` has since grown to 21 top-level verbs; reopen or file new issue once OQ-0012 answered · [product-operator-surface.md](ops/product-operator-surface.md) |
+| T-0110 | P1 | done | **Pluggable local runtime** (OpenAI-compat: llama-swap / Shimmy / Ollama) | — | ADR-0014 | [#76](https://github.com/themark-net/pfy-mentat/issues/76) **CLOSED 2026-09-08** · detector + registry shipped; T-0101 Ollama adapter remains open · [#202](https://github.com/themark-net/pfy-mentat/issues/202) Attach Grok usable slice |
 | T-0091 | P1 | doing | **Voice path** polish (session sticky / MCP deep) | — | ADR-0012 | [#2](https://github.com/themark-net/pfy-mentat/issues/2) · Orchestrator shipped; optional TTS |
 | T-0092 | P1 | done | Voice auto-agent local opencode path | — | T-0091 4b | still: `VOICE_AUTO_AGENT=opencode` |
 | T-0093 | P1 | done | Tools-capable Ollama select + tool-split | — | T-0080 | `eval-select-tools-model` |
@@ -98,7 +93,6 @@ Active work is also tracked as issues: https://github.com/themark-net/pfy-mentat
 | T-0095 | P3 | todo | Catalog Stage 0: Pipecat / LiveKit / freeapp (ref only) | — | ADR-0012 | [#10](https://github.com/themark-net/pfy-mentat/issues/10) · No primary install |
 | T-0070 | P1 | doing | Grow design/coding **skills + structural eval** (more text scorers) | — | T-0065 | [#3](https://github.com/themark-net/pfy-mentat/issues/3) · Keep `eval-structural` green |
 | T-0074 | P1 | doing | Implement-lane via `make eval-auto` (fit-select + candidates) | — | — | [#4](https://github.com/themark-net/pfy-mentat/issues/4) · deepseek-coder:6.7b lab-proven |
-| T-0075 | P2 | done | More structural scorers: ADR shape, open-question row shape | — | T-0070 | [#5](https://github.com/themark-net/pfy-mentat/issues/5) **done** |
 | T-0076 | P2 | todo | Wire mattpocock to-spec/tdd checklist into structural or skill cross-links | — | — | [#6](https://github.com/themark-net/pfy-mentat/issues/6) · paths pack already installed |
 | T-0081 | P2 | todo | Optional OpenCode-in-cage smoke | — | T-0080 | [#7](https://github.com/themark-net/pfy-mentat/issues/7) · After host smoke green |
 | T-0040 | P2 | todo | Broader multi-CLI parity notes (Claude Code) | — | T-0080 | [#8](https://github.com/themark-net/pfy-mentat/issues/8) · OpenCode first |
@@ -127,6 +121,9 @@ Active work is also tracked as issues: https://github.com/themark-net/pfy-mentat
 
 | ID | Priority | Status | Item | Notes |
 |----|----------|--------|------|-------|
+| T-0111a | P0 | done | De-shard `scripts/pfy`, `pfy-board.py`, `pfy-gui.py`, `pfy_enterable_162_b.py`; G0 gate `check_no_encoded_payloads` | [critical-review-2026-09-20.md](ops/critical-review-2026-09-20.md) §7; byte-identical `./pfy help/status/harness list` |
+| — | P1 | done | Jev-style decision layer (CUA-S1-FORMS primary local; TypeSafe optional) | [#230](https://github.com/themark-net/pfy-mentat/issues/230) · ADR-0016 |
+| — | P1 | done | Gab cloud lane + local recommend sync | [#228](https://github.com/themark-net/pfy-mentat/issues/228) |
 | T-0075 | P2 | done | ADR + OQ structural scorers | #5; tasks 006/007 |
 | T-0007 | P3 | done | adr-tools companion docs | #15; docs/ops/adr-tools-companion.md |
 | T-0004 | P2 | done | ATG coupling I1 submodule-later | #22; docs/ops/atg-coupling.md |

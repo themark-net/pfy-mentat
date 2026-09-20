@@ -26,8 +26,9 @@ Also use as needed: `CATEGORIZATION.md`, `SUBTREES.md`, `TOOLS.md`, `bootstrap/g
 - Re-propose designs rejected in ADRs without a superseding ADR and new context  
 - Leave P0–P2 questions only in chat  
 - Embed large upstream repos without meeting `SUBTREES.md` (see ADR-0003)  
-- Commit secrets, API keys, or `auth.json`  
-- Create a second decision log outside `docs/adr/`  
+- Commit secrets, API keys, or `auth.json` 
+- Create a second decision log outside `docs/adr/` 
+- Commit base64/gzip payloads or runtime-concatenated source shards (G0 gate `scripts/check_no_encoded_payloads.py`; see OQ-0014). If a tool cannot write a file, fix the tool 
 
 ## Bootstrap environment
 
