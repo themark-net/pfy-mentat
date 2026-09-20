@@ -6,6 +6,7 @@ Short structural maps for first-party packages in this repo. Deep design stays i
 |--------|------|-----|
 | Consultant eval pack | `docs/ops/consultant-eval.md` | [consultant-eval.md](../ops/consultant-eval.md) |
 | `./pfy` simple surface | `scripts/pfy` | [pfy.md](pfy.md) |
+| Toolset × harness handoff + hedge | `pfylib/` + `data/toolsets.json` | [pfylib.md](pfylib.md) · [ADR-0017](../adr/0017-product-catalog-evaluation-handoff-harness.md) |
 | Launch wizard | `scripts/pfy_launch_wizard_225.py` | [launch-wizard.md](launch-wizard.md) · [ops/launch-wizard.md](../ops/launch-wizard.md) |
 | Session compose | `scripts/pfy_session_compose_224.py` | [session-compose.md](session-compose.md) · [ops/session-compose.md](../ops/session-compose.md) |
 | OpenContext `oc` handoff | `scripts/pfy_opencontext_205.py` | [opencontext.md](opencontext.md) · [ops/opencontext.md](../ops/opencontext.md) |
