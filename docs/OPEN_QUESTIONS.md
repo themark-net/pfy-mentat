@@ -44,12 +44,21 @@ Related work queue: [TODO.md](TODO.md)
 | [OQ-0009](open-questions/OQ-0009-write-guard-default-mode.md) | P1 | answered | Default WRITE_GUARD_MODE for new envs (audit vs enforce) | T-0031 | ADR-0007; default **audit** |
 | [OQ-0001](open-questions/OQ-0001-seed-x-post-content.md) | P3 | answered | Seed X post content extraction | — | Superseded by Entries 001–010 processed |
 | [OQ-0010](open-questions/OQ-0010-voice-agent-channel.md) | P2 | **resolved** | Voice half-duplex local-first (not cloud duplex) | T-0091 | [ADR-0012](adr/0012-voice-half-duplex-local-first.md) |
+| [OQ-0011](open-questions/OQ-0011-product-primacy.md) | **P0** | **open** | **Product primacy**: catalog / `./pfy` operator stack / process framework — which is THE product; other two get a budget | T-0090, T-0111, OQ-0012, OQ-0013, catalog HOLD | [critical-review-2026-09-20.md](ops/critical-review-2026-09-20.md) §1 · DESIGN §1 |
+| [OQ-0012](open-questions/OQ-0012-feature-freeze-until-t0090.md) | **P0** | **open** | **Feature freeze** on new `./pfy` verbs/lanes until surface is measurably ≤3 levers; exception rule | new lever intake | T-0090 · [#1](https://github.com/themark-net/pfy-mentat/issues/1) · review §1.1/§4.1 |
+| [OQ-0013](open-questions/OQ-0013-code-layout-pfy-package.md) | P1 | **open** | **Code layout**: `pfy/` package by concept + `tests/` + pytest in G0; bash `scripts/pfy` thin dispatcher or ported | T-0111 | review §3.2–3.3 |
+| [OQ-0014](open-questions/OQ-0014-why-was-source-sharded.md) | P1 | **open** | **Why was source sharded** (base64/gzip payload, byte-split parts)? Confirm the write-pipeline cap is gone; gate is in G0 | T-0111 confidence | review §3.1 · `scripts/check_no_encoded_payloads.py` · `c68aed8` |
 
 ---
 
-## Needs operator input soon (P1)
+## Needs operator input soon (P0 / P1)
 
-*No open P0/P1/P2 OQs.* 2026-07-30 batch complete.
+**2026-09-20 batch** — from [critical-review-2026-09-20.md](ops/critical-review-2026-09-20.md). Answer in this order; 0012–0013 depend on 0011.
+
+1. **OQ-0011** — product primacy (P0).  
+2. **OQ-0012** — feature freeze until T-0090 (P0).  
+3. **OQ-0014** — confirm the sharding constraint is gone (P1; quick yes/no).  
+4. **OQ-0013** — code layout (P1; can wait for 0011).
 
 Recently closed:
 

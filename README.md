@@ -140,10 +140,9 @@ One-shot design: [docs/ops/one-shot-workflow.md](docs/ops/one-shot-workflow.md) 
 
 **Next steps** (authoritative: [docs/TODO.md](docs/TODO.md) · GitHub issues):
 
-1. ~~Cage smokes + tool integrations~~ (done) — see `make help`  
-2. Write-guard MCP implement — T-0031  
-3. Skill ports (mattpocock / marketing-council / gstack patterns) — T-0011  
-4. Eval harness prototype — T-0003 / [OQ-0002](docs/open-questions/OQ-0002-eval-harness-shape.md)  
+1. ~~Cage smokes + tool integrations~~ · ~~Write-guard MCP (T-0031)~~ · ~~skill ports (T-0011)~~ · ~~eval harness (T-0003)~~ — all done; see `make help` and the TODO **Done** table  
+2. **Owner decisions pending** — product primacy, feature freeze, code layout, sharding constraint: [OQ-0011..0014](docs/OPEN_QUESTIONS.md) from the [2026-09-20 critical review](docs/ops/critical-review-2026-09-20.md)  
+3. **T-0111** consolidate `scripts/pfy_*_NNN.py` into a `pfy/` package with tests (blocked on OQ-0013) · **T-0090** collapse `./pfy` to ≤3 levers (blocked on OQ-0012)  
 
 Plans: [docs/ops/plan-mobile-seed-integration.md](docs/ops/plan-mobile-seed-integration.md), [docs/ops/harness-integration-framework.md](docs/ops/harness-integration-framework.md).
 
