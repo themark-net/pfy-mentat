@@ -37,7 +37,10 @@ class LoopPaintTests(unittest.TestCase):
         ids = [m["id"] for m in f["modules"]]
         self.assertEqual(ids, registry.toolset_ids(ROOT))
         self.assertTrue(any(m["status"] == "implemented" for m in f["modules"]))
-        self.assertTrue(any(m["status"] == "stub" for m in f["modules"]))
+        self.assertTrue(any(m["status"] == "partial" for m in f["modules"]))
+        # A module is stub only when every harness cell is stub (none of today's
+        # gathered toolsets are all-stub — T-0121 wired remaining planners).
+        self.assertFalse(any(m["status"] == "stub" for m in f["modules"]))
         h = f["hedge"]
         self.assertTrue(h["local_ready"])
         self.assertEqual(h["lane"], "local")
@@ -50,11 +53,25 @@ class LoopPaintTests(unittest.TestCase):
         self.assertIn("jev", r["enabled"])
         r = loop_paint.toggle("orchestration", True, state=self.state, root_dir=ROOT)
         self.assertTrue(r["ok"], r)
-        stub_id = next(m["id"] for m in loop_paint.fields(state=self.state, root_dir=ROOT)["modules"] if m["status"] == "stub")
-        r = loop_paint.toggle(stub_id, True, state=self.state, root_dir=ROOT)
+        orig = registry.toolset
+        def fake_toolset(tid, root=None):
+            if tid == "ghost":
+                return {"id": "ghost", "implementation": {"grok": {"status": "stub", "how": "no config surface"}}}
+            return orig(tid, root)
+        registry.toolset = fake_toolset
+        try:
+            r = loop_paint.toggle("ghost", True, state=self.state, root_dir=ROOT)
+        finally:
+            registry.toolset = orig
         self.assertFalse(r["ok"])
         self.assertEqual(r["live"], "STUB")
-        self.assertNotIn(stub_id, loop_paint.load_selection(self.state)["enabled"])
+        self.assertNotIn("ghost", loop_paint.load_selection(self.state)["enabled"])
+
+    def test_best_status_is_harness_agnostic(self):
+        self.assertEqual(loop_paint._best_status({"g": {"status": "implemented"}, "x": {"status": "stub"}}), "implemented")
+        self.assertEqual(loop_paint._best_status({"g": {"status": "partial"}, "x": {"status": "stub"}}), "partial")
+        self.assertEqual(loop_paint._best_status({"g": {"status": "stub"}, "x": {"status": "stub"}}), "stub")
+        self.assertEqual(loop_paint._best_status({}), "stub")
 
     def test_hedge_without_local_and_without_budget_fails_honestly(self):
         local = {"engine": "none", "base_url": "", "status": "missing"}
