@@ -19,7 +19,7 @@ from pfylib import registry, toolsets  # noqa: E402
 class _TmpEnv(unittest.TestCase):
     """Isolated state dir + harness homes; no writes outside the tmp tree."""
 
-    KEYS = ("PFY_STATE_DIR", "GROK_HOME", "CODEX_HOME", "CLAUDE_CONFIG_DIR", "TYPESAFE_API_KEY", "PFY_JEV_OFFLINE")
+    KEYS = ("PFY_STATE_DIR", "GROK_HOME", "CODEX_HOME", "CLAUDE_CONFIG_DIR", "TYPESAFE_API_KEY", "PFY_JEV_OFFLINE", "GAB_API_KEY")
 
     def setUp(self):
         self._saved = {k: os.environ.get(k) for k in self.KEYS}
@@ -31,6 +31,7 @@ class _TmpEnv(unittest.TestCase):
         os.environ["CLAUDE_CONFIG_DIR"] = str(self.tmp / "claude-home")
         os.environ["PFY_JEV_OFFLINE"] = "1"
         os.environ.pop("TYPESAFE_API_KEY", None)
+        os.environ.pop("GAB_API_KEY", None)
 
     def tearDown(self):
         for k, v in self._saved.items():
@@ -137,16 +138,67 @@ class PlanTests(_TmpEnv):
         self.assertEqual(p["live"], "FAIL")
         self.assertIn("grok", p["next_step"])
 
-    def test_unported_non_stub_cells_do_not_fake_a_plan(self):
+    def test_every_non_stub_cell_has_a_planner_never_stubs(self):
+        """T-0121: implemented/partial cells plan() to READY (env/files/brief) or honest FAIL (missing dep), never STUB."""
         for r in toolsets.matrix(ROOT):
-            if r["toolset"] == "jev" or r["status"] == "stub":
+            if r["status"] == "stub":
+                continue
+            lanes = registry.toolset(r["toolset"], ROOT)["lanes"]
+            p = toolsets.plan(r["toolset"], r["harness"], lanes[0], root_dir=ROOT, state=self.state)
+            self.assertNotEqual(p["live"], "STUB", (r, p.get("copy"), p.get("next_step")))
+            self.assertIn(p["live"], ("READY", "FAIL"), (r, p))
+            if p["ok"]:
+                self.assertTrue(p["env"] or p["files"] or p["brief"], r)
+            else:
+                self.assertTrue(p["next_step"], r)
+
+    def test_stub_cells_are_stub_with_next_step(self):
+        for r in toolsets.matrix(ROOT):
+            if r["status"] != "stub":
                 continue
             lanes = registry.toolset(r["toolset"], ROOT)["lanes"]
             p = toolsets.plan(r["toolset"], r["harness"], lanes[0], root_dir=ROOT, state=self.state)
             self.assertEqual(p["live"], "STUB", (r, p["copy"]))
-            self.assertFalse(p.get("ported", True))
-            self.assertIn("T-0121", p["next_step"])
+            self.assertTrue(p["next_step"])
             self.assertEqual(p["files"], [])
+
+    def test_gab_cloud_fails_without_key_and_redacts_key_when_present(self):
+        p = toolsets.plan("gab", "opencode", "cloud", root_dir=ROOT, state=self.state)
+        self.assertEqual(p["live"], "FAIL")
+        self.assertIn("GAB_API_KEY", p["error"])
+        os.environ["GAB_API_KEY"] = "gab_not-a-real-key"
+        try:
+            p = toolsets.plan("gab", "opencode", "cloud", root_dir=ROOT, state=self.state)
+        finally:
+            os.environ.pop("GAB_API_KEY", None)
+        self.assertTrue(p["ok"], p)
+        self.assertEqual(p["env"].get("OPENAI_BASE_URL"), "https://gab.ai/v1")
+        self.assertEqual(p["env"].get("GAB_API_KEY"), toolsets.GAB_KEY_PLACEHOLDER)
+        self.assertNotIn("gab_not-a-real-key", json.dumps(p["env"]))
+        self.assertEqual(p["files"], [])
+
+    def test_catalog_ask_fails_without_prompt_then_ready_with_artifact(self):
+        p = toolsets.plan("catalog-ask", "grok", root_dir=ROOT, state=self.state)
+        self.assertEqual(p["live"], "FAIL")
+        self.assertIn("no pending catalog ask", p["error"])
+        self.state.mkdir(parents=True)
+        prompt = self.state / "catalog-ask-prompt.md"
+        prompt.write_text("# implement foo\n", encoding="utf-8")
+        p = toolsets.plan("catalog-ask", "grok", root_dir=ROOT, state=self.state)
+        self.assertTrue(p["ok"], p)
+        self.assertIn("PFY_CATALOG_ASK_PROMPT", p["env"])
+        self.assertIn("implement foo", p["brief"])
+
+    def test_orchestration_ready_when_agent_loops_skill_present(self):
+        p = toolsets.plan("orchestration", "opencode", root_dir=ROOT, state=self.state)
+        self.assertTrue(p["ok"], p)
+        self.assertEqual(p["env"]["PFY_ATTACH_MODE"], "orchestration")
+        self.assertTrue(any(f.get("mode") == "symlink" for f in p["files"]))
+        self.assertTrue(any("opencode-skills" in f["path"] for f in p["files"]))
+        grok_home = str(self.tmp / "grok-home")
+        self.assertFalse(any(grok_home in f["path"] for f in p["files"]))
+        grok = toolsets.plan("orchestration", "grok", root_dir=ROOT, state=self.state)
+        self.assertTrue(any(grok_home in f["path"] and f.get("mode") == "symlink" for f in grok["files"]), grok["files"])
 
 
 class ApplyTests(_TmpEnv):
@@ -171,6 +223,15 @@ class ApplyTests(_TmpEnv):
         self.assertEqual(agents.read_text(), once)
         self.assertEqual(once.count(toolsets.MARK_BEGIN % "jev"), 1)
         self.assertIn("replaced", [a["result"] for a in second["applied"]])
+
+    def test_apply_orchestration_symlinks_skill_under_state(self):
+        p = toolsets.plan("orchestration", "opencode", root_dir=ROOT, state=self.state)
+        self.assertTrue(p["ok"], p)
+        out = toolsets.apply(p, yes=True, state=self.state, root_dir=ROOT)
+        self.assertTrue(out["ok"], out)
+        link = self.state / "opencode-skills" / "agent-loops"
+        self.assertTrue(link.is_symlink() or link.is_dir(), link)
+        self.assertTrue((link / "SKILL.md").is_file())
 
     def test_apply_opencode_merges_json_without_duplicates(self):
         cfg = self.state / "opencode.json"
