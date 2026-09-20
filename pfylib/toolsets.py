@@ -26,21 +26,12 @@ LANES = registry.LANES
 MARK_BEGIN = "<!-- pfy-toolset:%s begin -->"
 MARK_END = "<!-- pfy-toolset:%s end -->"
 
-# Harness-native config dirs (env override -> default). Only these, plus
-# $PFY_STATE_DIR, are writable by apply().
-HARNESS_HOME = {
-    "grok": ("GROK_HOME", "~/.grok"),
-    "codex": ("CODEX_HOME", "~/.codex"),
-    "claude-code": ("CLAUDE_CONFIG_DIR", "~/.claude"),
-}
+def harness_home(hid: str, root_dir: Path | None = None) -> Path | None:
+    """Harness-native config dir from ``harnesses.json[].attach.config_dir``.
 
-
-def harness_home(hid: str) -> Path | None:
-    spec = HARNESS_HOME.get(hid)
-    if not spec:
-        return None
-    env_key, default = spec
-    return Path(os.environ.get(env_key) or default).expanduser()
+    Only these dirs, plus ``$PFY_STATE_DIR``, are writable by ``apply()``.
+    """
+    return registry.harness_home(hid, root_dir)
 
 
 # ---------------------------------------------------------------- matrix ---
@@ -279,18 +270,18 @@ def _plan_jev(t: dict, hid: str, lane: str, status: str, *, root_dir: Path | Non
     files: list[dict] = [{"path": str(brief_path), "mode": "write", "content": brief}]
     agents = st / "attach-agents.md"
     if hid == "grok":
-        home = harness_home("grok")
+        home = harness_home("grok", root_dir)
         files.append({"path": str(home / "skills" / "pfy-jev-decision" / "SKILL.md"), "mode": "write", "content": _jev_skill_md(brief)})
     elif hid == "opencode":
         files.append({"path": str(st / "opencode.json"), "mode": "json-merge", "fragment": {"instructions": [str(brief_path)]}})
     elif hid == "claude-code":
         env["PFY_ATTACH_AGENTS"] = str(agents)
         files.append({"path": str(agents), "mode": "append-marker", "content": brief})
-        files.append({"path": str(harness_home("claude-code") / "CLAUDE.md"), "mode": "append-marker", "content": brief})
+        files.append({"path": str(harness_home("claude-code", root_dir) / "CLAUDE.md"), "mode": "append-marker", "content": brief})
     elif hid == "codex":
         env["PFY_ATTACH_AGENTS"] = str(agents)
         files.append({"path": str(agents), "mode": "append-marker", "content": brief})
-        files.append({"path": str(harness_home("codex") / "AGENTS.md"), "mode": "append-marker", "content": brief})
+        files.append({"path": str(harness_home("codex", root_dir) / "AGENTS.md"), "mode": "append-marker", "content": brief})
     elif hid == "hermes":
         env["PFY_ATTACH_AGENTS"] = str(agents)
         files.append({"path": str(agents), "mode": "append-marker", "content": brief})

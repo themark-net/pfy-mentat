@@ -63,6 +63,46 @@ def harness(hid: str, root_dir: Path | None = None) -> dict | None:
     return None
 
 
+ATTACH_KEYS = ("session_id", "label", "issue", "script", "bin_fallbacks", "next_install", "config_dir")
+
+
+def attach_profile(hid: str, root_dir: Path | None = None) -> dict | None:
+    """Per-harness attach differences (T-0121) or None when the harness has no ``attach`` object.
+
+    Returns a flat dict: id, session_id, label, issue, script, binaries (from
+    ``detect``), bin_fallbacks, next_install, config_dir_env, config_dir_default.
+    """
+    h = harness(hid, root_dir)
+    if not h or not isinstance(h.get("attach"), dict):
+        return None
+    a = h["attach"]
+    cfg = a.get("config_dir") if isinstance(a.get("config_dir"), dict) else {}
+    return {
+        "id": str(h.get("id")),
+        "session_id": str(a.get("session_id") or h.get("id")),
+        "label": str(a.get("label") or h.get("name") or h.get("id")),
+        "issue": a.get("issue"),
+        "script": str(a.get("script") or ""),
+        "binaries": tuple(str(b) for b in (h.get("detect") or [])),
+        "bin_fallbacks": tuple(str(b) for b in (a.get("bin_fallbacks") or [])),
+        "next_install": a.get("next_install") or None,
+        "config_dir_env": str(cfg.get("env") or "") or None,
+        "config_dir_default": str(cfg.get("default") or "") or None,
+    }
+
+
+def attach_harness_ids(root_dir: Path | None = None) -> list[str]:
+    return [str(h["id"]) for h in harness_rows(root_dir) if h.get("id") and isinstance(h.get("attach"), dict)]
+
+
+def harness_home(hid: str, root_dir: Path | None = None) -> Path | None:
+    """Harness-native writable config dir (env override -> default), or None."""
+    prof = attach_profile(hid, root_dir)
+    if not prof or not prof["config_dir_env"]:
+        return None
+    return Path(os.environ.get(prof["config_dir_env"]) or prof["config_dir_default"]).expanduser()
+
+
 def toolset_rows(root_dir: Path | None = None) -> list[dict]:
     return [t for t in (load_toolsets(root_dir).get("toolsets") or []) if isinstance(t, dict)]
 
@@ -78,6 +118,33 @@ def toolset(tid: str, root_dir: Path | None = None) -> dict | None:
     return None
 
 
+def _validate_attach(h: dict) -> list[str]:
+    hid = str(h.get("id") or "?")
+    a = h.get("attach")
+    if not isinstance(a, dict):
+        return ["%s: attach must be an object" % hid]
+    out: list[str] = []
+    if h.get("role") != HARNESS_ROLE:
+        out.append("%s: attach only allowed on role=harness rows" % hid)
+    for key in ATTACH_KEYS:
+        if key not in a:
+            out.append("%s: attach.%s missing" % (hid, key))
+    for key in ("session_id", "label", "script"):
+        if key in a and not (isinstance(a[key], str) and a[key].strip()):
+            out.append("%s: attach.%s must be a non-empty string" % (hid, key))
+    if not (h.get("detect") or []):
+        out.append("%s: attach requires non-empty detect[] (binary names)" % hid)
+    if "bin_fallbacks" in a and not isinstance(a["bin_fallbacks"], list):
+        out.append("%s: attach.bin_fallbacks must be a list" % hid)
+    if "next_install" in a and a["next_install"] is not None and not isinstance(a["next_install"], str):
+        out.append("%s: attach.next_install must be string or null" % hid)
+    cfg = a.get("config_dir")
+    if "config_dir" in a and cfg is not None:
+        if not isinstance(cfg, dict) or not cfg.get("env") or not cfg.get("default"):
+            out.append("%s: attach.config_dir must be null or {env, default}" % hid)
+    return out
+
+
 def validate(toolsets: dict | None = None, harnesses: dict | None = None, root_dir: Path | None = None) -> list[str]:
     """Shape problems as strings; empty list means well-formed."""
     toolsets = toolsets if toolsets is not None else load_toolsets(root_dir)
@@ -86,6 +153,9 @@ def validate(toolsets: dict | None = None, harnesses: dict | None = None, root_d
     problems: list[str] = []
     if not hids:
         problems.append("harnesses.json: no rows with role=harness")
+    for h in harnesses.get("harnesses") or []:
+        if isinstance(h, dict) and "attach" in h:
+            problems.extend(_validate_attach(h))
     rows = toolsets.get("toolsets")
     if not isinstance(rows, list) or not rows:
         return problems + ["toolsets.json: toolsets[] empty or missing"]
