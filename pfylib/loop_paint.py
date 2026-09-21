@@ -24,6 +24,54 @@ WIZARD_MODE = {
     "code-graph": "code-graph",
     "catalog-ask": "catalog",
 }
+TASK_HELP = {
+    "bulk": "Cheap bulk work. Stays on this machine when local is ON.",
+    "interactive": "Normal work. Local first; cloud only if local is down and budget remains.",
+    "hard": "Hard review. May spend a cloud credit even if local is up.",
+}
+
+
+def story(hedge_frag: dict) -> dict:
+    """Plain-language Loop copy so the window can say what is happening."""
+    h = hedge_frag or {}
+    local_ready = bool(h.get("local_ready"))
+    engine = str(h.get("local_engine") or "none")
+    lane = str(h.get("lane") or "")
+    rem = h.get("remaining") or 0
+    profile = str(h.get("profile") or "(unset)")
+    cloud_on = lane == "cloud" or (rem > 0 and profile != "local-only")
+    if lane == "cloud":
+        cloud_lane = "SPENDING"
+        cloud_meaning = "This session is using a cloud credit."
+    elif cloud_on:
+        cloud_lane = "STANDBY"
+        cloud_meaning = "Credits remain. Cloud stays idle unless work is hard or local is down."
+    else:
+        cloud_lane = "OFF"
+        cloud_meaning = "No cloud budget. Set PFY_CLOUD_BUDGET to allow paid work."
+    if local_ready:
+        local_meaning = "A model is answering on this machine. Cheap work stays here."
+    else:
+        local_meaning = "No local model is up. Click Launch env (or ./pfy up) before a local session."
+    nxt = str(h.get("next_step") or "").strip()
+    if not h.get("ok"):
+        route = "Not ready to run a session."
+        nxt = nxt or "Launch env or set PFY_CLOUD_BUDGET."
+    elif lane == "local":
+        extra = " (%s)" % engine if engine and engine != "none" else ""
+        route = "This session will run on your machine%s." % extra
+    elif lane == "cloud":
+        route = "This session will spend one cloud credit."
+    else:
+        route = str(h.get("copy") or "").strip() or "Lane not chosen yet."
+    return {
+        "local_meaning": local_meaning,
+        "cloud_meaning": cloud_meaning,
+        "cloud_lane": cloud_lane,
+        "route": route,
+        "next_step": nxt,
+        "task_help": TASK_HELP.get(str(h.get("task") or "interactive"), TASK_HELP["interactive"]),
+    }
 
 
 def _state(state: Path | None) -> Path:
@@ -151,33 +199,36 @@ def fields(
     chosen = routes[sel["task"]]
     local_ok = str(local.get("status") or "").lower() == "ready"
     gab_key = bool(str(os.environ.get("GAB_API_KEY") or "").strip())
+    hedge_frag = {
+        "task": sel["task"],
+        "lane": chosen.get("lane"),
+        "ok": bool(chosen.get("ok")),
+        "live": chosen.get("live") or "FAIL",
+        "reason": chosen.get("reason") or chosen.get("copy") or "",
+        "next_step": chosen.get("next_step") or "",
+        "copy": chosen.get("copy") or "",
+        "local_engine": chosen.get("local_engine") or local.get("engine") or "none",
+        "local_status": chosen.get("local_status") or local.get("status") or "missing",
+        "local_base_url": chosen.get("local_base_url") or local.get("base_url") or "",
+        "local_ready": local_ok,
+        "budget": chosen.get("budget", 0),
+        "spent": chosen.get("spent", 0),
+        "remaining": chosen.get("remaining", 0),
+        "cost": chosen.get("cost", 1),
+        "profile": chosen.get("profile") or "(unset)",
+        "gab_key": gab_key,
+        "routes": {
+            t: {"lane": r.get("lane"), "ok": bool(r.get("ok")), "reason": r.get("reason") or ""}
+            for t, r in routes.items()
+        },
+    }
+    hedge_frag.update(story(hedge_frag))
     return {
         "modules": modules,
         "modules_enabled": list(sel["enabled"]),
         "modules_task": sel["task"],
-        "hedge": {
-            "task": sel["task"],
-            "lane": chosen.get("lane"),
-            "ok": bool(chosen.get("ok")),
-            "live": chosen.get("live") or "FAIL",
-            "reason": chosen.get("reason") or chosen.get("copy") or "",
-            "next_step": chosen.get("next_step") or "",
-            "copy": chosen.get("copy") or "",
-            "local_engine": chosen.get("local_engine") or local.get("engine") or "none",
-            "local_status": chosen.get("local_status") or local.get("status") or "missing",
-            "local_base_url": chosen.get("local_base_url") or local.get("base_url") or "",
-            "local_ready": local_ok,
-            "budget": chosen.get("budget", 0),
-            "spent": chosen.get("spent", 0),
-            "remaining": chosen.get("remaining", 0),
-            "cost": chosen.get("cost", 1),
-            "profile": chosen.get("profile") or "(unset)",
-            "gab_key": gab_key,
-            "routes": {
-                t: {"lane": r.get("lane"), "ok": bool(r.get("ok")), "reason": r.get("reason") or ""}
-                for t, r in routes.items()
-            },
-        },
+        "task_help": TASK_HELP,
+        "hedge": hedge_frag,
     }
 
 

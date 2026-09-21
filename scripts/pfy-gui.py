@@ -20,29 +20,42 @@ def honest(v):
     return s if s in LIVE else "missing"
 
 def loop_text(s, env_live, att, reach, verb, when):
-    """Loop body: local compute | cloud orchestration | catalog modules."""
+    """Loop body: local compute | cloud orchestration | catalog modules, with why/how."""
     h = s.get("hedge") or {}
+    try:
+        from pfylib import loop_paint
+        st = loop_paint.story(h)
+    except Exception:
+        st = {}
     local_ready = bool(h.get("local_ready"))
-    lane = h.get("lane") or "—"
-    rem = h.get("remaining") or 0
-    profile = h.get("profile") or "(unset)"
-    cloud_on = lane == "cloud" or (rem > 0 and profile != "local-only")
-    if lane == "cloud":
-        cloud_lane = "SPENDING"
-    elif cloud_on:
-        cloud_lane = "STANDBY"
-    else:
-        cloud_lane = "OFF"
-    routes = h.get("routes") or {}
+    cloud_lane = st.get("cloud_lane") or "OFF"
+    if not st.get("cloud_lane"):
+        rem = h.get("remaining") or 0
+        profile = h.get("profile") or "(unset)"
+        lane = h.get("lane") or ""
+        cloud_on = lane == "cloud" or (rem > 0 and profile != "local-only")
+        if lane == "cloud":
+            cloud_lane = "SPENDING"
+        elif cloud_on:
+            cloud_lane = "STANDBY"
+        else:
+            cloud_lane = "OFF"
     loc_reason = ""
+    routes = h.get("routes") or {}
     if isinstance(routes.get("interactive"), dict):
         loc_reason = str(routes["interactive"].get("reason") or "")
     cloud_reason = ""
     if isinstance(routes.get("hard"), dict):
         cloud_reason = str(routes["hard"].get("reason") or "")
+    task = s.get("modules_task") or h.get("task") or "interactive"
+    task_help = (s.get("task_help") or {}).get(task) or st.get("task_help") or ""
     lines = [
         "LOOP",
+        "Run gathered catalog tools on this machine or on cloud credits.",
+        "HOW TO  1 see where work can run  2 pick work class  3 click modules  4 Launch session",
+        "        Launch env starts the local engine only (no coding session).",
         "LOCAL COMPUTE",
+        "  why       your machine — preferred when a model is answering",
         "  lane      %s" % ("ON" if local_ready else "OFF"),
         "  engine    %s" % (h.get("local_engine") or "none"),
         "  status    %s" % (h.get("local_status") or "missing"),
@@ -50,19 +63,35 @@ def loop_text(s, env_live, att, reach, verb, when):
     ]
     if loc_reason:
         lines.append("  %s" % loc_reason)
+    meaning = st.get("local_meaning") or h.get("local_meaning") or ""
+    if meaning:
+        lines.append("  meaning   %s" % meaning)
     lines += [
         "CLOUD ORCHESTRATION",
+        "  why       paid credits — only if local cannot, or work is hard",
         "  lane      %s" % cloud_lane,
         "  budget    %s · spent %s · left %s" % (h.get("budget", 0), h.get("spent", 0), h.get("remaining", 0)),
-        "  profile   %s · gab key %s" % (profile, "ready" if h.get("gab_key") else "missing"),
+        "  profile   %s · gab key %s" % (h.get("profile") or "(unset)", "ready" if h.get("gab_key") else "missing"),
     ]
     if cloud_reason:
         lines.append("  %s" % cloud_reason)
+    cmean = st.get("cloud_meaning") or h.get("cloud_meaning") or ""
+    if cmean:
+        lines.append("  meaning   %s" % cmean)
+    route = st.get("route") or h.get("route") or str(h.get("copy") or "").strip()
+    if route:
+        lines.append("this session  %s" % route)
+    nxt = st.get("next_step") or h.get("next_step") or ""
+    if nxt and not h.get("ok", True):
+        lines.append("next      %s" % nxt)
     copy = str(h.get("copy") or "").strip()
-    if copy:
-        lines.append("this session  %s" % copy)
-    task = s.get("modules_task") or h.get("task") or "interactive"
-    lines += ["task      %s" % task, "MODULES"]
+    if copy and copy != route:
+        lines.append("live      %s" % copy)
+    lines += ["WORK CLASS  %s" % task]
+    if task_help:
+        lines.append("  %s" % task_help)
+    lines.append("MODULES")
+    lines.append("  why       catalog tools we gathered — ON means loaded into Launch session")
     mods = list(s.get("modules") or [])
     if not mods:
         lines.append("  (none)")
@@ -76,6 +105,7 @@ def loop_text(s, env_live, att, reach, verb, when):
         "env       %s" % env_live,
         "session   %s" % reach,
         "attached  %s" % att,
+        "NEXT      Launch session opens grok/OpenCode with enabled modules. That window is the proof.",
     ]
     proof = str(s.get("loop_copy") or "").strip()
     if proof:
@@ -286,9 +316,9 @@ class Win:
         self.bcatcopy = ttk.Button(self.acts, text="Copy prompt", command=self.copy_catalog_prompt)
         self.catst = ttk.Label(self.acts, text="", style="M.TLabel")
         self.bsess = ttk.Button(self.acts, text="Launch session", command=self.launch_session)
-        self.bbulk = ttk.Button(self.acts, text="bulk → local", command=lambda: self.set_loop_task("bulk"))
-        self.binteractive = ttk.Button(self.acts, text="interactive", command=lambda: self.set_loop_task("interactive"))
-        self.bhard = ttk.Button(self.acts, text="hard → cloud if budget", command=lambda: self.set_loop_task("hard"))
+        self.bbulk = ttk.Button(self.acts, text="Bulk — stay on this machine", command=lambda: self.set_loop_task("bulk"))
+        self.binteractive = ttk.Button(self.acts, text="Interactive — local first", command=lambda: self.set_loop_task("interactive"))
+        self.bhard = ttk.Button(self.acts, text="Hard — allow cloud", command=lambda: self.set_loop_task("hard"))
         self.blocal = ttk.Button(self.acts, text="local", command=lambda: self.wizard_step("lane", "local"))
         self.bcloud = ttk.Button(self.acts, text="cloud/subscription", command=lambda: self.wizard_step("lane", "cloud/subscription"))
         self.bofree = ttk.Button(self.acts, text="OpenCode free", command=lambda: self.wizard_step("lane", "opencode-free"))
@@ -1229,7 +1259,7 @@ class Win:
                 endpoint = "(none)"
             mtxt = " · ".join(str(x) for x in models) if models else "(none)"
             txt = (
-                f"ENGINE\nengine     {engine}\nendpoint   {endpoint}\nlive       {live_show}"
+                f"ENGINE\nThis tab is the local model — not the coding session. Loop → Launch session opens that.\nengine     {engine}\nendpoint   {endpoint}\nlive       {live_show}"
                 f"\ngrok       {honest(grok.get('live'))}\nmodels     {mtxt}"
                 f"\ntok_path   {tok}\nvram       {vram}"
             )
@@ -1258,7 +1288,7 @@ class Win:
             self.pack_acts(["refresh", "copyep", "est", "test", "pullname", "pull", "reco", "try", "tst", "pst", "rst", "recst", "tryst"])
         elif self.view == "stage":
             sl = stage.get("live") or "SKIP"
-            txt = f"STAGE\nenv-stage   {sl}"
+            txt = f"STAGE\nEnvironment check. SKIP means a piece is missing — not a fake pass.\nenv-stage   {sl}"
             self.pack_acts(["stage", "sst"])
         elif self.view == "attach":
             reach = str(s.get("session_reach") or "").strip() or getattr(self, "_session_reach", "") or "(none)"
@@ -1266,7 +1296,7 @@ class Win:
             mode_when = str(s.get("attach_mode_when") or "")
             graph_ev = str(s.get("graph_copy") or "").strip() or "(none)"
             graph_when = str(s.get("graph_when") or "")
-            txt = f"ATTACH\nNOW     attached {attached} · last {verb}\nsession {reach}\nusing: {using}" + (f"  {mode_when}" if mode_when else "") + f"\ngraph      {graph_ev}" + (f"  {graph_when}" if graph_when else "")
+            txt = f"ATTACH\nOpen grok/OpenCode now without composing modules. Loop → Launch session loads gathered tools.\nNOW     attached {attached} · last {verb}\nsession {reach}\nusing: {using}" + (f"  {mode_when}" if mode_when else "") + f"\ngraph      {graph_ev}" + (f"  {graph_when}" if graph_when else "")
             si = getattr(self, "_last_si", {}) or {}
             abs_p = str(si.get("abs_path") or "")
             rel_p = str(si.get("rel") or si.get("path") or "")
@@ -1291,7 +1321,7 @@ class Win:
                 return "on" if v else "off"
             extra = onoff((tools.get("tools_mode") or "") == "local_tools")
             txt = (
-                "TOOLS\n"
+                "TOOLS\nSkills on/off for the next session, plus the scored catalog. Loop starts the session.\n"
                 f"one-shot         {onoff(skills.get('one-shot'))}\n"
                 f"investigate      {onoff(skills.get('investigate'))}\n"
                 f"agent-loops      {onoff(skills.get('agent-loops'))}\n"
@@ -1474,9 +1504,9 @@ def run_tk(board, selftest=False) -> bool:
             and w.bstage.cget("text") == "Run stage"
             and w.benv.cget("text") == "Launch env"
             and w.bsess.cget("text") == "Launch session"
-            and w.bbulk.cget("text") == "bulk → local"
-            and w.binteractive.cget("text") == "interactive"
-            and w.bhard.cget("text") == "hard → cloud if budget"
+            and w.bbulk.cget("text") == "Bulk — stay on this machine"
+            and w.binteractive.cget("text") == "Interactive — local first"
+            and w.bhard.cget("text") == "Hard — allow cloud"
             and w.blocal.cget("text") == "local"
             and w.bcloud.cget("text") == "cloud/subscription"
             and w.bofree.cget("text") == "OpenCode free"
@@ -1507,9 +1537,11 @@ def run_tk(board, selftest=False) -> bool:
         body = w.body.cget("text") or ""
         loop_ok = (
             "LOOP" in body
+            and "HOW TO" in body
             and "LOCAL COMPUTE" in body
             and "CLOUD ORCHESTRATION" in body
             and "MODULES" in body
+            and "Launch session" in body
             and "jev" in body
             and "implemented" in body
             and "enabled" in body.lower()

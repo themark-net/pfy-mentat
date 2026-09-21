@@ -4,7 +4,7 @@
 
 ## Human operator
 
-- What: on **Loop**, toggle catalog modules and read the live local/cloud split, then **Launch session**. Window stays open. Compose wizard (#225) still runs under Launch; it is not the Loop front door.
+- What: on **Loop**, the page itself says why each pane exists: local vs cloud, work class, gathered modules, then **Launch session**. Window stays open. Compose wizard (#225) still runs under Launch; it is not the Loop front door.
 - How: [docs/ops/launch-wizard.md](../ops/launch-wizard.md)
 - Failures: missing runtime → FAIL + `Launch env or ./pfy up`. Unknown lane/harness → FAIL + pick. Orchestration missing skill → FAIL + `./pfy setup`. Code-graph missing Axon and codebase-memory → FAIL + `pip install axoniq`. Catalog not ready / HOLD 70–75 → honest SKIP (not auto-lifted). Incomplete review → FAIL + complete wizard. Launch reuses attach-usable prove (models+smoke) or FAIL+next.
 - Recovery: Launch env / `./pfy up`; pick a valid lane and harness; pick a catalog tool on Tools; Attach tab remains for re-attach.

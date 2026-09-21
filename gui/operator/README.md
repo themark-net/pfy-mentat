@@ -7,7 +7,7 @@ Otherwise scripts/pfy-gui.py: PyGObject WebKit2 if already on the box (native wi
 else stdlib tkinter (native window (tk)) with the same IA. pywebview is PFY_GUI_DEV=1 only.
 
 Window chrome: sidebar Loop / Engine / Stage / Attach (Org omitted if unused);
-Loop paints LOCAL COMPUTE | CLOUD ORCHESTRATION + MODULES; title pfy; Attach grok / Attach opencode live on the Attach tab.
+Loop paints a how-to plus LOCAL COMPUTE | CLOUD ORCHESTRATION + MODULES; title pfy; Attach grok / Attach opencode live on the Attach tab.
 
 Same IA: chips bind ./pfy status live (missing not unknown). Tape READY|SKIP|FAIL.
 continue/agent-cage is FAIL plus: pfy harness use grok. Buttons disabled. No fallback spawn.

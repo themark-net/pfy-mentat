@@ -40,7 +40,7 @@ python3 scripts/pfy-gui.py --selftest
 bash -n scripts/pfy
 ```
 
-On Loop (HTML+tk): **LOCAL COMPUTE** and **CLOUD ORCHESTRATION** panes plus a **MODULES** grid (stub tiles cannot be enabled). Task chips are `bulk → local` / `interactive` / `hard → cloud if budget`. **Launch session** is the primary button. Launch env remains for runtime. Attach grok/opencode/hermes/codex/claude live on the Attach tab.
+On Loop (HTML+tk): numbered how-to on the page. **LOCAL COMPUTE** and **CLOUD ORCHESTRATION** panes each say why they exist (ON / STANDBY / SPENDING / OFF). Work-class chips and **MODULES** say what a click does. **Launch session** is the proof; Launch env only starts the local engine. Attach grok/opencode/hermes/codex/claude live on the Attach tab.
 
 ## Variables
 

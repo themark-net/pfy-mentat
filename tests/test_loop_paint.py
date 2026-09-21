@@ -45,6 +45,8 @@ class LoopPaintTests(unittest.TestCase):
         self.assertTrue(h["local_ready"])
         self.assertEqual(h["lane"], "local")
         self.assertEqual(h["routes"]["interactive"]["lane"], "local")
+        self.assertIn("your machine", h["route"])
+        self.assertTrue(h["local_meaning"])
         self.assertIn(h["routes"]["hard"]["lane"], ("local", "cloud", None))
 
     def test_toggle_rejects_stub_and_enables_implementable(self):
@@ -79,6 +81,7 @@ class LoopPaintTests(unittest.TestCase):
         self.assertFalse(f["hedge"]["ok"])
         self.assertFalse(f["hedge"]["local_ready"])
         self.assertIn("PFY_CLOUD_BUDGET", f["hedge"]["next_step"] or f["hedge"]["copy"])
+        self.assertIn("Not ready", f["hedge"]["route"])
 
     def test_hedge_cloud_when_local_missing_and_budget_set(self):
         os.environ["PFY_CLOUD_BUDGET"] = "3"

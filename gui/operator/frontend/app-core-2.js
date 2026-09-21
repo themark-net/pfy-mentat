@@ -282,13 +282,14 @@ function paintWizard(s){
 }
 function paintHedge(s){
   const h=(s&&s.hedge)||{};
-  const set=(id, val)=>{const el=document.getElementById(id); if(el) el.textContent=val;};
+  const set=(id, val)=>{const el=document.getElementById(id); if(el) el.textContent=val||'';};
   const localReady=!!h.local_ready;
   const lane=(h.lane||'—');
   set('hedge-local-lane', localReady?'ON':'OFF');
   set('hedge-engine', h.local_engine||'none');
   set('hedge-endpoint', h.local_base_url||'(none)');
   set('hedge-local-reason', h.routes&&h.routes.interactive? (h.routes.interactive.reason||'') : (h.reason||''));
+  set('hedge-local-meaning', h.local_meaning||(localReady?'A model is answering on this machine. Cheap work stays here.':'No local model is up. Click Launch env (or ./pfy up) before a local session.'));
   const loc=document.getElementById('hedge-local-live');
   if(loc){ loc.textContent=h.local_status||'missing'; loc.className='live '+cls((h.local_status||'missing').toLowerCase()); }
   const pl=document.getElementById('pane-local');
@@ -296,7 +297,8 @@ function paintHedge(s){
   const cloudOn=lane==='cloud' || (h.remaining>0 && h.profile!=='local-only');
   const pc=document.getElementById('pane-cloud');
   if(pc){ pc.classList.toggle('spend', lane==='cloud'); pc.classList.toggle('on', !!cloudOn && lane!=='cloud'); }
-  set('hedge-cloud-lane', cloudOn?(lane==='cloud'?'SPENDING':'STANDBY'):'OFF');
+  const cloudLane=h.cloud_lane||(cloudOn?(lane==='cloud'?'SPENDING':'STANDBY'):'OFF');
+  set('hedge-cloud-lane', cloudLane);
   set('hedge-budget', String(h.budget==null?0:h.budget));
   set('hedge-spent', String(h.spent==null?0:h.spent));
   set('hedge-left', String(h.remaining==null?0:h.remaining));
@@ -304,12 +306,24 @@ function paintHedge(s){
   const gab=document.getElementById('hedge-gab');
   if(gab){ gab.textContent=h.gab_key?'ready':'missing'; gab.className='live '+(h.gab_key?'ready':'missing'); }
   set('hedge-cloud-reason', (h.routes&&h.routes.hard&&h.routes.hard.reason)||'');
+  set('hedge-cloud-meaning', h.cloud_meaning||'');
   const copy=document.getElementById('hedge-copy');
   if(copy){
     copy.textContent=h.copy||'';
     copy.className='live '+(h.ok?'READY':'FAIL');
   }
-  document.querySelectorAll('[data-task]').forEach(b=>b.classList.toggle('on', b.getAttribute('data-task')===(s.modules_task||h.task||'interactive')));
+  set('hedge-route', h.route||h.copy||'');
+  const nxt=document.getElementById('hedge-next');
+  if(nxt){
+    nxt.textContent=h.ok?'':(h.next_step?('Next: '+h.next_step):'');
+  }
+  const help=document.getElementById('hedge-task-help');
+  const task=s.modules_task||h.task||'interactive';
+  const helps=(s.task_help||{});
+  if(help){
+    help.textContent=helps[task]||h.task_help||'Why this exists: cheap bulk stays on this machine; hard review may spend a cloud credit.';
+  }
+  document.querySelectorAll('[data-task]').forEach(b=>b.classList.toggle('on', b.getAttribute('data-task')===task));
 }
 function paintModules(s){
   const box=document.getElementById('mod-list');
@@ -325,8 +339,10 @@ function paintModules(s){
     b.className='mod'+(m.enabled?' on':'')+(m.stub?' stub':'');
     b.setAttribute('data-module', m.id);
     b.disabled=!!m.stub && !m.enabled;
-    b.innerHTML='<b>'+m.id+'</b><span class="st '+cls(m.status)+'">'+m.status+'</span>';
-    b.title=m.how||m.title||m.id;
+    const st=m.stub?'not wired':(m.status==='implemented'?'wired':(m.status||''));
+    const use=m.stub?'cannot enable':(m.enabled?'in next session':'click to include');
+    b.innerHTML='<b>'+m.id+'</b><span class="st '+cls(m.status)+'">'+st+'</span><small>'+(m.title||'')+'</small><span class="use">'+use+'</span>';
+    b.title=(m.how||m.title||m.id)+' — '+(m.stub?'not wired yet, cannot enable':(m.enabled?'included in Launch session':'click to include in Launch session'));
     b.addEventListener('click',()=>runModule(m.id, !m.enabled));
     box.appendChild(b);
   });
