@@ -28,6 +28,7 @@ Also use as needed: `CATEGORIZATION.md`, `SUBTREES.md`, `TOOLS.md`, `bootstrap/g
 - Embed large upstream repos without meeting `SUBTREES.md` (see ADR-0003)  
 - Commit secrets, API keys, or `auth.json`  
 - Create a second decision log outside `docs/adr/`  
+- No tautological or implementation-detail unit sprawl as Done.  
 
 ## Bootstrap environment
 
@@ -119,11 +120,14 @@ This repo supports robust, production-like agentic coding setups inspired by hig
 - Task queue example: TODOS.md or integrated system (e.g., Linear with CLI access).
 - Periodic sweeps: Agents can review recent commits for problems/gotchas at a higher level.
 
+## Testing standing rule
+Prefer the Testing Trophy: mostly integration/E2E for product confidence. Unit tests only for shaky/non-obvious behavior. Forbidden: tautological tests and implementation-detail tests. Prefer sociable tests; doubles only at awkward boundaries + contract tests for externals. Every non-trivial change: How could this fail? How do we recover?
+
 ### Verification, Benchmarks & Quality Gates
 - Agents must run and test their changes (build, targeted tests, end-to-end where applicable).
-- Use/write tests during implementation; update test docs/lists.
+- Prefer integration/E2E and behavior-level coverage over unit sprawl; unit tests only where behavior is shaky or non-obvious. Update test docs/lists when coverage meaningfully changes.
 - Custom linters/pre-commit with auto-fix (or LLM-assisted fix for complex cases) — focus on actually cleaning code, not just flagging.
-- Periodic audits: false-confidence test reviews (tests that don't actually test what they claim), performance benchmarks/profiling.
+- Periodic audits: false-confidence test reviews (tests that don't actually test what they claim — including tautological and implementation-detail tests), performance benchmarks/profiling.
 - Visual regression (screenshots + agent review) and automatic performance degradation detection where relevant.
 - End-of-shift or major milestone full validations: run tests, reviews, sweeps, benchmarks, etc.
 
