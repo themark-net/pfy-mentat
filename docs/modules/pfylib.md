@@ -1,8 +1,8 @@
 # Module: `pfylib/` — toolset × harness handoff + hedge
 
 **Architecture layer:** Handoff harness (product leg 3 of the triad, [ADR-0017](../adr/0017-product-catalog-evaluation-handoff-harness.md)).  
-**Code:** `pfylib/` (`registry.py`, `toolsets.py`, `hedge.py`, `cli.py`, `_legacy.py`) · data `data/toolsets.json` · tests `tests/`  
-**Related:** [DESIGN G9](../DESIGN.md) · [ARCHITECTURE](../ARCHITECTURE.md) · [integration-stages.md](../ops/integration-stages.md) · [local-cloud-split.md](../ops/local-cloud-split.md) · [jev-230.md](jev-230.md) · T-0120..T-0123
+**Code:** `pfylib/` (`registry.py`, `toolsets.py`, `hedge.py`, `attach.py`, `cli.py`, `_legacy.py`) · data `data/toolsets.json` · `data/harnesses.json[].attach` · tests `tests/`  
+**Related:** [DESIGN G9](../DESIGN.md) · [ARCHITECTURE](../ARCHITECTURE.md) · [integration-stages.md](../ops/integration-stages.md) · [local-cloud-split.md](../ops/local-cloud-split.md) · [jev-230.md](jev-230.md) · T-0120..T-0124
 
 ## Operator
 
@@ -56,8 +56,9 @@ python3 -m unittest discover -s tests              # offline; no runtime, no net
 | Symptom | Likely cause | Recovery |
 |---------|--------------|----------|
 | `STUB toolset X → Y` | cell is `stub` (no config surface wired) | read `how`; implement the adapter; flip the cell honestly |
-| `STUB plan -- … pfylib plan not ported (T-0121)` | cell is implemented/partial by its legacy script, plan body not yet in `pfylib` | run the listed `./pfy` command; port under T-0121 |
 | `FAIL TypeSafe key missing (cloud lane)` | `jev --lane cloud` without `TYPESAFE_API_KEY` | set key or `--lane local` |
+| `FAIL GAB_API_KEY missing (cloud lane)` | `gab` plan without key | set `GAB_API_KEY` (Plus required) |
+| `FAIL oc missing` / `code-graph unwired` / `no pending catalog ask` | live dep or artifact absent | next step printed (`npm install -g @aicontextlab/cli`, `pip install axoniq`, `./pfy catalog ask <name>`) |
 | `refused: outside …` | plan path not under state dir / harness home | set `GROK_HOME` / `CODEX_HOME` / `CLAUDE_CONFIG_DIR` or `PFY_STATE_DIR` |
 | `FAIL hedge -- … cloud unavailable` | no local runtime and budget exhausted / `local-only` | `./pfy up` or `PFY_CLOUD_BUDGET=<n>` |
 
@@ -77,12 +78,13 @@ python3 -m unittest discover -s tests              # offline; no runtime, no net
 ### Structural map
 
 ```
-data/toolsets.json ─┐                         data/harnesses.json (role=harness)
+data/toolsets.json ─┐                         data/harnesses.json (role=harness + optional .attach)
                     ▼                                     ▼
             pfylib/registry.py  load / ids / validate() ──┘
                     │
             pfylib/toolsets.py  matrix() · plan(tid,hid,lane) · apply(plan, yes)
-                    │                 └─ _plan_jev → pfylib/_legacy.py → scripts/pfy_jev_230.py (import, no copy)
+                    │                 └─ _plan_* → pfylib/_legacy.py → scripts/pfy_*_NNN.py (import, no copy)
+            pfylib/attach.py    one Attach body; shims scripts/pfy_attach_usable_{196,202,220,221}.py
             pfylib/hedge.py     decide(task, local, budget) · record() · ledger · detect_local() → scripts/detect-local-runtime.sh
                     │
             pfylib/cli.py       argparse: toolset list|matrix|plan|apply|validate · hedge decide|ledger|record
@@ -94,13 +96,25 @@ data/toolsets.json ─┐                         data/harnesses.json (role=harn
 
 ### Invariants
 
-- The matrix status is derived from `data/toolsets.json` only; `plan()` never upgrades a `stub` and never fabricates a READY plan for an unported toolset.
-- `plan()` is pure (no writes). `apply()` writes only with `yes=True` and only under allowed roots; every write mode is idempotent.
-- Jev semantics live in `scripts/pfy_jev_230.py`; `pfylib` imports it by path via `_legacy` — do not copy constants or decision logic into `pfylib`. When T-0121 moves the module, `_legacy.jev()` becomes a normal import.
+- The matrix status is derived from `data/toolsets.json` only; `plan()` never upgrades a `stub` and never fabricates a READY plan for a stub cell. Implemented/partial cells return READY (env/files/brief) or honest FAIL (missing live dep), never STUB.
+- `plan()` is pure (no writes). `apply()` writes only with `yes=True` and only under allowed roots; every write mode is idempotent (`write`, `append-marker`, `json-merge`, `symlink`, `legacy`).
+- Toolset semantics live in `scripts/pfy_*_NNN.py`; `pfylib` imports them by path via `_legacy` — do not copy constants or decision logic into `pfylib`. Who still goes through the bridge: see `_legacy.py` docstring.
+- Attach differences per harness live in `data/harnesses.json[].attach` (session id, label, install hint, bin fallbacks, config dir). Binary names come from `detect`. The four `pfy_attach_usable_*.py` files are ≤45-line shims so the board keeps loading `open_enterable_<x>_session`. OpenCode enterable (`pfy_enterable_162*`) is still its own path (T-0124).
 - `hedge.decide()` is deterministic given `(task, local, budget, ledger, profile)`; tests pass `local=` and `budget=` explicitly so no detector or network runs.
 - `catalog_tool` is a `TOOLS.md`/`tools.json` **name** or `null`; the reverse link is `tools.json[].implementation = {"toolset", "stage"}` with stages from [integration-stages.md](../ops/integration-stages.md). Do not invent catalog rows or scores to make the link exist.
 - Package is `pfylib/` because the repo root already has the executable file `pfy` (ADR-0017 § Consequences).
 
-### Extension points (T-0121)
+### Attach profiles (captured process, T-0121)
 
-Add a `_plan_<toolset>()` in `toolsets.py`, dispatch on `tid` in `plan()`, import the legacy module through `_legacy.load("<script stem>")`, and flip the relevant cells in `data/toolsets.json` only to the status the code earns. Add a test in `tests/test_toolsets.py` asserting non-empty `env`/`brief` for every `implemented` cell.
+| harness | session_id | label | script | detect / fallback | next_install | config_dir |
+|---------|------------|-------|--------|-------------------|--------------|------------|
+| grok | grok | Grok | `pfy_attach_usable_202` | `grok` | — | `GROK_HOME` → `~/.grok` |
+| hermes | hermes | Hermes | `pfy_attach_usable_196` | `hermes`, `hermes-agent` | — | none |
+| claude-code | **claude** | Claude | `pfy_attach_usable_221` | `claude` | `npm install -g @anthropic-ai/claude-code` | `CLAUDE_CONFIG_DIR` → `~/.claude` |
+| codex | codex | Codex | `pfy_attach_usable_220` | `codex` then `~/.local/bin/codex` | `curl -fsSL https://chatgpt.com/codex/install.sh \| sh` | `CODEX_HOME` → `~/.codex` |
+
+Shared body (FreeToken-first probe, child env via #205/#208, models+smoke prove, FAIL+next) is `pfylib/attach.py` once. Regression contract: `tests/test_attach.py` (`EXPECTED` captured at de0da83).
+
+### Extension points (T-0124)
+
+Add a `_plan_<toolset>()` in `toolsets.py`, register it in `_PLANNERS`, import the legacy module through `_legacy.load("<script stem>")`, and flip the relevant cells in `data/toolsets.json` only to the status the code earns. Add a test in `tests/test_toolsets.py` asserting non-empty `env`/`files`/`brief` (or honest FAIL) for every non-stub cell. OpenCode attach still lives in `pfy_enterable_162*` — fold it behind `attach.py` the same way when touching it.

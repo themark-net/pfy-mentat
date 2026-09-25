@@ -1,6 +1,7 @@
 {
-  "version": "1.2",
-  "last_updated": "2026-08-24",
+  "version": "1.3",
+  "last_updated": "2026-09-20",
+  "attach_schema": "Optional per-harness `attach` object read by pfylib/attach.py (T-0121): session_id (state-file / active-harness id; differs from `id` for claude-code), label (session-reach chip + terminal error text), issue, script (thin shim under scripts/), bin_fallbacks (checked after `detect` names miss PATH), next_install (next step when the binary is missing; null = none printed), config_dir {env, default} (harness-native writable home for toolset apply; null = none). Binary names come from `detect`.",
   "philosophy": "One launcher (./pfy). Inference starts first as a pluggable OpenAI-compatible local endpoint (ADR-0014). Preferred: FreeToken (ft serve :1919), then llama-swap/llama-server, Ollama adapter. Harnesses attach.",
   "default_harness": "grok",
   "inference_default": "local-openai",
@@ -100,7 +101,16 @@
       ],
       "github": "https://x.ai/cli",
       "catalog": "Grok CLI bootstrap",
-      "issue_stub": null
+      "issue_stub": null,
+      "attach": {
+        "session_id": "grok",
+        "label": "Grok",
+        "issue": 202,
+        "script": "pfy_attach_usable_202",
+        "bin_fallbacks": [],
+        "next_install": null,
+        "config_dir": {"env": "GROK_HOME", "default": "~/.grok"}
+      }
     },
     {
       "id": "opencode",
@@ -132,7 +142,16 @@
       "github": "https://github.com/NousResearch/hermes-agent",
       "catalog": "Hermes Agent (feedback loops)",
       "issue_stub": "Hermes runtime adapter",
-      "github_issue": 56
+      "github_issue": 56,
+      "attach": {
+        "session_id": "hermes",
+        "label": "Hermes",
+        "issue": 196,
+        "script": "pfy_attach_usable_196",
+        "bin_fallbacks": [],
+        "next_install": null,
+        "config_dir": null
+      }
     },
     {
       "id": "claude-code",
@@ -147,7 +166,16 @@
       "github": "https://docs.anthropic.com/en/docs/claude-code",
       "catalog": "claude-code-unified-agents",
       "issue_stub": "Claude Code runtime adapter",
-      "github_issue": 57
+      "github_issue": 57,
+      "attach": {
+        "session_id": "claude",
+        "label": "Claude",
+        "issue": 221,
+        "script": "pfy_attach_usable_221",
+        "bin_fallbacks": [],
+        "next_install": "npm install -g @anthropic-ai/claude-code",
+        "config_dir": {"env": "CLAUDE_CONFIG_DIR", "default": "~/.claude"}
+      }
     },
     {
       "id": "codex",
@@ -162,7 +190,16 @@
       "github": "https://github.com/openai/codex",
       "catalog": null,
       "issue_stub": "Codex runtime adapter",
-      "github_issue": 58
+      "github_issue": 58,
+      "attach": {
+        "session_id": "codex",
+        "label": "Codex",
+        "issue": 220,
+        "script": "pfy_attach_usable_220",
+        "bin_fallbacks": ["~/.local/bin/codex"],
+        "next_install": "curl -fsSL https://chatgpt.com/codex/install.sh | sh",
+        "config_dir": {"env": "CODEX_HOME", "default": "~/.codex"}
+      }
     },
     {
       "id": "gemini",

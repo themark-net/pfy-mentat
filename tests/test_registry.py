@@ -82,6 +82,47 @@ class RegistryValidateTests(unittest.TestCase):
         self.assertTrue(any("duplicate id" in p for p in self._problems(ts)))
         self.assertTrue(any("empty or missing" in p for p in self._problems({"toolsets": []})))
 
+    def _harness(self, hs, hid):
+        return next(h for h in hs["harnesses"] if h.get("id") == hid)
+
+    def test_attach_profile_shape_is_validated(self):
+        hs = copy.deepcopy(self.hs)
+        codex = self._harness(hs, "codex")
+        del codex["attach"]["next_install"]
+        codex["attach"]["config_dir"] = {"env": "CODEX_HOME"}
+        codex["attach"]["bin_fallbacks"] = "~/.local/bin/codex"
+        self._harness(hs, "grok")["attach"]["session_id"] = ""
+        self._harness(hs, "hermes")["detect"] = []
+        self._harness(hs, "ollama")["attach"] = dict(self._harness(hs, "grok")["attach"], session_id="ollama")
+        probs = registry.validate(self.ts, hs)
+        self.assertTrue(any("codex: attach.next_install missing" in p for p in probs), probs)
+        self.assertTrue(any("codex: attach.config_dir must be null or {env, default}" in p for p in probs), probs)
+        self.assertTrue(any("codex: attach.bin_fallbacks must be a list" in p for p in probs), probs)
+        self.assertTrue(any("grok: attach.session_id must be a non-empty string" in p for p in probs), probs)
+        self.assertTrue(any("hermes: attach requires non-empty detect[]" in p for p in probs), probs)
+        self.assertTrue(any("ollama: attach only allowed on role=harness" in p for p in probs), probs)
+
+    def test_attach_profile_and_harness_home(self):
+        import os
+
+        prof = registry.attach_profile("claude-code", ROOT)
+        self.assertEqual(prof["session_id"], "claude")
+        self.assertEqual(prof["binaries"], ("claude",))
+        self.assertEqual(prof["config_dir_env"], "CLAUDE_CONFIG_DIR")
+        self.assertIsNone(registry.attach_profile("opencode", ROOT))
+        self.assertIsNone(registry.harness_home("hermes", ROOT))
+        saved = os.environ.get("CODEX_HOME")
+        try:
+            os.environ["CODEX_HOME"] = "/tmp/pfylib-codex-home"
+            self.assertEqual(registry.harness_home("codex", ROOT), Path("/tmp/pfylib-codex-home"))
+            os.environ.pop("CODEX_HOME")
+            self.assertEqual(registry.harness_home("codex", ROOT), Path("~/.codex").expanduser())
+        finally:
+            if saved is None:
+                os.environ.pop("CODEX_HOME", None)
+            else:
+                os.environ["CODEX_HOME"] = saved
+
 
 if __name__ == "__main__":
     unittest.main()

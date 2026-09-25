@@ -126,7 +126,7 @@ def _toolset_plan(args) -> int:
 
 def _toolset_apply(args) -> int:
     p = toolsets.plan(args.toolset, args.harness, args.lane, root_dir=args.root, state=args.state)
-    out = toolsets.apply(p, yes=args.yes, state=args.state)
+    out = toolsets.apply(p, yes=args.yes, state=args.state, root_dir=args.root)
     if args.json:
         _emit(out, True)
     else:
