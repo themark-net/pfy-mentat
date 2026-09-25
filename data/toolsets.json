@@ -1,0 +1,180 @@
+{
+  "version": "0.1.0",
+  "last_updated": "2026-09-20",
+  "adr": "ADR-0017",
+  "description": "Toolset declarations for the toolset x harness handoff matrix. A toolset is declared once and applied to N harnesses (pfylib/toolsets.py). Statuses are derived from what scripts/pfy_*_NNN.py actually wire today; do not inflate.",
+  "harness_axis": "data/harnesses.json rows with role == harness",
+  "status_legend": {
+    "implemented": "plan() returns a complete apply plan: env + brief + a harness-native config surface already used in this repo (GROK_HOME/skills or config.toml, $PFY_STATE_DIR/opencode.json fragment, CODEX_HOME/AGENTS.md, CLAUDE_CONFIG_DIR/CLAUDE.md). Covered by tests/.",
+    "partial": "env and/or $PFY_STATE_DIR brief only (PFY_ATTACH_AGENTS convention), or wired only under a condition (e.g. Axon CLI present). No harness-native surface written.",
+    "stub": "nothing wired for this harness; plan() returns STUB with a next step."
+  },
+  "lanes_legend": {
+    "local": "runs against LOCAL_OPENAI_BASE_URL / local binaries (ADR-0014 spine)",
+    "cloud": "requires a cloud key or subscription; subject to pfylib/hedge.py budget"
+  },
+  "toolsets": [
+    {
+      "id": "jev",
+      "title": "Jev-style decision layer (typed Choice/Score)",
+      "catalog_tool": null,
+      "catalog_note": "No TOOLS.md row for TypeSafe Jev / CUA-S1-FORMS; ADR-0016 pins the official skill instead of a catalog row. Re-score under T-0123.",
+      "source": "scripts/pfy_jev_230.py",
+      "issue": 230,
+      "adr": "ADR-0016",
+      "lanes": ["local", "cloud"],
+      "lane_note": "local = CUA-S1-FORMS (primary) / mini-jev; cloud = TypeSafe (TYPESAFE_API_KEY, jev-1.13.0)",
+      "provides": {
+        "env": ["PFY_DECISION_PATH", "PFY_DECISION_STATE", "PFY_DECISION_QUEUE", "PFY_JEV_CONF_GATE", "PFY_TOOLSET_BRIEF"],
+        "mcp_servers": [],
+        "brief": "toolset-jev-brief.md",
+        "commands": ["./pfy decision smoke", "./pfy decision route", "./pfy decision compact", "./pfy decision queue put|next"]
+      },
+      "implementation": {
+        "grok": {"status": "implemented", "how": "env + brief + GROK_HOME/skills/pfy-jev-decision/SKILL.md (Grok loads skills from GROK_HOME/skills; Jev has no MCP server so config.toml is untouched)"},
+        "opencode": {"status": "implemented", "how": "env + brief + $PFY_STATE_DIR/opencode.json fragment {\"instructions\": [brief]} (OPENCODE_CONFIG points there; same file code_graph_215 decorates)"},
+        "claude-code": {"status": "implemented", "how": "env + brief appended to $PFY_STATE_DIR/attach-agents.md (PFY_ATTACH_AGENTS, as attach_usable_221) + marker block in $CLAUDE_CONFIG_DIR/CLAUDE.md (default ~/.claude)"},
+        "codex": {"status": "implemented", "how": "env + brief appended to $PFY_STATE_DIR/attach-agents.md (PFY_ATTACH_AGENTS, as attach_usable_220) + marker block in $CODEX_HOME/AGENTS.md (default ~/.codex)"},
+        "hermes": {"status": "partial", "how": "env + $PFY_STATE_DIR brief via PFY_ATTACH_AGENTS only; attach_usable_196 execs the binary with env, no hermes-agent native config surface is written"},
+        "gemini": {"status": "stub", "how": "stub: no adapter in repo (T-0106); GEMINI.md context surface not wired"},
+        "exo": {"status": "stub", "how": "stub: exo.sh lab path only (T-0107); no prompt/config surface"},
+        "continue": {"status": "stub", "how": "stub: IDE config recipe only (bootstrap/continue); no brief surface"}
+      }
+    },
+    {
+      "id": "gab",
+      "title": "Gab cloud lane (gab.ai/v1 model=auto) + local recommend sync",
+      "catalog_tool": null,
+      "catalog_note": "No TOOLS.md row for Gab Intent Engine; cloud provider, not a local-first tool. Stage 0 fails local-first; keep as lane only unless re-scored (T-0123).",
+      "source": "scripts/pfy_gab_228.py",
+      "issue": 228,
+      "adr": null,
+      "lanes": ["cloud"],
+      "lane_note": "GAB_API_KEY required; missing key = FAIL+next; gab auto != local ranking",
+      "provides": {
+        "env": ["OPENAI_BASE_URL", "OPENAI_API_KEY", "GAB_API_KEY", "PFY_GAB_MODEL", "LOCAL_CODER_MODEL", "PFY_CLOUD_PROVIDER", "PFY_CLOUD_ENDPOINT"],
+        "mcp_servers": [],
+        "brief": null,
+        "commands": ["./pfy start gab", "./pfy models gab-sync", "./pfy models gab-pull <tag>"]
+      },
+      "implementation": {
+        "grok": {"status": "stub", "how": "stub: Grok is subscription-only and ignores OPENAI_BASE_URL"},
+        "opencode": {"status": "partial", "how": "env only (`./pfy start gab` exports OPENAI_BASE_URL/OPENAI_API_KEY then says 'open TUI with that env'); no opencode.json provider fragment written"},
+        "claude-code": {"status": "stub", "how": "stub: Anthropic API only; no OpenAI-compat base surface"},
+        "codex": {"status": "partial", "how": "env only; Codex honors OPENAI_BASE_URL but nothing in repo launches codex with the gab env"},
+        "hermes": {"status": "stub", "how": "stub: unverified whether hermes-agent honors OPENAI_BASE_URL; nothing wired"},
+        "gemini": {"status": "stub", "how": "stub: no adapter (T-0106)"},
+        "exo": {"status": "stub", "how": "stub: lab path only"},
+        "continue": {"status": "stub", "how": "stub: config.json apiBase could target gab.ai/v1; recipe not written"}
+      }
+    },
+    {
+      "id": "opencontext",
+      "title": "OpenContext (oc) capture/search/reuse store",
+      "catalog_tool": null,
+      "catalog_note": "No TOOLS.md row for OpenContext (@aicontextlab/cli); #205 shipped the handoff without a catalog row. Stage 0 + score under T-0123.",
+      "source": "scripts/pfy_opencontext_205.py",
+      "issue": 205,
+      "adr": null,
+      "lanes": ["local"],
+      "lane_note": "oc CLI on PATH (node); missing oc is SKIP, never FAIL of the attach",
+      "provides": {
+        "env": ["OPENCONTEXT_BIN", "OPENCONTEXT_CONTEXTS_ROOT", "OPENCONTEXT_DB_PATH"],
+        "mcp_servers": [],
+        "brief": null,
+        "commands": ["./pfy context"]
+      },
+      "implementation": {
+        "grok": {"status": "partial", "how": "env only via _apply_opencontext_env in attach_usable_202; oc MCP not wired into config.toml"},
+        "opencode": {"status": "partial", "how": "env only via _apply_opencontext_env in pfy_enterable_162_b; no opencode.json fragment"},
+        "claude-code": {"status": "partial", "how": "env only via attach_usable_221"},
+        "codex": {"status": "partial", "how": "env only via attach_usable_220"},
+        "hermes": {"status": "partial", "how": "env only via attach_usable_196"},
+        "gemini": {"status": "stub", "how": "stub: no adapter (T-0106)"},
+        "exo": {"status": "stub", "how": "stub: lab path only"},
+        "continue": {"status": "stub", "how": "stub: no env surface in IDE recipe"}
+      }
+    },
+    {
+      "id": "code-graph",
+      "title": "Code graph: Axon (preferred) or codebase-memory MCP equivalent",
+      "catalog_tool": "codebase-memory-mcp",
+      "catalog_note": "codebase-memory-mcp is the S-tier catalog row and the live fallback path; Axon (PR #75, entry 07x) is HOLD-era and re-scores under T-0123. Never claim Axon when only the MCP is live.",
+      "source": "scripts/pfy_code_graph_215.py",
+      "issue": 215,
+      "adr": null,
+      "lanes": ["local"],
+      "lane_note": "axon CLI or codebase-memory-mcp on PATH",
+      "provides": {
+        "env": ["PFY_GRAPH_PATH", "PFY_CODE_GRAPH", "AXON_BIN", "CODEBASE_MEMORY_MCP", "PFY_MCP", "PFY_GRAPH_EVIDENCE", "PFY_GRAPH_HANDOFF", "PFY_GRAPH_PROMPT"],
+        "mcp_servers": ["axon (axon serve --watch)", "codebase-memory (codebase-memory-mcp)"],
+        "brief": "code-graph-handoff.md",
+        "commands": ["./pfy code-graph", "attach mode code-graph"]
+      },
+      "implementation": {
+        "grok": {"status": "implemented", "how": "opencode.json mcp fragment + GROK_HOME/config.toml [mcp_servers.axon] (or merge_config.py for codebase-memory) via code_graph_215.prepare/apply_grok_mcp"},
+        "opencode": {"status": "implemented", "how": "$PFY_STATE_DIR/opencode.json mcp fragment via code_graph_215.decorate_opencode_config"},
+        "claude-code": {"status": "partial", "how": "env + handoff only when Axon CLI is present; MCP-only path is FAIL in prepare() (no MCP handoff surface written)"},
+        "codex": {"status": "partial", "how": "env + handoff only when Axon CLI is present; MCP-only path is FAIL in prepare()"},
+        "hermes": {"status": "partial", "how": "env + handoff only when Axon CLI is present; MCP-only path is FAIL in prepare()"},
+        "gemini": {"status": "stub", "how": "stub: no adapter (T-0106)"},
+        "exo": {"status": "stub", "how": "stub: lab path only"},
+        "continue": {"status": "stub", "how": "stub: IDE MCP config not written"}
+      }
+    },
+    {
+      "id": "orchestration",
+      "title": "Orchestration: /agent-loops multi-step local loops (8 exits)",
+      "catalog_tool": "Finn Loop / eval-loop / 8-exits patterns",
+      "catalog_note": "First-party port of the catalog row (T-0050): bootstrap/grok-cli/skills/agent-loops. Row is in TOOLS.md but not in the slim tools.json (ADR-0015); add under T-0123 if a machine consumer needs it.",
+      "source": "scripts/pfy_orchestration_213.py + scripts/pfy_attach_mode_208.py",
+      "issue": 213,
+      "adr": null,
+      "lanes": ["local"],
+      "lane_note": "loop turns run against LOCAL_OPENAI_BASE_URL; monitor note for Grok",
+      "provides": {
+        "env": ["PFY_ATTACH_SKILL", "OPENCODE_SKILLS", "PFY_LOOP_CARD", "PFY_LOOP_EVIDENCE", "PFY_LOOP_PROMPT", "PFY_MONITOR_NOTE"],
+        "mcp_servers": [],
+        "brief": "attach-mode-handoff.md",
+        "commands": ["attach mode orchestration", "/agent-loops"]
+      },
+      "implementation": {
+        "grok": {"status": "implemented", "how": "agent-loops skill linked into GROK_HOME/skills by attach_mode_208.prepare; loop card/evidence env"},
+        "opencode": {"status": "implemented", "how": "agent-loops skill linked into $PFY_STATE_DIR/opencode-skills (OPENCODE_SKILLS) by attach_mode_208.prepare"},
+        "claude-code": {"status": "partial", "how": "env + PFY_ATTACH_AGENTS brief ('skill if present'); no Claude-native surface"},
+        "codex": {"status": "partial", "how": "env + PFY_ATTACH_AGENTS brief ('skill if present'); no Codex-native surface"},
+        "hermes": {"status": "partial", "how": "skill linked into $PFY_STATE_DIR/attach-skills + env; not a hermes-native skills dir"},
+        "gemini": {"status": "stub", "how": "stub: no adapter (T-0106)"},
+        "exo": {"status": "stub", "how": "stub: lab path only"},
+        "continue": {"status": "stub", "how": "stub: no skill surface in IDE recipe"}
+      }
+    },
+    {
+      "id": "catalog-ask",
+      "title": "Catalog browse -> ask attached TUI / queue org issue",
+      "catalog_tool": null,
+      "catalog_note": "This toolset is the catalog's own handoff (browse subset + Design->DevBot prompt); it has no row of its own by design.",
+      "source": "scripts/pfy_catalog_ask_queue_209.py + scripts/pfy_live_org_queue_214.py",
+      "issue": 209,
+      "adr": null,
+      "lanes": ["local"],
+      "lane_note": "prompt artifact on disk; queue needs gh auth (cloud-ish side effect, no model spend)",
+      "provides": {
+        "env": ["PFY_CATALOG_ASK_PROMPT", "PFY_CATALOG_ASK_HANDOFF"],
+        "mcp_servers": [],
+        "brief": "catalog-ask-prompt.md",
+        "commands": ["./pfy catalog", "./pfy catalog ask <name>", "./pfy catalog queue <name>", "./pfy catalog status"]
+      },
+      "implementation": {
+        "grok": {"status": "partial", "how": "env + prompt artifact (paste or auto-handoff at next Attach); SIDECAR_OK includes grok; no GROK_HOME surface"},
+        "opencode": {"status": "partial", "how": "env + prompt artifact; no opencode.json fragment"},
+        "claude-code": {"status": "partial", "how": "env + prompt artifact; SIDECAR_OK includes claude/claude-code"},
+        "codex": {"status": "partial", "how": "env + prompt artifact; SIDECAR_OK includes codex"},
+        "hermes": {"status": "partial", "how": "env + prompt artifact; SIDECAR_OK includes hermes"},
+        "gemini": {"status": "stub", "how": "stub: not in SIDECAR_OK; no adapter"},
+        "exo": {"status": "stub", "how": "stub: lab path only"},
+        "continue": {"status": "stub", "how": "stub: no prompt surface in IDE recipe"}
+      }
+    }
+  ]
+}
