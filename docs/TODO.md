@@ -159,6 +159,7 @@ Active work is also tracked as issues: https://github.com/themark-net/pfy-mentat
 | T-0082 | P1 | done | ADR-0011 hybrid Grok/OpenCode/Ollama + local-cloud-split ops + opencode adapter | `docs/adr/0011-…`; `docs/ops/local-cloud-split.md`; `bootstrap/opencode/` |
 | T-0080 | P1 | done | OpenCode + Ollama host smoke (skills + config + completion) | `make smoke-opencode-ollama`; `examples/opencode-ollama/`; opencode CLI optional |
 | T-0085 | P0 | done | Worker/monitor dual-session recipe | `make worker-stage`; `/worker-monitor` skill; `docs/ops/worker-monitor.md` |
+| T-0126 | P2 | done | Port test + design-in-loop standings into portable skills SoT | `prefer-behavior-and-fail-recover-tests`, `ui-is-the-app-design-in-loop`; `docs/ops/port-bot-doctrine-to-pfy-sot.md`; catalog HOLD; no issue |
 | T-0071 | P2 | done | Bumblebee coding-safety assist docs | `docs/ops/bumblebee-coding-safety.md` |
 | T-0072 | P2 | done | MUE-X pattern extract (no evolve) | `docs/ops/mue-x-patterns.md` |
 | T-0073 | P2 | done | LEANN/Memvid memory assist patterns | `docs/ops/memory-assist-patterns.md` |

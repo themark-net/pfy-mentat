@@ -34,6 +34,8 @@ This is the first concrete integration under `pfy-mentat` — not another third-
 | `agent-loops` | Loop types + eight exits + Finn spec/build/review (`/agent-loops`, T-0050) |
 | `hermes-feedback` | Self-improvement: auto-memory, auto-skill, curator (`/hermes-feedback`, T-0048) |
 | `jev-decision` | Typed Choice/Score locks: CUA-S1-FORMS primary local, TypeSafe optional (`/jev-decision`, #230) |
+| `prefer-behavior-and-fail-recover-tests` | Testing Trophy: sociable integration/E2E, no tautological units, fail and recover (`/prefer-behavior-and-fail-recover-tests`) |
+| `ui-is-the-app-design-in-loop` | Operator UI is the app; design pack before product chrome (`/ui-is-the-app-design-in-loop`) |
 
 ### External skills path (not copied into `~/.grok/skills`)
 
