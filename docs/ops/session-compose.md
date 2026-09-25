@@ -21,7 +21,7 @@ python3 scripts/pfy_attach_mode_208.py --selftest
 ./pfy launch compose
 ./pfy launch brief
 python3 scripts/pfy-gui.py --selftest
-gzip -t <(cat scripts/pfy.payload.b64.* | tr -d '\n' | base64 -d)
+bash -n scripts/pfy
 ```
 
 On Loop (HTML+tk): **lane** uses the honest label; **enabled** lists toolset READY/SKIP/FAIL. Launch writes `$PFY_STATE_DIR/session-compose.md` and merges it into `attach-mode-handoff.md` / `attach-agents.md` / `attach-mode-prompt.md` so the child TUI can read `$PFY_SESSION_BRIEF`.

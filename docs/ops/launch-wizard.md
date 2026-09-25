@@ -35,7 +35,7 @@ python3 scripts/pfy_session_compose_224.py --selftest
 python3 scripts/pfy-board.py --wizard runtime
 python3 scripts/pfy-board.py --launch
 python3 scripts/pfy-gui.py --selftest
-gzip -t <(cat scripts/pfy.payload.b64.* | tr -d '\n' | base64 -d)
+bash -n scripts/pfy
 ```
 
 On Loop (HTML+tk): **Launch session** is the primary button. Launch env remains for runtime. Attach grok/opencode/hermes/codex/claude are secondary (not primary). Attach tab still re-attaches.

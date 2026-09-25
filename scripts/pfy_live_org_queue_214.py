@@ -212,8 +212,8 @@ def org_issue_body(item):
         "3. One integration at a time. Cite %s only. Do not reopen #76. "
         "#198 parked. LIVE_HARD_OFF.\n"
         "4. **No Mark git/npm/CI chore** \u2014 DevBot owns the branch, tests, "
-        "and payload gates (`gzip -t` on `scripts/pfy.payload.b64.*`; assembler "
-        "length gates exact).\n"
+        "and launcher gates (`bash -n scripts/pfy`; `py_compile` on "
+        "scripts/pfy-board.py + scripts/pfy-gui.py; no encoded payloads).\n"
         "5. Tools (or Loop) shows queued items + status (open/closed/PR).\n\n"
         "## Operator constraints\n"
         "- Catalog 70-75 HOLD (do not auto-lift / do not merge #75)\n"
@@ -915,15 +915,15 @@ def cmd_selftest():
         here = Path(__file__).resolve().parents[1]
         html = _read(here / "gui" / "operator" / "frontend" / "index.html")
         js = _read(here / "gui" / "operator" / "frontend" / "app-ui.js")
-        gui_tools = _read(here / "scripts" / "_pfy_gui_body_09.py")
-        gui_loop = _read(here / "scripts" / "_pfy_gui_body_08.py")
+        gui_src = _read(here / "scripts" / "pfy-gui.py")
+        gui_tools = gui_loop = gui_src
         check("id=loop-queue" in html, "HTML Loop queue row")
         check(".open,.OPEN" in html and ".closed,.CLOSED" in html and ".pr,.PR" in html, "HTML open/closed/PR styles")
         check("pr_url" in js and "loop-queue" in js, "HTML paints pr + Loop queue")
         check("QUEUE" in gui_tools and "pr_url" in gui_tools, "tk Tools QUEUE paints pr/issue")
         check("queue      " in gui_loop, "tk Loop paints queue")
-        check("Queue for org" in _read(here / "scripts" / "_pfy_gui_body_02.py"), "tk Queue for org button")
-        board = _read(here / "scripts" / "_pfy_board_body_05.py")
+        check("Queue for org" in gui_src, "tk Queue for org button")
+        board = _read(here / "scripts" / "pfy-board.py")
         check("_load_live_org_214" in board or "live.queue_org" in board, "board queue uses #214")
 
     if errors:
