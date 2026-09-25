@@ -2,7 +2,9 @@
 
 Cite **#225** only. Catalog 70–75 HOLD. #198 parked. LIVE_HARD_OFF. Do not reopen #76. Do not add an Env nav tab.
 
-Loop is the primary path. The job is selecting runtime / lane / toolsets / harness, reviewing the compose, then **Launch session** into one enterable TUI. Attach X stays as secondary re-attach. The operator window stays open.
+Loop is the primary path. The painted job is **catalog modules** plus a live **local compute | cloud orchestration** split. Hedge picks the lane (`bulk`/`interactive` stay local when a runtime is up; `hard` spends cloud credits when `PFY_CLOUD_BUDGET` remains). **Launch session** applies enabled modules into an enterable TUI — that grok/opencode session is the proof. Attach X stays on the Attach tab. The operator window stays open.
+
+The compose wizard (#225) still runs under Launch (runtime health, child env, review). It is not the Loop front door.
 
 ## Steps (operate-or-FAIL)
 
@@ -38,7 +40,7 @@ python3 scripts/pfy-gui.py --selftest
 bash -n scripts/pfy
 ```
 
-On Loop (HTML+tk): **Launch session** is the primary button. Launch env remains for runtime. Attach grok/opencode/hermes/codex/claude are secondary (not primary). Attach tab still re-attaches.
+On Loop (HTML+tk): numbered how-to on the page. **LOCAL COMPUTE** and **CLOUD ORCHESTRATION** panes each say why they exist (ON / STANDBY / SPENDING / OFF). Work-class chips and **MODULES** say what a click does. **Launch session** is the proof; Launch env only starts the local engine. Attach grok/opencode/hermes/codex/claude live on the Attach tab.
 
 ## Variables
 

@@ -1,14 +1,14 @@
 # Module: `pfylib/` — toolset × harness handoff + hedge
 
 **Architecture layer:** Handoff harness (product leg 3 of the triad, [ADR-0017](../adr/0017-product-catalog-evaluation-handoff-harness.md)).  
-**Code:** `pfylib/` (`registry.py`, `toolsets.py`, `hedge.py`, `attach.py`, `cli.py`, `_legacy.py`) · data `data/toolsets.json` · `data/harnesses.json[].attach` · tests `tests/`  
-**Related:** [DESIGN G9](../DESIGN.md) · [ARCHITECTURE](../ARCHITECTURE.md) · [integration-stages.md](../ops/integration-stages.md) · [local-cloud-split.md](../ops/local-cloud-split.md) · [jev-230.md](jev-230.md) · T-0120..T-0124
+**Code:** `pfylib/` (`registry.py`, `toolsets.py`, `hedge.py`, `loop_paint.py`, `attach.py`, `cli.py`, `_legacy.py`) · data `data/toolsets.json` · `data/harnesses.json[].attach` · tests `tests/`  
+**Related:** [DESIGN G9](../DESIGN.md) · [ARCHITECTURE](../ARCHITECTURE.md) · [integration-stages.md](../ops/integration-stages.md) · [local-cloud-split.md](../ops/local-cloud-split.md) · [jev-230.md](jev-230.md) · T-0120..T-0125
 
 ## Operator
 
 ### What it does
 
-Declares each **toolset** once (`data/toolsets.json`) and applies it to any **harness** row of `data/harnesses.json` (`role == "harness"`). The matrix cell is an *implementation* status — `implemented` / `partial` / `stub` — never a live health status. `plan` turns a cell into a concrete apply plan (env exports, files, config fragments, a brief) or an honest `STUB` with a next step. `hedge` picks the lane for a task: local compute first, cloud credits only within `PFY_CLOUD_BUDGET`, `FAIL` with a next step when neither can run.
+Declares each **toolset** once (`data/toolsets.json`) and applies it to any **harness** row of `data/harnesses.json` (`role == "harness"`). The matrix cell is an *implementation* status — `implemented` / `partial` / `stub` — never a live health status. `plan` turns a cell into a concrete apply plan (env exports, files, config fragments, a brief) or an honest `STUB` with a next step. `hedge` picks the lane for a task: local compute first, cloud credits only within `PFY_CLOUD_BUDGET`, `FAIL` with a next step when neither can run. Loop paints that split plus the gathered modules (`pfylib/loop_paint.py`); **Launch session** is the proof they run in a grok/opencode session.
 
 ### How to run
 
@@ -86,6 +86,7 @@ data/toolsets.json ─┐                         data/harnesses.json (role=harn
                     │                 └─ _plan_* → pfylib/_legacy.py → scripts/pfy_*_NNN.py (import, no copy)
             pfylib/attach.py    one Attach body; shims scripts/pfy_attach_usable_{196,202,220,221}.py
             pfylib/hedge.py     decide(task, local, budget) · record() · ledger · detect_local() → scripts/detect-local-runtime.sh
+            pfylib/loop_paint.py Loop UI fragment: modules + local/cloud hedge (not a harness picker)
                     │
             pfylib/cli.py       argparse: toolset list|matrix|plan|apply|validate · hedge decide|ledger|record
                     ▲

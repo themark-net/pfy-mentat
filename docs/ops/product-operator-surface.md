@@ -45,6 +45,8 @@ Monitor (Grok subscription / strong cloud)
 
 **Today (honest):**
 
+Loop paints this split: **LOCAL COMPUTE** (engine/status/endpoint ON when a runtime answers) vs **CLOUD ORCHESTRATION** (budget/spent/left; STANDBY vs SPENDING). Task class `bulk` / `interactive` / `hard` is the hedge input. Launch session is the proof.
+
 | Path | Uses local coder (e.g. `deepseek-coder:6.7b`)? |
 |------|-----------------------------------------------|
 | `make eval-suite` / `eval-auto` | **Yes** (when selected as gate) |

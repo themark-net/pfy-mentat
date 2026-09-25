@@ -13,11 +13,115 @@ LIVE = ("ready", "partial", "stub", "detected-stub", "missing", "skip")
 GROK_USE = "pfy harness use grok"
 BLOCKED = frozenset({"continue", "agent-cage"})
 FG, BG, SIDE, PANE, CLOUD, MUTED = "#e8edf4", "#0e1116", "#121821", "#151a22", "#1a2740", "#8b97a8"
-CHIP = {"ready":"#3dd68c","partial":"#e6c15a","stub":"#e8875b","detected-stub":"#c984f0","missing":"#7d8796","skip":"#7d8796"}
+CHIP = {"ready":"#3dd68c","partial":"#e6c15a","stub":"#e8875b","detected-stub":"#c984f0","missing":"#7d8796","skip":"#7d8796","implemented":"#3dd68c","wired":"#3dd68c","not wired":"#e8875b","on":"#3dd68c","off":"#7d8796"}
 
 def honest(v):
     s = (v or "").strip().lower()
     return s if s in LIVE else "missing"
+
+def module_paint_status(m):
+    """Operator chrome only (HTML paintModules): implemented→wired, stub→not wired; keep partial."""
+    if m.get("stub"):
+        return "not wired"
+    st = m.get("status") or ""
+    if st == "implemented":
+        return "wired"
+    return st
+
+def loop_text(s, env_live, att, reach, verb, when):
+    """Loop body: local compute | cloud orchestration | catalog modules, with why/how."""
+    h = s.get("hedge") or {}
+    try:
+        from pfylib import loop_paint
+        st = loop_paint.story(h)
+    except Exception:
+        st = {}
+    local_ready = bool(h.get("local_ready"))
+    cloud_lane = st.get("cloud_lane") or "OFF"
+    if not st.get("cloud_lane"):
+        rem = h.get("remaining") or 0
+        profile = h.get("profile") or "(unset)"
+        lane = h.get("lane") or ""
+        cloud_on = lane == "cloud" or (rem > 0 and profile != "local-only")
+        if lane == "cloud":
+            cloud_lane = "SPENDING"
+        elif cloud_on:
+            cloud_lane = "STANDBY"
+        else:
+            cloud_lane = "OFF"
+    loc_reason = ""
+    routes = h.get("routes") or {}
+    if isinstance(routes.get("interactive"), dict):
+        loc_reason = str(routes["interactive"].get("reason") or "")
+    cloud_reason = ""
+    if isinstance(routes.get("hard"), dict):
+        cloud_reason = str(routes["hard"].get("reason") or "")
+    task = s.get("modules_task") or h.get("task") or "interactive"
+    task_help = (s.get("task_help") or {}).get(task) or st.get("task_help") or ""
+    lines = [
+        "LOOP",
+        "Run gathered catalog tools on this machine or on cloud credits.",
+        "HOW TO  1 see where work can run  2 pick work class  3 click modules  4 Launch session",
+        "        Launch env starts the local engine only (no coding session).",
+        "LOCAL COMPUTE",
+        "  why       your machine — preferred when a model is answering",
+        "  lane      %s" % ("ON" if local_ready else "OFF"),
+        "  engine    %s" % (h.get("local_engine") or "none"),
+        "  status    %s" % (h.get("local_status") or "missing"),
+        "  endpoint  %s" % (h.get("local_base_url") or "(none)"),
+    ]
+    if loc_reason:
+        lines.append("  %s" % loc_reason)
+    meaning = st.get("local_meaning") or h.get("local_meaning") or ""
+    if meaning:
+        lines.append("  meaning   %s" % meaning)
+    lines += [
+        "CLOUD ORCHESTRATION",
+        "  why       paid credits — only if local cannot, or work is hard",
+        "  lane      %s" % cloud_lane,
+        "  budget    %s · spent %s · left %s" % (h.get("budget", 0), h.get("spent", 0), h.get("remaining", 0)),
+        "  profile   %s · gab key %s" % (h.get("profile") or "(unset)", "ready" if h.get("gab_key") else "missing"),
+    ]
+    if cloud_reason:
+        lines.append("  %s" % cloud_reason)
+    cmean = st.get("cloud_meaning") or h.get("cloud_meaning") or ""
+    if cmean:
+        lines.append("  meaning   %s" % cmean)
+    route = st.get("route") or h.get("route") or str(h.get("copy") or "").strip()
+    if route:
+        lines.append("this session  %s" % route)
+    nxt = st.get("next_step") or h.get("next_step") or ""
+    if nxt and not h.get("ok", True):
+        lines.append("next      %s" % nxt)
+    copy = str(h.get("copy") or "").strip()
+    if copy and copy != route:
+        lines.append("live      %s" % copy)
+    lines += ["WORK CLASS  %s" % task]
+    if task_help:
+        lines.append("  %s" % task_help)
+    lines.append("MODULES")
+    lines.append("  why       catalog tools we gathered — ON means loaded into Launch session")
+    mods = list(s.get("modules") or [])
+    if not mods:
+        lines.append("  (none)")
+    else:
+        for m in mods:
+            mark = "ON" if m.get("enabled") else ("STUB" if m.get("stub") else "off")
+            lines.append("  %-16s %-12s %s" % (m.get("id") or "", module_paint_status(m), mark))
+    enabled = " · ".join(str(x) for x in (s.get("modules_enabled") or []) if x) or "(none)"
+    lines += [
+        "enabled   %s" % enabled,
+        "env       %s" % env_live,
+        "session   %s" % reach,
+        "attached  %s" % att,
+        "NEXT      Launch session opens grok/OpenCode with enabled modules. That window is the proof.",
+    ]
+    proof = str(s.get("loop_copy") or "").strip()
+    if proof:
+        extra = str(s.get("loop_when") or "").strip()
+        lines.append("proof     %s%s" % (proof, ("  " + extra) if extra else ""))
+    lines.append("last      %s%s" % (verb, ("  " + when) if when else ""))
+    return "\n".join(lines)
 
 def stopped_exit(error):
     state = Path(os.environ.get("PFY_STATE_DIR", str(Path.home() / ".pfy-mentat")))
@@ -221,6 +325,9 @@ class Win:
         self.bcatcopy = ttk.Button(self.acts, text="Copy prompt", command=self.copy_catalog_prompt)
         self.catst = ttk.Label(self.acts, text="", style="M.TLabel")
         self.bsess = ttk.Button(self.acts, text="Launch session", command=self.launch_session)
+        self.bbulk = ttk.Button(self.acts, text="Bulk — stay on this machine", command=lambda: self.set_loop_task("bulk"))
+        self.binteractive = ttk.Button(self.acts, text="Interactive — local first", command=lambda: self.set_loop_task("interactive"))
+        self.bhard = ttk.Button(self.acts, text="Hard — allow cloud", command=lambda: self.set_loop_task("hard"))
         self.blocal = ttk.Button(self.acts, text="local", command=lambda: self.wizard_step("lane", "local"))
         self.bcloud = ttk.Button(self.acts, text="cloud/subscription", command=lambda: self.wizard_step("lane", "cloud/subscription"))
         self.bofree = ttk.Button(self.acts, text="OpenCode free", command=lambda: self.wizard_step("lane", "opencode-free"))
@@ -261,10 +368,43 @@ class Win:
                 self.paint_attach("FAIL mode — %s · %s" % (detail, nxt), True)
         else:
             self.paint_attach("using: "+self._attach_mode, False)
-        if self.view == "loop":
-            self.wizard_step("toolsets", self._attach_mode)
-            return
         self.render()
+
+    def set_loop_task(self, task):
+        self.paint_attach("task "+task+"…", False)
+        def work():
+            try:
+                if self.board and hasattr(self.board, "set_loop_task"):
+                    res = self.board.set_loop_task(task)
+                else:
+                    res = {"ok": True, "copy": "READY task %s" % task, "task": task}
+            except Exception as e:
+                res = {"ok": False, "copy": "FAIL task", "error": str(e)}
+            self.root.after(0, lambda r=res: self.done_loop_cmd(r))
+        threading.Thread(target=work, daemon=True).start()
+
+    def toggle_loop_module(self, tid, on):
+        self.paint_attach("module "+tid+"…", False)
+        def work():
+            try:
+                if self.board and hasattr(self.board, "toggle_loop_module"):
+                    res = self.board.toggle_loop_module(tid, bool(on))
+                else:
+                    res = {"ok": True, "copy": "READY module %s %s" % (tid, "on" if on else "off")}
+            except Exception as e:
+                res = {"ok": False, "copy": "FAIL module", "error": str(e)}
+            self.root.after(0, lambda r=res: self.done_loop_cmd(r))
+        threading.Thread(target=work, daemon=True).start()
+
+    def done_loop_cmd(self, res):
+        ok = bool(res.get("ok"))
+        live = str(res.get("live") or "")
+        fail = (not ok) and live != "STUB"
+        self.paint_attach(res.get("copy") or ("READY" if ok else "FAIL"), fail)
+        if self.board is None:
+            self.render()
+        else:
+            self.refresh(user=True)
 
     def wizard_step(self, step, value=""):
         self.paint_attach("wizard "+step+"…", False)
@@ -1018,7 +1158,7 @@ class Win:
             self.paint_catalog("FAIL clipboard — select the prompt", True)
 
     def pack_acts(self, names):
-        forget = [self.bgrok, self.bopen, self.bhermes, self.bcodex, self.bclaude, self.bgab, self.bbare, self.borch, self.bgraph, self.bsi, self.bsiopen, self.bsifold, self.bsitask, self.bcopyep, self.bcopyst, self.brefresh, self.bcopy, self.bstage, self.benv, self.bpull, self.btest, self.breco, self.btry, self.pullname, self.sst, self.est, self.pst, self.rst, self.tst, self.ast, self.cst, self.sist, self.siabs, self.sirel, self.sitask, self.ewhat, self.siopenst, self.toolst, self.recst, self.tryst, self.catname, self.bask, self.bqueue, self.bcatcopy, self.catst, self.bsess, self.blocal, self.bcloud, self.bofree, self.bcatalog, self.bhopenc, self.bhgrok, self.bhhermes, self.bhcodex, self.bhclaude, self.bhgab, self.bdecoff, self.bdeccua, self.bdects, self.bdecmj]
+        forget = [self.bgrok, self.bopen, self.bhermes, self.bcodex, self.bclaude, self.bgab, self.bbare, self.borch, self.bgraph, self.bsi, self.bsiopen, self.bsifold, self.bsitask, self.bcopyep, self.bcopyst, self.brefresh, self.bcopy, self.bstage, self.benv, self.bpull, self.btest, self.breco, self.btry, self.pullname, self.sst, self.est, self.pst, self.rst, self.tst, self.ast, self.cst, self.sist, self.siabs, self.sirel, self.sitask, self.ewhat, self.siopenst, self.toolst, self.recst, self.tryst, self.catname, self.bask, self.bqueue, self.bcatcopy, self.catst, self.bsess, self.bbulk, self.binteractive, self.bhard, self.blocal, self.bcloud, self.bofree, self.bcatalog, self.bhopenc, self.bhgrok, self.bhhermes, self.bhcodex, self.bhclaude, self.bhgab, self.bdecoff, self.bdeccua, self.bdects, self.bdecmj]
         forget.extend(self.tool_btns.values())
         for w in forget:
             try: w.pack_forget()
@@ -1026,7 +1166,8 @@ class Win:
         order = {
             "grok": self.bgrok, "open": self.bopen, "hermes": self.bhermes, "codex": self.bcodex, "claude": self.bclaude, "gab": self.bgab,
             "bare": self.bbare, "orch": self.borch, "graph": self.bgraph,
-            "sess": self.bsess, "local": self.blocal, "cloud": self.bcloud, "ofree": self.bofree, "catalog": self.bcatalog,
+            "sess": self.bsess, "bulk": self.bbulk, "interactive": self.binteractive, "hard": self.bhard,
+            "local": self.blocal, "cloud": self.bcloud, "ofree": self.bofree, "catalog": self.bcatalog,
             "hopenc": self.bhopenc, "hgrok": self.bhgrok, "hhermes": self.bhhermes, "hcodex": self.bhcodex, "hclaude": self.bhclaude, "hgab": self.bhgab,
             "decoff": self.bdecoff, "deccua": self.bdeccua, "dects": self.bdects, "decmj": self.bdecmj,
             "si": self.bsi, "refresh": self.brefresh,
@@ -1089,37 +1230,16 @@ class Win:
         else:
             env_live = "SKIP"
         if self.view == "loop":
-            note = s.get("monitor_note") or ""
-            mpid = s.get("monitor_pid") or ""
-            mon = note or (f"pid {mpid}" if mpid else "(none)")
-            gpath = s.get("grok_path") or honest(grok.get("live"))
             reach = str(s.get("session_reach") or "").strip() or "(none)"
-            # Prefer last attach/env session_reach if snapshot empty
             if reach == "(none)":
                 reach = str(getattr(self, "_session_reach", "") or "").strip() or "(none)"
-            using = str(s.get("using") or s.get("attach_mode") or getattr(self, "_attach_mode", "") or "bare")
-            mode_when = str(s.get("attach_mode_when") or "")
-            loop_ev = str(s.get("loop_copy") or "").strip() or "(none)"
-            loop_when = str(s.get("loop_when") or "")
-            graph_ev = str(s.get("graph_copy") or "").strip() or "(none)"
-            graph_when = str(s.get("graph_when") or "")
-            qrows = list(s.get("catalog_queue") or [])
-            qtxt = "(none)" if not qrows else " · ".join("%s %s" % (q.get("name") or q.get("id") or "", q.get("status") or "") for q in qrows[:6])
-            wiz_rt = str(s.get("wizard_runtime") or "").strip() or "(none)"
-            wiz_lane = str(s.get("wizard_lane_label") or s.get("wizard_lane") or "").strip() or "(none)"
-            wiz_ts = str(s.get("wizard_toolsets") or "").strip() or "(none)"
-            wiz_en = str(s.get("wizard_enabled") or "").strip() or "(none)"
-            wiz_hs = str(s.get("wizard_harness") or "").strip() or "(none)"
-            wiz_dec = str(s.get("wizard_decision") or s.get("decision_paint") or "").strip() or "○ off"
-            wiz_dchip = " · ".join(x for x in (s.get("decision_chip") or "", s.get("decision_conf") or "", s.get("decision_honesty") or "decision ≠ gab auto ≠ local") if x)
-            wiz_rv = str(s.get("wizard_review") or "").strip() or f"runtime {wiz_rt} · lane {wiz_lane} · toolsets {wiz_ts} · harness {wiz_hs}"
-            txt = f"LOOP\nenv        {env_live}\nruntime    {wiz_rt}\nlane       {wiz_lane}\ntoolsets   {wiz_ts}\nenabled    {wiz_en}\nharness    {wiz_hs}\ndecision   {wiz_dec}\nchip       {wiz_dchip}\nreview     {wiz_rv}\nattached   {att}\nsession    {reach}\nusing: {using}" + (f"  {mode_when}" if mode_when else "") + f"\nloop       {loop_ev}" + (f"  {loop_when}" if loop_when else "") + f"\ngraph      {graph_ev}" + (f"  {graph_when}" if graph_when else "") + f"\nqueue      {qtxt}\nlast       {verb}  {when}\nmonitor    {mon}\ngrok       {gpath}"
+            txt = loop_text(s, env_live, att, reach, verb, when)
             what = str((getattr(self, "_last_env", {}) or {}).get("what") or "")
             if what:
                 txt += "\nwhat       " + what
             if stub: txt += f"\nFAIL       {s.get('blocked_copy') or GROK_USE}"
             if self.msg: txt += "\n" + self.msg
-            self.pack_acts(["sess", "local", "cloud", "ofree", "bare", "orch", "graph", "catalog", "hopenc", "hgrok", "hhermes", "hcodex", "hclaude", "hgab", "decoff", "deccua", "dects", "decmj", "env", "copyep", "copyst", "open", "hermes", "grok", "codex", "claude", "gab", "est", "ast"])
+            self.pack_acts(["bulk", "interactive", "hard", "sess", "env", "copyep", "copyst", "est", "ast"])
         elif self.view == "engine":
             u = s.get("usage") if isinstance(s.get("usage"), dict) else {}
             sr = s.get("status_runtime") or {}
@@ -1148,7 +1268,7 @@ class Win:
                 endpoint = "(none)"
             mtxt = " · ".join(str(x) for x in models) if models else "(none)"
             txt = (
-                f"ENGINE\nengine     {engine}\nendpoint   {endpoint}\nlive       {live_show}"
+                f"ENGINE\nThis tab is the local model — not the coding session. Loop → Launch session opens that.\nengine     {engine}\nendpoint   {endpoint}\nlive       {live_show}"
                 f"\ngrok       {honest(grok.get('live'))}\nmodels     {mtxt}"
                 f"\ntok_path   {tok}\nvram       {vram}"
             )
@@ -1177,7 +1297,7 @@ class Win:
             self.pack_acts(["refresh", "copyep", "est", "test", "pullname", "pull", "reco", "try", "tst", "pst", "rst", "recst", "tryst"])
         elif self.view == "stage":
             sl = stage.get("live") or "SKIP"
-            txt = f"STAGE\nenv-stage   {sl}"
+            txt = f"STAGE\nEnvironment check. SKIP means a piece is missing — not a fake pass.\nenv-stage   {sl}"
             self.pack_acts(["stage", "sst"])
         elif self.view == "attach":
             reach = str(s.get("session_reach") or "").strip() or getattr(self, "_session_reach", "") or "(none)"
@@ -1185,7 +1305,7 @@ class Win:
             mode_when = str(s.get("attach_mode_when") or "")
             graph_ev = str(s.get("graph_copy") or "").strip() or "(none)"
             graph_when = str(s.get("graph_when") or "")
-            txt = f"ATTACH\nNOW     attached {attached} · last {verb}\nsession {reach}\nusing: {using}" + (f"  {mode_when}" if mode_when else "") + f"\ngraph      {graph_ev}" + (f"  {graph_when}" if graph_when else "")
+            txt = f"ATTACH\nOpen grok/OpenCode now without composing modules. Loop → Launch session loads gathered tools.\nNOW     attached {attached} · last {verb}\nsession {reach}\nusing: {using}" + (f"  {mode_when}" if mode_when else "") + f"\ngraph      {graph_ev}" + (f"  {graph_when}" if graph_when else "")
             si = getattr(self, "_last_si", {}) or {}
             abs_p = str(si.get("abs_path") or "")
             rel_p = str(si.get("rel") or si.get("path") or "")
@@ -1210,7 +1330,7 @@ class Win:
                 return "on" if v else "off"
             extra = onoff((tools.get("tools_mode") or "") == "local_tools")
             txt = (
-                "TOOLS\n"
+                "TOOLS\nSkills on/off for the next session, plus the scored catalog. Loop starts the session.\n"
                 f"one-shot         {onoff(skills.get('one-shot'))}\n"
                 f"investigate      {onoff(skills.get('investigate'))}\n"
                 f"agent-loops      {onoff(skills.get('agent-loops'))}\n"
@@ -1256,6 +1376,19 @@ class Win:
             self.pack_acts([])
         self.body.configure(text=txt)
         for c in self.chips.winfo_children(): c.destroy()
+        if self.view == "loop":
+            for m in list(s.get("modules") or []):
+                tid = str(m.get("id") or "")
+                status = module_paint_status(m)
+                on = bool(m.get("enabled"))
+                stub_mod = bool(m.get("stub"))
+                fr = tk.Frame(self.chips, bg="#18202c", highlightbackground=("#4d8dff" if on else "#243041"), highlightthickness=1, padx=8, pady=6)
+                fr.pack(side="left", padx=4, pady=4, anchor="n")
+                tk.Label(fr, text=tid, bg="#18202c", fg=FG, font=("sans-serif", 10, "bold")).pack(anchor="w")
+                tk.Label(fr, text=status, bg="#18202c", fg=CHIP.get(status, CHIP["missing"]), font=("sans-serif", 9, "bold")).pack(anchor="w")
+                tk.Label(fr, text=("ON" if on else ("STUB" if stub_mod else "off")), bg="#18202c", fg=MUTED).pack(anchor="w")
+                if not (stub_mod and not on):
+                    fr.bind("<Button-1>", lambda e, x=tid, nxt=not on: self.toggle_loop_module(x, nxt))
         if self.view == "attach":
             for c in chips:
                 hid, live, role, name = c.get("id") or "", honest(c.get("live")), c.get("role") or "", c.get("name") or ""
@@ -1287,6 +1420,18 @@ def selftest_snap():
             "tools":{"skills":{"one-shot":True,"investigate":True,"agent-loops":True,"hermes-feedback":True},"mcp":False,"write_guard":False,"tools_mode":"split"},
             "catalog":[{"name":"repowise","stage":"I1","status":"ready","github":"https://github.com/repowise-dev/repowise","notes":"usable","category":"Coding"}],
             "catalog_ok":True,"catalog_queue":[{"name":"repowise","kind":"queue","status":"open","issue_url":"https://github.com/themark-net/pfy-mentat/issues/214"}],"catalog_attached":"grok","catalog_prompt":"",
+            "modules_task":"interactive","modules_enabled":["jev"],
+            "modules":[
+                {"id":"jev","title":"Jev","status":"implemented","enabled":True,"stub":False},
+                {"id":"orchestration","title":"orchestration","status":"implemented","enabled":False,"stub":False},
+                {"id":"code-graph","title":"code-graph","status":"partial","enabled":False,"stub":False},
+            ],
+            "hedge":{"task":"interactive","lane":"local","ok":True,"live":"READY","copy":"READY hedge local",
+                     "local_ready":True,"local_engine":"freetoken","local_status":"ready","local_base_url":"http://127.0.0.1:1919/v1",
+                     "budget":0,"spent":0,"remaining":0,"profile":"(unset)","gab_key":False,
+                     "routes":{"bulk":{"lane":"local","ok":True,"reason":"local ready"},
+                               "interactive":{"lane":"local","ok":True,"reason":"local ready"},
+                               "hard":{"lane":"local","ok":True,"reason":"no budget; local hedge"}}},
             "wizard_ok":True,"wizard_step":"review","wizard_runtime":"freetoken ready","wizard_lane":"local","wizard_lane_label":"local FreeToken-first","wizard_toolsets":"bare","wizard_enabled":"bare READY · orchestration READY · code-graph SKIP · catalog SKIP","wizard_harness":"grok","wizard_review":"runtime freetoken ready · lane local · toolsets bare · harness grok","wizard_cta":"Launch session","wizard_decision":"● local CUA-S1-FORMS · FreeToken-first","wizard_decision_path":"cua-s1-forms","decision_chip":"decision · typed Choice","decision_conf":"conf ok","decision_honesty":"decision ≠ gab auto ≠ local","decision_core":"compact context · choose model/tool"}
 
 def selftest_fresh_bind():
@@ -1368,6 +1513,9 @@ def run_tk(board, selftest=False) -> bool:
             and w.bstage.cget("text") == "Run stage"
             and w.benv.cget("text") == "Launch env"
             and w.bsess.cget("text") == "Launch session"
+            and w.bbulk.cget("text") == "Bulk — stay on this machine"
+            and w.binteractive.cget("text") == "Interactive — local first"
+            and w.bhard.cget("text") == "Hard — allow cloud"
             and w.blocal.cget("text") == "local"
             and w.bcloud.cget("text") == "cloud/subscription"
             and w.bofree.cget("text") == "OpenCode free"
@@ -1396,7 +1544,39 @@ def run_tk(board, selftest=False) -> bool:
         )
         w.set_view("loop")
         body = w.body.cget("text") or ""
-        loop_ok = "LOOP" in body and "env" in body.lower() and "using:" in body.lower() and "loop       " in body and "started 2/8" in body and "graph      " in body and "path=axon" in body and "queue      " in body and "runtime" in body.lower() and "lane" in body.lower() and "toolsets" in body.lower() and "enabled" in body.lower() and "FreeToken-first" in body and "harness" in body.lower() and "review" in body.lower() and "decision" in body.lower() and "decision ≠ gab auto ≠ local" in body and "LOCAL WORKER" not in body and "pfy board" not in body.lower()
+        mod_chrome = ""
+        if "MODULES" in body:
+            mod_chrome = body.split("MODULES", 1)[1]
+            if "\nenabled" in mod_chrome:
+                mod_chrome = mod_chrome.split("\nenabled", 1)[0]
+        chip_st = []
+        for fr in w.chips.winfo_children():
+            kids = list(fr.winfo_children())
+            if len(kids) >= 2:
+                chip_st.append(str(kids[1].cget("text")))
+        loop_ok = (
+            "LOOP" in body
+            and "HOW TO" in body
+            and "LOCAL COMPUTE" in body
+            and "CLOUD ORCHESTRATION" in body
+            and "MODULES" in body
+            and "Launch session" in body
+            and "jev" in body
+            and "wired" in body
+            and "wired" in mod_chrome
+            and "partial" in mod_chrome
+            and "implemented" not in mod_chrome
+            and "stub" not in mod_chrome
+            and "wired" in chip_st
+            and "implemented" not in chip_st
+            and "stub" not in chip_st
+            and "enabled" in body.lower()
+            and "env" in body.lower()
+            and "started 2/8" in body
+            and "harness    " not in body
+            and "LOCAL WORKER" not in body
+            and "pfy board" not in body.lower()
+        )
         w.set_view("attach")
         att_body = w.body.cget("text") or ""
         att_ok = "ATTACH" in att_body and "using:" in att_body.lower() and "graph      " in att_body

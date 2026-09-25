@@ -5,7 +5,29 @@ body{margin:0;font:14px/1.4 ui-sans-serif,system-ui,sans-serif;background:#0e111
 .side{background:#121821;border-right:1px solid #243041;padding:14px 0}
 .side b{display:block;padding:0 16px 12px;font-size:16px}
 .side button{display:block;width:calc(100% - 16px);margin:2px 8px;text-align:left;background:#18202c;border:1px solid #334155;color:#e8edf4;padding:10px 12px;border-radius:8px;cursor:pointer}
-.side button.on{background:#1e3a5f;border-color:#4d8dff;box-shadow:inset 4px 0 0 #4d8dff;font-weight:700}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}
+.pane{background:#121821;border:1px solid #243041;border-radius:12px;padding:12px}
+.pane.on{border-color:#3dd68c}
+.pane.spend{border-color:#e6c15a}
+.pane h3{margin:0 0 8px;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:#8b97a8}
+.pane .hero{font-size:22px;font-weight:700;margin:4px 0 8px}
+.lede{max-width:42rem;margin:0 0 14px;color:#c5ced9}
+.why{color:#8b97a8;font-size:13px;margin:4px 0 10px;max-width:42rem}
+.step{margin:20px 0 8px}
+.step h3{margin:0 0 4px;font-size:14px}
+.route{font-size:16px;font-weight:650;margin:10px 0 4px}
+.next{color:#e8875b;font-weight:600}
+.navhint{display:block;padding:0 16px 10px;color:#8b97a8;font-size:11px;line-height:1.35}
+.mod small{display:block;color:#8b97a8;font-size:12px;margin-top:4px;font-weight:400;text-transform:none;letter-spacing:0}
+.mod .use{display:block;margin-top:6px;font-size:11px;letter-spacing:.03em;text-transform:uppercase;color:#8b97a8}
+.mod.on .use{color:#6aa7d9}
+.mods{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 16px}
+.mod{background:#18202c;border:1px solid #334155;border-radius:10px;padding:10px 12px;min-width:160px;cursor:pointer;text-align:left;color:#e8edf4}
+.mod.on{border-color:#4d8dff;box-shadow:inset 4px 0 0 #4d8dff}
+.mod.stub{opacity:.45;cursor:not-allowed}
+.mod b{display:block;font-size:13px}
+.mod .st{font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+button.on{background:#1e3a5f;border-color:#4d8dff}
 .side button:focus-visible{outline:2px solid #4d8dff;outline-offset:2px}
 header,.main{padding:10px 16px}
 header{border-bottom:1px solid #243041}
@@ -37,11 +59,12 @@ noscript .fail{padding:16px;display:block}
 <div class=app>
 <nav class=side>
   <b>pfy</b>
-  <button type=button class="navbtn on" data-go=loop>Loop</button>
-  <button type=button class=navbtn data-go=engine>Engine</button>
-  <button type=button class=navbtn data-go=stage>Stage</button>
-  <button type=button class=navbtn data-go=attach>Attach</button>
-  <button type=button class=navbtn data-go=tools>Tools</button>
+  <span class=navhint>Loop is the product. Other tabs are details.</span>
+  <button type=button class="navbtn on" data-go=loop title="Pick gathered tools and where they run, then open a session">Loop</button>
+  <button type=button class=navbtn data-go=engine title="Local models: status, pull, recommend">Engine</button>
+  <button type=button class=navbtn data-go=stage title="Environment check — SKIP is honest, not a fake pass">Stage</button>
+  <button type=button class=navbtn data-go=attach title="Open grok/OpenCode now, without composing modules">Attach</button>
+  <button type=button class=navbtn data-go=tools title="Skills on/off and the scored catalog">Tools</button>
   <button type=button class=navbtn id=orgnav data-go=org style=display:none>Org</button>
 </nav>
 <div class=shell>
@@ -50,62 +73,76 @@ noscript .fail{padding:16px;display:block}
   <p id=fail class=fail></p>
   <section class="view on" id=view-loop>
     <h2>LOOP</h2>
-    <div class=row>env <span id=loop-env class=live>SKIP</span></div>
-    <div class=row>runtime <span id=wiz-runtime class=live>SKIP</span></div>
-    <div class=row>lane <b id=wiz-lane>(none)</b></div>
-    <div class=row>toolsets <b id=wiz-toolsets>(none)</b></div>
-    <div class=row>enabled <b id=wiz-enabled>(none)</b></div>
-    <div class=row>harness <b id=wiz-harness>(none)</b></div>
-    <div class=row>decision <b id=wiz-decision>○ off</b></div>
-    <div class=row>review <b id=wiz-review>(none)</b></div>
-    <div class=row>chip <span class=muted id=wiz-decision-chip>decision ≠ gab auto ≠ local</span></div>
-    <div class=row>attached <b id=loop-attached>(none)</b></div>
-    <div class=row>session <b id=loop-session>(none)</b></div>
-    <div class=row>using: <b id=loop-using>bare</b> <span class=muted id=loop-mode-when></span></div>
-    <div class=row>loop <b id=loop-evidence>(none)</b> <span class=muted id=loop-evidence-when></span></div>
-    <div class=row>graph <b id=loop-graph>(none)</b> <span class=muted id=loop-graph-when></span></div>
-    <div class=row>queue <b id=loop-queue>(none)</b></div>
-    <div class=row>last <b id=loop-last>(none)</b> <span class=muted id=loop-when></span></div>
-    <div class=row>monitor <b id=loop-monitor>(none)</b></div>
-    <div class=row>grok <span id=loop-grok class=live>missing</span></div>
+    <p class=lede>This screen runs the catalog tools we gathered. Pick how hard the work is, click which tools ride along, then Launch session. A grok or OpenCode window opens with those tools loaded. <b>That window is the proof they work together.</b></p>
+    <ol class=why style="padding-left:1.2rem">
+      <li>See where work can run (your machine vs cloud credits).</li>
+      <li>Pick a work class so cheap jobs stay local.</li>
+      <li>Click modules to include. Stub tiles are not wired yet.</li>
+      <li>Launch session. Launch env only starts the local model — no coding session.</li>
+    </ol>
+    <div class=step>
+      <h3>1. Where work runs</h3>
+      <p class=why>Left is this machine (preferred when a model is answering). Right is paid cloud credits (only when local cannot, or the work is hard).</p>
+    </div>
+    <div class=split>
+      <div class=pane id=pane-local>
+        <h3>Local compute</h3>
+        <p class=why>Why this exists: shows whether a model is answering here. ON means the next session uses this endpoint.</p>
+        <div class="hero" id=hedge-local-lane>—</div>
+        <div class=row>engine <b id=hedge-engine>none</b></div>
+        <div class=row>status <span id=hedge-local-live class=live>missing</span></div>
+        <div class=row>endpoint <span class=copy id=hedge-endpoint>(none)</span></div>
+        <div class="row muted" id=hedge-local-reason></div>
+        <div class="row why" id=hedge-local-meaning></div>
+      </div>
+      <div class=pane id=pane-cloud>
+        <h3>Cloud orchestration</h3>
+        <p class=why>Why this exists: leftover cloud credits. STANDBY = can spend if needed. SPENDING = this session is using cloud. OFF = no budget.</p>
+        <div class="hero" id=hedge-cloud-lane>—</div>
+        <div class=row>budget <b id=hedge-budget>0</b> · spent <b id=hedge-spent>0</b> · left <b id=hedge-left>0</b></div>
+        <div class=row>profile <b id=hedge-profile>(unset)</b> · gab key <span id=hedge-gab class=live>missing</span></div>
+        <div class=row id=hedge-cloud-reason class=muted></div>
+        <div class="row why" id=hedge-cloud-meaning></div>
+      </div>
+    </div>
+    <div class=route id=hedge-route>Checking where this session can run…</div>
+    <div class=next id=hedge-next></div>
+    <div class=row>this session <span id=hedge-copy class=live></span></div>
+    <div class=step>
+      <h3>2. How hard is this session?</h3>
+      <p class=why id=hedge-task-help>Why this exists: cheap bulk stays on this machine; hard review may spend a cloud credit.</p>
+    </div>
     <div class=acts>
-      <button type=button class=primary id=btnlaunchsess>Launch session</button>
-      <button type=button id=btnlaunch>Launch env</button>
-      <button type=button data-lane=local>local</button>
-      <button type=button data-lane="cloud/subscription">cloud/subscription</button>
-      <button type=button data-lane=opencode-free>OpenCode free</button>
-      <button type=button data-toolset=bare data-mode=bare>bare</button>
-      <button type=button data-toolset=orchestration data-mode=orchestration>orchestration</button>
-      <button type=button data-toolset=code-graph data-mode=code-graph>code-graph</button>
-      <button type=button data-toolset=catalog>catalog</button>
-      <button type=button data-harness=opencode>OpenCode</button>
-      <button type=button data-harness=grok>Grok</button>
-      <button type=button data-harness=hermes>Hermes</button>
-      <button type=button data-harness=codex>Codex</button>
-      <button type=button data-harness=claude>Claude</button>
-      <button type=button data-harness=gab>Gab</button>
-      <button type=button data-decision=off>decision off</button>
-      <button type=button data-decision=cua-s1-forms>CUA-S1-FORMS</button>
-      <button type=button data-decision=typesafe>TypeSafe</button>
-      <button type=button data-decision=mini-jev>mini-jev</button>
-      <button type=button id=btnopen>Attach opencode</button>
-      <button type=button id=btnhermes>Attach hermes</button>
-      <button type=button id=btngrok>Attach grok</button>
-      <button type=button id=btncodex>Attach codex</button>
-      <button type=button id=btnclaude>Attach claude</button>
-      <button type=button id=btngab>Attach gab</button>
+      <button type=button data-task=bulk title="Cheap bulk work. Stays on this machine when local is ON.">Bulk — stay on this machine</button>
+      <button type=button data-task=interactive title="Normal work. Local first.">Interactive — local first</button>
+      <button type=button data-task=hard title="Hard review. May spend a cloud credit.">Hard — allow cloud</button>
+    </div>
+    <div class=step>
+      <h3>3. Which gathered tools go into the session?</h3>
+      <p class=why>Why this exists: these are the catalog tools we scored and wired. Click to include in the next Launch. <b>wired</b> = ready to apply. <b>partial</b> = env/brief only. <b>not wired</b> = cannot enable yet.</p>
+    </div>
+    <h3>MODULES</h3>
+    <div class=mods id=mod-list></div>
+    <div class=row>enabled <b id=mod-enabled>(none)</b></div>
+    <div class=row>env <span id=loop-env class=live>SKIP</span> · session <b id=loop-session>(none)</b></div>
+    <div class=step>
+      <h3>4. Open the session</h3>
+      <p class=why>Launch session starts grok or OpenCode with the enabled modules. Launch env only brings up the local model. Copy endpoint / status are for a terminal you already have open.</p>
+    </div>
+    <div class=acts>
+      <button type=button class=primary id=btnlaunchsess title="Open grok/OpenCode with enabled modules">Launch session</button>
+      <button type=button id=btnlaunch title="Start local inference only — no coding session">Launch env</button>
+      <button type=button class=primary id=btncopyendpoint title="Copy the local OpenAI-compat URL">Copy endpoint</button>
+      <button type=button class=primary id=btncopystatus title="Copy ./pfy status output">Copy ./pfy status</button>
     </div>
     <span id=launchmsg class=attach-result></span>
     <div class=row id=launchwhat class=muted></div>
-    <div class=acts>
-      <button type=button class=primary id=btncopyendpoint>Copy endpoint</button>
-      <button type=button class=primary id=btncopystatus>Copy ./pfy status</button>
-    </div>
     <span id=launchcopymsg class=attach-result></span>
     <span id=attachmsg class=attach-result></span>
   </section>
   <section class=view id=view-engine>
     <h2>ENGINE</h2>
+    <p class=lede>This tab is the local model — what is answering on this machine. Pull / recommend / try change that model. It is not the coding session; Loop → Launch session is.</p>
     <div class=row>engine <b id=eng-name>none</b></div>
     <div class=row>endpoint <b id=eng-endpoint>(none)</b></div>
     <div class=row>live <span id=eng-live class=live>missing</span></div>
@@ -140,6 +177,7 @@ noscript .fail{padding:16px;display:block}
   </section>
   <section class=view id=view-stage>
     <h2>STAGE</h2>
+    <p class=lede>Environment check. SKIP means a piece is missing and we are not pretending it passed. Run this when Launch env is not enough.</p>
     <div class=row>env-stage <span id=stage-live class=live>SKIP</span></div>
     <div class=acts>
       <button type=button class=primary id=btnstage>Run stage</button>
@@ -148,6 +186,7 @@ noscript .fail{padding:16px;display:block}
   </section>
   <section class=view id=view-attach>
     <h2>ATTACH</h2>
+    <p class=lede>Open grok or OpenCode right now, without composing modules. Use Loop → Launch session when you want the gathered tools loaded into that window.</p>
     <div class=row>NOW attached <b id=att-now>(none)</b> · last <b id=att-last>(none)</b></div>
     <div class=row>session <b id=att-session>(none)</b></div>
     <div class=row>using: <b id=att-using>bare</b> <span class=muted id=att-mode-when></span></div>
@@ -182,6 +221,7 @@ noscript .fail{padding:16px;display:block}
   </section>
   <section class=view id=view-tools>
     <h2>TOOLS</h2>
+    <p class=lede>Skills on/off for the next session, plus the scored catalog. Queue files a GitHub issue for org work. It does not start a session — Loop does.</p>
     <div class=row>one-shot <span id=tool-one-shot class=live>missing</span> <button type=button class=primary data-tool=one-shot>Toggle</button></div>
     <div class=row>investigate <span id=tool-investigate class=live>missing</span> <button type=button class=primary data-tool=investigate>Toggle</button></div>
     <div class=row>agent-loops <span id=tool-agent-loops class=live>missing</span> <button type=button class=primary data-tool=agent-loops>Toggle</button></div>

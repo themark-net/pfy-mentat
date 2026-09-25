@@ -27,6 +27,7 @@ document.getElementById('btncopy').addEventListener('click',()=>copyStub());
 document.getElementById('btnstage').addEventListener('click',()=>runStage());
 document.getElementById('btnlaunch').addEventListener('click',()=>runEnv());
 document.getElementById('btnlaunchsess')&&document.getElementById('btnlaunchsess').addEventListener('click',()=>runLaunchSession());
+document.querySelectorAll('[data-task]').forEach(el=>el.addEventListener('click',()=>runLoopTask(el.getAttribute('data-task'))));
 document.querySelectorAll('[data-lane]').forEach(el=>el.addEventListener('click',()=>runWizard('lane', el.getAttribute('data-lane'))));
 document.querySelectorAll('[data-toolset]').forEach(el=>el.addEventListener('click',()=>runWizard('toolsets', el.getAttribute('data-toolset'))));
 document.querySelectorAll('[data-harness]').forEach(el=>el.addEventListener('click',()=>runWizard('harness', el.getAttribute('data-harness'))));
@@ -183,18 +184,21 @@ async function tick(){
     const pid=s.sidecar_pid || '';
     // #171: do not wipe HTML Attach FAIL back to (none) on tick
     if(!(attachKind==='fail' && attachMsg)){
-      document.getElementById('loop-attached').textContent=attached+(pid?(' pid '+pid):'');
+      const attEl=document.getElementById('loop-attached');
+      if(attEl) attEl.textContent=attached+(pid?(' pid '+pid):'');
     }
     const reach=(s.session_reach||'').trim()||'(none)';
     if(!(attachKind==='fail' && attachMsg && (!reach || reach==='(none)'))){
       paintSessionReach(reach);
     }
-    document.getElementById('loop-last').textContent=verb;
+    const lastEl=document.getElementById('loop-last');
+    if(lastEl) lastEl.textContent=verb;
     const elv=envLive(s);
     const envEl=document.getElementById('loop-env');
     envEl.textContent=elv;
     envEl.className='live '+cls(elv.toLowerCase());
-    document.getElementById('loop-when').textContent=when;
+    const whenEl=document.getElementById('loop-when');
+    if(whenEl) whenEl.textContent=when;
     const mon=document.getElementById('loop-monitor');
     if(mon){
       const note=s.monitor_note||'';
