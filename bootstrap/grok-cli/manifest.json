@@ -2,7 +2,7 @@
   "name": "grok-cli-bootstrap",
   "version": "0.1.0",
   "description": "Replayable Grok CLI customizations for the pfy-mentat stack: portable agent skills, MCP code memory, and config fragments.",
-  "last_updated": "2026-07-11",
+  "last_updated": "2026-09-25",
   "fits_repo_goals": [
     "Grok CLI as primary interface",
     "MCP-style code memory",
@@ -90,6 +90,16 @@
         "origin": "first-party #230 decision layer",
         "upstream": "https://github.com/typesafe-ai/skills",
         "purpose": "Typed Choice/Score locks: CUA-S1-FORMS primary local, TypeSafe optional"
+      },
+      {
+        "name": "prefer-behavior-and-fail-recover-tests",
+        "origin": "first-party port of org bot standing (2026-09-25); org skill is a pointer",
+        "purpose": "Testing Trophy: sociable integration/E2E, no tautological units, fail and recover"
+      },
+      {
+        "name": "ui-is-the-app-design-in-loop",
+        "origin": "first-party port of org bot standing (2026-09-25); org skill is a pointer",
+        "purpose": "Operator UI: design pack before product chrome; contextual levers; never ask known facts"
       }
     ]
   },

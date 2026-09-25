@@ -32,3 +32,6 @@ gui/operator/src-tauri/gen/
 
 # Session workspace artifacts (Attach OpenCode / Space Invaders)
 /workspace/
+
+# Local doctrine-port inputs. SoT is bootstrap/grok-cli/skills/ — do not commit these.
+/_port_sources/

@@ -46,7 +46,7 @@ Also use as needed: `CATEGORIZATION.md`, `SUBTREES.md`, `TOOLS.md`, `bootstrap/g
 #   python3 bootstrap/setup-local-agent-env.py
 ```
 
-Portable skills (SoT `bootstrap/grok-cli/skills/` — also for OpenCode): `adr`, `docs`, `open-questions`, `karpathy-guidelines`, `project-process`, `one-shot`, `marketing-council`, **`investigate`**, **`agent-loops`**, **`hermes-feedback`**, **`worker-monitor`** (local worker + Grok monitor), **`jev-decision`** (#230 typed Choice/Score); ponytail + mattpocock via `skills.paths`.  
+Portable skills (SoT `bootstrap/grok-cli/skills/` — also for OpenCode): `adr`, `docs`, `open-questions`, `karpathy-guidelines`, `project-process`, `one-shot`, `marketing-council`, **`investigate`**, **`agent-loops`**, **`hermes-feedback`**, **`worker-monitor`** (local worker + Grok monitor), **`jev-decision`** (#230 typed Choice/Score), **`prefer-behavior-and-fail-recover-tests`** (Trophy / fail-recover), **`ui-is-the-app-design-in-loop`** (design pack before product UI); ponytail + mattpocock via `skills.paths`.  
 Verify: `make eval-structural` (no LLM) · `make smoke-grok-skills` · [skill-verification.md](docs/ops/skill-verification.md).  
 **Surfaces:** Grok = **monitor** / hard tasks (subscription) · OpenCode+Ollama = **worker** / bulk — [local-cloud-split.md](docs/ops/local-cloud-split.md) · ADR-0011.  
 **Local worker model:** `LOCAL_CODER_MODEL` (default `deepseek-coder:6.7b` after lab pass); set via `make eval-select-models`. Grok CLI does **not** auto-use it.  
@@ -68,7 +68,8 @@ Map **Think → Plan → Build → Review → Test → Ship → Reflect** withou
 | Build | Coding agent + karpathy / ponytail; **`/one-shot`** if DoD + lab ready; **`/agent-loops`** to set exits/type before long runs |
 | Debug / RCA | **`/investigate`** — Iron Law: no fix without root-cause hypothesis (T-0017) |
 | Review | mattpocock **`code-review`** (paths); optional second persona |
-| QA | `make cage-test`, `make smoke-*` (see [docs/modules/examples-smokes.md](docs/modules/examples-smokes.md)) |
+| QA | `make cage-test`, `make smoke-*` (see [docs/modules/examples-smokes.md](docs/modules/examples-smokes.md)); **`prefer-behavior-and-fail-recover-tests`** |
+| UI / operator surface | **`ui-is-the-app-design-in-loop`** — design pack in `docs/design/` before product UI |
 | Security | write-guard + cage policy; not full gstack `/cso` |
 | Ship | Feature branch → green checks → merge; [DEPLOY.md](docs/ops/DEPLOY.md) |
 | Reflect | **`/hermes-feedback`** (memory + optional skill/curator); TODO/OQ; `/docs` or `/catalog-docs` if modules changed |
@@ -122,6 +123,12 @@ This repo supports robust, production-like agentic coding setups inspired by hig
 
 ## Testing standing rule
 Prefer the Testing Trophy: mostly integration/E2E for product confidence. Unit tests only for shaky/non-obvious behavior. Forbidden: tautological tests and implementation-detail tests. Prefer sociable tests; doubles only at awkward boundaries + contract tests for externals. Every non-trivial change: How could this fail? How do we recover?
+
+Skill and verbatim DoD paste line: **`prefer-behavior-and-fail-recover-tests`**.
+
+## Design-in-loop (UI is the app)
+
+Operator-facing UI follows **`ui-is-the-app-design-in-loop`**: design pack in `docs/design/` before product UI; never ask what we already know; levers stay on the current view. Lab bolts are allowed; product/dogfood UI needs a Design pass. Verbatim DoD paste line is in that skill. Ops: [docs/ops/port-bot-doctrine-to-pfy-sot.md](docs/ops/port-bot-doctrine-to-pfy-sot.md).
 
 ### Verification, Benchmarks & Quality Gates
 - Agents must run and test their changes (build, targeted tests, end-to-end where applicable).
