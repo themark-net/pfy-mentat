@@ -150,6 +150,11 @@ pfy — simple setup & launch for the pfy-mentat stack
   pfy decision            Jev-style typed Choice/Score (#230; CUA-S1-FORMS local)
   pfy decision off|cua-s1-forms|typesafe|mini-jev
   pfy decision smoke      Mark-free CUA-S1-FORMS Choice (no TypeSafe key)
+  pfy toolset matrix      toolset × harness grid: implemented|partial|stub (ADR-0017; honest, most cells stub)
+  pfy toolset list|plan <toolset> --harness <h> [--lane local|cloud] [--env|--brief]
+  pfy toolset apply <toolset> --harness <h> [--yes]   dry-run unless --yes; writes only $PFY_STATE_DIR / harness home
+  pfy hedge decide --task bulk|hard|interactive [--json]  local first; cloud only within PFY_CLOUD_BUDGET (credits)
+  pfy hedge ledger [--reset] | hedge record <n>            $PFY_STATE_DIR/hedge-ledger.json
   pfy board [--open]      alias of the native operator window
                           --open is an optional hatch (not the main path)
   pfy help
@@ -1918,6 +1923,8 @@ main() {
     catalog) cmd_catalog "$@" ;;
     launch) cmd_launch "$@" ;;
     decision|jev) cmd_decision "$@" ;;
+    toolset|toolsets) exec python3 "$ROOT/pfylib/cli.py" toolset "$@" ;;
+    hedge) exec python3 "$ROOT/pfylib/cli.py" hedge "$@" ;;
     *) usage; die "unknown command: $cmd" ;;
   esac
 }

@@ -31,6 +31,16 @@ jobs:
           set -euo pipefail
           PFY_JEV_OFFLINE=1 python3 scripts/pfy_jev_230.py --selftest
           python3 scripts/pfy_launch_wizard_225.py --selftest
+      - name: pfylib toolset x harness + hedge (ADR-0017; offline unit tests)
+        if: always() && !cancelled()
+        run: |
+          set -euo pipefail
+          export PFY_STATE_DIR="$RUNNER_TEMP/pfy-state"
+          python3 -m unittest discover -s tests -t .
+          python3 scripts/catalog_check.py
+          ./pfy toolset matrix
+          ./pfy toolset plan jev --harness opencode
+          ./pfy hedge decide --task bulk --local ready --budget 0
       - name: Launcher must exec
         if: always() && !cancelled()
         run: |
@@ -86,14 +96,15 @@ jobs:
           PFY_JEV_OFFLINE=1 python3 scripts/pfy_jev_230.py --selftest
           PFY_JEV_OFFLINE=1 python3 scripts/pfy_jev_230.py --smoke cua-s1-forms
       - name: Catalog receipts
-        # Catalog 70-75 HOLD. Separate step so a red dashboard/check cannot skip ./pfy.
-        # Do not fake-pass. Do not unpark catalog to green this.
+        # Separate step so a red dashboard/check cannot skip ./pfy. Do not fake-pass.
+        # catalog_check also enforces the tools.json <-> toolsets.json link (ADR-0017).
         if: always() && !cancelled()
         run: |
           set -euo pipefail
           python3 scripts/catalog_dashboard.py
           python3 scripts/catalog_check.py
           python3 scripts/smoke_contract_lint.py
+          PFY_STATE_DIR="$RUNNER_TEMP/pfy-state" python3 -m unittest discover -s tests -t .
       - name: Upload local receipts
         if: always()
         uses: actions/upload-artifact@v4

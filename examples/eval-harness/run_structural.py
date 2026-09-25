@@ -12,6 +12,8 @@ Checks:
   6. pfy and scripts/pfy are git 100755, +x, and ./pfy help execs
   7. No encoded payloads / runtime-assembled shards under scripts/, pfy, gui/
      (scripts/check_no_encoded_payloads.py)
+  8. pfylib unit tests: python3 -m unittest discover -s tests (ADR-0017; offline)
+  9. Catalog <-> implementation link (scripts/catalog_check.py; ADR-0015/0017)
 
 Write summary to pipelines/eval/structural.latest.md when --write-md.
 """
@@ -22,6 +24,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -244,6 +247,40 @@ def check_no_encoded_payloads() -> tuple[bool, str]:
     return False, f"{len(offenders)} offender(s): " + "; ".join(offenders[:4])
 
 
+def check_pfylib_unittests() -> tuple[bool, str]:
+    """ADR-0017: tests/ (stdlib unittest) must pass offline; isolated state dir so nothing touches ~/.pfy-mentat."""
+    tests_dir = ROOT / "tests"
+    if not tests_dir.is_dir():
+        return False, "tests/ missing"
+    env = dict(os.environ)
+    with tempfile.TemporaryDirectory(prefix="pfy-structural-state-") as state:
+        env["PFY_STATE_DIR"] = state
+        p = subprocess.run(
+            [sys.executable, "-m", "unittest", "discover", "-s", str(tests_dir), "-t", str(ROOT)],
+            cwd=ROOT, capture_output=True, text=True, env=env,
+        )
+    out = (p.stdout or "") + (p.stderr or "")
+    lines = [ln.strip() for ln in out.splitlines() if ln.strip()]
+    ran = next((ln for ln in lines if ln.startswith("Ran ")), "")
+    verdict = lines[-1] if lines else f"exit {p.returncode}"
+    if p.returncode != 0:
+        fails = [ln for ln in lines if ln.startswith(("FAIL:", "ERROR:"))]
+        return False, f"{ran} · {verdict} · " + "; ".join(fails[:4])
+    return True, f"{ran} · {verdict}"
+
+
+def check_catalog_link() -> tuple[bool, str]:
+    """ADR-0017: tools.json implementation <-> data/toolsets.json catalog_tool, via scripts/catalog_check.py."""
+    script = ROOT / "scripts/catalog_check.py"
+    if not script.is_file():
+        return False, "scripts/catalog_check.py missing"
+    code, out = run([sys.executable, str(script)])
+    lines = [ln.strip() for ln in out.splitlines() if ln.strip()]
+    if code == 0:
+        return True, (lines[0] if lines else "ok").removeprefix("PASS ").strip()
+    return False, "; ".join(ln.lstrip("- ") for ln in lines[1:5]) or (lines[0] if lines else f"exit {code}")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--write-md", type=Path, default=None)
@@ -260,6 +297,8 @@ def main() -> int:
         ("launcher_filemode", check_launcher_filemode),
         ("launcher_runs", check_launcher_runs),
         ("no_encoded_payloads", check_no_encoded_payloads),
+        ("pfylib_unittests", check_pfylib_unittests),
+        ("catalog_implementation_link", check_catalog_link),
     ]
     rows: list[tuple[str, bool, str]] = []
     for name, fn in checks:

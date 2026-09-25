@@ -28,6 +28,9 @@
 ./pfy context              # OpenContext oc prove (#205); FAIL if node/oc missing
 ./pfy code-graph           # Axon prove or codebase-memory equivalent (#215)
 ./pfy axon                 # alias of code-graph
+./pfy toolset matrix       # toolset × harness implemented|partial|stub grid (ADR-0017)
+./pfy toolset plan jev --harness opencode   # env/files/brief plan, or STUB + next (exit 3)
+./pfy hedge decide --task bulk|hard|interactive   # local first; cloud within PFY_CLOUD_BUDGET
 ./pfy stage | eval | ship
 ```
 
@@ -42,6 +45,8 @@ Root `./pfy` is a 100755 wrapper that execs `scripts/pfy`. Detector is invoked w
 **Recommend / try (#207):** Engine + `./pfy models recommend` ranks host-fit models not yet pulled. `try` pulls one FreeToken-first (operate-or-FAIL). Handoff: engine pin · Attach re-probe · TUI reload. [recommend-models.md](recommend-models.md).
 
 **Catalog ask / queue (#209 / #214):** Tools browse (usable subset, not scores-only). Ask attached TUI to implement for next launch (prompt/artifact). **Queue for org** creates a real GitHub issue and paints open/closed/PR. HOLD 70–75 not auto-lifted. [catalog-ask-queue.md](catalog-ask-queue.md) · [live-org-queue.md](live-org-queue.md).
+
+**Toolset handoff + hedge (ADR-0017):** `toolset` / `hedge` verbs are a thin `exec python3 "$ROOT/pfylib/cli.py"` dispatch; all logic and tests live in `pfylib/`. +2 top-level verbs against T-0090's ≤3-lever target — the tension is OQ-0012's to resolve. [pfylib.md](pfylib.md).
 
 **Decision layer (#230):** Loop toggle `off | CUA-S1-FORMS | TypeSafe | mini-jev`. Typed Choice/Score; CUA-S1-FORMS is primary local (Mark-free smoke). TypeSafe key optional. Honesty `decision ≠ gab auto ≠ local`. [jev-230.md](jev-230.md).
 
