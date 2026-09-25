@@ -13,11 +13,20 @@ LIVE = ("ready", "partial", "stub", "detected-stub", "missing", "skip")
 GROK_USE = "pfy harness use grok"
 BLOCKED = frozenset({"continue", "agent-cage"})
 FG, BG, SIDE, PANE, CLOUD, MUTED = "#e8edf4", "#0e1116", "#121821", "#151a22", "#1a2740", "#8b97a8"
-CHIP = {"ready":"#3dd68c","partial":"#e6c15a","stub":"#e8875b","detected-stub":"#c984f0","missing":"#7d8796","skip":"#7d8796","implemented":"#3dd68c","on":"#3dd68c","off":"#7d8796"}
+CHIP = {"ready":"#3dd68c","partial":"#e6c15a","stub":"#e8875b","detected-stub":"#c984f0","missing":"#7d8796","skip":"#7d8796","implemented":"#3dd68c","wired":"#3dd68c","not wired":"#e8875b","on":"#3dd68c","off":"#7d8796"}
 
 def honest(v):
     s = (v or "").strip().lower()
     return s if s in LIVE else "missing"
+
+def module_paint_status(m):
+    """Operator chrome only (HTML paintModules): implemented→wired, stub→not wired; keep partial."""
+    if m.get("stub"):
+        return "not wired"
+    st = m.get("status") or ""
+    if st == "implemented":
+        return "wired"
+    return st
 
 def loop_text(s, env_live, att, reach, verb, when):
     """Loop body: local compute | cloud orchestration | catalog modules, with why/how."""
@@ -98,7 +107,7 @@ def loop_text(s, env_live, att, reach, verb, when):
     else:
         for m in mods:
             mark = "ON" if m.get("enabled") else ("STUB" if m.get("stub") else "off")
-            lines.append("  %-16s %-12s %s" % (m.get("id") or "", m.get("status") or "stub", mark))
+            lines.append("  %-16s %-12s %s" % (m.get("id") or "", module_paint_status(m), mark))
     enabled = " · ".join(str(x) for x in (s.get("modules_enabled") or []) if x) or "(none)"
     lines += [
         "enabled   %s" % enabled,
@@ -1370,7 +1379,7 @@ class Win:
         if self.view == "loop":
             for m in list(s.get("modules") or []):
                 tid = str(m.get("id") or "")
-                status = str(m.get("status") or "stub")
+                status = module_paint_status(m)
                 on = bool(m.get("enabled"))
                 stub_mod = bool(m.get("stub"))
                 fr = tk.Frame(self.chips, bg="#18202c", highlightbackground=("#4d8dff" if on else "#243041"), highlightthickness=1, padx=8, pady=6)
@@ -1535,6 +1544,16 @@ def run_tk(board, selftest=False) -> bool:
         )
         w.set_view("loop")
         body = w.body.cget("text") or ""
+        mod_chrome = ""
+        if "MODULES" in body:
+            mod_chrome = body.split("MODULES", 1)[1]
+            if "\nenabled" in mod_chrome:
+                mod_chrome = mod_chrome.split("\nenabled", 1)[0]
+        chip_st = []
+        for fr in w.chips.winfo_children():
+            kids = list(fr.winfo_children())
+            if len(kids) >= 2:
+                chip_st.append(str(kids[1].cget("text")))
         loop_ok = (
             "LOOP" in body
             and "HOW TO" in body
@@ -1543,7 +1562,14 @@ def run_tk(board, selftest=False) -> bool:
             and "MODULES" in body
             and "Launch session" in body
             and "jev" in body
-            and "implemented" in body
+            and "wired" in body
+            and "wired" in mod_chrome
+            and "partial" in mod_chrome
+            and "implemented" not in mod_chrome
+            and "stub" not in mod_chrome
+            and "wired" in chip_st
+            and "implemented" not in chip_st
+            and "stub" not in chip_st
             and "enabled" in body.lower()
             and "env" in body.lower()
             and "started 2/8" in body
