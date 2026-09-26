@@ -71,16 +71,16 @@
       ],
       "github": "https://github.com/ollama/ollama",
       "catalog": "Ollama",
-      "issue_stub": "Complete Ollama adapter",
+      "issue_stub": "Named ./pfy start ollama runs health + default model; exit 2 unless :11434 is ready",
       "github_issue": 54
     },
     {
       "id": "shimmy",
       "name": "Shimmy",
       "role": "inference",
-      "status": "stub",
-      "summary": "Tiny Rust OpenAI-compat server; optional, not the X engine",
-      "setup": "STUB \\u2014 optional detect only",
+      "status": "partial",
+      "summary": "Tiny Rust OpenAI-compat server; optional last, not the X engine",
+      "setup": "shimmy serve --bind 127.0.0.1:11435. Optional GGUF: --model-path or SHIMMY_BASE_GGUF. Not preferred over FreeToken.",
       "detect": [
         "shimmy"
       ],
@@ -141,7 +141,7 @@
       ],
       "github": "https://github.com/NousResearch/hermes-agent",
       "catalog": "Hermes Agent (feedback loops)",
-      "issue_stub": "Hermes runtime adapter",
+      "issue_stub": "Hermes installer is setup / attach.next_install; start does not run it",
       "github_issue": 56,
       "attach": {
         "session_id": "hermes",
@@ -149,7 +149,7 @@
         "issue": 196,
         "script": "pfy_attach_usable_196",
         "bin_fallbacks": [],
-        "next_install": null,
+        "next_install": "curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash",
         "config_dir": null
       }
     },
@@ -159,13 +159,13 @@
       "role": "harness",
       "status": "partial",
       "summary": "Runtime adapter: exec claude; optional skills-external is docs-only",
-      "setup": "curl -fsSL https://claude.ai/install.sh | bash; claude (login owner-only)",
+      "setup": "curl -fsSL https://claude.ai/install.sh | bash",
       "detect": [
         "claude"
       ],
       "github": "https://docs.anthropic.com/en/docs/claude-code",
       "catalog": "claude-code-unified-agents",
-      "issue_stub": "Claude Code runtime adapter",
+      "issue_stub": "Claude installer is setup / attach.next_install; start does not run it",
       "github_issue": 57,
       "attach": {
         "session_id": "claude",
@@ -173,7 +173,7 @@
         "issue": 221,
         "script": "pfy_attach_usable_221",
         "bin_fallbacks": [],
-        "next_install": "npm install -g @anthropic-ai/claude-code",
+        "next_install": "curl -fsSL https://claude.ai/install.sh | bash",
         "config_dir": {"env": "CLAUDE_CONFIG_DIR", "default": "~/.claude"}
       }
     },
@@ -183,13 +183,13 @@
       "role": "harness",
       "status": "partial",
       "summary": "Runtime adapter: exec codex; OpenAI Codex CLI",
-      "setup": "curl -fsSL https://chatgpt.com/codex/install.sh | sh; codex (login owner-only)",
+      "setup": "curl -fsSL https://chatgpt.com/codex/install.sh | sh",
       "detect": [
         "codex"
       ],
       "github": "https://github.com/openai/codex",
       "catalog": null,
-      "issue_stub": "Codex runtime adapter",
+      "issue_stub": "Codex installer is setup / attach.next_install; start does not run it",
       "github_issue": 58,
       "attach": {
         "session_id": "codex",
@@ -207,14 +207,14 @@
       "role": "harness",
       "status": "partial",
       "summary": "Runtime adapter: exec gemini/gemini-cli",
-      "setup": "npm install -g @google/gemini-cli; gemini (login owner-only)",
+      "setup": "npm install -g @google/gemini-cli",
       "detect": [
         "gemini",
         "gemini-cli"
       ],
       "github": "https://github.com/google-gemini/gemini-cli",
       "catalog": null,
-      "issue_stub": "Gemini runtime adapter",
+      "issue_stub": "Gemini installer is setup; start does not run it",
       "github_issue": 59
     },
     {
@@ -223,13 +223,13 @@
       "role": "harness",
       "status": "partial",
       "summary": "Optional lab: exec exo.sh when present (not default; not Grok replacement)",
-      "setup": "curl -fsSL https://raw.githubusercontent.com/exoharness/exo/main/setup.sh -o setup.sh; bash setup.sh. git+Docker required. Day-to-day ./exo.sh. Pin https://github.com/exoharness/exo. Docker on PATH is not ready.",
+      "setup": "curl -fsSL https://raw.githubusercontent.com/exoharness/exo/main/setup.sh -o setup.sh && bash setup.sh",
       "detect": [
         "exo.sh"
       ],
       "github": "https://github.com/exoharness/exo",
       "catalog": "Exo (exoharness)",
-      "issue_stub": "Optional Exo lab path",
+      "issue_stub": "Optional lab installer is setup; start does not run it. Docker on PATH is not ready.",
       "github_issue": 60
     },
     {
@@ -242,7 +242,7 @@
       "detect": [],
       "github": "https://github.com/continuedev/continue",
       "catalog": "Continue.dev",
-      "issue_stub": "Continue local-openai recipe",
+      "issue_stub": "IDE recipe only. start writes continue-config.json and prints direct vs cage filesystem. Does not exec the IDE.",
       "github_issue": 61
     },
     {
@@ -257,7 +257,7 @@
       ],
       "github": "https://github.com/pnnl/agent-cage",
       "catalog": "agent-cage (PNNL)",
-      "issue_stub": "Fold cage into pfy stage --lab",
+      "issue_stub": "Lab is ./pfy stage --lab on the host. It uses the cage bind, not the host checkout. ./pfy start agent-cage stays STUB.",
       "github_issue": 62
     }
   ],

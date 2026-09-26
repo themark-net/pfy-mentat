@@ -14,15 +14,15 @@
 | ID | Item | Status |
 |----|------|--------|
 | T-0100 | Epic: `./pfy` simple surface + harness registry | **done** (MVP) · [#53](https://github.com/themark-net/pfy-mentat/issues/53) |
-| T-0101 | Ollama adapter complete in `pfy start` (health, default model) | open · [#54](https://github.com/themark-net/pfy-mentat/issues/54) |
+| T-0101 | Ollama adapter complete in `pfy start` (health, default model) | **done** · [#54](https://github.com/themark-net/pfy-mentat/issues/54) |
 | T-0102 | OpenCode host adapter (skill path + local OpenAI-compat base_url) | **done** · [#55](https://github.com/themark-net/pfy-mentat/issues/55) |
-| T-0103 | Hermes integrated installer adapter | open · [#56](https://github.com/themark-net/pfy-mentat/issues/56) |
-| T-0104 | Claude Code adapter | open · [#57](https://github.com/themark-net/pfy-mentat/issues/57) |
-| T-0105 | Codex adapter | open · [#58](https://github.com/themark-net/pfy-mentat/issues/58) |
-| T-0106 | Gemini / Google harness adapter | open · [#59](https://github.com/themark-net/pfy-mentat/issues/59) |
-| T-0107 | Exo optional lab path | open · [#60](https://github.com/themark-net/pfy-mentat/issues/60) |
-| T-0108 | Continue + Ollama recipe | open · [#61](https://github.com/themark-net/pfy-mentat/issues/61) |
-| T-0109 | Fold agent-cage into `pfy stage --lab` | open · [#62](https://github.com/themark-net/pfy-mentat/issues/62) |
+| T-0103 | Hermes integrated installer adapter | **done** · [#56](https://github.com/themark-net/pfy-mentat/issues/56) |
+| T-0104 | Claude Code adapter | **done** · [#57](https://github.com/themark-net/pfy-mentat/issues/57) |
+| T-0105 | Codex adapter | **done** · [#58](https://github.com/themark-net/pfy-mentat/issues/58) |
+| T-0106 | Gemini / Google harness adapter | **done** · [#59](https://github.com/themark-net/pfy-mentat/issues/59) |
+| T-0107 | Exo optional lab path | **done** · [#60](https://github.com/themark-net/pfy-mentat/issues/60) |
+| T-0108 | Continue + Ollama recipe | **done** · [#61](https://github.com/themark-net/pfy-mentat/issues/61) |
+| T-0109 | Fold agent-cage into `pfy stage --lab` | **done** · [#62](https://github.com/themark-net/pfy-mentat/issues/62) |
 | T-0110 | Pluggable local runtime (llama-swap / Shimmy / Ollama) | **doing** (partial) · [#76](https://github.com/themark-net/pfy-mentat/issues/76) |
 
 Authority: ADR-0012 · ADR-0014 · issues labeled `harness-adapter`.
@@ -88,9 +88,8 @@ Active work is also tracked as issues: https://github.com/themark-net/pfy-mentat
 
 | ID | Priority | Status | Item | Open questions | Depends | Notes |
 |----|----------|--------|------|----------------|---------|-------|
-| T-0090 | P0 | todo | **Minimal product levers audit**: collapse end-user surface to onboard / stage / ship; cap public Make targets | — | — | [#1](https://github.com/themark-net/pfy-mentat/issues/1) · [product-operator-surface.md](ops/product-operator-surface.md) |
-| T-0110 | P1 | doing | **Pluggable local runtime** (OpenAI-compat: llama-swap / Shimmy / Ollama) | — | ADR-0014 | [#76](https://github.com/themark-net/pfy-mentat/issues/76) stays OPEN · partial: detector + registry; T-0101 Ollama adapter remains open · [#202](https://github.com/themark-net/pfy-mentat/issues/202) Attach Grok usable slice |
-| T-0091 | P1 | doing | **Voice path** polish (session sticky / MCP deep) | — | ADR-0012 | [#2](https://github.com/themark-net/pfy-mentat/issues/2) · Orchestrator shipped; optional TTS |
+
+| T-0091 | P1 | doing | **Voice path** polish (session sticky / MCP deep) | — | ADR-0012 | [#2](https://github.com/themark-net/pfy-mentat/issues/2) · Shelved. Orchestrator shipped; TTS and VoIP still open |
 | T-0092 | P1 | done | Voice auto-agent local opencode path | — | T-0091 4b | still: `VOICE_AUTO_AGENT=opencode` |
 | T-0093 | P1 | done | Tools-capable Ollama select + tool-split | — | T-0080 | `eval-select-tools-model` |
 | T-0096 | P1 | done | **Dual-tier orchestrator** high↔low (`VOICE_ROUTE=high-first` default) | — | T-0092, T-0093 | [voice-orchestrator.md](ops/voice-orchestrator.md); `smoke-voice-orchestrate` |
@@ -119,7 +118,7 @@ Active work is also tracked as issues: https://github.com/themark-net/pfy-mentat
 | ID | Priority | Status | Item | Open questions | Depends | Notes |
 |----|----------|--------|------|----------------|---------|-------|
 | T-0016 | P2 | todo | colibri/large model lab under 250GB pool | — | OQ-0008 | [#24](https://github.com/themark-net/pfy-mentat/issues/24) |
-| T-0005 | P2 | todo | Apply integration-stages broadly | — | OQ-0003 | [#21](https://github.com/themark-net/pfy-mentat/issues/21) · partial |
+| T-0005 | P2 | doing | Apply integration-stages broadly | — | OQ-0003 | [#21](https://github.com/themark-net/pfy-mentat/issues/21) · 50 handoff cards. Facts recomputed by `scripts/catalog_stage_eval.py`. Stage letter still does not auto-promote |
 | T-0124 | P2 | todo | Fold OpenCode enterable (`pfy_enterable_162*`) behind `pfylib/attach.py`; retire `_legacy` as remaining scripts move | — | T-0121 | OpenCode attach is still its own path; four usable shims already delegate |
 
 ---
@@ -128,6 +127,8 @@ Active work is also tracked as issues: https://github.com/themark-net/pfy-mentat
 
 | ID | Priority | Status | Item | Notes |
 |----|----------|--------|------|-------|
+| T-0110 | P1 | done | Pluggable local runtime (FreeToken, llama-swap, llama-server, Ollama, Shimmy last) | ADR-0014 · [#76](https://github.com/themark-net/pfy-mentat/issues/76) stays closed — do not reopen |
+| T-0090 | P0 | done | Minimal product levers: default `make help` is onboard / stage / ship | `make help-platform` holds cage, smoke, eval · [#1](https://github.com/themark-net/pfy-mentat/issues/1) · [product-operator-surface.md](ops/product-operator-surface.md) |
 | T-0121 | P1 | done | Attach clones → `pfylib/attach.py` + remaining `plan()` bodies wrap legacy scripts (no rewrite) | `data/harnesses.json[].attach`; shims `pfy_attach_usable_{196,202,220,221}`; planners in `pfylib/toolsets.py`; leftover OpenCode 162 = T-0124 |
 | T-0125 | P1 | done | Loop UI: catalog modules + live local/cloud hedge | `pfylib/loop_paint.py`; HTML+tk LOCAL COMPUTE \| CLOUD ORCHESTRATION + MODULES; Launch session applies enabled modules |
 | T-0120 | P1 | done | Toolset × harness matrix + jev reference `plan()`/`apply()` | `data/toolsets.json` · `pfylib/`; stacked PRs on this branch |
