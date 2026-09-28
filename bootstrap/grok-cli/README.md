@@ -34,6 +34,9 @@ This is the first concrete integration under `pfy-mentat` — not another third-
 | `agent-loops` | Loop types + eight exits + Finn spec/build/review (`/agent-loops`, T-0050) |
 | `hermes-feedback` | Self-improvement: auto-memory, auto-skill, curator (`/hermes-feedback`, T-0048) |
 | `jev-decision` | Typed Choice/Score locks: CUA-S1-FORMS primary local, TypeSafe optional (`/jev-decision`, #230) |
+| `prefer-behavior-and-fail-recover-tests` | Testing Trophy: sociable integration/E2E, no tautological units, fail and recover (`/prefer-behavior-and-fail-recover-tests`) |
+| `ui-is-the-app-design-in-loop` | Operator UI is the app; design pack before product chrome (`/ui-is-the-app-design-in-loop`) |
+| `best-effort-and-bot-budget-build-max` | BEST_EFFORT vs GATED; maximize Build; isolate from an open founder checkout (`/best-effort-and-bot-budget-build-max`) |
 
 ### External skills path (not copied into `~/.grok/skills`)
 
@@ -146,6 +149,7 @@ rsync -a --delete /path/to/ponytail/skills/ bootstrap/grok-cli/skills-external/p
 **T-0017:** `investigate` first-party RCA skill (gstack method rewrite, not raw snapshot).  
 **T-0050:** `agent-loops` first-party loop engineering (8 exits + 4 types + Finn + rubric; Entries 024/027/031/032/068).  
 **T-0048:** `hermes-feedback` first-party pattern port (Hermes three loops → Grok memory/skills/curator; not Hermes runtime).  
+**T-0126:** founder standings — `prefer-behavior-and-fail-recover-tests`, `ui-is-the-app-design-in-loop`, `best-effort-and-bot-budget-build-max` (org skills are pointers).  
 **Verify skills:** `make smoke-grok-skills` · `make smoke-grok-skills INSTALLED=1` · [docs/ops/skill-verification.md](../../docs/ops/skill-verification.md)
 
 ## Relationship to catalog entries
