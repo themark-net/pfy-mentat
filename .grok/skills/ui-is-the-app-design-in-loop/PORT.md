@@ -5,4 +5,4 @@
 - **Taken:** UI-is-the-app, design-in-loop gate, contextual levers, never-ask-known-facts, DoD paste line (verbatim)
 - **Omitted:** founder personal name; org bot UUID; plugin install requirement
 - **Not a slash-only ops note:** invoke as `/ui-is-the-app-design-in-loop` after install
-- **Verify:** `make smoke-grok-skills` ([skill-verification.md](../../../../docs/ops/skill-verification.md))
+- **Verify:** `make smoke-grok-skills` ([skill-verification.md](../../../docs/ops/skill-verification.md))

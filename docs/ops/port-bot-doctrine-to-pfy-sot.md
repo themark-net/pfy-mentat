@@ -23,7 +23,7 @@ Full skill packs stay in this repo unless that scope is explicitly expanded.
 2. Register in `bootstrap/grok-cli/manifest.json` → `first_party_skills.skills`.
 3. Row in `bootstrap/grok-cli/README.md` skills table.
 4. AGENTS.md router line if it is a process skill.
-5. Ops note under `docs/ops/` when verification or DoD matters.
+5. Extend [skill-verification.md](skill-verification.md). Add a short `docs/ops/` pointer only when the skill is not enough on its own.
 6. `make smoke-grok-skills` green. Install path: `./bootstrap/grok-cli/install.sh --skills-only`.
 7. Docs-only / skill PR is BEST_EFFORT even under Feature STAND BY. No Feature GO from the port itself.
 8. Org Bot skill keeps a one-line pointer: `SoT: pfy bootstrap/grok-cli/skills/<name>`.
@@ -36,3 +36,13 @@ Full skill packs stay in this repo unless that scope is explicitly expanded.
 - Copying full skill trees into every product repo
 - Claiming “ported” without `make smoke-grok-skills` and a manifest row
 - A catalog tool row for a prompt pack while catalog is on HOLD
+
+## Landed standings (T-0126)
+
+| Skill | Role |
+|-------|------|
+| `prefer-behavior-and-fail-recover-tests` | Testing Trophy, no tautological units, fail and recover |
+| `ui-is-the-app-design-in-loop` | Design pack before product UI; contextual levers |
+| `best-effort-and-bot-budget-build-max` | BEST_EFFORT default; named branch; no Feature GO |
+
+Handoff for the slice: [PENDING-HANDOFF.md](../PENDING-HANDOFF.md).

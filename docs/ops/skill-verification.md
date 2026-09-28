@@ -40,8 +40,9 @@ python3 bootstrap/grok-cli/scripts/verify_skills.py --installed
 2. Row in `bootstrap/grok-cli/manifest.json` → `first_party_skills.skills`
 3. Mention in `bootstrap/grok-cli/README.md` skills table
 4. AGENTS.md router line if it is a process skill
-5. `make smoke-grok-skills` green
-6. `./bootstrap/grok-cli/install.sh --skills-only` then `make smoke-grok-skills INSTALLED=1`
+5. `PORT.md` states the org skill is a pointer when the pack is a doctrine port ([port-bot-doctrine-to-pfy-sot.md](port-bot-doctrine-to-pfy-sot.md))
+6. `make smoke-grok-skills` green
+7. `./bootstrap/grok-cli/install.sh --skills-only` then `make smoke-grok-skills INSTALLED=1`
 
 ---
 
@@ -108,6 +109,16 @@ Use these as **Definition of Done** in `/one-shot` or `/agent-loops run` when ch
 1. After a multi-step task, `/hermes-feedback` proposes memory bullets and (if complex) skill draft decision.  
 2. Curator mode inventories skill dirs without deleting first-party process skills.  
 3. Never writes secrets into memory/SKILL.md.
+
+### Founder standings (T-0126)
+
+Structural proof is still `make smoke-grok-skills` (manifest + `SKILL.md` + frontmatter `name:` = directory). These packs are prompt text; do not add unit tests that only assert the file exists.
+
+| Skill | Behavioral check |
+|-------|------------------|
+| `prefer-behavior-and-fail-recover-tests` | A test review names a failure mode and recovery. Tautological or implementation-detail units are a FAIL. |
+| `ui-is-the-app-design-in-loop` | Product UI cites a `docs/design/` pack. A docs/skills PR that adds no product chrome passes without a new design pack. |
+| `best-effort-and-bot-budget-build-max` | Reversible docs/skills land on a named branch. The PR does not touch an open founder checkout and does not claim Feature GO. |
 
 ### Regression template (paste into PR)
 

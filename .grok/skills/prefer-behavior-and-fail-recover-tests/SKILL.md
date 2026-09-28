@@ -11,7 +11,7 @@ argument-hint: "[review | dod]"
 
 Use this when writing tests, reviewing a PR’s test suite, drafting a Build/Cursor DoD, or when an agent is about to add a pile of unit tests.
 
-See [PORT.md](PORT.md). Structural check: `make smoke-grok-skills` ([skill-verification.md](../../../../docs/ops/skill-verification.md)).
+See [PORT.md](PORT.md). Structural check: `make smoke-grok-skills` ([skill-verification.md](../../../docs/ops/skill-verification.md)).
 
 ## Standing rule (2026-09-25)
 
