@@ -58,6 +58,8 @@ Closed recently at snapshot (context, not pending): #63 branch delete process; #
 | [#74](https://github.com/themark-net/pfy-mentat/pull/74) | `catalog/smythos-studio-entry-081` | Catalog HOLD |
 | [#75](https://github.com/themark-net/pfy-mentat/pull/75) | `catalog/axon-entry-082` | Catalog HOLD |
 
+After this snapshot, #74 merged on `main` (`395403a`). The table stays frozen.
+
 ### Design export map (`docs/design/`)
 
 | File | Role |
