@@ -2,6 +2,26 @@
 
 Git plus this file is the handoff when another checkout may be open. Do not commit, reset, or stash on an open founder Build branch.
 
+## 2026-10-04 — PR #256 follow-up: split Loop picker + harness extract fix
+
+- **PR #256 branch:** `build/pfy-cli-catalog-cards-0925` — CLI/catalog/eval only (no `gui/`, no `pfy-gui.py`, no `loop_paint.py`).
+- **Split-off (draft PR #258):** `build/loop-agent-picker-0925` — Sep 25 Loop agent-picker / compose-from-Loop / "Open … with …" CTA. Conflicts with LOOP-243 design lock on main. Needs a Design pack before review.
+- **Harness bug:** `extract_python` dropped leading `import re` before `def` → live `NameError: re` on 012-slugify (pre-existing on main). Fixed + `tests/test_extract_python.py`.
+- **ensure_compose_defaults:** stayed with the picker branch (tied to Loop agent selection / GUI).
+- **Eval-auto:** WIP kept; passes with gate `deepseek-coder:6.7b` after extract fix.
+
+## 2026-10-04 — land Sep 25 Grok Build: CLI catalog cards + eval-auto
+
+- **Branch:** `build/pfy-cli-catalog-cards-0925` (rebased onto current `origin/main`)
+- **Backup:** `backup/main-local-20261004` @ pre-rebase `3afd13b`; WIP snapshot `backup/wip-uncommitted-20261004`
+- **What the Build session did (Sep 25) — kept here:**
+  1. **pfy CLI harness polish** — short product help; shimmy last after ollama; ollama start health + default model; share Hermes/Claude/Codex installers between CLI and Attach; read Gemini/Exo installers from registry; Continue recipe names direct vs cage filesystem.
+  2. **Catalog stage cards** — every TOOLS.md row must have an integration-stage card; handoff cards for stage rows.
+  3. **Eval-auto** — `scripts/eval_auto_candidates.py` + `eval-auto.sh` candidate loop + receipt (T-0074); `013-stage-card` structural scorer (T-0070).
+- **Moved out:** Loop/GUI agent-picker → draft PR #258.
+- **Verify:** `make catalog-check` · `make eval-structural` · `make smoke-product-levers` · `EVAL_AUTO_REQUIRE_OLLAMA=1 make eval-auto`.
+- **Next:** merge when checks green. Do not auto-lift catalog HOLD entries 70–75.
+
 ## 2026-10-04 — Kolibri-1 catalog + local smoke lab (Entry 085)
 
 - **Branch:** `bot/kolibri-1` (from main `53b24ec`). Worktree `/home/mark/DEVELOP/pfy-mentat/tmp/kolibri-1`. Operator ask: "Add to pfy-mentat. Pull it and test." (X post 2106306843052052616)
