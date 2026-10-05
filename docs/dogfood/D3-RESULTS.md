@@ -60,7 +60,7 @@ Method: preamble `chars/4`; live totals from `usage.json` / receipt.
 
 ### One concrete trim suggestion
 
-Seed the isolated `GROK_HOME` by **symlinking** the real home’s `bundled/` (read-only) and writing only `auth.json` + pointer `skills/pfy-jev-decision/`, instead of starting from an empty home that triggers a full bundled rehydrate into `pipelines/dogfood/build/<ts>/grok-home/`. Keeps user skills out; avoids copying megabytes of bundled assets into every receipt (and never commit that tree — see `.gitignore`).
+Seed the isolated `GROK_HOME` by exposing the real home’s `bundled/` and writing only `auth.json` + pointer `skills/pfy-jev-decision/`, instead of starting from an empty home that triggers a full bundled rehydrate into `pipelines/dogfood/build/<ts>/grok-home/`. Keeps user skills out; never commit that tree — see `.gitignore`. D4 run 1 symlinked the files and grok wrote through into the real tree. D4 run 2 byte-copies `bundled/` into dest and chmod `a-w` on those copies only (#265). Do not symlink.
 
 ## Friction
 
