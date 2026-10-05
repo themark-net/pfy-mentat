@@ -1061,6 +1061,15 @@ def selftest():
             os.environ.pop("PFY_JEV_CONF_GATE", None)
             check(not low.get("auto_act"), "conf low no silent auto-act")
             check(CHIP_CONF_LOW in str(low.get("chip_conf") or low.get("error") or ""), "conf low chip")
+            check(classify_decision(low) == "escalate", "conf low classifies escalate")
+            check(decision_exit_code(low) == EXIT_ESCALATE, "conf low exit 3")
+            ready = decide_choice({"ci": "green"}, {"push": "go", "hold": "stop"})
+            # may or may not be high conf; force a peaked one
+            peaked = decide_choice("push now ci green", {"push": "push green tip", "hold": "zzz unrelated"})
+            if peaked.get("auto_act"):
+                check(decision_exit_code(peaked) == EXIT_READY, "ready exit 0")
+                check(classify_decision(peaked) == "ready", "ready classifies ready")
+
 
             # compaction keeps user text
             compact = compact_session(
@@ -1111,11 +1120,63 @@ def selftest():
     return 0
 
 
+
+# Exit contract for decision CLI (align with org-spinny-decide):
+#   0 = ready / act on choice (auto_act)
+#   3 = escalate (conf low) — valid outcome, not a tool failure; no silent auto-act
+#   1 = broken / error
+#   2 = usage
+EXIT_READY = 0
+EXIT_BROKEN = 1
+EXIT_USAGE = 2
+EXIT_ESCALATE = 3
+
+
+def classify_decision(rec):
+    """Map a decision record to ready | escalate | fail."""
+    rec = rec or {}
+    if rec.get("error") == CHIP_CONF_LOW:
+        return "escalate"
+    if rec.get("choice") is not None and rec.get("auto_act") is False:
+        return "escalate"
+    if rec.get("ok") and rec.get("auto_act", True):
+        return "ready"
+    if rec.get("ok") and rec.get("usable"):
+        return "ready"
+    return "fail"
+
+
+def decision_exit_code(rec):
+    v = classify_decision(rec)
+    if v == "ready":
+        return EXIT_READY
+    if v == "escalate":
+        return EXIT_ESCALATE
+    return EXIT_BROKEN
+
+
+def format_decision_cli(rec, *, as_json=False):
+    """Stdout for decision CLI. Escalate is labeled ESCALATE, not FAIL-as-broken."""
+    rec = dict(rec or {})
+    verdict = classify_decision(rec)
+    rec["verdict"] = verdict
+    if as_json:
+        return json.dumps(rec, ensure_ascii=False)
+    if verdict == "escalate":
+        choice = rec.get("choice") or "?"
+        chip = rec.get("chip_conf") or CHIP_CONF_LOW
+        return (
+            "ESCALATE decision · %s · choice=%s · %s"
+            % (chip, choice, NEXT_LOW)
+        )
+    return rec.get("copy") or json.dumps(rec)
+
+
 def main(argv=None):
     args = list(argv if argv is not None else sys.argv[1:])
     if not args or args[0] in ("-h", "--help", "help"):
         print(
-            "usage: pfy_jev_230.py [--selftest|--path PATH|--smoke|--compact|--route|--attach|--queue [put|next]]"
+            "usage: pfy_jev_230.py [--selftest|--path PATH|--smoke|--compact|--route [--json]|--attach|--queue [put|next]]\n  route exits: 0 ready · 3 escalate (conf low) · 1 broken · 2 usage"
         )
         return 2
     if args[0] in ("--selftest", "selftest"):
@@ -1137,9 +1198,17 @@ def main(argv=None):
         print(rec.get("copy") or json.dumps(rec))
         return 0 if rec.get("ok") else 1
     if args[0] in ("--route", "route"):
-        rec = route_model_tool({}, path="cua-s1-forms")
-        print(rec.get("copy") or json.dumps(rec))
-        return 0 if rec.get("ok") else 1
+        as_json = "--json" in args[1:]
+        path = "cua-s1-forms"
+        for i, a in enumerate(args[1:], 1):
+            if a in ("--path",) and i + 1 < len(args):
+                path = normalize_path(args[i + 1])
+        rec = route_model_tool({}, path=path)
+        print(format_decision_cli(rec, as_json=as_json))
+        if not as_json:
+            print("  verdict: %s" % classify_decision(rec))
+            print("  chip: %s" % CHIP_HONEST)
+        return decision_exit_code(rec)
     if args[0] in ("--attach", "attach"):
         rec = attach_usable(root, state)
         print(rec.get("copy") or json.dumps(rec))
@@ -1153,7 +1222,7 @@ def main(argv=None):
         print(rec.get("copy") or json.dumps(rec))
         return 0 if rec.get("ok") else 1
     print(
-        "usage: pfy_jev_230.py [--selftest|--path PATH|--smoke|--compact|--route|--attach|--queue [put|next]]"
+        "usage: pfy_jev_230.py [--selftest|--path PATH|--smoke|--compact|--route [--json]|--attach|--queue [put|next]]\n  route exits: 0 ready · 3 escalate (conf low) · 1 broken · 2 usage"
     )
     return 2
 

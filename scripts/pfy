@@ -150,6 +150,9 @@ pfy — simple setup & launch for the pfy-mentat stack
   pfy decision            Jev-style typed Choice/Score (#230; CUA-S1-FORMS local)
   pfy decision off|cua-s1-forms|typesafe|mini-jev
   pfy decision smoke      Mark-free CUA-S1-FORMS Choice (no TypeSafe key)
+  pfy build -p "<prompt>" [--cwd DIR] [--dry-run]
+                          jev toolset (local) + decision shadow + grok -p (plain);
+                          prints session id + usage; receipt under pipelines/dogfood/build/
   pfy toolset matrix      toolset × harness grid: implemented|partial|stub (ADR-0017; honest, most cells stub)
   pfy toolset list|plan <toolset> --harness <h> [--lane local|cloud] [--env|--brief]
   pfy toolset apply <toolset> --harness <h> [--yes]   dry-run unless --yes; writes only $PFY_STATE_DIR / harness home
@@ -1783,6 +1786,23 @@ cmd_catalog() {
 }
 
 
+
+cmd_build() {
+  # D1 friction: wrap grok -p with local jev toolset + decision shadow + plain output-format.
+  # Usage: pfy build -p "<prompt>" [--cwd DIR] [--dry-run]
+  #        pfy build --prompt-file FILE [--cwd DIR] [--dry-run]
+  if [[ "${1:-}" == "-h" || "${1:-}" == "--help" || "${1:-}" == "help" ]]; then
+    python3 "$ROOT/scripts/pfy_build_p.py" --help
+    return 0
+  fi
+  # Allow `pfy build -p ...` or `pfy build p ...` (p as subcommand)
+  if [[ "${1:-}" == "p" ]]; then
+    shift || true
+    set -- -p "$@"
+  fi
+  python3 "$ROOT/scripts/pfy_build_p.py" "$@"
+}
+
 cmd_decision() {
   # #230: Jev-style typed Choice/Score. Primary local = CUA-S1-FORMS. TypeSafe optional.
   local sub="${1:-smoke}"; shift || true
@@ -2085,6 +2105,7 @@ main() {
       ;;
     catalog) cmd_catalog "$@" ;;
     launch) cmd_launch "$@" ;;
+    build) cmd_build "$@" ;;
     decision|jev) cmd_decision "$@" ;;
     toolset|toolsets) exec python3 "$ROOT/pfylib/cli.py" toolset "$@" ;;
     hedge) exec python3 "$ROOT/pfylib/cli.py" hedge "$@" ;;
