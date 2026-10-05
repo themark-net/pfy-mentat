@@ -3,6 +3,22 @@
 
 Dogfood D1 friction fix: wrap headless Grok Build so bots use --output-format plain (never text) and do not skip decision smoke.
 
+Preamble (#263): default is trimmed — jev conf gate ~0.85 (no silent auto-act),
+`./pfy decision route` exits (0=proceed/ready, 3=escalate, 1=broken), receipt
+dir `pipelines/dogfood/build/`, and a skill path pointer. Full skill bodies
+are not inlined. The grok child gets a GROK_HOME that contains only a short
+`skills/pfy-jev-decision/SKILL.md` pointer plus `auth.json` copied from the
+real GROK_HOME (the rest of the skills tree is not copied).
+
+`PFY_BUILD_FULL_PREAMBLE=1` restores a full preamble that inlines
+`toolset-jev-brief.md` plus the `pfy-jev-decision` and `jev-decision`
+SKILL.md bodies, and keeps the real GROK_HOME.
+
+Receipt fields (method `chars/4`): `preamble_chars`, `preamble_tokens_est`
+where `tokens_est = max(1, (chars + 3) // 4)`, plus `task_prompt_chars`,
+`task_prompt_tokens_est`, and `preamble_mode` (`trimmed`|`full`). Sizes are
+separate from the task prompt.
+
 Exit codes:
   0  READY (dry-run complete, or grok finished)
   1  FAIL (grok missing / unauthenticated / apply/smoke/grok hard fail)
@@ -32,6 +48,19 @@ if str(ROOT) not in sys.path:
 EXIT_OK = 0
 EXIT_FAIL = 1
 EXIT_USAGE = 2
+
+TOKEN_METHOD = "chars/4"
+JEV_SOT_REL = "bootstrap/grok-cli/skills/jev-decision/SKILL.md"
+
+# Shared by the trimmed prompt preamble and the isolated pointer skill.
+# Stay short: trimmed preamble_tokens_est is bounded at 400 and at 1/4 of the full dump.
+_LEAN_CONTRACT = (
+    "Jev conf gate ~0.85 (PFY_JEV_CONF_GATE). No silent auto-act. "
+    "./pfy decision route exits: 0=proceed/ready, 3=escalate (conf low, valid), 1=broken. "
+    "Receipt: pipelines/dogfood/build/. "
+    "Toolset: local jev applied. Skill pointer: GROK_HOME/skills/pfy-jev-decision. "
+    "SoT: bootstrap/grok-cli/skills/jev-decision/SKILL.md."
+)
 
 
 def _now():
@@ -78,6 +107,130 @@ def read_usage(cwd: Path, session_id: str, grok_home: Path | None = None) -> dic
         return json.loads(usage_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return {}
+
+
+def tokens_est(text: str) -> int:
+    """chars/4 estimate: max(1, (len(chars) + 3) // 4)."""
+    return max(1, (len(text) + 3) // 4)
+
+
+def preamble_mode_from_env(env: dict | None = None) -> str:
+    src = env if env is not None else os.environ
+    raw = str(src.get("PFY_BUILD_FULL_PREAMBLE") or "").strip().lower()
+    if raw in ("1", "true", "yes"):
+        return "full"
+    return "trimmed"
+
+
+def _read_text(path: Path) -> str | None:
+    try:
+        if path.is_file():
+            return path.read_text(encoding="utf-8")
+    except OSError:
+        return None
+    return None
+
+
+def _first_text(paths: list[Path]) -> str | None:
+    for path in paths:
+        text = _read_text(path)
+        if text:
+            return text
+    return None
+
+
+def _brief_candidates() -> list[Path]:
+    found: list[Path] = []
+    raw = os.environ.get("PFY_TOOLSET_BRIEF")
+    if raw:
+        found.append(Path(raw))
+    state = Path(os.environ.get("PFY_STATE_DIR") or (Path.home() / ".pfy-mentat"))
+    found.append(state / "toolset-jev-brief.md")
+    return found
+
+
+def _jev_skill_candidates(repo: Path, grok_home: Path | None) -> list[Path]:
+    paths = [
+        repo / JEV_SOT_REL,
+        repo / ".grok" / "skills" / "jev-decision" / "SKILL.md",
+    ]
+    if grok_home is not None:
+        paths.append(Path(grok_home) / "skills" / "jev-decision" / "SKILL.md")
+    return paths
+
+
+def _pfy_skill_candidates(repo: Path, grok_home: Path | None) -> list[Path]:
+    paths: list[Path] = []
+    if grok_home is not None:
+        paths.append(Path(grok_home) / "skills" / "pfy-jev-decision" / "SKILL.md")
+    default_home = Path(os.environ.get("GROK_HOME") or (Path.home() / ".grok"))
+    paths.append(default_home / "skills" / "pfy-jev-decision" / "SKILL.md")
+    paths.append(repo / ".grok" / "skills" / "pfy-jev-decision" / "SKILL.md")
+    return paths
+
+
+def build_preamble(
+    repo: Path | None = None,
+    *,
+    mode: str | None = None,
+    grok_home: Path | None = None,
+) -> str:
+    """Return the headless Build preamble. Default mode is trimmed.
+
+    ``mode="full"`` (or ``PFY_BUILD_FULL_PREAMBLE=1`` when mode is omitted)
+    inlines toolset-jev-brief.md and the pfy-jev-decision / jev-decision
+    SKILL.md bodies. Trimmed text is a pointer, not those bodies.
+    """
+    repo = Path(repo or ROOT)
+    if mode is None:
+        mode = preamble_mode_from_env()
+    if mode != "full":
+        return "pfy build -p preamble (trimmed). " + _LEAN_CONTRACT + "\n"
+    brief = _first_text(_brief_candidates())
+    pfy_body = _first_text(_pfy_skill_candidates(repo, grok_home))
+    jev_body = _first_text(_jev_skill_candidates(repo, grok_home))
+    parts = [
+        "pfy build -p preamble (full). PFY_BUILD_FULL_PREAMBLE=1 inlines "
+        "toolset-jev-brief.md and pfy-jev-decision / jev-decision SKILL.md bodies.",
+        "## toolset-jev-brief.md",
+        (brief.rstrip("\n") if brief else "(missing)"),
+        "## pfy-jev-decision/SKILL.md",
+        (pfy_body.rstrip("\n") if pfy_body else "(missing)"),
+        "## jev-decision/SKILL.md",
+        (jev_body.rstrip("\n") if jev_body else "(missing)"),
+        "",
+    ]
+    return "\n".join(parts)
+
+
+def pointer_skill_md() -> str:
+    """Minimal skill the trimmed grok child can see. Not the full SKILL.md body."""
+    return (
+        "---\n"
+        "name: pfy-jev-decision\n"
+        "description: Pointer only. Local jev is applied. Full skill body is not inlined.\n"
+        "---\n\n"
+        + _LEAN_CONTRACT
+        + "\n"
+    )
+
+
+def isolate_trimmed_grok_home(real_home: Path, dest: Path) -> Path:
+    """Point the grok child at a home that holds only the pointer skill and auth.json."""
+    if dest.exists():
+        shutil.rmtree(dest)
+    skill_dir = dest / "skills" / "pfy-jev-decision"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "SKILL.md").write_text(pointer_skill_md(), encoding="utf-8")
+    auth = Path(real_home) / "auth.json"
+    if auth.is_file():
+        shutil.copy2(auth, dest / "auth.json")
+    return dest
+
+
+def compose_grok_prompt(preamble: str, task: str) -> str:
+    body = preamble if preamble.endswith("\n") else preamble + "\n"
+    return body + "--- task ---\n" + task
 
 
 def grok_bin(path_env: str | None = None) -> str | None:
@@ -172,6 +325,7 @@ def run_grok_p(
         "--output-format",
         "plain",
     ]
+    home = Path(env["GROK_HOME"]) if env.get("GROK_HOME") else None
     if dry_run:
         return {
             "ok": True,
@@ -182,11 +336,12 @@ def run_grok_p(
             "stderr": "",
             "session_id": None,
             "usage": {},
+            "grok_home": str(home) if home else None,
         }
     before = time.time()
     proc = subprocess.run(argv, cwd=str(cwd), env=env, text=True, capture_output=True)
-    session_id = find_latest_session(cwd)
-    usage = read_usage(cwd, session_id) if session_id else {}
+    session_id = find_latest_session(cwd, home)
+    usage = read_usage(cwd, session_id, home) if session_id else {}
     return {
         "ok": proc.returncode == 0,
         "rc": proc.returncode,
@@ -196,6 +351,7 @@ def run_grok_p(
         "elapsed_s": round(time.time() - before, 3),
         "session_id": session_id,
         "usage": usage,
+        "grok_home": str(home) if home else None,
     }
 
 
@@ -228,6 +384,12 @@ def build_p(
             "yes",
         )
 
+    mode = preamble_mode_from_env(env)
+    real_home = Path(env["GROK_HOME"]) if env.get("GROK_HOME") else Path(
+        os.environ.get("GROK_HOME") or (Path.home() / ".grok")
+    )
+    preamble = build_preamble(repo, mode=mode, grok_home=real_home)
+    composed = compose_grok_prompt(preamble, prompt)
     _append_receipt(
         receipt,
         {
@@ -237,7 +399,17 @@ def build_p(
             "repo": str(repo),
             "dry_run": dry_run,
             "typesafe_tokens": 0,
+            "preamble_chars": len(preamble),
+            "preamble_tokens_est": tokens_est(preamble),
+            "preamble_tokens_method": TOKEN_METHOD,
+            "task_prompt_chars": len(prompt),
+            "task_prompt_tokens_est": tokens_est(prompt),
+            "preamble_mode": mode,
         },
+    )
+    print(
+        "pfy build -p · preamble %s · %s tokens_est (%s) · task %s tokens_est"
+        % (mode, tokens_est(preamble), TOKEN_METHOD, tokens_est(prompt))
     )
 
     grok = grok_bin(path_env)
@@ -246,7 +418,13 @@ def build_p(
         print(msg, file=sys.stderr)
         _append_receipt(receipt, {"event": "fail", "reason": "grok_missing", "copy": msg})
         return EXIT_FAIL
-    if not grok_authenticated(Path(env["GROK_HOME"]) if "GROK_HOME" in env else grok_home):
+
+    child_env = dict(env)
+    child_home = real_home
+    if mode == "trimmed":
+        child_home = isolate_trimmed_grok_home(real_home, receipt_dir / "grok-home")
+        child_env["GROK_HOME"] = str(child_home)
+    if not grok_authenticated(child_home):
         # In dry-run allow missing auth so CI can exercise the path
         if not dry_run:
             msg = (
@@ -310,7 +488,7 @@ def build_p(
         return EXIT_FAIL
 
     print("pfy build -p · grok -p --output-format plain --always-approve")
-    grok_rec = run_grok_p(prompt=prompt, cwd=cwd, grok=grok, dry_run=dry_run, env=env)
+    grok_rec = run_grok_p(prompt=composed, cwd=cwd, grok=grok, dry_run=dry_run, env=child_env)
     # Persist grok streams for operators
     (receipt_dir / "grok-stdout.log").write_text(grok_rec.get("stdout") or "", encoding="utf-8")
     (receipt_dir / "grok-stderr.log").write_text(grok_rec.get("stderr") or "", encoding="utf-8")
@@ -329,6 +507,10 @@ def build_p(
         "primaryModelId": sess.get("primaryModelId"),
         "typesafe_tokens": 0,
         "argv": grok_rec.get("argv"),
+        "grok_home": str(child_home),
+        "preamble_mode": mode,
+        "preamble_tokens_est": tokens_est(preamble),
+        "task_prompt_tokens_est": tokens_est(prompt),
     }
     _append_receipt(receipt, summary)
 

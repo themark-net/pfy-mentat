@@ -1791,6 +1791,7 @@ cmd_build() {
   # D1 friction: wrap grok -p with local jev toolset + decision shadow + plain output-format.
   # Usage: pfy build -p "<prompt>" [--cwd DIR] [--dry-run]
   #        pfy build --prompt-file FILE [--cwd DIR] [--dry-run]
+  # Default preamble is trimmed (#263). PFY_BUILD_FULL_PREAMBLE=1 inlines full jev skill bodies.
   if [[ "${1:-}" == "-h" || "${1:-}" == "--help" || "${1:-}" == "help" ]]; then
     python3 "$ROOT/scripts/pfy_build_p.py" --help
     return 0
