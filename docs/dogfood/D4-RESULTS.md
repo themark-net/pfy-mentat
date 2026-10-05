@@ -70,6 +70,8 @@ Disk `skills_bundle_tokens_est` ~2.75M counts all UTF-8 text under copied bundle
 
 **D4 vs D3 ~2.8k session gap (17 816 − 14 959 = 2 857):** receipts share the same trimmed preamble_tokens_est (**87**) and task_prompt_tokens_est (**33**), and the composed `-p` prompt is the same length (490 chars). D3 live (`20261005T073546Z`) was pointer-only isolation (no `skills_bundle_*` fields; in 14 596 / out 363 / cached 10 240). D4 copy live (`20261005T082823Z`) is `skills_bundle_mode=bundled_link` with disk measure 2 749 730 (in 17 369 / out 447 / cached 6 528). The ~2.8k session delta is almost all extra **input** (~2 773), not the 2.75M disk tree — consistent with a small amount of bundled skill discovery/index entering context under `bundled_link`, not full-tree ingest. Receipts do not name which bundled files were loaded, so that is the best evidence-backed reading (not a file-level proof).
 
+**Per-call floor ~18k:** session totals scale with model call count — Tester's e9b30ca gate recorded **55 467** tokens over **3** calls (`live-default-receipt.jsonl`, stamp `20261005T083540Z`; evidence only at `/workspace/pfy-dogfood/pr266-d4-e9b30ca/`, not in-repo) versus DevBot's **17 816** over **1** call (`20261005T082823Z`).
+
 ## Fail-on-base / pass-on-head
 
 - `SkillsBundleTests` vs `a8977c33` `pfy_build_p.py`: **6 FAIL** (incl. write-through marker test, receipt fields, missing-bundled)
