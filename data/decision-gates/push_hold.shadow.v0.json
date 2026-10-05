@@ -1,0 +1,34 @@
+{
+  "schema_version": "shadow.v0",
+  "gate_id": "push_hold",
+  "mode": "shadow",
+  "stub": true,
+  "live_bridge": false,
+  "cites": ["dogfood D1", "ADR-0016", "#230"],
+  "question": "Should DevBot push this tip to origin?",
+  "engine_preference": "local",
+  "primary_local": ["CUA-S1-FORMS", "org-spinny-decide"],
+  "cloud": {
+    "name": "TypeSafe",
+    "optional": true,
+    "unkeyed": true
+  },
+  "conf_gate": 0.55,
+  "conf_gate_note": "Matches org-spinny-decide default ORG_DECIDE_THRESHOLD 0.55. Margin only (conf ok / conf low), never percent-correct. Below the gate the shadow choice escalates and the current path still acts. ADR-0016 coding-session Choice stays ~0.85; this stub does not change it.",
+  "state_fields": [
+    {"name": "ci", "type": "string", "note": "green | red | waived"},
+    {"name": "kronos", "type": "string", "note": "idle | busy"},
+    {"name": "known_red", "type": "boolean"}
+  ],
+  "criteria": {
+    "kind": "choice",
+    "keys": ["push", "hold", "escalate"],
+    "push": "Local CI green or waived; not known-red; Kronos yield OK",
+    "hold": "CI red, known-red, or Kronos contention — do not push",
+    "escalate": "Ambiguous state"
+  },
+  "typed_families": ["choice", "score", "noul"],
+  "offline_fallback": true,
+  "sdk_lock_in": false,
+  "catalog_hold": "70-75"
+}

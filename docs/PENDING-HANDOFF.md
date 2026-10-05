@@ -2,6 +2,14 @@
 
 Git plus this file is the handoff when another checkout may be open. Do not commit, reset, or stash on an open founder Build branch.
 
+## 2026-10-05 — Dogfood D1 bot lane (jev toolset + wrapped grok -p)
+
+- **Branch:** `dogfood/d1-jev-pfy-wrap` (from main `29b74ac`). Worktree `/home/mark/DEVELOP/pfy-mentat/tmp/dogfood-d1-20261004`.
+- **Landed:** `data/decision-gates/` (README + `push_hold.shadow.v0.json`), ops/handoff cross-links, [docs/dogfood/D1-RESULTS.md](dogfood/D1-RESULTS.md) + `pipelines/dogfood/d1/` receipt.
+- **Path:** `./pfy toolset apply jev --harness grok --lane local` → smoke/selftest READY → `./pfy decision route` conf-low (shadow escalate, no auto-act) → `grok -p` body (~125s, 1 turn). TypeSafe tokens **0**.
+- **Out of scope:** D1 human-dev lane (Mark at keyboard), #258, Kolibri, catalog HOLD 70–75, live TypeSafe, Feature GO, merge.
+- **Next:** Review D1 results; optional live shadow dual-run for `push_hold`.
+
 ## 2026-10-04 — Jev decision layer × org bots × pfy dogfood plan
 
 - **Branch:** `docs/jev-decision-layer-and-pfy-dogfood` (from main `c0d9072`). Worktree `/home/mark/DEVELOP/pfy-mentat/tmp/jev-dogfood-plan-20261004`.
@@ -9,7 +17,7 @@ Git plus this file is the handoff when another checkout may be open. Do not comm
 - **Landed (docs-only):** [docs/design/JEV-DECISION-LAYER-AND-PFY-DOGFOOD.md](design/JEV-DECISION-LAYER-AND-PFY-DOGFOOD.md) — inventory, decision table (keep-in-code vs Jev-style vs LLM), catalog posture (`jev` toolset stays `catalog_tool: null` per ADR-0016; no TOOLS.md row in this PR), thin-adapter notes, dogfood slice **D1**, blockers (no `TYPESAFE_API_KEY`).
 - **Already wired (not new code):** `#230` / ADR-0016 / `scripts/pfy_jev_230.py` / `./pfy decision` / toolset `jev`. Local smoke READY; TypeSafe cloud optional and **unkeyed** on nimo. Org side: `themark-net/org-spinny-decide` + box skill `org-spinny-decide` (Ollama, explicitly not cloud TypeSafe).
 - **Out of scope:** live TypeSafe calls, new TypeSafe account/spend, catalog HOLD 70–75, PR #256 Loop agent-picker split, eval-auto `NameError: re` fix branches, Feature GO, merging.
-- **Next:** (1) Review/merge this docs PR. (2) Run dogfood **D1** in a fresh worktree. (3) Shadow-log bridge for `push_hold` only after D1. (4) T-0123 if/when catalog re-score for TypeSafe cloud is wanted.
+- **Next:** (1) Done — plan merged as #259 @ `29b74ac`. (2) D1 bot lane ran — stub in `data/decision-gates/` + [docs/dogfood/D1-RESULTS.md](dogfood/D1-RESULTS.md). (3) Shadow-log bridge for `push_hold` (live dual-run) still next. (4) T-0123 if/when catalog re-score for TypeSafe cloud is wanted.
 
 ## 2026-10-04 — PR #256 follow-up: split Loop picker + harness extract fix
 
