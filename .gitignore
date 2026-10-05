@@ -42,3 +42,6 @@ tmp/
 
 # Generated/scratch expanded pfy — SoT is scripts/pfy
 scripts/.pfy.expanded.sh
+
+# Dogfood build isolated GROK_HOME (auth.json + grok rehydrate) — never commit
+pipelines/dogfood/build/**/grok-home/

@@ -2,6 +2,15 @@
 
 Git plus this file is the handoff when another checkout may be open. Do not commit, reset, or stash on an open founder Build branch.
 
+## 2026-10-05 — Dogfood D3 trimmed build preamble (#263)
+
+- **Branch:** `bot/dogfood-d3-263` (from `cbda54a`). Worktree `/home/mark/DEVELOP/pfy-mentat/tmp/dogfood-d3-263`.
+- **Landed:** trimmed `./pfy build -p` preamble + isolated child GROK_HOME; `PFY_BUILD_FULL_PREAMBLE=1`; receipt preamble size fields; tests; [docs/dogfood/D3-RESULTS.md](dogfood/D3-RESULTS.md).
+- **Live trimmed measure:** ~6s, 1 turn / 1 call, **14 959** total tokens vs D2 **623 246**; route escalate exit 3; preamble_tokens_est **87**.
+- **Out of scope:** GUI, catalog HOLD 70–75, Feature GO, merge.
+- **Verify:** `make catalog-check` · `make eval-structural` · `python3 -m unittest tests.test_pfy_build_p tests.test_jev_decision_skill`
+- **Next:** optional symlink real `bundled/` into isolated GROK_HOME (see D3-RESULTS trim suggestion).
+
 ## 2026-10-05 — Dogfood D2 bot lane (`./pfy build -p` real implement)
 
 - **Branch:** `bot/dogfood-d2-0310654` (from main after #261). Worktree `/home/mark/DEVELOP/pfy-mentat/tmp/dogfood-d2`.
