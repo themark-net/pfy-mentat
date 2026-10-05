@@ -2,6 +2,15 @@
 
 Git plus this file is the handoff when another checkout may be open. Do not commit, reset, or stash on an open founder Build branch.
 
+## 2026-10-05 — Dogfood D2 bot lane (`./pfy build -p` real implement)
+
+- **Branch:** `bot/dogfood-d2-0310654` (from main after #261). Worktree `/home/mark/DEVELOP/pfy-mentat/tmp/dogfood-d2`.
+- **Landed:** jev-decision skill prefers `./pfy build -p` + route exit **3**=escalate; project mirror `.grok/skills/jev-decision/`; `tests/test_jev_decision_skill.py`; modules Failure-modes ESCALATE wording; [docs/dogfood/D2-RESULTS.md](dogfood/D2-RESULTS.md) + `pipelines/dogfood/build/20261005T071051Z/` receipt.
+- **Path:** one `./pfy build -p` run completed implement (~203s, 1 turn / 13 model calls). TypeSafe tokens **0**.
+- **Out of scope:** GUI, #258/#256, catalog HOLD 70–75, live TypeSafe, Feature GO, merge.
+- **Verify:** `make catalog-check` · `make eval-structural` · `python3 -m unittest tests.test_jev_decision_skill tests.test_pfy_build_p`
+- **Next:** Review D2; optional live `push_hold` dual-run shadow; human D1-dev lane still open.
+
 ## 2026-10-05 — D1 friction fixes (`./pfy build -p` + route escalate exit)
 
 - **Branch:** `fix/d1-friction-pfy-build-p` (from main `682aa20`). Worktree `/home/mark/DEVELOP/pfy-mentat/tmp/d1-friction-fix-20261005`.
