@@ -17,7 +17,7 @@ LITELLM_EXAMPLE := examples/litellm-ollama
 	local-ollama-overlay-install local-ollama-up smoke-litellm-ollama \
 	smoke-codebase-memory smoke-repowise smoke-context-tools \
 	smoke-write-guard smoke-grok-skills smoke-opencode-ollama smoke-voice-stt smoke-voice-remote \
-	smoke-voice-agent smoke-voice-orchestrate smoke-tools-model \
+	smoke-voice-agent smoke-voice-orchestrate smoke-tools-model smoke-kolibri1 \
 	voice-stt-install voice-listen voice-stt-probe voice-remote voice-remote-serve \
 	voice-agent-run voice-orchestrate \
 	worker-stage worker-env monitor-brief \
@@ -385,6 +385,10 @@ eval-v02:
 # Includes scripts/check_no_encoded_payloads.py (no base64/gzip payloads or runtime-assembled shards).
 eval-structural:
 	@python3 examples/eval-harness/run_structural.py --write-md pipelines/eval/structural.latest.md
+
+# Kolibri-1 (Entry 085): operate-or-FAIL smoke; exit 2 = no backend (reason in receipt)
+smoke-kolibri1:
+	@python3 examples/kolibri1-llamacpp/smoke.py
 
 # Golden-task cards (deterministic; OQ-0008 / #31) — no LLM
 eval-golden:
