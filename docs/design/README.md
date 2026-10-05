@@ -10,6 +10,7 @@ Harness/model takeover map for operator-facing Design DoDs. Product locks also l
 |---------|-------|--------|
 | Desktop / Gab #228 | `DESKTOP-SPEC.md`, `DESKTOP-SPEC-228.md`, `GAB-228-DEVBOT-HANDOFF.md` | Shipped / reference |
 | Jev #230 | `JEV-230-DEVBOT-HANDOFF.md`, `JEV-230-CUA-S1-FORMS-LOCK.md` | Design lock on main |
+| Jev org × pfy dogfood | `JEV-DECISION-LAYER-AND-PFY-DOGFOOD.md` | Plan (docs PR #259) |
 | Loop #243 | `LOOP-243-*.md` (journey, IA, wireframes, non-goals, DevBot handoff) | **Shipped** via PR #243 @ tip `7ea4c8f` — keep for history + regression |
 | UX school | `UX-SCHOOL.md` | Foundations |
 
