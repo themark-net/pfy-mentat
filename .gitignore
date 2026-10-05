@@ -32,3 +32,10 @@ gui/operator/src-tauri/gen/
 
 # Session workspace artifacts (Attach OpenCode / Space Invaders)
 /workspace/
+tmp/
+
+# Local env backups — never commit (includes .env.bak)
+*.bak
+
+# Generated/scratch expanded pfy — SoT is scripts/pfy
+scripts/.pfy.expanded.sh
