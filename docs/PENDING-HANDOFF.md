@@ -2,6 +2,23 @@
 
 Git plus this file is the handoff when another checkout may be open. Do not commit, reset, or stash on an open founder Build branch.
 
+## 2026-10-05 — D4 Reviewer fix round (#266 / #265, CEO hold)
+
+- **Branch / worktree:** `bot/dogfood-d4-265` · `/home/mark/DEVELOP/pfy-mentat/tmp/dogfood-d4-265`. No `./pfy build -p` / no live Grok (CEO hold).
+- **Fixes:** (1) `test_this_host_bundled_link_under_measured_bound` opt-in via `PFY_HOST_BUNDLED_TEST=1` (checked before any `~/.grok` access; skip if bundled absent; drop host-specific 2.78M cap). (2) isolated `auth.json` forced `0600`, home `0700`; grok-home under receipt stamp persists for audit (gitignored). (3) D4-RESULTS token-gap note + outer-bot edit list.
+- **Verify:** `make catalog-check` · `make eval-structural` · `PFY_HOST_BUNDLED_TEST` unset · `python3 -m unittest discover -s tests -t .` (G0-equivalent). Portable `SkillsBundleTests` still FAIL on `a8977c33`.
+- **Next:** green G0 on ubuntu-latest; do not merge until Reviewer re-check.
+
+## 2026-10-05 — Dogfood D4 bundled expose without user skills (#265)
+
+- **Branch:** `bot/dogfood-d4-265` (from `a8977c33`). Worktree `/home/mark/DEVELOP/pfy-mentat/tmp/dogfood-d4-265`.
+- **Landed:** isolated Build home **byte-copies** `bundled/` (no symlinks; dest chmod a-w); no `~/.grok/skills` copy; receipt `skills_bundle_*`; missing bundled → fail closed; write-through test. [docs/dogfood/D4-RESULTS.md](dogfood/D4-RESULTS.md).
+- **Safety:** Run1 file-symlinks mutated real `~/.grok/bundled` (skills hash unchanged). Run2 switched to copies; subsequent live left both trees stable at post-incident hashes.
+- **Live (copy):** ~6.5s, 1 call, **17 816** tokens vs D3 tiny **14 959** / D2 **623 246**.
+- **Verify:** `make catalog-check` · `make eval-structural` · `python3 -m unittest tests.test_pfy_build_p tests.test_jev_decision_skill`
+- **Next:** optional SKILL.md-only allowlist copy to shrink receipt grok-home; Mark may want to refresh `~/.grok/bundled` from Grok install after the symlink incident.
+
+
 ## 2026-10-05 — Dogfood D3 trimmed build preamble (#263)
 
 - **Branch:** `bot/dogfood-d3-263` (from `cbda54a`). Worktree `/home/mark/DEVELOP/pfy-mentat/tmp/dogfood-d3-263`.
@@ -9,7 +26,7 @@ Git plus this file is the handoff when another checkout may be open. Do not comm
 - **Live trimmed measure:** ~6s, 1 turn / 1 call, **14 959** total tokens vs D2 **623 246**; route escalate exit 3; preamble_tokens_est **87**.
 - **Out of scope:** GUI, catalog HOLD 70–75, Feature GO, merge.
 - **Verify:** `make catalog-check` · `make eval-structural` · `python3 -m unittest tests.test_pfy_build_p tests.test_jev_decision_skill`
-- **Next:** optional symlink real `bundled/` into isolated GROK_HOME (see D3-RESULTS trim suggestion).
+- **Next:** done in D4 as byte copies. Do not symlink `bundled/` into the isolated home (that write-through changed the real tree).
 
 ## 2026-10-05 — Dogfood D2 bot lane (`./pfy build -p` real implement)
 

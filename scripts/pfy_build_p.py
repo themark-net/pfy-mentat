@@ -6,22 +6,55 @@ Dogfood D1 friction fix: wrap headless Grok Build so bots use --output-format pl
 Preamble (#263): default is trimmed — jev conf gate ~0.85 (no silent auto-act),
 `./pfy decision route` exits (0=proceed/ready, 3=escalate, 1=broken), receipt
 dir `pipelines/dogfood/build/`, and a skill path pointer. Full skill bodies
-are not inlined. The grok child gets a GROK_HOME that contains only a short
-`skills/pfy-jev-decision/SKILL.md` pointer plus `auth.json` copied from the
-real GROK_HOME (the rest of the skills tree is not copied).
+are not inlined.
+
+Skills bundle (#265): the trimmed grok child gets a GROK_HOME with
+`auth.json` copied as bytes (never a symlink; dest mode forced to ``0600``),
+a real-file pointer at `skills/pfy-jev-decision/SKILL.md`, and `bundled/` as
+a real directory tree of byte copies from the real home's `bundled/` (never
+a file symlink, never one directory symlink, and never anything from
+`real_home/skills`). File symlinks wrote through: grok opened the dest path
+and changed the real file. Dest copies are chmod a-w after `shutil.copy2`.
+The isolated home directory is ``0700`` (not world-readable). The real tree
+is only read. Text size of that exposed tree is recorded apart from the
+preamble and the task prompt. Receipt mode stays `bundled_link` (historical
+name; the tree is copies).
+
+The isolated home persists under
+``pipelines/dogfood/build/<stamp>/grok-home/`` for receipt audit (operators
+can inspect byte copies after a run). It is gitignored
+(``pipelines/dogfood/build/**/grok-home/``) and is not auto-deleted after
+``build_p`` returns — auth and bundled copies must never be committed.
 
 `PFY_BUILD_FULL_PREAMBLE=1` restores a full preamble that inlines
 `toolset-jev-brief.md` plus the `pfy-jev-decision` and `jev-decision`
-SKILL.md bodies, and keeps the real GROK_HOME.
+SKILL.md bodies, and keeps the real GROK_HOME (`skills_bundle_mode`
+`full_skills`).
+
+`PFY_BUILD_FULL_SKILLS=1` (trimmed preamble only) restores the previous D3
+child home: pointer skill + auth byte copy, no bundled expose, no user
+skills, and it does not keep the real GROK_HOME (`skills_bundle_mode`
+`pointer_only`). Default is `bundled_link`. Live/non-dry `bundled_link`
+fails closed when `real_home/bundled` is missing or not a directory
+(reason `bundled_missing`) and does not fall back to the real GROK_HOME.
+Dry-run may still plan in that case (pointer-only home).
 
 Receipt fields (method `chars/4`): `preamble_chars`, `preamble_tokens_est`
 where `tokens_est = max(1, (chars + 3) // 4)`, plus `task_prompt_chars`,
 `task_prompt_tokens_est`, and `preamble_mode` (`trimmed`|`full`). Sizes are
-separate from the task prompt.
+separate from the task prompt. Skills bundle (same method, separate fields):
+`skills_bundle_chars`, `skills_bundle_tokens_est`, `skills_bundle_method`,
+`skills_bundle_mode` (`bundled_link`|`pointer_only`|`full_skills`|`bundled_skipped`).
+`bundled_skipped` is a dry-run plan when `bundled/` is missing: exit 0, pointer-only
+home, real GROK_HOME left unused. Bundle chars are Unicode text of regular files
+under the exposed `bundled/` and `skills/` trees (the dest copies, not a
+follow-out). Symlinks are not followed. Bytes are decoded as UTF-8
+(`errors="ignore"`). Files with a NUL in the first 8192 bytes are skipped
+(binaries such as PDF).
 
 Exit codes:
   0  READY (dry-run complete, or grok finished)
-  1  FAIL (grok missing / unauthenticated / apply/smoke/grok hard fail)
+  1  FAIL (grok missing / unauthenticated / bundled missing / apply/smoke/grok hard fail)
   2  usage
   3  reserved (decision escalate is logged; build still proceeds unless
      PFY_BUILD_ABORT_ON_ESCALATE=1)
@@ -34,6 +67,7 @@ import argparse
 import json
 import os
 import shutil
+import stat
 import subprocess
 import sys
 import time
@@ -114,12 +148,35 @@ def tokens_est(text: str) -> int:
     return max(1, (len(text) + 3) // 4)
 
 
+def tokens_from_chars(chars: int) -> int:
+    """Same chars/4 estimate for a counted tree. Empty text is 0, not 1."""
+    if chars <= 0:
+        return 0
+    return max(1, (int(chars) + 3) // 4)
+
+
+def _env_flag(src: dict, name: str) -> bool:
+    return str(src.get(name) or "").strip().lower() in ("1", "true", "yes")
+
+
 def preamble_mode_from_env(env: dict | None = None) -> str:
     src = env if env is not None else os.environ
-    raw = str(src.get("PFY_BUILD_FULL_PREAMBLE") or "").strip().lower()
-    if raw in ("1", "true", "yes"):
+    if _env_flag(src, "PFY_BUILD_FULL_PREAMBLE"):
         return "full"
     return "trimmed"
+
+
+def skills_mode_from_env(env: dict | None = None) -> str:
+    """Default ``bundled_link`` (byte copies of ``bundled/``, not file symlinks).
+
+    ``PFY_BUILD_FULL_SKILLS=1`` selects ``pointer_only``: the D3 trimmed home
+    (pointer skill + auth.json byte copy). It does not expose ``bundled/``,
+    does not copy ``real_home/skills``, and does not keep the real GROK_HOME.
+    """
+    src = env if env is not None else os.environ
+    if _env_flag(src, "PFY_BUILD_FULL_SKILLS"):
+        return "pointer_only"
+    return "bundled_link"
 
 
 def _read_text(path: Path) -> str | None:
@@ -215,16 +272,339 @@ def pointer_skill_md() -> str:
     )
 
 
-def isolate_trimmed_grok_home(real_home: Path, dest: Path) -> Path:
-    """Point the grok child at a home that holds only the pointer skill and auth.json."""
-    if dest.exists():
-        shutil.rmtree(dest)
+class BundledMissingError(Exception):
+    """real_home/bundled is missing or not a directory. Do not fall back."""
+
+    reason = "bundled_missing"
+
+
+class BundledLinkError(Exception):
+    """Safe bundled link could not be built. Do not fall back to the real home."""
+
+    reason = "bundled_link_unsafe"
+
+
+def bundled_missing_message(real_home: Path) -> str:
+    bundled = Path(real_home) / "bundled"
+    return (
+        "FAIL: bundled skills missing or not a directory: %s. "
+        "Refusing to fall back to the real GROK_HOME or the user skills tree. "
+        "Next: restore that bundled/ directory, or set PFY_BUILD_FULL_SKILLS=1 "
+        "for D3 pointer-only isolation (no bundled expose; real GROK_HOME is not kept)."
+        % bundled
+    )
+
+
+def _is_within(child: Path, parent: Path) -> bool:
+    try:
+        child.resolve().relative_to(parent.resolve())
+    except (ValueError, OSError):
+        return False
+    return True
+
+
+def _unlink_or_rmtree(path: Path) -> None:
+    """Remove path. A symlink is unlinked and its target is left alone."""
+    if path.is_symlink() or path.is_file():
+        path.unlink()
+    elif path.exists():
+        shutil.rmtree(path)
+
+
+def _deny_write_dest_copy(path: Path) -> None:
+    """Clear write bits on a regular dest file. Never follow a symlink."""
+    if path.is_symlink():
+        raise BundledLinkError(
+            "FAIL: refusing to chmod a symlink (would change the real tree): %s" % path
+        )
+    try:
+        mode = path.lstat().st_mode
+    except OSError as exc:
+        raise BundledLinkError("FAIL: cannot stat dest copy %s: %s" % (path, exc)) from exc
+    if not stat.S_ISREG(mode):
+        raise BundledLinkError("FAIL: dest bundled copy is not a regular file: %s" % path)
+    cleared = mode & ~0o222
+    try:
+        os.chmod(path, cleared, follow_symlinks=False)
+    except NotImplementedError:
+        os.chmod(path, cleared)
+    except OSError as exc:
+        raise BundledLinkError(
+            "FAIL: cannot drop write bits on dest copy %s: %s" % (path, exc)
+        ) from exc
+
+
+def link_bundled_skills(real_home: Path, dest: Path) -> dict:
+    """Mirror ``real_home/bundled`` under ``dest/bundled`` as byte copies.
+
+    ``dest/bundled`` is a real directory. Each file is a regular file written
+    with ``shutil.copy2`` (the dest path only). Write bits are then cleared
+    on that copy. The real tree is only read. Directory symlinks and file
+    symlinks are not created: a dest symlink is how grok wrote through into
+    the real file. Entries whose ``Path.resolve()`` leaves ``bundled/`` are
+    skipped. Nothing under ``real_home/skills`` is read or copied.
+
+    Receipt mode stays ``bundled_link`` (the value predates the copy).
+
+    Raises ``BundledMissingError`` when ``bundled`` is missing or not a directory.
+    Raises ``BundledLinkError`` when a copy would escape or land as a symlink.
+    """
+    real_home = Path(real_home)
+    bundled = real_home / "bundled"
+    try:
+        bundled_is_dir = bundled.is_dir()
+    except OSError as exc:
+        raise BundledMissingError(bundled_missing_message(real_home)) from exc
+    if not bundled_is_dir:
+        raise BundledMissingError(bundled_missing_message(real_home))
+
+    dest = Path(dest)
+    dest.mkdir(parents=True, exist_ok=True)
+    real_root = bundled.resolve()
+    if _is_within(dest, real_root):
+        raise BundledLinkError(
+            "FAIL: refusing to copy bundled skills into a dest inside bundled/: %s" % dest
+        )
+
+    dest_bundled = dest / "bundled"
+    # A directory symlink here would let later writes land in the real tree.
+    _unlink_or_rmtree(dest_bundled)
+    dest_bundled.mkdir(parents=True)
+    if dest_bundled.is_symlink():
+        raise BundledLinkError("FAIL: dest/bundled must be a real directory, not a symlink")
+
+    copied = 0
+    skipped = 0
+    seen_dirs: set[tuple[int, int]] = set()
+
+    def walk(src_dir: Path, out_dir: Path) -> None:
+        nonlocal copied, skipped
+        try:
+            resolved_dir = src_dir.resolve()
+            st = resolved_dir.stat()
+        except OSError:
+            skipped += 1
+            return
+        if not _is_within(resolved_dir, real_root):
+            skipped += 1
+            return
+        key = (st.st_dev, st.st_ino)
+        if key in seen_dirs:
+            return
+        seen_dirs.add(key)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        if out_dir.is_symlink():
+            raise BundledLinkError(
+                "FAIL: refusing to copy into a symlink directory: %s" % out_dir
+            )
+        try:
+            entries = list(src_dir.iterdir())
+        except OSError as exc:
+            raise BundledLinkError(
+                "FAIL: cannot read bundled directory %s: %s" % (src_dir, exc)
+            ) from exc
+        for src in entries:
+            try:
+                resolved = src.resolve()
+            except OSError:
+                skipped += 1
+                continue
+            if not _is_within(resolved, real_root):
+                skipped += 1
+                continue
+            if resolved.is_dir():
+                walk(src, out_dir / src.name)
+                continue
+            if not resolved.is_file():
+                skipped += 1
+                continue
+            # Byte copy of the resolved file (an in-tree symlink becomes a
+            # regular file). Never symlink, never open the real path for write.
+            out_path = out_dir / src.name
+            if _is_within(out_path, real_root):
+                raise BundledLinkError(
+                    "FAIL: refusing to write a bundled copy inside the real tree: %s" % out_path
+                )
+            if out_path.is_symlink() or out_path.exists():
+                _unlink_or_rmtree(out_path)
+            try:
+                shutil.copy2(resolved, out_path, follow_symlinks=True)
+            except OSError as exc:
+                raise BundledLinkError(
+                    "FAIL: cannot copy bundled file %s -> %s: %s" % (resolved, out_path, exc)
+                ) from exc
+            if out_path.is_symlink() or not out_path.is_file():
+                raise BundledLinkError(
+                    "FAIL: bundled dest entry must be a regular file, not a symlink: %s" % out_path
+                )
+            try:
+                if out_path.stat().st_size != resolved.stat().st_size:
+                    raise BundledLinkError("FAIL: bundled copy size mismatch: %s" % out_path)
+            except BundledLinkError:
+                raise
+            except OSError as exc:
+                raise BundledLinkError(
+                    "FAIL: cannot stat bundled copy %s: %s" % (out_path, exc)
+                ) from exc
+            _deny_write_dest_copy(out_path)
+            copied += 1
+
+    walk(bundled, dest_bundled)
+    _assert_bundled_copies(dest_bundled)
+    return {
+        "copied_files": copied,
+        "linked_files": copied,
+        "skipped": skipped,
+        "bundled_root": str(real_root),
+        "mode": "bundled_link",
+    }
+
+
+def _assert_bundled_copies(dest_bundled: Path) -> None:
+    if dest_bundled.is_symlink() or not dest_bundled.is_dir():
+        raise BundledLinkError(
+            "FAIL: dest/bundled must be a real directory under the isolated home"
+        )
+    for dirpath, dirnames, filenames in os.walk(dest_bundled, followlinks=False):
+        for name in dirnames:
+            child = Path(dirpath) / name
+            if child.is_symlink():
+                raise BundledLinkError(
+                    "FAIL: directory symlink in dest/bundled is forbidden: %s" % child
+                )
+        for name in filenames:
+            child = Path(dirpath) / name
+            if child.is_symlink() or not child.is_file():
+                raise BundledLinkError(
+                    "FAIL: dest/bundled file must be a byte copy, not a symlink: %s" % child
+                )
+            if child.stat().st_mode & 0o222:
+                raise BundledLinkError("FAIL: dest bundled copy is still writable: %s" % child)
+
+
+def _read_nofollow(path: Path) -> bytes | None:
+    """Read a regular file. Symlinks and unreadable paths return None."""
+    flags = os.O_RDONLY
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    try:
+        fd = os.open(path, flags)
+    except OSError:
+        return None
+    try:
+        chunks: list[bytes] = []
+        while True:
+            block = os.read(fd, 1024 * 1024)
+            if not block:
+                break
+            chunks.append(block)
+        return b"".join(chunks)
+    except OSError:
+        return None
+    finally:
+        os.close(fd)
+
+
+def _text_char_len(path: Path) -> int:
+    """Unicode length of a dest text file. NUL in the first 8192 bytes → skip (binary).
+
+    Does not follow symlinks, so a link out of dest contributes nothing.
+    """
+    if path.is_symlink():
+        return 0
+    blob = _read_nofollow(path)
+    if not blob:
+        return 0
+    if b"\0" in blob[:8192]:
+        return 0
+    return len(blob.decode("utf-8", errors="ignore"))
+
+
+def _tree_text_chars(base: Path) -> int:
+    """Sum text chars of regular files under base. Do not follow symlinks out."""
+    try:
+        if base.is_symlink() or not base.is_dir():
+            return 0
+    except OSError:
+        return 0
+    total = 0
+    for dirpath, dirnames, filenames in os.walk(base, followlinks=False):
+        dirnames[:] = [d for d in dirnames if not (Path(dirpath) / d).is_symlink()]
+        for name in filenames:
+            total += _text_char_len(Path(dirpath) / name)
+    return total
+
+
+def measure_skills_bundle(dest: Path) -> tuple[int, int]:
+    """``(chars, tokens_est)`` of text in regular files under ``dest/bundled`` and ``dest/skills``.
+
+    Counts each dest copy's own bytes. Symlinks are not followed (a follow-out
+    would recount the real tree, which is what the symlink bug exposed).
+    Method name for receipts: ``chars/4``.
+    ``tokens_est`` is 0 when no text is exposed, otherwise ``max(1, (chars + 3) // 4)``.
+    """
+    dest = Path(dest)
+    chars = 0
+    for name in ("bundled", "skills"):
+        base = dest / name
+        try:
+            present = base.exists() or base.is_symlink()
+        except OSError:
+            continue
+        if not present:
+            continue
+        chars += _tree_text_chars(base)
+    return chars, tokens_from_chars(chars)
+
+
+def isolate_trimmed_grok_home(
+    real_home: Path,
+    dest: Path,
+    *,
+    link_bundled: bool = True,
+) -> Path:
+    """Isolated grok home: pointer skill, auth byte copy, optional bundled byte copies.
+
+    Does not copy or symlink ``real_home/skills``. The pointer skill is always
+    a regular file. ``auth.json`` is a byte copy when the real file exists,
+    then forced to mode ``0600`` (``copy2`` would otherwise preserve a broader
+    source mode). The isolated home directory is ``0700`` so it is not
+    world-readable. ``link_bundled=False`` is the D3 pointer-only home
+    (``PFY_BUILD_FULL_SKILLS=1``). ``link_bundled=True`` mirrors
+    ``real_home/bundled`` as dest byte copies (never file symlinks). The real
+    tree is not written.
+
+    Persistence: callers typically place ``dest`` under
+    ``pipelines/dogfood/build/<stamp>/grok-home/``. That tree is kept after
+    the run for receipt audit (gitignored); ``build_p`` does not delete it.
+    Never commit auth or grok-home contents.
+    """
+    dest = Path(dest)
+    if dest.exists() or dest.is_symlink():
+        _unlink_or_rmtree(dest)
     skill_dir = dest / "skills" / "pfy-jev-decision"
     skill_dir.mkdir(parents=True)
-    (skill_dir / "SKILL.md").write_text(pointer_skill_md(), encoding="utf-8")
+    # Owner-only home: auth.json lives here; do not leave the dir world-readable.
+    os.chmod(dest, 0o700)
+    pointer = skill_dir / "SKILL.md"
+    pointer.write_text(pointer_skill_md(), encoding="utf-8")
+    if pointer.is_symlink():
+        raise BundledLinkError("FAIL: pointer skill must be a real file, not a symlink")
     auth = Path(real_home) / "auth.json"
-    if auth.is_file():
-        shutil.copy2(auth, dest / "auth.json")
+    try:
+        auth_ok = auth.is_file()
+    except OSError:
+        auth_ok = False
+    if auth_ok:
+        # Byte copy (not a symlink). copy2 follows a symlink source; do not keep
+        # a broader source mode — force 0600 on the dest copy.
+        shutil.copy2(auth, dest / "auth.json", follow_symlinks=True)
+        dest_auth = dest / "auth.json"
+        if dest_auth.is_symlink():
+            raise BundledLinkError("FAIL: auth.json must be a byte copy, not a symlink")
+        os.chmod(dest_auth, 0o600)
+    if link_bundled:
+        link_bundled_skills(real_home, dest)
     return dest
 
 
@@ -390,9 +770,10 @@ def build_p(
     )
     preamble = build_preamble(repo, mode=mode, grok_home=real_home)
     composed = compose_grok_prompt(preamble, prompt)
-    _append_receipt(
-        receipt,
-        {
+    skills_request = skills_mode_from_env(env)
+
+    def _start_row(bundle_mode: str, chars, tokens) -> dict:
+        return {
             "event": "start",
             "prompt_head": prompt[:240],
             "cwd": str(cwd),
@@ -405,8 +786,18 @@ def build_p(
             "task_prompt_chars": len(prompt),
             "task_prompt_tokens_est": tokens_est(prompt),
             "preamble_mode": mode,
-        },
-    )
+            "skills_bundle_chars": chars,
+            "skills_bundle_tokens_est": tokens,
+            "skills_bundle_method": TOKEN_METHOD,
+            "skills_bundle_mode": bundle_mode,
+        }
+
+    def _fail(reason: str, msg: str, bundle_mode: str, chars=None, tokens=None) -> int:
+        print(msg, file=sys.stderr)
+        _append_receipt(receipt, _start_row(bundle_mode, chars, tokens))
+        _append_receipt(receipt, {"event": "fail", "reason": reason, "copy": msg})
+        return EXIT_FAIL
+
     print(
         "pfy build -p · preamble %s · %s tokens_est (%s) · task %s tokens_est"
         % (mode, tokens_est(preamble), TOKEN_METHOD, tokens_est(prompt))
@@ -415,15 +806,55 @@ def build_p(
     grok = grok_bin(path_env)
     if not grok:
         msg = "FAIL: grok not on PATH — install Grok Build CLI or fix PATH; next: ~/.local/bin/grok"
-        print(msg, file=sys.stderr)
-        _append_receipt(receipt, {"event": "fail", "reason": "grok_missing", "copy": msg})
-        return EXIT_FAIL
+        planned = skills_request if mode == "trimmed" else "full_skills"
+        return _fail("grok_missing", msg, planned)
 
     child_env = dict(env)
     child_home = real_home
+    link_bundled = False
+    bundle_mode = "full_skills"
     if mode == "trimmed":
-        child_home = isolate_trimmed_grok_home(real_home, receipt_dir / "grok-home")
+        if skills_request == "pointer_only":
+            bundle_mode = "pointer_only"
+        else:
+            try:
+                bundled_ok = (real_home / "bundled").is_dir()
+            except OSError:
+                bundled_ok = False
+            if not bundled_ok and not dry_run:
+                return _fail(
+                    "bundled_missing",
+                    bundled_missing_message(real_home),
+                    "bundled_missing",
+                )
+            # Dry-run with no bundled still plans a pointer-only home.
+            # It does not keep the real GROK_HOME or the user skills tree.
+            link_bundled = bundled_ok
+            bundle_mode = "bundled_link" if bundled_ok else "bundled_skipped"
+        try:
+            child_home = isolate_trimmed_grok_home(
+                real_home,
+                receipt_dir / "grok-home",
+                link_bundled=link_bundled,
+            )
+        except BundledMissingError as exc:
+            return _fail("bundled_missing", str(exc), "bundled_missing")
+        except BundledLinkError as exc:
+            return _fail("bundled_link_unsafe", str(exc), "bundled_link_unsafe")
         child_env["GROK_HOME"] = str(child_home)
+        bundle_chars, bundle_tokens = measure_skills_bundle(child_home)
+    else:
+        bundle_chars, bundle_tokens = measure_skills_bundle(real_home)
+
+    _append_receipt(receipt, _start_row(bundle_mode, bundle_chars, bundle_tokens))
+    skipped = ""
+    if bundle_mode == "bundled_skipped":
+        skipped = " · dry-run, bundled not copied"
+    print(
+        "pfy build -p · skills_bundle %s · %s tokens_est (%s)%s"
+        % (bundle_mode, bundle_tokens, TOKEN_METHOD, skipped)
+    )
+
     if not grok_authenticated(child_home):
         # In dry-run allow missing auth so CI can exercise the path
         if not dry_run:
@@ -511,6 +942,10 @@ def build_p(
         "preamble_mode": mode,
         "preamble_tokens_est": tokens_est(preamble),
         "task_prompt_tokens_est": tokens_est(prompt),
+        "skills_bundle_chars": bundle_chars,
+        "skills_bundle_tokens_est": bundle_tokens,
+        "skills_bundle_method": TOKEN_METHOD,
+        "skills_bundle_mode": bundle_mode,
     }
     _append_receipt(receipt, summary)
 
