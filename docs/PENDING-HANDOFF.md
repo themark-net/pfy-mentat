@@ -2,6 +2,15 @@
 
 Git plus this file is the handoff when another checkout may be open. Do not commit, reset, or stash on an open founder Build branch.
 
+## 2026-10-05 — D1 friction fixes (`./pfy build -p` + route escalate exit)
+
+- **Branch:** `fix/d1-friction-pfy-build-p` (from main `682aa20`). Worktree `/home/mark/DEVELOP/pfy-mentat/tmp/d1-friction-fix-20261005`.
+- **Landed:** `scripts/pfy_build_p.py` + `./pfy build -p`; route conf-low → exit **3** / `verdict: escalate`; docs follow-up in [docs/dogfood/D1-RESULTS.md](dogfood/D1-RESULTS.md); tests `tests/test_pfy_build_p.py`.
+- **Closes:** D1 friction (plain output-format wrap, escalate≠broken, real receipt.jsonl). Empty D1 `pipelines/dogfood/d1/receipt.jsonl` left historical.
+- **Out of scope:** GUI, #258, TypeSafe spend, Feature GO, merge.
+- **Verify:** `make catalog-check` · `make eval-structural` · `make smoke-product-levers` · `python3 -m unittest tests.test_pfy_build_p`
+- **Next:** merge when checks green; optional bot skill to prefer `./pfy build -p` over bare `grok -p`.
+
 ## 2026-10-05 — Dogfood D1 bot lane (jev toolset + wrapped grok -p)
 
 - **Branch:** `dogfood/d1-jev-pfy-wrap` (from main `29b74ac`). Worktree `/home/mark/DEVELOP/pfy-mentat/tmp/dogfood-d1-20261004`.

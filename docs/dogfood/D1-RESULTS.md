@@ -98,3 +98,17 @@ Budget: about **10 minutes** if smoke is green and the chore stays docs-only. If
 ## Catalog honesty
 
 Used only: toolset `jev` (already implemented for grok), Grok CLI. Avoided: #258 picker, Kolibri I0, catalog HOLD 70–75, TypeSafe cloud.
+
+
+## Follow-up — friction fixes (post-#260)
+
+Branch `fix/d1-friction-pfy-build-p` (off `682aa20`) closes the D1 friction items:
+
+1. **`./pfy build -p "<prompt>" [--cwd DIR] [--dry-run]`** — applies local `jev` toolset, runs decision smoke, logs decision-route shadow (escalate = exit 3, not broken), then `grok -p … --output-format plain --always-approve`. Prints `session_id` + usage (turns / model_calls). Writes a **non-empty** `pipelines/dogfood/build/<ts>/receipt.jsonl` (and grok stdout/stderr logs). Fails honestly if `grok` missing on PATH or unauthenticated.
+2. **`./pfy decision route`** — conf-low is **escalate** (exit **3** + `verdict: escalate` on stdout), not tool failure (exit 1). Ready = 0; broken = 1. No silent auto-act.
+3. Docs/operators: use `--output-format plain` (never `text`).
+
+
+**Dogfood of the fix (this PR):** `./pfy build -p` successfully drove a headless Grok Build body (~62s, session `01a10ae0-c1e9-79f1-b025-6cc47c6e33b6`, 1 turn / 6 model calls) after toolset apply + smoke + route escalate-shadow; non-empty `pipelines/dogfood/build/20261005T070423Z/receipt.jsonl`. Driving Build **through** `./pfy` **worked** for this slice.
+
+Empty `pipelines/dogfood/d1/receipt.jsonl` / `grok-stderr.log` from the original D1 bot lane stay as historical artifacts; new builds use the helper receipt path above.
