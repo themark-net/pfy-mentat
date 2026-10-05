@@ -2,6 +2,15 @@
 
 Git plus this file is the handoff when another checkout may be open. Do not commit, reset, or stash on an open founder Build branch.
 
+## 2026-10-04 — Jev decision layer × org bots × pfy dogfood plan
+
+- **Branch:** `docs/jev-decision-layer-and-pfy-dogfood` (from main `c0d9072`). Worktree `/home/mark/DEVELOP/pfy-mentat/tmp/jev-dogfood-plan-20261004`.
+- **Ask:** Figure out existing Jev/TypeSafe usage; plan integration with Grok Bot org + Grok Build on nimo and pfy-mentat; dogfood whether `./pfy` can replace/augment bare `grok -p` for bots and a human (Mark / Bleeping Blank).
+- **Landed (docs-only):** [docs/design/JEV-DECISION-LAYER-AND-PFY-DOGFOOD.md](design/JEV-DECISION-LAYER-AND-PFY-DOGFOOD.md) — inventory, decision table (keep-in-code vs Jev-style vs LLM), catalog posture (`jev` toolset stays `catalog_tool: null` per ADR-0016; no TOOLS.md row in this PR), thin-adapter notes, dogfood slice **D1**, blockers (no `TYPESAFE_API_KEY`).
+- **Already wired (not new code):** `#230` / ADR-0016 / `scripts/pfy_jev_230.py` / `./pfy decision` / toolset `jev`. Local smoke READY; TypeSafe cloud optional and **unkeyed** on nimo. Org side: `themark-net/org-spinny-decide` + box skill `org-spinny-decide` (Ollama, explicitly not cloud TypeSafe).
+- **Out of scope:** live TypeSafe calls, new TypeSafe account/spend, catalog HOLD 70–75, PR #256 Loop agent-picker split, eval-auto `NameError: re` fix branches, Feature GO, merging.
+- **Next:** (1) Review/merge this docs PR. (2) Run dogfood **D1** in a fresh worktree. (3) Shadow-log bridge for `push_hold` only after D1. (4) T-0123 if/when catalog re-score for TypeSafe cloud is wanted.
+
 ## 2026-10-04 — PR #256 follow-up: split Loop picker + harness extract fix
 
 - **PR #256 branch:** `build/pfy-cli-catalog-cards-0925` — CLI/catalog/eval only (no `gui/`, no `pfy-gui.py`, no `loop_paint.py`).
@@ -27,9 +36,8 @@ Git plus this file is the handoff when another checkout may be open. Do not comm
 - **Branch:** `bot/kolibri-1` (from main `53b24ec`). Worktree `/home/mark/DEVELOP/pfy-mentat/tmp/kolibri-1`. Operator ask: "Add to pfy-mentat. Pull it and test." (X post 2106306843052052616)
 - **Landed:** `sources/entries/085-kolibri-1.md` (084 is taken by open PR #254), a TOOLS.md row (B, 72, public-docs scores), a `data/tools.json` row + `data/tool_integration_stages.json` (I0), `examples/kolibri1-llamacpp/` (build/download/serve/smoke), `make smoke-kolibri1`, and the receipt `pipelines/smoke/kolibri1/latest.json`.
 - **Paths checked:** (a) Community GGUFs exist, but every one needs a llama.cpp source patch; stock llama.cpp and Ollama have no `kolibri1` (llama.cpp#29922 open). The smallest is `Eliasfpv28/Kolibri-1-Q3_K_S-GGUF` at 33.87 GB. (b) The only other registered machine, GROKBOT-WIN, is offline; nimo is AMD Strix Halo (Radeon 8060S, 64 GiB VRAM carve-out, 61 GiB RAM, no NVIDIA). (c) Kolibri is not on OpenRouter and has no HF inference-provider mapping. No Aleph Alpha, OpenRouter, or HF key names are in nimo env or `.env`.
-- **Done on nimo:** The patched llama.cpp (`edd6e2b` + `kolibri1-runtime.patch`, CPU backend) built OK in `tmp/kolibri-runtime/build-cpu`. The Q3_K_S GGUF is downloading (16-way ranged, about 8-10 MB/s) into `tmp/models/Kolibri-1-Q3_K_S-GGUF/` (gitignored). No official 78 GB FP8 weights were pulled. Only config/tokenizer/card were fetched, into `tmp/models/Kolibri-1-meta/`.
-- **Smoke at PR time:** `FAIL_NO_BACKEND` (exit 2). Reason: the GGUF download was incomplete. That is honest, not a stub.
-- **Next:** (1) When `download.sh` prints `DL_OK` (sha256 verified), run `make smoke-kolibri1` (CPU, mmap; the 31.5 GiB file is about equal to free RAM, so loads may be slow). Commit the new receipt and flip the stage to I1 only on PASS. (2) For the GPU path (64 GiB iGPU), Vulkan headers + `glslc` are needed for `KOLIBRI_BACKEND=vulkan ./build.sh`. Get them via a user-space SDK under ~/DEVELOP or with apt, which **needs Mark's approval**. (3) The official FP8 path needs NVIDIA (at least 2x A100 80GB) or a hosted endpoint; set `KOLIBRI_BASE_URL` to reuse the smoke.
+- **Done on nimo:** Patched llama.cpp CPU backend built under `tmp/kolibri-runtime/build-cpu`. GGUF download was started then **stopped and deleted** (too big for nimo). Meta-only under `tmp/models/Kolibri-1-meta/`. Smoke at PR time: `FAIL_NO_BACKEND` (honest).
+- **Next:** Kolibri-1 stays **watch-only at I0**. Mark: too big for nimo; watching for newer/smaller models. No Vulkan build; do not re-download weights or promote to I1.
 - **Out of scope:** catalog 70–75 HOLD, other open PRs, Feature GO.
 
 ## 2026-09-28 — founder standings into portable skills SoT
