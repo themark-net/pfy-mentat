@@ -32,7 +32,12 @@ def _normalize_ascii_punct(s: str) -> str:
 
 
 def extract_python(text: str) -> str:
-    """Pull executable Python from model output (fences, def blocks, or raw)."""
+    """Pull executable Python from model output (fences, def blocks, or raw).
+
+    Keep leading ``import`` / ``from`` / blank / comment lines that appear
+    *before* the first ``def``/``class``. Models often put ``import re``
+    above ``def slugify``; dropping that preamble causes ``NameError: re``.
+    """
     text = _normalize_ascii_punct(text.strip())
     m = re.search(r"```(?:python)?\s*([\s\S]*?)```", text, re.I)
     if m:
@@ -41,25 +46,40 @@ def extract_python(text: str) -> str:
 
     # Prefer a contiguous def … body (stop at next top-level prose/heading)
     def_m = re.search(
-        r"(^|\n)(def\s+\w+\s*\([^)]*\)\s*(?:->\s*[^:]+)?\s*:[\s\S]*)",
+        r"(^|\n)((?:def|class)\s+\w+[\s\S]*)",
         text,
     )
-    if def_m:
-        body = def_m.group(2)
-        lines: list[str] = []
-        for i, line in enumerate(body.splitlines()):
-            if i == 0:
-                lines.append(line)
-                continue
-            # Stop when model resumes prose after the function
-            if line.strip() and not line[0].isspace() and not line.startswith(
-                ("def ", "class ", "@", "import ", "from ", "#")
-            ):
-                break
-            lines.append(line)
-        text = "\n".join(lines).rstrip()
+    if not def_m:
+        return text
 
-    return text
+    before = text[: def_m.start(2)]
+    preamble: list[str] = []
+    for line in before.splitlines():
+        stripped = line.strip()
+        if (
+            not stripped
+            or stripped.startswith("#")
+            or stripped.startswith(("import ", "from "))
+        ):
+            preamble.append(line)
+        # else: drop prose / markdown before the code block
+
+    body = def_m.group(2)
+    # If we matched a class, keep full class body similarly
+    lines: list[str] = []
+    for i, line in enumerate(body.splitlines()):
+        if i == 0:
+            lines.append(line)
+            continue
+        # Stop when model resumes prose after the function/class
+        if line.strip() and not line[0].isspace() and not line.startswith(
+            ("def ", "class ", "@", "import ", "from ", "#")
+        ):
+            break
+        lines.append(line)
+    text = "\n".join([*preamble, *lines]).rstrip()
+    # Collapse leading blank lines from empty preamble noise
+    return text.lstrip("\n")
 
 
 def load_tests(path: Path):

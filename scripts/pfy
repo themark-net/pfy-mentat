@@ -194,6 +194,14 @@ elif cmd=="detects":
     for h in reg["harnesses"]:
         if h["id"]==arg:
             print("\n".join(h.get("detect") or [])); break
+elif cmd=="setup":
+    for h in reg["harnesses"]:
+        if h["id"]==arg:
+            setup=(h.get("setup") or "").strip()
+            print(setup.splitlines()[0] if setup else "")
+            break
+    else:
+        sys.exit(1)
 elif cmd=="github_issue":
     for h in reg["harnesses"]:
         if h["id"]==arg:
@@ -442,6 +450,56 @@ ensure_llama_server() {
     return 0
   fi
   echo "note: llama-server launched but API not healthy (partial/timeout) — not fake ready"
+  return 1
+}
+
+shimmy_health() {
+  curl -sf --max-time 2 http://127.0.0.1:11435/v1/models >/dev/null 2>&1 \
+    || curl -sf --max-time 2 http://127.0.0.1:11435/health >/dev/null 2>&1 \
+    || curl -sf --max-time 2 http://127.0.0.1:11435/api/tags >/dev/null 2>&1
+}
+
+wait_shimmy_health() {
+  local i
+  for i in $(seq 1 12); do
+    shimmy_health && return 0
+    sleep 0.5
+  done
+  return 1
+}
+
+shimmy_model_path() {
+  local p="${PFY_LLAMA_MODEL:-${SHIMMY_BASE_GGUF:-}}"
+  if [[ -n "$p" && -f "$p" ]]; then
+    echo "$p"
+  fi
+}
+
+ensure_shimmy() {
+  # Optional last (ADR-0014). Return 0 only when :11435 answers. Do not prefer over FreeToken.
+  local model args
+  if ! have shimmy; then
+    echo "STUB: shimmy not on PATH. One-liner:"
+    echo "  shimmy serve --bind 127.0.0.1:11435"
+    return 1
+  fi
+  if shimmy_health; then
+    echo "shimmy API healthy"
+    return 0
+  fi
+  args=(serve --bind 127.0.0.1:11435)
+  model="$(shimmy_model_path)"
+  if [[ -n "$model" ]]; then
+    args+=(--model-path "$model")
+  fi
+  echo "starting shimmy in background (wait for /v1/models or /health on :11435)…"
+  (shimmy "${args[@]}" >>"$STATE_DIR/shimmy.log" 2>&1 &) || true
+  if wait_shimmy_health; then
+    echo "shimmy API healthy"
+    return 0
+  fi
+  echo "note: shimmy launched but API not healthy (partial/timeout) — not fake ready"
+  echo "  shimmy serve --bind 127.0.0.1:11435"
   return 1
 }
 
@@ -838,7 +896,7 @@ cmd_status() {
   done
   echo ""
   echo "next: pfy setup   |   pfy   |   pfy start grok   |   pfy harness list"
-  echo "override: PFY_LOCAL_RUNTIME=freetoken|llama-swap|llama-server|ollama"
+  echo "override: PFY_LOCAL_RUNTIME=freetoken|llama-swap|llama-server|ollama|shimmy"
 }
 
 cmd_setup() {
@@ -905,10 +963,7 @@ ensure_inference() {
       llama-swap) ensure_llama_swap || true ;;
       llama-server|llama.cpp) ensure_llama_server || true ;;
       ollama) ensure_ollama_adapter || true ;;
-      shimmy)
-        echo "STUB: shimmy HTTP not up. One-liner:"
-        echo "  shimmy"
-        ;;
+      shimmy) ensure_shimmy || true ;;
       *)
         echo "note: unknown PFY_LOCAL_RUNTIME=$pref — install FreeToken / llama-swap / llama-server / ollama or ./pfy up"
         ;;
@@ -919,9 +974,7 @@ ensure_inference() {
       llama-swap) ensure_llama_swap || true ;;
       llama-server|llama.cpp) ensure_llama_server || true ;;
       freetoken|ft) ensure_freetoken || true ;;
-      shimmy)
-        echo "inference already up (shimmy)"
-        ;;
+      shimmy) ensure_shimmy || true ;;
       *)
         echo "inference already up"
         ;;
@@ -942,6 +995,9 @@ ensure_inference() {
     if [[ "$started" -eq 0 ]] && have ollama; then
       if ensure_ollama_adapter; then started=1; fi
     fi
+    if [[ "$started" -eq 0 ]] && have shimmy; then
+      if ensure_shimmy; then started=1; fi
+    fi
   fi
 
   rt=$(local_runtime)
@@ -959,7 +1015,7 @@ ensure_inference() {
 
   if [[ "$st" != "ready" ]]; then
     echo "FAIL: no local engine"
-    echo "next: install FreeToken / llama-swap / llama-server / ollama or ./pfy up"
+    echo "next: install FreeToken / llama-swap / llama-server / ollama / shimmy or ./pfy up"
     return 1
   fi
   return 0
@@ -1031,16 +1087,80 @@ grok_unauth() {
   return 1
 }
 
+print_fs_nav() {
+  # Host start sees the repo directly. The cage tree is a bind mount, not this directory.
+  local mode root_fs cage_dir
+  if [[ "${PFY_FS:-}" == "direct" || "${PFY_FS:-}" == "cage" ]]; then
+    mode="$PFY_FS"
+  elif [[ "$ROOT" == /workspace || "$ROOT" == /workspace/* ]]; then
+    mode="cage"
+  else
+    mode="direct"
+  fi
+  if [[ "$mode" == "cage" ]]; then
+    root_fs="$ROOT"
+    [[ "$root_fs" == /workspace || "$root_fs" == /workspace/* ]] || root_fs="/workspace/pfy-mentat"
+  else
+    root_fs="$ROOT"
+  fi
+  cage_dir="${AGENTCAGE_DIR:-$HOME/.agentcage}/workspace/pfy-mentat"
+  export PFY_FS="$mode"
+  export PFY_FS_ROOT="$root_fs"
+  echo "filesystem: $mode"
+  echo "  root: $PFY_FS_ROOT"
+  if [[ "$mode" == "direct" ]]; then
+    echo "  cage copy: $cage_dir bind-mounted at /workspace/pfy-mentat. Not this directory. Sync: make cage-code-sync"
+  else
+    echo "  host mirror: $cage_dir. Host paths are a different tree. Sync: make cage-code-sync"
+    echo "  grok navigates this tree through the filesystem MCP"
+  fi
+}
+
+write_continue_config() {
+  local base="${LOCAL_OPENAI_BASE_URL:-}" note=""
+  if [[ -z "$base" ]]; then
+    base="http://127.0.0.1:1919/v1"
+    note=" (example — no live engine; ./pfy up)"
+  elif [[ "$base" != */v1 ]]; then
+    base="${base%/}/v1"
+  fi
+  mkdir -p "$STATE_DIR"
+  python3 - "$STATE_DIR/continue-config.json" "$base" <<'PY'
+import json, sys
+path, base = sys.argv[1], sys.argv[2]
+doc = {"models": [{
+    "title": "Local OpenAI-compat (ADR-0014)",
+    "provider": "openai",
+    "model": "local-coder",
+    "apiBase": base,
+    "apiKey": "local",
+}]}
+with open(path, "w", encoding="utf-8") as f:
+    json.dump(doc, f, indent=2)
+    f.write("\n")
+PY
+  echo "  config: $STATE_DIR/continue-config.json"
+  echo "  apiBase: ${base}${note}"
+  echo "  open: ${PFY_FS_ROOT:-$ROOT}"
+}
+
 stub_harness() {
   local id="$1"
   local issue
   issue="$(json_field github_issue "$id" 2>/dev/null || true)"
+  print_fs_nav
   echo "STUB harness: $id"
   if [[ -n "$issue" ]]; then
     echo "  https://github.com/themark-net/pfy-mentat/issues/${issue}"
   fi
   case "$id" in
-    continue|agent-cage)
+    continue)
+      echo "  recipe: bootstrap/continue/README.md"
+      write_continue_config
+      echo "  pfy harness use grok"
+      ;;
+    agent-cage)
+      echo "  next: ./pfy stage --lab"
       echo "  pfy harness use grok"
       ;;
   esac
@@ -1123,6 +1243,7 @@ exec_harness() {
   local live
   live="$(detect_status "$id" 2>/dev/null || echo missing)"
   echo "==> start harness: $id (live=$live)"
+  print_fs_nav
   local rt engine st base
   rt=$(local_runtime)
   python3 -c "import json,sys; print('local runtime:', json.loads(sys.argv[1]))" "$rt"
@@ -1185,7 +1306,26 @@ exec_harness() {
       fi
       exec "$gbin"
       ;;
-    freetoken|ollama|shimmy|llama-swap|llama-server|llama.cpp)
+    ollama)
+      # T-0101: this id is the Ollama adapter, not "whatever engine is already ready".
+      if ! ollama_health; then
+        echo "honest stub: ollama not healthy"
+        echo "  ollama serve"
+        exit 2
+      fi
+      export LOCAL_OPENAI_BASE_URL="http://127.0.0.1:11434/v1"
+      export OPENAI_BASE_URL="$LOCAL_OPENAI_BASE_URL"
+      local omodel
+      omodel="$(ollama_default_model)"
+      if [[ -n "$omodel" ]]; then
+        echo "default model: $omodel"
+      else
+        echo "default model: (installed tags)"
+      fi
+      echo "inference spine: ollama  LOCAL_OPENAI_BASE_URL=$LOCAL_OPENAI_BASE_URL"
+      return 0
+      ;;
+    freetoken|shimmy|llama-swap|llama-server|llama.cpp)
       echo "inference spine: $id  LOCAL_OPENAI_BASE_URL=${LOCAL_OPENAI_BASE_URL:-}"
       if [[ "$st" != "ready" ]]; then echo "honest stub: $id not healthy"; exit 2; fi
       return 0
@@ -1229,17 +1369,22 @@ exec_harness() {
         exec "$bin"
       else
         echo "STUB harness: hermes"
-        echo "  https://github.com/themark-net/pfy-mentat/issues/56"
-        echo "  curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash"
+        issue=$(json_field github_issue hermes || true)
+        echo "  https://github.com/themark-net/pfy-mentat/issues/${issue:-56}"
+        inst=$(json_field setup hermes || true)
+        [[ -n "$inst" ]] && echo "  $inst"
         exit 2
       fi
       ;;
     claude|claude-code)
       if ! have claude; then
         echo "FAIL attach -- claude missing"
-        echo "  next: npm install -g @anthropic-ai/claude-code"
+        issue=$(json_field github_issue claude-code || true)
+        echo "  https://github.com/themark-net/pfy-mentat/issues/${issue:-57}"
+        inst=$(json_field setup claude-code || true)
+        [[ -n "$inst" ]] && echo "  next: $inst"
         echo "  equiv: ./pfy models"
-        return 1
+        exit 2
       fi
       # #221: FAIL+next before exec — no false attached without provider + prove
       if [[ "$st" != "ready" || -z "${LOCAL_OPENAI_BASE_URL:-}" ]]; then
@@ -1288,9 +1433,12 @@ exec_harness() {
       cbin="$(codex_bin || true)"
       if [[ -z "$cbin" ]]; then
         echo "FAIL attach -- codex missing"
-        echo "  next: curl -fsSL https://chatgpt.com/codex/install.sh | sh"
+        issue=$(json_field github_issue codex || true)
+        echo "  https://github.com/themark-net/pfy-mentat/issues/${issue:-58}"
+        inst=$(json_field setup codex || true)
+        [[ -n "$inst" ]] && echo "  next: $inst"
         echo "  equiv: ./pfy models"
-        return 1
+        exit 2
       fi
       # #220: FAIL+next before exec — no false attached without provider + prove
       if [[ "$st" != "ready" || -z "${LOCAL_OPENAI_BASE_URL:-}" ]]; then
@@ -1319,9 +1467,10 @@ exec_harness() {
         exec "$bin"
       else
         echo "STUB harness: gemini"
-        echo "  https://github.com/themark-net/pfy-mentat/issues/59"
-        echo "  npm install -g @google/gemini-cli"
-        echo "  gemini   # login in the CLI; credentials/2FA are owner-only"
+        issue=$(json_field github_issue gemini || true)
+        echo "  https://github.com/themark-net/pfy-mentat/issues/${issue:-59}"
+        inst=$(json_field setup gemini || true)
+        [[ -n "$inst" ]] && echo "  $inst"
         exit 2
       fi
       ;;
@@ -1338,9 +1487,10 @@ exec_harness() {
         exec "$ebin"
       else
         echo "STUB harness: exo"
-        echo "  https://github.com/themark-net/pfy-mentat/issues/60"
-        echo "  curl -fsSL https://raw.githubusercontent.com/exoharness/exo/main/setup.sh -o setup.sh"
-        echo "  bash setup.sh"
+        issue=$(json_field github_issue exo || true)
+        echo "  https://github.com/themark-net/pfy-mentat/issues/${issue:-60}"
+        inst=$(json_field setup exo || true)
+        [[ -n "$inst" ]] && echo "  $inst"
         exit 2
       fi
       ;;
@@ -1362,7 +1512,12 @@ attach_operator_harness() {
   fi
 
   case "$preferred" in
-    freetoken|ollama|shimmy|llama-swap|llama-server|llama.cpp)
+    ollama)
+      ensure_ollama_adapter || exit 2
+      exec_harness ollama
+      return 0
+      ;;
+    freetoken|shimmy|llama-swap|llama-server|llama.cpp)
       exec_harness "$preferred"
       return 0
       ;;
@@ -1475,8 +1630,16 @@ cmd_start() {
 }
 
 lab_stage() {
+  print_fs_nav
   echo "lab: optional personal cage lab (doctor → setup → up-mcp)"
   echo "lab: not product-ready; do not sell cage"
+  if [[ "${PFY_FS:-}" == "cage" ]]; then
+    echo "lab: this process is already in the cage tree ($PFY_FS_ROOT)"
+    echo "lab: run ./pfy stage --lab on the host checkout, not inside /workspace"
+    return 1
+  fi
+  echo "lab: the lab navigates ${AGENTCAGE_DIR:-$HOME/.agentcage}/workspace/pfy-mentat mounted at /workspace/pfy-mentat"
+  echo "lab: that is not $ROOT"
   if ! have docker; then
     echo "lab: Docker is missing"
     echo "lab: lab skipped (not product-ready)"
