@@ -2,6 +2,13 @@
 
 Git plus this file is the handoff when another checkout may be open. Do not commit, reset, or stash on an open founder Build branch.
 
+## 2026-10-05 — D4 Reviewer fix round (#266 / #265, CEO hold)
+
+- **Branch / worktree:** `bot/dogfood-d4-265` · `/home/mark/DEVELOP/pfy-mentat/tmp/dogfood-d4-265`. No `./pfy build -p` / no live Grok (CEO hold).
+- **Fixes:** (1) `test_this_host_bundled_link_under_measured_bound` opt-in via `PFY_HOST_BUNDLED_TEST=1` (checked before any `~/.grok` access; skip if bundled absent; drop host-specific 2.78M cap). (2) isolated `auth.json` forced `0600`, home `0700`; grok-home under receipt stamp persists for audit (gitignored). (3) D4-RESULTS token-gap note + outer-bot edit list.
+- **Verify:** `make catalog-check` · `make eval-structural` · `PFY_HOST_BUNDLED_TEST` unset · `python3 -m unittest discover -s tests -t .` (G0-equivalent). Portable `SkillsBundleTests` still FAIL on `a8977c33`.
+- **Next:** green G0 on ubuntu-latest; do not merge until Reviewer re-check.
+
 ## 2026-10-05 — Dogfood D4 bundled expose without user skills (#265)
 
 - **Branch:** `bot/dogfood-d4-265` (from `a8977c33`). Worktree `/home/mark/DEVELOP/pfy-mentat/tmp/dogfood-d4-265`.

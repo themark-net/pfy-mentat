@@ -9,15 +9,22 @@ dir `pipelines/dogfood/build/`, and a skill path pointer. Full skill bodies
 are not inlined.
 
 Skills bundle (#265): the trimmed grok child gets a GROK_HOME with
-`auth.json` copied as bytes (never a symlink), a real-file pointer at
-`skills/pfy-jev-decision/SKILL.md`, and `bundled/` as a real directory tree
-of byte copies from the real home's `bundled/` (never a file symlink, never
-one directory symlink, and never anything from `real_home/skills`). File
-symlinks wrote through: grok opened the dest path and changed the real file.
-Dest copies are chmod a-w after `shutil.copy2`. The real tree is only read.
-Text size of that exposed tree is recorded apart from the preamble and the
-task prompt. Receipt mode stays `bundled_link` (historical name; the tree is
-copies).
+`auth.json` copied as bytes (never a symlink; dest mode forced to ``0600``),
+a real-file pointer at `skills/pfy-jev-decision/SKILL.md`, and `bundled/` as
+a real directory tree of byte copies from the real home's `bundled/` (never
+a file symlink, never one directory symlink, and never anything from
+`real_home/skills`). File symlinks wrote through: grok opened the dest path
+and changed the real file. Dest copies are chmod a-w after `shutil.copy2`.
+The isolated home directory is ``0700`` (not world-readable). The real tree
+is only read. Text size of that exposed tree is recorded apart from the
+preamble and the task prompt. Receipt mode stays `bundled_link` (historical
+name; the tree is copies).
+
+The isolated home persists under
+``pipelines/dogfood/build/<stamp>/grok-home/`` for receipt audit (operators
+can inspect byte copies after a run). It is gitignored
+(``pipelines/dogfood/build/**/grok-home/``) and is not auto-deleted after
+``build_p`` returns — auth and bundled copies must never be committed.
 
 `PFY_BUILD_FULL_PREAMBLE=1` restores a full preamble that inlines
 `toolset-jev-brief.md` plus the `pfy-jev-decision` and `jev-decision`
@@ -559,16 +566,26 @@ def isolate_trimmed_grok_home(
     """Isolated grok home: pointer skill, auth byte copy, optional bundled byte copies.
 
     Does not copy or symlink ``real_home/skills``. The pointer skill is always
-    a regular file. ``auth.json`` is a byte copy when the real file exists.
-    ``link_bundled=False`` is the D3 pointer-only home (``PFY_BUILD_FULL_SKILLS=1``).
-    ``link_bundled=True`` mirrors ``real_home/bundled`` as dest byte copies
-    (never file symlinks). The real tree is not written.
+    a regular file. ``auth.json`` is a byte copy when the real file exists,
+    then forced to mode ``0600`` (``copy2`` would otherwise preserve a broader
+    source mode). The isolated home directory is ``0700`` so it is not
+    world-readable. ``link_bundled=False`` is the D3 pointer-only home
+    (``PFY_BUILD_FULL_SKILLS=1``). ``link_bundled=True`` mirrors
+    ``real_home/bundled`` as dest byte copies (never file symlinks). The real
+    tree is not written.
+
+    Persistence: callers typically place ``dest`` under
+    ``pipelines/dogfood/build/<stamp>/grok-home/``. That tree is kept after
+    the run for receipt audit (gitignored); ``build_p`` does not delete it.
+    Never commit auth or grok-home contents.
     """
     dest = Path(dest)
     if dest.exists() or dest.is_symlink():
         _unlink_or_rmtree(dest)
     skill_dir = dest / "skills" / "pfy-jev-decision"
     skill_dir.mkdir(parents=True)
+    # Owner-only home: auth.json lives here; do not leave the dir world-readable.
+    os.chmod(dest, 0o700)
     pointer = skill_dir / "SKILL.md"
     pointer.write_text(pointer_skill_md(), encoding="utf-8")
     if pointer.is_symlink():
@@ -579,10 +596,13 @@ def isolate_trimmed_grok_home(
     except OSError:
         auth_ok = False
     if auth_ok:
-        # Byte copy (not a symlink). copy2 follows a symlink source and keeps file mode.
+        # Byte copy (not a symlink). copy2 follows a symlink source; do not keep
+        # a broader source mode — force 0600 on the dest copy.
         shutil.copy2(auth, dest / "auth.json", follow_symlinks=True)
-        if (dest / "auth.json").is_symlink():
+        dest_auth = dest / "auth.json"
+        if dest_auth.is_symlink():
             raise BundledLinkError("FAIL: auth.json must be a byte copy, not a symlink")
+        os.chmod(dest_auth, 0o600)
     if link_bundled:
         link_bundled_skills(real_home, dest)
     return dest

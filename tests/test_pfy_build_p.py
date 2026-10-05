@@ -336,13 +336,8 @@ class PreambleTrimTests(unittest.TestCase):
 # Concrete cap for the fixed fixture. The fixture's user-skills payload alone is
 # above this, so copying real_home/skills into dest fails the assert.
 FIXTURE_SKILLS_BUNDLE_TOKENS_MAX = 30_000
-# This host, 2026-10-05, same chars/4 counter: byte-copied ~/.grok/bundled plus
-# the pointer skill is 2_749_730 tokens_est (same text the old file-symlinks
-# followed). Headroom to 2_780_000 is 30_270, under the 36_752 tokens_est of
-# ~/.grok/skills excluding pfy-jev-decision, so copying that tree fails the cap.
-# Raise the cap if bundled text grows, and keep the gap smaller than that
-# user-skills total.
-HOST_BUNDLED_LINK_TOKENS_MAX = 2_780_000
+# Opt-in host probe (CI must leave this unset). Checked before any ~/.grok access.
+HOST_BUNDLED_TEST_ENV = "PFY_HOST_BUNDLED_TEST"
 
 
 def _tree_fingerprint(root: Path) -> str:
@@ -529,6 +524,8 @@ class SkillsBundleTests(unittest.TestCase):
             self.assertTrue(auth.is_file())
             self.assertFalse(auth.is_symlink())
             self.assertEqual(auth.read_bytes(), (gh / "auth.json").read_bytes())
+            self.assertEqual(auth.stat().st_mode & 0o777, 0o600, oct(auth.stat().st_mode))
+            self.assertEqual(isolated.stat().st_mode & 0o077, 0, oct(isolated.stat().st_mode))
 
     def test_pointer_skill_is_a_real_file(self):
         # How it fails: pointer removed, or symlinked into real_home/skills.
@@ -686,37 +683,77 @@ class SkillsBundleTests(unittest.TestCase):
             self.assertFalse((seen / "skills" / "pfy-jev-decision" / "SKILL.md").is_symlink())
             self._assert_no_user_skills(seen)
 
+    def test_isolated_auth_json_forced_to_0600(self):
+        # How it fails: isolate leaves auth.json at copy2's broader source mode
+        # (e.g. 0644) or leaves the isolated home world-readable.
+        # Recover: chmod dest auth to 0600 and dest home to 0700 after the copy.
+        with tempfile.TemporaryDirectory(prefix="pfy-build-auth-mode-") as td:
+            td = Path(td)
+            gh = self._fixture_home(td, bundled=True)
+            (gh / "auth.json").chmod(0o644)
+            self.assertEqual((gh / "auth.json").stat().st_mode & 0o777, 0o644)
+            dest = td / "isolated"
+            build.isolate_trimmed_grok_home(gh, dest)
+            auth = dest / "auth.json"
+            self.assertTrue(auth.is_file())
+            self.assertFalse(auth.is_symlink())
+            self.assertEqual(auth.read_bytes(), (gh / "auth.json").read_bytes())
+            self.assertEqual(
+                auth.stat().st_mode & 0o777,
+                0o600,
+                "leaving auth at 0644 (or any mode other than 0600) fails this test",
+            )
+            self.assertEqual(
+                dest.stat().st_mode & 0o077,
+                0,
+                "world/group-readable isolated home fails this test: %s"
+                % oct(dest.stat().st_mode),
+            )
+            self.assertEqual(dest.stat().st_mode & 0o700, 0o700)
+
     def test_this_host_bundled_link_under_measured_bound(self):
-        # How it fails: copying this machine's user skills tree pushes the exposed
-        # text over the cap, dest/bundled is a directory symlink, or dest files
-        # are symlinks (and a copy/chmod writes ~/.grok/bundled).
-        # Recover: byte copies only, a-w on the dest copies; do not mirror
-        # real_home/skills except the pointer written into dest. dry-run so
-        # toolset apply does not write the real home. Fingerprint of the real
-        # bundled tree must match before and after (read-only).
+        # Opt-in only (PFY_HOST_BUNDLED_TEST=1). Default CI / local runs must not
+        # touch ~/.grok. Check the env flag BEFORE any Path.home()/.grok access.
+        # How it fails (when opted in): dest/bundled is a directory symlink, dest
+        # files are symlinks (write-through into real bundled), or user skills
+        # are mirrored into dest.
+        # Recover: byte copies only, a-w on the dest copies; pointer only under
+        # dest/skills. dry-run so toolset apply does not write the real home.
+        if os.environ.get(HOST_BUNDLED_TEST_ENV, "").strip() not in ("1", "true", "yes"):
+            self.skipTest(
+                "set %s=1 to probe this host's ~/.grok/bundled (skipped by default)"
+                % HOST_BUNDLED_TEST_ENV
+            )
         real = Path.home() / ".grok"
-        self.assertTrue((real / "bundled").is_dir(), real)
-        self.assertFalse((real / "bundled").is_symlink(), real)
+        bundled = real / "bundled"
+        try:
+            bundled_ok = bundled.is_dir() and not bundled.is_symlink()
+        except OSError:
+            bundled_ok = False
+        if not bundled_ok:
+            self.skipTest("opted in but ~/.grok/bundled missing or not a real directory")
         with tempfile.TemporaryDirectory(prefix="pfy-build-host-bundle-") as td:
             td = Path(td)
             # Auth stays on the real home; isolate byte-copies it into the temp dest.
             # Never dry_run=False here: toolset apply writes the configured GROK_HOME.
             # Never write ~/.grok/bundled. The fingerprint catches a chmod or
             # copy that lands on the real tree.
-            before = _tree_fingerprint(real / "bundled")
+            before = _tree_fingerprint(bundled)
             rc, record, err = self._run(td, real, dry_run=True)
-            self.assertEqual(_tree_fingerprint(real / "bundled"), before)
+            self.assertEqual(_tree_fingerprint(bundled), before)
             self.assertEqual(rc, build.EXIT_OK, err)
             rows = self._receipt_rows(td)
             start = next(r for r in rows if r["event"] == "start")
             tokens = start.get("skills_bundle_tokens_est")
             self.assertEqual(start.get("skills_bundle_mode"), "bundled_link")
             self.assertIsInstance(tokens, int)
-            self.assertGreater(tokens, 1_000_000, tokens)
-            self.assertLessEqual(tokens, HOST_BUNDLED_LINK_TOKENS_MAX, tokens)
+            # No host-specific token cap. Fixture bound is the portable ceiling
+            # for the synthetic tree; a real host tree is larger, and must still
+            # be finite / positive. User-skills leak is caught by path asserts.
+            self.assertGreater(tokens, FIXTURE_SKILLS_BUNDLE_TOKENS_MAX, tokens)
             isolated = next((td / "pipelines" / "dogfood" / "build").glob("*/grok-home"))
             self.assertFalse((isolated / "bundled").is_symlink())
-            real_root = (real / "bundled").resolve()
+            real_root = bundled.resolve()
             copied = 0
             for path in (isolated / "bundled").rglob("*"):
                 self.assertFalse(path.is_symlink(), path)
@@ -728,10 +765,14 @@ class SkillsBundleTests(unittest.TestCase):
                 self.assertEqual(path.read_bytes(), src.read_bytes(), path)
                 copied += 1
             self.assertGreater(copied, 0)
-            self.assertEqual(_tree_fingerprint(real / "bundled"), before)
+            self.assertEqual(_tree_fingerprint(bundled), before)
             pointer = isolated / "skills" / "pfy-jev-decision" / "SKILL.md"
             self.assertTrue(pointer.is_file())
             self.assertFalse(pointer.is_symlink())
+            auth = isolated / "auth.json"
+            if auth.is_file():
+                self.assertEqual(auth.stat().st_mode & 0o777, 0o600, oct(auth.stat().st_mode))
+            self.assertEqual(isolated.stat().st_mode & 0o077, 0, oct(isolated.stat().st_mode))
             skills = real / "skills"
             if skills.is_dir():
                 for child in skills.iterdir():
