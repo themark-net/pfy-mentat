@@ -1,6 +1,6 @@
 {
   "version": "1.1",
-  "last_updated": "2026-07-31",
+  "last_updated": "2026-10-04",
   "policy": "docs/ops/integration-stages.md",
   "default_stage": "I1",
   "tools": {
@@ -356,6 +356,17 @@
         "primary_runtime",
         "unattended_full_RSI",
         "subtree_embed"
+      ]
+    },
+    "Kolibri-1": {
+      "integration_stage": "I0",
+      "intent": "local_smoke_patched_llamacpp_gguf",
+      "github": "https://huggingface.co/Aleph-Alpha/Kolibri-1",
+      "notes_doc": "examples/kolibri1-llamacpp/README.md",
+      "non_goals": [
+        "official_fp8_on_nimo",
+        "78gb_weight_download",
+        "feature_go"
       ]
     }
   },

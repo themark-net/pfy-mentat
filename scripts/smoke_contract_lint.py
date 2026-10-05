@@ -14,6 +14,7 @@ required = {
     "opencode-ollama": ("smoke.sh",),
     "voice-stt-edge": ("smoke.sh",),
     "eval-harness": ("run_structural.py",),
+    "kolibri1-llamacpp": ("smoke.py",),
 }
 bad = []
 for name, files in required.items():

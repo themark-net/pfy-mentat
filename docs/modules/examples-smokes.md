@@ -12,6 +12,7 @@ Cage agent must be running (`make cage-up-mcp` or `make local-ollama-up`).
 | `make smoke-codebase-memory` | codebase-memory-mcp index + search |
 | `make smoke-repowise` | repowise health (zero LLM) |
 | `make smoke-context-tools` | both context tools + compare note |
+| `make smoke-kolibri1` | Kolibri-1 EN/DE/tool-call via patched llama.cpp or any OpenAI-compatible URL; FAILs without backend (Entry 085) |
 | `make smoke-litellm-ollama` | LiteLLM → host Ollama via gateway :11435 |
 | `make smoke-opencode-ollama` | Host OpenCode + Ollama worker (T-0080) |
 | `make smoke-voice-stt` | Host STT edge → Grok/OpenCode handoff (T-0091 p1; no mic) |
