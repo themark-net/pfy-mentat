@@ -21,12 +21,14 @@ class CatalogStageEvalTests(unittest.TestCase):
     def setUpClass(cls):
         cls.mod = _load()
 
-    def test_fifty_rows_and_handoff_keys(self):
+    def test_every_tools_md_row_has_handoff_keys(self):
         rows = self.mod.parse_tools_md((ROOT / "TOOLS.md").read_text(encoding="utf-8"))
-        self.assertEqual(len(rows), 50)
         handoff = json.loads((ROOT / "data" / "catalog_stage_handoff.json").read_text(encoding="utf-8"))
+        self.assertGreaterEqual(len(rows), 50)
+        self.assertEqual(len(rows), len(handoff))
         names = {r["name"] for r in self.mod.evaluations()}
         self.assertEqual(names, set(handoff))
+        self.assertIn("Kolibri-1", names)
 
     def test_posture_and_ceiling_are_not_promotions(self):
         by = {r["name"]: r for r in self.mod.evaluations()}

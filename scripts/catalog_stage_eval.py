@@ -58,6 +58,7 @@ EVIDENCE_TARGETS = {
     "repowise": "smoke-repowise",
     "write-guard-mcp": "smoke-write-guard",
     "eval-harness (pfy)": "eval-structural",
+    "Kolibri-1": "smoke-kolibri1",
 }
 PATH_EVIDENCE = {
     "Grok CLI bootstrap": "bootstrap/grok-cli",

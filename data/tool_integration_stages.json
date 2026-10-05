@@ -1636,7 +1636,15 @@
         "official_fp8_on_nimo",
         "78gb_weight_download",
         "feature_go"
-      ]
+      ],
+      "uses": "Optional local DE/EN reasoning MoE via patched llama.cpp GGUF smoke (I0 lab).",
+      "features": [
+        "patched llama.cpp kolibri1 runtime",
+        "make smoke-kolibri1",
+        "GGUF Q3_K_S path on nimo"
+      ],
+      "potential": "medium",
+      "next_gate": "PASS make smoke-kolibri1 with verified GGUF, then consider I1; Vulkan/GPU needs Mark approval."
     }
   },
   "probe_path": "tools/_probe/",
