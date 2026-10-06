@@ -1,0 +1,200 @@
+{
+  "schema": "local-bench-3.receipt.v0",
+  "entry": "091",
+  "issue": "#230",
+  "stacks_on": {
+    "pr": 271,
+    "sha": "357e3c6feb9d8d2fd5a6aadf854b7ba32620f4ee"
+  },
+  "verdict": "RAN",
+  "started": "2026-10-06T05:14:00Z",
+  "finished": "2026-10-06T06:09:14Z",
+  "host": "nimo",
+  "gate": 0.85,
+  "num_ctx": 2048,
+  "min_mem_available_gb": 16.0,
+  "inventory": {
+    "hostname": "nimo",
+    "mem_total_gb": 107.42,
+    "vram_giB": 16,
+    "gtt_giB": 96,
+    "ollama_memory_high": "85G",
+    "ollama_memory_high_bytes": 91268055040,
+    "ollama_memory_max": "infinity",
+    "ollama_version": "0.30.8",
+    "note": "Mark raised MemoryHigh 40G\u219285G. Slice aborted further big loads after host lockup ~11:05pm PT; concurrent atg-framework Grok Build left alone."
+  },
+  "baselines_entry090": {
+    "qwen3.6:35b": {
+      "accuracy": 0.7917,
+      "escalate_rate": 0.0,
+      "wrong_but_confident": 10,
+      "prompt_eval_tok_s": 807.579,
+      "eval_tok_s": 94.879
+    },
+    "qwen3-coder:30b": {
+      "accuracy": 0.7917,
+      "escalate_rate": 0.0208,
+      "wrong_but_confident": 10,
+      "prompt_eval_tok_s": 1154.3,
+      "eval_tok_s": 74.913
+    },
+    "cua-s1-forms": {
+      "accuracy": 0.5625,
+      "escalate_rate": 0.2292,
+      "wrong_but_confident": 16
+    }
+  },
+  "models": [
+    {
+      "name": "qwen3-coder-next:latest",
+      "verdict": "DROP",
+      "reason": "deferred: host contention (aborted mid cold-load) + prior attempts: timed out waiting for llama-server to start",
+      "load_wall_s": null,
+      "load_duration_s": null,
+      "mem_available_before_gb": 96.631,
+      "mem_available_loaded_gb": 41.679,
+      "peak_rss_kb": 22008,
+      "peak_hwm_kb": 22008,
+      "ollama_ps_loaded": [],
+      "speed": {
+        "prompt_eval_tok_s": null,
+        "eval_tok_s": null
+      },
+      "decision": {
+        "accuracy": null,
+        "escalate_rate": null,
+        "wrong_but_confident": null,
+        "parse_ok": null,
+        "parse_ok_rate": null,
+        "n_cases": null,
+        "n_correct": null
+      },
+      "cold_error": "HTTP 500 {\"error\":\"timed out waiting for llama-server to start - \"}",
+      "seconds": 518.12
+    },
+    {
+      "name": "gpt-oss:120b",
+      "verdict": "DROP",
+      "reason": "cold load failed: HTTP 500 {\"error\":\"timed out waiting for llama-server to start - \"}",
+      "load_wall_s": null,
+      "load_duration_s": null,
+      "mem_available_before_gb": 95.485,
+      "mem_available_loaded_gb": 31.558,
+      "peak_rss_kb": 21804,
+      "peak_hwm_kb": 21804,
+      "ollama_ps_loaded": [],
+      "speed": {
+        "prompt_eval_tok_s": null,
+        "eval_tok_s": null
+      },
+      "decision": {
+        "accuracy": null,
+        "escalate_rate": null,
+        "wrong_but_confident": null,
+        "parse_ok": null,
+        "parse_ok_rate": null,
+        "n_cases": null,
+        "n_correct": null
+      },
+      "cold_error": "HTTP 500 {\"error\":\"timed out waiting for llama-server to start - \"}",
+      "seconds": 505.07
+    },
+    {
+      "name": "qwen3.6:35b",
+      "verdict": "RAN",
+      "reason": null,
+      "load_wall_s": 45.8772,
+      "load_duration_s": 44.628,
+      "mem_available_before_gb": 55.085,
+      "mem_available_loaded_gb": 44.271,
+      "peak_rss_kb": null,
+      "peak_hwm_kb": null,
+      "ollama_ps_loaded": [
+        {
+          "name": "qwen3.6:35b",
+          "id": "a7eb95c53bcf",
+          "size": "21 GB",
+          "processor": "100% GPU",
+          "context": "2048",
+          "until": "9 minutes from now"
+        },
+        {
+          "name": "glm-4.7-flash:latest",
+          "id": "d1a8a26252f1",
+          "size": "26 GB",
+          "processor": "100% GPU",
+          "context": "128000",
+          "until": "Stopping..."
+        }
+      ],
+      "speed": {
+        "prompt_eval_tok_s": 88.668,
+        "eval_tok_s": 25.215
+      },
+      "decision": {
+        "accuracy": 0.7917,
+        "escalate_rate": 0.0,
+        "wrong_but_confident": 10,
+        "parse_ok": 48,
+        "parse_ok_rate": 1.0,
+        "n_cases": 48,
+        "n_correct": 38
+      },
+      "cold_error": null,
+      "seconds": 219.33
+    },
+    {
+      "name": "MichelRosselli/GLM-4.5-Air:Q4_K_M",
+      "verdict": "SKIP",
+      "reason": "deferred: host contention \u2014 pull aborted earlier (~2%/72GB); not restarted after nimo lockup / concurrent atg-framework Grok Build; same ollama llama-server start-timeout risk as 51\u201365GB models; MemAvailable floor 16 GiB",
+      "size_gb": 73,
+      "decision": {},
+      "speed": {}
+    }
+  ],
+  "blocked_or_deferred": [
+    {
+      "name": "qwen3-coder-next:latest",
+      "size": "51 GB",
+      "status": "DROP \u2014 ollama timed out waiting for llama-server to start (~8\u201310 min) on multiple attempts; third attempt aborted (deferred: host contention). MemoryHigh=85G was enough for RSS; bottleneck is OLLAMA load-ready timeout + swap thrash during GTT fill."
+    },
+    {
+      "name": "gpt-oss:120b",
+      "size": "65 GB",
+      "status": "DROP \u2014 same llama-server start timeout (~505s) with MemAvailable 95 GiB at start; not retried after lockup (deferred: host contention)."
+    },
+    {
+      "name": "MichelRosselli/GLM-4.5-Air:Q4_K_M",
+      "size": "~73 GB",
+      "status": "SKIP \u2014 deferred: host contention; pull not completed; would need ~25+73 GiB clear margin and likely OLLAMA_LOAD_TIMEOUT raise."
+    }
+  ],
+  "interference_note": "openclaw-gateway (pid observed) loaded glm-4.7-flash at num_ctx=128000 during earlier attempts, competing with benches. Concurrent Mark Grok Build on atg-framework near completion \u2014 left undisturbed.",
+  "mark_approvals_needed": [
+    "Add Environment=OLLAMA_LOAD_TIMEOUT=30m (or similar) to ollama.service drop-in + daemon-reload + restart, then rebench coder-next / gpt-oss / GLM-4.5-Air one-at-a-time with MemAvailable floor 16 GiB.",
+    "Pause openclaw-gateway (or lower its ctx) during big local benches."
+  ],
+  "recommendation": {
+    "coding_worker": "qwen3.6:35b",
+    "coding_worker_note": "Entry 091 re-check: 79.2% / 0% esc / parse_ok 48/48. Tok/s degraded vs Entry 090 (PP ~89 vs ~808, decode ~25 vs ~95) under contention; still best measured Choice accuracy among runnable models. Fallback qwen3-coder:30b (Entry 090).",
+    "decision_lane": "CUA-S1-FORMS",
+    "decision_lane_note": "No big MoE completed Choice run this slice; CUA stays primary. Do not route decisions through glm-4.7-flash.",
+    "atg_framework_point_at": {
+      "local_coding": "qwen3.6:35b",
+      "local_coding_fallback": "qwen3-coder:30b",
+      "local_decision": "cua-s1-forms (not a weight tag \u2014 pfy decision path)",
+      "avoid": [
+        "glm-4.7-flash:latest",
+        "gpt-oss:120b until OLLAMA_LOAD_TIMEOUT raised",
+        "qwen3-coder-next until load-timeout fixed"
+      ]
+    }
+  },
+  "catalog_hold": "70-75",
+  "feature_go": false,
+  "default_lane_unchanged": true,
+  "cites": [
+    "#230"
+  ]
+}

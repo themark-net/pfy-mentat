@@ -40,14 +40,14 @@ DEFAULT_GATE = 0.85
 DEFAULT_BASE = "http://127.0.0.1:11434"
 DEFAULT_NUM_CTX = 2048
 DEFAULT_STALL_S = 1800
-DEFAULT_MIN_MEM_GB = 8.0
+DEFAULT_MIN_MEM_GB = 16.0  # Entry 091: raised after nimo lockup; abort under 16 GiB MemAvailable
 REQUIRED_MODELS = (
     "qwen2.5-coder:1.5b",
     "glm-4.7-flash:latest",
     "qwen3-coder:30b",
 )
 STRETCH_MODEL = "qwen3-coder-next:latest"
-SKIP_MODELS = ("gpt-oss:120b",)  # weights fit ~90GB GTT budget but ollama MemoryHigh=40G still blocks
+SKIP_MODELS = ()  # Entry 091: Mark raised MemoryHigh to 85G; gpt-oss / Air in scope
 BASELINES = {
     "cua-s1-forms": {
         "accuracy": 0.5625,
@@ -494,10 +494,14 @@ def summarize_rows(rows: list, gate: float) -> dict:
     held = [r for r in ran if not r.get("escalate")]
     wrong_conf = [r for r in ran if (not r.get("correct")) and (not r.get("escalate"))]
     lat = [float(r["latency_s"]) for r in ran if r.get("latency_s") is not None]
+    parse_ok_rows = [r for r in ran if r.get("parse_ok")]
+    n_parse_ok = len(parse_ok_rows)
     return {
         "n_cases": n,
         "n_ran": n_ran,
         "n_error": n - n_ran,
+        "parse_ok": n_parse_ok,
+        "parse_ok_rate": None if not n_ran else round(n_parse_ok / n_ran, 4),
         "accuracy": None if not n_ran else round(correct / n_ran, 4),
         "n_correct": correct,
         "escalate_rate": None if not n_ran else round(len(esc) / n_ran, 4),
@@ -1064,7 +1068,7 @@ def main(argv=None) -> int:
         "default_lane_unchanged": True,
         "primary_local": "cua-s1-forms",
         "skip_models": list(SKIP_MODELS),
-        "skip_models_reason": "gpt-oss:120b weights ~65 GB exceed 64 GiB BIOS VRAM carve",
+        "skip_models_reason": "none — MemoryHigh raised to 85G by Mark (Entry 091); previously blocked models in scope",
         "inventory": host_inv,
         "baselines": BASELINES,
         "models": models_out,
@@ -1095,6 +1099,7 @@ def main(argv=None) -> int:
          "accuracy": (m.get("decision") or {}).get("accuracy"),
          "escalate_rate": (m.get("decision") or {}).get("escalate_rate"),
          "wrong_but_confident": (m.get("decision") or {}).get("wrong_but_confident"),
+         "parse_ok": (m.get("decision") or {}).get("parse_ok"),
          "prompt_eval_tok_s": (m.get("speed") or {}).get("prompt_eval_tok_s"),
          "eval_tok_s": (m.get("speed") or {}).get("eval_tok_s")}
         for m in models_out

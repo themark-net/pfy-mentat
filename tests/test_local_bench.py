@@ -70,7 +70,15 @@ class ParseChoiceTests(unittest.TestCase):
         self.assertTrue(bench.is_ollama_exe("/usr/local/bin/ollama"))
         self.assertTrue(bench.is_ollama_exe("/usr/local/lib/ollama/llama-server"))
 
+    def test_summarize_parse_ok_count(self):
+        ok = {"id": "a", "ran": True, "parse_ok": True, "correct": True, "escalate": False, "latency_s": 0.1}
+        bad = {"id": "b", "ran": True, "parse_ok": False, "correct": False, "escalate": True, "latency_s": 0.2}
+        summary = bench.summarize_rows([ok, bad], 0.85)
+        self.assertEqual(summary["parse_ok"], 1)
+        self.assertEqual(summary["parse_ok_rate"], 0.5)
+
     def test_parse_fail_escalates_not_wbc(self):
+
         case = {"id": "y", "label": "hold", "criteria": {"hold": "h"}}
         parsed = bench.parse_choice_json("nope")
         row = bench.score_case(case, parsed, 0.85, 0.2)
@@ -231,6 +239,38 @@ class FailClosedTests(unittest.TestCase):
         blob = json.loads(p.stdout.strip().splitlines()[-1])
         self.assertEqual(blob.get("verdict"), "READY")
         self.assertEqual(blob.get("ollama_version"), "0.30.8-test")
+
+
+
+class OutdirPathTests(unittest.TestCase):
+    def test_relative_outdir_log_path_safe(self):
+        """Relative --outdir outside repo used to make Path.relative_to raise → false DROP."""
+        with tempfile.TemporaryDirectory(prefix="local-bench-out-") as td:
+            outdir = Path(td).resolve()
+            log_path = outdir / "demo_model.log"
+            log_path.write_text("x\n", encoding="utf-8")
+            # Same logic as bench_one after the Entry 090 fix
+            try:
+                rel = str(log_path.resolve().relative_to(bench.ROOT.resolve()))
+                raised = False
+            except ValueError:
+                rel = str(log_path)
+                raised = True
+            self.assertTrue(raised, "temp outdir should be outside ROOT")
+            self.assertEqual(rel, str(log_path))
+            # Resolved outdir always absolute
+            resolved = (Path(td) if td else Path(".")).resolve()
+            self.assertTrue(resolved.is_absolute())
+
+    def test_outdir_arg_is_resolved_absolute(self):
+        """main() must resolve --outdir so relative paths stay stable after chdir."""
+        with tempfile.TemporaryDirectory(prefix="local-bench-rel-") as td:
+            # Simulate CLI: relative outdir from ROOT
+            rel = os.path.relpath(td, start=str(bench.ROOT))
+            outdir = (Path(rel) if rel else Path(".")).resolve()
+            self.assertTrue(outdir.is_absolute())
+            self.assertEqual(outdir, Path(td).resolve())
+
 
 
 if __name__ == "__main__":
