@@ -1,3 +1,9 @@
+## 2026-10-06 — atg-framework eval + Build drop-ins (Entry 093)
+
+- **Branch:** `bot/atg-eval`. Docs only. Handoff: [eval/ATG-EVAL-HANDOFF.md](eval/ATG-EVAL-HANDOFF.md).
+- **atg verdict:** loop in code, 35 unit tests green, live compile unproven (0/3). Not yet a paper PoC. pfy: adapt (compile bench, decision-lane judge, opt-in loop kind), do not embed. ATG stays I1. Card text is stale.
+- **Drop-ins:** `docs/build-dropins/` (atg-framework first). Mark: pick the live toy model (qwen2.5:14b vs qwen3.6:35b). Not a Feature GO.
+
 ## local-bench-4 no-double-load (2026-10-06 PT)
 
 - PR #273 extended: llama-server ROCm `--no-mmap` proves 51GB coder-next RAN (not 22GB hardware edge).
