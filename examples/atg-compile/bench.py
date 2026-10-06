@@ -26,7 +26,7 @@ if str(ROOT) not in sys.path:
 
 from pfylib.hedge import health_llamacpp_nommap  # noqa: E402
 
-PINNED_SHA = "86d1b8905116fb7ec954ee5c4fe0d18f763b7e16"
+PINNED_SHA = "3c686b6cf712d3f8095e0df10f0789692814214f"
 PINNED_BRANCH = "build/atg-finish"
 DEFAULT_ATG_REPO = os.environ.get("ATG_REPO") or "/tmp/atg-finish"
 CASES_REL = Path("data/decision-gates/atg-compile.cases.v0.json")

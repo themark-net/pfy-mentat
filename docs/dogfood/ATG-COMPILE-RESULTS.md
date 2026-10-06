@@ -1,15 +1,43 @@
-# atg-compile — live not run (2026-10-06)
+# atg-compile — live probe (2026-10-06)
 
 **Branch:** `build/local-lane-atg`  
-**Not a Feature GO.** Catalog HOLD 70–75. Stage stays **I1**. Not I2.
+**Not a Feature GO.** Catalog HOLD 70–75. Stage is **I2**. Not I3.
 
-## Live
+Credit: Zhang et al. (2026), arXiv:2607.01942. Independent reimplementation. Not official ATG code. Not a paper-benchmark result.
 
-Not run. The host was not quiet: a parent session had `qwen3.6:35b` loaded in Ollama and was running a PoC. This slice did not call Ollama, did not start `llama-server`, and did not start vLLM.
+## Live — Ollama `qwen3.6:35b`
 
-No live valid-DAG rate, sink-correct rate, repair count, or wall time is recorded here. Do not treat the offline fake-server receipt as a model score.
+Host was quiet after the atg PoC unloaded the same tag. Command:
 
-## What is ready for the quiet-host pass
+```bash
+python3 examples/atg-compile/bench.py \
+  --base-url http://127.0.0.1:11434 \
+  --model qwen3.6:35b \
+  --case-timeout 180 \
+  --atg-repo /tmp/atg-finish \
+  --receipt pipelines/dogfood/atg-compile/receipt-live-qwen36-35b.json
+```
+
+Exit 0. The bench's receipt field `integration_stage` still says `I1` because the runner writes that constant. The catalog was set to I2 after this score.
+
+| Metric | Value |
+| --- | --- |
+| Cases | 10 |
+| Valid DAGs | 2 (`ac-01-mul-six-seven`, `ac-08-parallel-sums`) |
+| Sink-correct | 2 |
+| Valid-DAG rate | 0.20 |
+| Repairs | 0 |
+| Wall | 478 s |
+| atg SHA during the score | `86d1b8905116fb7ec954ee5c4fe0d18f763b7e16` |
+| bench pin after the report commit | `3c686b6cf712d3f8095e0df10f0789692814214f` |
+
+The other eight plans failed before tools ran. Typical error: the sink dropped the parent's declared output. Token rate is not re-measured. See `docs/dogfood/LOCAL-BENCH-5-RUNTIMES.md` (Ollama decode 96.4 tok/s on this tag).
+
+## `qwen3-coder-next`
+
+Not loaded. The GGUF is 51,741,599,936 bytes (48.19 GiB). MemAvailable after the 35B unload was 65.3 GiB, under blob size + 25 GiB. The lane would have exited 2. No second model was started.
+
+## What is ready for a later quiet-host pass
 
 | Piece | Where |
 |-------|--------|
@@ -17,7 +45,7 @@ No live valid-DAG rate, sink-correct rate, repair count, or wall time is recorde
 | Default model | `qwen3.6:35b` on Ollama. Not this lane. |
 | Opt-in | `qwen3-coder-next` via `llamacpp-nommap` only, one model at a time, after the host is quiet. |
 | Bench | `examples/atg-compile/bench.py` plus `data/decision-gates/atg-compile.cases.v0.json` (10 tasks). |
-| atg pin | `build/atg-finish` @ `86d1b8905116fb7ec954ee5c4fe0d18f763b7e16` (this host: `/tmp/atg-finish`). Do not score `~/DEVELOP/atg-framework`. |
+| atg pin | `build/atg-finish` @ `3c686b6cf712d3f8095e0df10f0789692814214f` (this host: `/tmp/atg-finish`). The receipt names the scored parent `86d1b8905116fb7ec954ee5c4fe0d18f763b7e16`. Do not score `~/DEVELOP/atg-framework`. |
 
 Credit: Zhang et al. (2026), arXiv:2607.01942. This is an independent reimplementation, not official ATG code, and not a paper-benchmark result.
 
@@ -33,4 +61,4 @@ Credit: Zhang et al. (2026), arXiv:2607.01942. This is an independent reimplemen
 | `python3 scripts/catalog_check.py` | PASS, `n_json=7` |
 | atg pin, offline, dirty worktree | pytest **40 passed, 1 deselected**; toy `mock total={'value': 25} waves=2 parallel=2` |
 
-**Next:** when `ollama ps` is empty and nothing else holds a model, run the bench once on `qwen3.6:35b`, then once on coder-next through the lane. Write the numbers in this file. T-0127.
+**Next:** coder-next only when MemAvailable covers 48.19 GiB + 25 GiB, one model, lane `llamacpp-nommap`. Do not promote past I2 from that run without a new decision. T-0127's 35B half is done.

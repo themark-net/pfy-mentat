@@ -1,3 +1,12 @@
+## 2026-10-06 — atg-compile live probe (I2, coder-next blocked)
+
+- **Branch / worktree:** `build/local-lane-atg` · `/home/mark/DEVELOP/pfy-mentat/tmp/build-local-lane`. Not merged. Not a Feature GO. Catalog HOLD 70–75. eval-harness untouched.
+- **Live:** Ollama `qwen3.6:35b`, quiet host, `--case-timeout 180`, pin `86d1b8905116fb7ec954ee5c4fe0d18f763b7e16`. Exit 0. 2/10 valid, 2/10 sink-correct (`ac-01-mul-six-seven`, `ac-08-parallel-sums`), repairs 0, wall 478s. Receipt `pipelines/dogfood/atg-compile/receipt-live-qwen36-35b.json`. Model unloaded with `keep_alive: 0`.
+- **Stage:** I2. The receipt JSON still says `integration_stage: I1` because the bench writes that constant. The catalog card was updated after the score. Not I3.
+- **coder-next:** not loaded. Blob 51,741,599,936 bytes. MemAvailable 65.3 GiB after the 35B unload. Lane rule is size + 25 GiB.
+- **Entry:** [sources/entries/095-atg-compile.md](../sources/entries/095-atg-compile.md). Credit Zhang et al. (2026), arXiv:2607.01942. Not official code. Not a paper-benchmark claim.
+- **PR body:** `/tmp/pr-pfy-local-lane.md`. `gh` is not logged in on this host. Compare URL is in that body. Do not merge.
+
 ## 2026-10-06 — llamacpp-nommap lane + atg-compile bench (I1, live not run)
 
 - **Branch / worktree:** `build/local-lane-atg` · `/home/mark/DEVELOP/pfy-mentat/tmp/build-local-lane`. Not pushed. Not a Feature GO. Catalog HOLD 70–75. eval-harness untouched.

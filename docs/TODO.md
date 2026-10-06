@@ -120,7 +120,7 @@ Active work is also tracked as issues: https://github.com/themark-net/pfy-mentat
 | T-0016 | P2 | todo | colibri/large model lab under 250GB pool | — | OQ-0008 | [#24](https://github.com/themark-net/pfy-mentat/issues/24) |
 | T-0005 | P2 | doing | Apply integration-stages broadly | — | OQ-0003 | [#21](https://github.com/themark-net/pfy-mentat/issues/21) · 50 handoff cards. Facts recomputed by `scripts/catalog_stage_eval.py`. Stage letter still does not auto-promote |
 | T-0124 | P2 | todo | Fold OpenCode enterable (`pfy_enterable_162*`) behind `pfylib/attach.py`; retire `_legacy` as remaining scripts move | — | T-0121 | OpenCode attach is still its own path; four usable shims already delegate |
-| T-0127 | P2 | todo | Live atg-compile once the host is quiet (one model: `qwen3.6:35b`, then opt-in coder-next) | — | T-0004 | Offline lane + bench + I1 card landed 2026-10-06 on `build/local-lane-atg`. Do not run while a model is loaded. Not a Feature GO. Catalog HOLD 70–75. Do not touch eval-harness. |
+| T-0127 | P2 | done | Live atg-compile once the host is quiet (one model: `qwen3.6:35b`, then opt-in coder-next) | — | T-0004 | 2026-10-06: `qwen3.6:35b` exit 0, 2/10 sink-correct, wall 478s. Stage I2. coder-next blocked: 48.19 GiB blob + 25 GiB > 65.3 GiB MemAvailable. Not a Feature GO. Catalog HOLD 70–75. Do not touch eval-harness. |
 
 ---
 
@@ -135,7 +135,7 @@ Active work is also tracked as issues: https://github.com/themark-net/pfy-mentat
 | T-0120 | P1 | done | Toolset × harness matrix + jev reference `plan()`/`apply()` | `data/toolsets.json` · `pfylib/`; stacked PRs on this branch |
 | T-0075 | P2 | done | ADR + OQ structural scorers | #5; tasks 006/007 |
 | T-0007 | P3 | done | adr-tools companion docs | #15; docs/ops/adr-tools-companion.md |
-| T-0004 | P2 | done | ATG coupling I1 submodule-later | #22; docs/ops/atg-coupling.md. 2026-10-06 I1 refresh at SHA 86d1b890 (not I2). Live atg-compile still open (T-0127). |
+| T-0004 | P2 | done | ATG coupling I1 submodule-later | #22; docs/ops/atg-coupling.md. 2026-10-06 I2 probe at SHA 86d1b890 after a live pass. Not I3. |
 | T-0015 | P3 | done | Antigravity catalog-only skip install | #23; antigravity-catalog-posture.md |
 | — | P1 | done | golden_replay deterministic lane | #31; make eval-golden |
 | — | P1 | done | OpenContext `oc` usable handoff (Stage-0 + nimo hello-world + `./pfy context`) | [#205](https://github.com/themark-net/pfy-mentat/issues/205) · catalog HOLD · #198 parked |

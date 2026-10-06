@@ -3,7 +3,7 @@
   "n_cases": 10,
   "labels_before_models": true,
   "one_model_at_a_time": true,
-  "atg_sha": "86d1b8905116fb7ec954ee5c4fe0d18f763b7e16",
+  "atg_sha": "3c686b6cf712d3f8095e0df10f0789692814214f",
   "atg_branch": "build/atg-finish",
   "atg_repo_note": "Call the pinned checkout by path. On this host that is /tmp/atg-finish, not ~/DEVELOP/atg-framework.",
   "credit": "Synthetic tool DAGs for an independent reimplementation of Zhang et al. (2026), arXiv:2607.01942. Not a paper benchmark. Not an official ATG release. Does not claim a GPT-4 comparison.",

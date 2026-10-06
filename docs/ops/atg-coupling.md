@@ -1,11 +1,11 @@
 # ATG coupling (Atomic Task Graph prototype)
 
-**Status:** I1 refreshed 2026-10-06. The 2026-08-06 snapshot below is superseded.  
+**Status:** I2 probe 2026-10-06. The 2026-08-06 snapshot below is superseded.  
 **Prototype:** https://github.com/themark-net/atg-framework  
 **Paper:** Zhang, Chen, Huang, Cui, Ji, and Wang (2026), arXiv:2607.01942. This repo is an independent reimplementation. It is not official ATG code and it does not claim the paper's benchmark numbers.  
-**Pinned checkout:** branch `build/atg-finish` @ `86d1b8905116fb7ec954ee5c4fe0d18f763b7e16` (this host: `/tmp/atg-finish`). Do not score `~/DEVELOP/atg-framework`.  
-**Integration stage:** **I1**. Not I2. Submodule later stays an intent, not an instruction.  
-**Reviews:** 2026-08-06 → issue #30 (stay I1). 2026-10-06 → card refresh, still I1.
+**Pinned checkout:** branch `build/atg-finish` @ `3c686b6cf712d3f8095e0df10f0789692814214f` (this host: `/tmp/atg-finish`). The live receipt was taken at `86d1b8905116fb7ec954ee5c4fe0d18f763b7e16`, before the report commit. Do not score `~/DEVELOP/atg-framework`.  
+**Integration stage:** **I2**. Not I3. Submodule later stays an intent, not an instruction.  
+**Reviews:** 2026-08-06 → issue #30 (stay I1). 2026-10-06 → live atg-compile exit 0 with 2/10 sinks correct, promote to I2 only.
 
 ## 2026-10-06 snapshot
 
@@ -19,7 +19,8 @@ Worktree was dirty (`examples/poc_suite.py`, `docs/ops/RUN-LOG-atg-finish.md`). 
 |---------|--------|
 | `.venv/bin/python -m pytest -q -m "not integration"` | **40 passed, 1 deselected** (2.43 s) |
 | `.venv/bin/python examples/toy_parallel.py` | `mock total={'value': 25} waves=2 parallel=2` exit 0 |
-| Live compile | **Not run.** Parent session held `qwen3.6:35b`. Absence is not a pass. |
+| Live atg-compile, Ollama `qwen3.6:35b`, `--case-timeout 180` | Exit 0. 2/10 valid, 2/10 sink-correct (`ac-01-mul-six-seven`, `ac-08-parallel-sums`), repairs 0, wall 478s. Receipt `pipelines/dogfood/atg-compile/receipt-live-qwen36-35b.json`. |
+| `qwen3-coder-next` via `llamacpp-nommap` | Not loaded. Blob 48.19 GiB plus 25 GiB exceeded MemAvailable (65.3 GiB). |
 
 ### Gate table
 
@@ -27,12 +28,12 @@ Worktree was dirty (`examples/poc_suite.py`, `docs/ops/RUN-LOG-atg-finish.md`). 
 |------|---------|---------|
 | Gap fill | Explicit compile, parallel tool waves, freeze, and localized repair. pfy's primary loop does not ship this library. LangGraph overlaps "run a DAG". The distinct piece is repair and freeze for a small local model. No first-party skill does that. | Partial |
 | Operator leverage | Offline `run_task` is one import. The new bench is a measurement, not a shorter default pipeline. | No |
-| Evidence | Offline toy and unit suite exit 0 on the pin. Live toy was not re-measured. | Offline yes. Live no. |
+| Evidence | Live atg-compile exit 0 with two sink-correct cases. Offline suite also green. | Yes, as a probe |
 | Blast radius | MIT. No model weights. Safe while it stays off primary orchestration and off the default cage and eval-harness. | Yes, with those constraints |
 
-Modularity, if a later session copies or imports the repo: one Python package, entry `run_task`, reversible by deleting the pin. That is small. It does not satisfy I3. I2 stays closed until a live atg-compile exits 0.
+Modularity, if a later session copies or imports the repo: one Python package, entry `run_task`, reversible by deleting the pin. That is small. It does not satisfy I3.
 
-**Chosen stage:** I1 refresh.
+**Chosen stage:** I2 probe. The live pass is two correct sinks out of ten, not a reason to move to I3.
 
 ### Non-goals (repeated)
 
@@ -62,8 +63,8 @@ Modularity, if a later session copies or imports the repo: one Python package, e
 |-------|---------|
 | **Uses** | Compile, parallel tool waves, freeze, and localized repair. Independent reimplementation of Zhang et al. (2026). |
 | **Features** | DAG compile, localized repair, OpenAI-compatible client |
-| **Potential** | Ambiguous until a live atg-compile exits 0 |
-| **Non-goals** | Primary runtime; I2 before that live pass; immediate I4 |
+| **Potential** | Measured probe: 2/10 sinks correct on `qwen3.6:35b` |
+| **Non-goals** | Primary runtime; I3 from this probe; immediate I4 |
 
 ## 2026-08-06 maturity snapshot (issue #30) — superseded
 

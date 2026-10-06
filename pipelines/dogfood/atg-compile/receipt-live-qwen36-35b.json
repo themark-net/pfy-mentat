@@ -1,0 +1,155 @@
+{
+  "verdict": "SCORED",
+  "claims_pass": false,
+  "feature_go": false,
+  "catalog_hold": "70-75",
+  "integration_stage": "I1",
+  "when": "2026-10-06T16:01:36Z",
+  "model": "qwen3.6:35b",
+  "one_model_at_a_time": true,
+  "base_url": "http://127.0.0.1:11434",
+  "atg_repo": "/tmp/atg-finish",
+  "atg_sha": "86d1b8905116fb7ec954ee5c4fe0d18f763b7e16",
+  "atg_branch": "build/atg-finish",
+  "atg_dirty": true,
+  "n_cases": 10,
+  "n_valid": 2,
+  "n_invalid": 8,
+  "valid_dag_rate": 0.2,
+  "n_sink_correct": 2,
+  "sink_correct_rate": 0.2,
+  "repairs": 0,
+  "wall_s": 478.3757,
+  "peak": {
+    "peak_rss_kb": 21530196,
+    "peak_hwm_kb": 21530196,
+    "samples": 1749,
+    "last": [
+      {
+        "pid": 393137,
+        "rss_kb": 58056,
+        "hwm_kb": 68316,
+        "name": "ollama",
+        "cmd": "/usr/local/bin/ollama serve",
+        "exe": "/usr/local/bin/ollama",
+        "is_runner": false
+      },
+      {
+        "pid": 2347824,
+        "rss_kb": 7141328,
+        "hwm_kb": 21527512,
+        "name": "llama-server",
+        "cmd": "/usr/local/lib/ollama/llama-server --model /usr/share/ollama/.ollama/models/blobs/sha256-d372de8e934898a59e6ccfabc3368474711384d8f1fd4d22d87a3f0a45400cdc --port 33481 --host 127.0.0.1 --no-webui --offline -c 262144 -np 1 --log-verbosity 4 -",
+        "exe": "/usr/local/lib/ollama/llama-server",
+        "is_runner": true
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "ac-01-mul-six-seven",
+      "valid_dag": true,
+      "sink_correct": true,
+      "repairs": 0,
+      "sink": {
+        "value": 42
+      },
+      "error": null,
+      "wall_s": 43.0114,
+      "llm_calls": 1
+    },
+    {
+      "id": "ac-02-add-ten-fifteen",
+      "valid_dag": false,
+      "sink_correct": false,
+      "repairs": 0,
+      "sink": null,
+      "error": "sinks missing declared outputs ['value']; decomposition={'nodes': [{'id': 'add_node', 'name': 'Add 10 and 15', 'tool_name': 'add', 'inputs': {'a': 10, 'b': 15}, 'declared_outputs': [], 'refine': False}], 'edges': []}",
+      "wall_s": 47.5831,
+      "llm_calls": 1
+    },
+    {
+      "id": "ac-03-two-branch-total",
+      "valid_dag": false,
+      "sink_correct": false,
+      "repairs": 0,
+      "sink": null,
+      "error": "add_results.a $ref add_2_3 is not an ancestor; decomposition={'nodes': [{'id': 'add_2_3', 'name': 'Add 2 and 3', 'tool_name': 'add', 'inputs': {'a': 2, 'b': 3}, 'declared_outputs': [], 'refine': False}, {'id': 'mul_4_5', 'name': 'Multiply 4 and 5', 'tool_name': 'mul', 'inputs': {'a': 4, 'b': 5}, 'declared_outputs': [], 'refine': False}, {'id': 'add_results', 'name': 'Add those two results', 'tool_name': 'add', 'inputs': {'a': {'$ref': 'add_2_3.outputs.value'}, 'b': {'$ref': 'mul_4_5.outputs.value'}}, 'declared_outputs': ['value'], 'refine': False}], 'edges': [{'src': 'add_results', 'dst': 'add_2_3'}, {'src': 'add_results', 'dst': 'mul_4_5'}]}",
+      "wall_s": 64.8968,
+      "llm_calls": 1
+    },
+    {
+      "id": "ac-04-sub-thirty-five",
+      "valid_dag": false,
+      "sink_correct": false,
+      "repairs": 0,
+      "sink": null,
+      "error": "sinks missing declared outputs ['value']; decomposition={'nodes': [{'id': 'sub_call', 'name': 'Subtract 5 from 30', 'tool_name': 'sub', 'inputs': {'a': 30, 'b': 5}, 'declared_outputs': [], 'refine': False}], 'edges': []}",
+      "wall_s": 42.3016,
+      "llm_calls": 1
+    },
+    {
+      "id": "ac-05-concat-ab-cd",
+      "valid_dag": false,
+      "sink_correct": false,
+      "repairs": 0,
+      "sink": null,
+      "error": "sinks missing declared outputs ['text']; decomposition={'nodes': [{'id': 'concat_1', 'name': 'Concatenate ab and cd', 'tool_name': 'concat', 'inputs': {}, 'declared_outputs': [], 'refine': False}], 'edges': []}",
+      "wall_s": 40.752,
+      "llm_calls": 1
+    },
+    {
+      "id": "ac-06-upper-hello",
+      "valid_dag": false,
+      "sink_correct": false,
+      "repairs": 0,
+      "sink": null,
+      "error": "sinks missing declared outputs ['text']; decomposition={'nodes': [{'id': 'upper_node', 'name': 'Uppercase the string hello with the upper tool.', 'tool_name': 'upper', 'inputs': {'text': 'hello'}, 'declared_outputs': [], 'refine': False}], 'edges': []}",
+      "wall_s": 33.5852,
+      "llm_calls": 1
+    },
+    {
+      "id": "ac-07-lookup-blue",
+      "valid_dag": false,
+      "sink_correct": false,
+      "repairs": 0,
+      "sink": null,
+      "error": "sinks missing declared outputs ['value']; decomposition={'nodes': [{'id': 'lookup_blue', 'name': 'Look up blue', 'tool_name': 'lookup', 'inputs': {'key': 'blue'}, 'declared_outputs': [], 'refine': False}], 'edges': []}",
+      "wall_s": 38.8322,
+      "llm_calls": 1
+    },
+    {
+      "id": "ac-08-parallel-sums",
+      "valid_dag": true,
+      "sink_correct": true,
+      "repairs": 0,
+      "sink": {
+        "value": 10
+      },
+      "error": null,
+      "wall_s": 68.4867,
+      "llm_calls": 1
+    },
+    {
+      "id": "ac-09-chain-add-mul",
+      "valid_dag": false,
+      "sink_correct": false,
+      "repairs": 0,
+      "sink": null,
+      "error": "sinks missing declared outputs ['value']; decomposition={'nodes': [{'id': 'add_8_2', 'name': 'Add 8 and 2', 'tool_name': 'add', 'inputs': {}, 'declared_outputs': [], 'refine': False}, {'id': 'mul_by_3', 'name': 'Multiply result by 3', 'tool_name': 'mul', 'inputs': {}, 'declared_outputs': [], 'refine': False}], 'edges': [{'src': 'add_8_2', 'dst': 'mul_by_3'}]}",
+      "wall_s": 52.1363,
+      "llm_calls": 1
+    },
+    {
+      "id": "ac-10-strlen-atg",
+      "valid_dag": false,
+      "sink_correct": false,
+      "repairs": 0,
+      "sink": null,
+      "error": "sinks missing declared outputs ['value']; decomposition={'nodes': [{'id': 'strlen_node', 'name': 'strlen_call', 'tool_name': 'strlen', 'inputs': {'text': 'atg'}, 'declared_outputs': [], 'refine': False}], 'edges': [{'src': 'strlen_node', 'dst': 'strlen_node.outputs.value'}]}",
+      "wall_s": 45.849,
+      "llm_calls": 1
+    }
+  ],
+  "credit": "Zhang et al. (2026), arXiv:2607.01942. Independent reimplementation. Not a paper-benchmark claim."
+}

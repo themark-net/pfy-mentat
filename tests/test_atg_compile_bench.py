@@ -14,7 +14,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 BENCH = ROOT / "examples" / "atg-compile" / "bench.py"
 CASES = ROOT / "data" / "decision-gates" / "atg-compile.cases.v0.json"
-PIN = "86d1b8905116fb7ec954ee5c4fe0d18f763b7e16"
+PIN = "3c686b6cf712d3f8095e0df10f0789692814214f"
 
 MALFORMED = '{"nodes":[{"id":"bad-node","name":"x","edges":[]}],"edges":[{"src":"nope","dst":"also"}]}'
 VALID = json.dumps(
