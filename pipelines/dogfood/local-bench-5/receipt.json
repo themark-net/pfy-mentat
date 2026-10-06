@@ -1,0 +1,81 @@
+{
+  "entry": "094",
+  "branch": "bot/local-bench-5",
+  "base": "e009030",
+  "cite": "#230",
+  "not_feature_go": true,
+  "catalog": "HOLD",
+  "glm_air": {
+    "verdict": "RAN_MEMORY_FAIL_QUALITY",
+    "size_bytes": 72857521088,
+    "note": "ollama blob still named -partial but size==registry layer; COMPLETE file",
+    "with_rea_off": {
+      "acc": 0.0,
+      "parse_ok": 0,
+      "esc": 1.0,
+      "load_s": 136,
+      "rss": 68.301,
+      "pp_p50": 500.2,
+      "decode_p50": 21.5,
+      "swap_peak": 8.0,
+      "mem_avail_min": 15.7
+    },
+    "raw_sample": "GGGG... (degenerate)",
+    "stronger_than_qwen36": false
+  },
+  "runtime_qwen36": [
+    {
+      "backend": "ollama",
+      "acc": 0.7917,
+      "parse": 48,
+      "esc": 0.0,
+      "wbc": 10,
+      "load_s": 16.8804,
+      "pp": 72.156,
+      "decode": 96.386,
+      "peak_rss": 20.533,
+      "gtt": 20.7
+    },
+    {
+      "backend": "llama.cpp ROCm --no-mmap -rea off",
+      "acc": 0.7917,
+      "parse": 48,
+      "esc": 0.0,
+      "wbc": 10,
+      "load_s": 10,
+      "pp": 606.8,
+      "decode": 57.2,
+      "peak_rss": 20.517
+    },
+    {
+      "backend": "llama.cpp Vulkan --no-mmap -rea off",
+      "acc": 0.7708,
+      "parse": 48,
+      "esc": 0.0,
+      "wbc": 11,
+      "load_s": 15,
+      "pp": 219.4,
+      "decode": 33.1,
+      "peak_rss": 24.743
+    },
+    {
+      "backend": "Lemonade",
+      "verdict": "SKIP",
+      "reason": "lemonade list --downloaded empty; load triggers ~16GB pull (~15min ETA); killed to finish slice"
+    },
+    {
+      "backend": "vLLM",
+      "verdict": "BLOCKED",
+      "reason": "~/DEVELOP/.venv is nightly vllm 0.30.1rc1 rocm723 + torch git; Ubuntu ROCm now ~7.1.x; import fails on librocprofiler-sdk.so.1 (also missing hipsparselt). mpi-shim present. Nightly can be removed; need matching 7.1 wheel or full 7.2 userspace."
+    }
+  ],
+  "parallel_note": "llama-server -np>1 and vLLM continuous batching not measured this slice (vLLM blocked). For atg ready-queue: prefer Ollama or llama-server ROCm with -np matching concurrency once validated; single-slot (-np 1) used for fair Choice latency.",
+  "recommendation": {
+    "runtime": "Ollama (fastest decode ~96 tok/s) or llama-server ROCm --no-mmap -rea off (~57 tok/s, no double-load for big models)",
+    "model_coding": "qwen3.6:35b",
+    "model_fallback": "qwen3-coder:30b",
+    "stretch": "qwen3-coder-next via llama-server --no-mmap only",
+    "avoid": "GLM-4.5-Air on this stack (degenerate GGGG output); gpt-oss for Choice; Ollama-default 51GB+ loads",
+    "decision": "CUA-S1-FORMS"
+  }
+}

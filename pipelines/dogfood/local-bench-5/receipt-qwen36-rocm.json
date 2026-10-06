@@ -1,0 +1,142 @@
+{
+  "name": "qwen36:rocm",
+  "backend": "rocm",
+  "flags": "--no-mmap -ngl 999 -c 4096 -np 1 -fa on GGML_HIP_UMA=1",
+  "verdict": "RAN",
+  "load_wait_s": 0.01,
+  "speed_wall_s": 0.5343,
+  "usage_speed": {
+    "completion_tokens": 16,
+    "prompt_tokens": 100,
+    "total_tokens": 116,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    }
+  },
+  "decision": {
+    "n_cases": 48,
+    "n_ran": 48,
+    "n_error": 0,
+    "parse_ok": 0,
+    "parse_ok_rate": 0.0,
+    "accuracy": 0.0,
+    "n_correct": 0,
+    "escalate_rate": 1.0,
+    "n_escalate": 48,
+    "n_held": 0,
+    "held_accuracy": null,
+    "wrong_but_confident": 0,
+    "wrong_but_confident_ids": [],
+    "latency_s": {
+      "all_p50": 2.1277,
+      "all_p95": 2.1689,
+      "n": 48
+    },
+    "gate": 0.85,
+    "errors": []
+  },
+  "mem_available_gb": 45.948,
+  "swap_used_gb": 6.417,
+  "gtt_used_gib": 0.341,
+  "n_cases": 48,
+  "peak": {
+    "rss_kib": 26985888,
+    "gtt_used_gib": 0.345,
+    "swap_used_gb": 6.898,
+    "mem_avail_min_gb": 45.961,
+    "samples": 119,
+    "t0": 1791272002.302108,
+    "rss_gib": 25.736,
+    "elapsed_s": 119.1,
+    "trace": [
+      {
+        "t": 9.0,
+        "rss_gib": 20.516,
+        "gtt": 0.236,
+        "avail": 64.193,
+        "swap": 6.88
+      },
+      {
+        "t": 19.0,
+        "rss_gib": 21.297,
+        "gtt": 0.292,
+        "avail": 51.227,
+        "swap": 6.817
+      },
+      {
+        "t": 29.0,
+        "rss_gib": 21.555,
+        "gtt": 0.297,
+        "avail": 50.308,
+        "swap": 6.652
+      },
+      {
+        "t": 39.0,
+        "rss_gib": 21.854,
+        "gtt": 0.306,
+        "avail": 50.005,
+        "swap": 6.648
+      },
+      {
+        "t": 49.0,
+        "rss_gib": 22.371,
+        "gtt": 0.302,
+        "avail": 49.343,
+        "swap": 6.645
+      },
+      {
+        "t": 59.0,
+        "rss_gib": 22.759,
+        "gtt": 0.319,
+        "avail": 48.991,
+        "swap": 6.641
+      },
+      {
+        "t": 69.1,
+        "rss_gib": 23.218,
+        "gtt": 0.323,
+        "avail": 48.662,
+        "swap": 6.635
+      },
+      {
+        "t": 79.1,
+        "rss_gib": 23.796,
+        "gtt": 0.329,
+        "avail": 48.081,
+        "swap": 6.599
+      },
+      {
+        "t": 89.1,
+        "rss_gib": 24.312,
+        "gtt": 0.32,
+        "avail": 47.513,
+        "swap": 6.572
+      },
+      {
+        "t": 99.1,
+        "rss_gib": 24.771,
+        "gtt": 0.332,
+        "avail": 47.118,
+        "swap": 6.425
+      },
+      {
+        "t": 109.1,
+        "rss_gib": 25.22,
+        "gtt": 0.334,
+        "avail": 46.482,
+        "swap": 6.421
+      }
+    ]
+  },
+  "load_s": 15,
+  "tok_s": {
+    "pp": {
+      "n": 50,
+      "p50": 621.7
+    },
+    "decode": {
+      "n": 50,
+      "p50": 55.9
+    }
+  }
+}

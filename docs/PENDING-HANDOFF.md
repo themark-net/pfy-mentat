@@ -4,6 +4,18 @@
 - **atg verdict:** loop in code, 35 unit tests green, live compile unproven (0/3). Not yet a paper PoC. pfy: adapt (compile bench, decision-lane judge, opt-in loop kind), do not embed. ATG stays I1. Card text is stale.
 - **Drop-ins:** `docs/build-dropins/` (atg-framework first). Mark: pick the live toy model (qwen2.5:14b vs qwen3.6:35b). Not a Feature GO.
 
+## local-bench-5 / Entry 094 (2026-10-06 PT) — supersedes stale ~22 GB “hardware edge”
+
+**Edge (corrected):**
+| Path | Reliable | Notes |
+|------|----------|-------|
+| Ollama defaults | ~22 GB (`qwen3.6:35b`) for *ready* big-MoE loads | 51GB double-hold still fails under Ollama mmap+GTT |
+| llama-server `--no-mmap` + UMA | **51 GB coder-next** Choice OK; **65 GB gpt-oss** loads; **73 GB GLM-Air** loads but **degenerate output** | Real Strix Halo ceiling ≫ 22 GB once double-load avoided |
+
+**Runtime for atg:** prefer **Ollama + qwen3.6:35b** (decode ~96 tok/s, 79.2% Choice). Alternate: llama-server ROCm `--no-mmap -rea off` (same accuracy, ~57 decode). Avoid GLM-Air / gpt-oss for typed #230. vLLM blocked until ROCm matches wheel (7.1 vs rocm723) + hipsparselt/rocprofiler-sdk.
+
+**gpt-oss wbc:** 4 (Entry 092 no-mmap receipt), not “-”.
+
 ## local-bench-4 no-double-load (2026-10-06 PT)
 
 - PR #273 extended: llama-server ROCm `--no-mmap` proves 51GB coder-next RAN (not 22GB hardware edge).
@@ -18,7 +30,7 @@ Git plus this file is the handoff when another checkout may be open. Do not comm
 
 **Env:** OLLAMA_LOAD_TIMEOUT=30m + MemoryHigh=85G verified. Stacks on #272 (`96cdc73`).
 
-**Edge:** Reliable local MoE ceiling remains **~22 GB** (`qwen3.6:35b`). `qwen3-coder-next` (51 GB) **timeout after 30m** — never ready (GTT~48 GiB, runner RSS~42 GiB, swap full). gpt-oss / GLM-Air **deferred: host contention**.
+**Edge (stale pre-#273 no-mmap — see Entry 094 header):** Ollama-default big-MoE ready-path still ~22 GB; no-mmap raises hardware edge to 51GB+ (GLM-Air loads but quality fail).
 
 **atg-framework:** coding → `qwen3.6:35b` / fallback `qwen3-coder:30b`; decision → CUA-S1-FORMS.
 

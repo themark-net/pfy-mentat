@@ -64,5 +64,12 @@ pipelines/dogfood/local-bench-3/*-cases.jsonl
 pipelines/dogfood/local-bench-3/receipt-*.json
 pipelines/dogfood/local-bench-4/*.log
 pipelines/dogfood/local-bench-4/*-cases.jsonl
+# local-bench-4 receipt-*.json ignored (force-added evidence on #273; prefer tracked receipt.json + explicit -f for named receipts)
 pipelines/dogfood/local-bench-4/receipt-*.json
 pipelines/dogfood/local-bench-4/edge-events.jsonl
+# local-bench-5: keep receipt/peak/stalls; ignore noisy runtime
+pipelines/dogfood/local-bench-5/*.log
+pipelines/dogfood/local-bench-5/*-cases.jsonl
+pipelines/dogfood/local-bench-5/edge-events.jsonl
+pipelines/dogfood/local-bench-5/*-load-excerpt.txt
+pipelines/dogfood/local-bench-5/tmp/

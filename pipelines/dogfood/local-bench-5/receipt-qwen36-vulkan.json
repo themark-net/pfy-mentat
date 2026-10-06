@@ -1,0 +1,140 @@
+{
+  "name": "qwen36:vulkan",
+  "backend": "vulkan",
+  "flags": "-rea off --reasoning-budget 0 --no-mmap -ngl 999",
+  "verdict": "RAN",
+  "load_wait_s": 0.0,
+  "speed_wall_s": 0.6809,
+  "usage_speed": {
+    "completion_tokens": 4,
+    "prompt_tokens": 102,
+    "total_tokens": 106,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    }
+  },
+  "decision": {
+    "n_cases": 48,
+    "n_ran": 48,
+    "n_error": 0,
+    "parse_ok": 48,
+    "parse_ok_rate": 1.0,
+    "accuracy": 0.7708,
+    "n_correct": 37,
+    "escalate_rate": 0.0,
+    "n_escalate": 0,
+    "n_held": 48,
+    "held_accuracy": 0.7708,
+    "wrong_but_confident": 11,
+    "wrong_but_confident_ids": [
+      "ph-05-kronos-busy",
+      "ph-07-waived-busy",
+      "ph-08-missing-ci",
+      "ph-09-unknown-ci",
+      "ph-10-unknown-kronos",
+      "hd-02-high-blast-weights",
+      "hd-10-phase0-not-assist",
+      "hd-12-colibri-no-download",
+      "fm-08-skip-already-filled",
+      "cp-01-keep-needed",
+      "cp-06-truncate-readme-dump"
+    ],
+    "latency_s": {
+      "all_p50": 1.5451,
+      "all_p95": 1.9092,
+      "n": 48
+    },
+    "gate": 0.85,
+    "errors": []
+  },
+  "mem_available_gb": 44.033,
+  "swap_used_gb": 6.459,
+  "gtt_used_gib": 0.098,
+  "n_cases": 48,
+  "peak": {
+    "rss_kib": 25944704,
+    "gtt_used_gib": 0.111,
+    "swap_used_gb": 6.534,
+    "mem_avail_min_gb": 44.032,
+    "samples": 91,
+    "t0": 1791272840.1733353,
+    "rss_gib": 24.743,
+    "elapsed_s": 91.1,
+    "trace": [
+      {
+        "t": 9.0,
+        "rss_gib": 13.431,
+        "gtt": 0.102,
+        "avail": 62.251,
+        "swap": 6.529
+      },
+      {
+        "t": 19.0,
+        "rss_gib": 21.022,
+        "gtt": 0.098,
+        "avail": 48.162,
+        "swap": 6.526
+      },
+      {
+        "t": 29.0,
+        "rss_gib": 21.338,
+        "gtt": 0.105,
+        "avail": 47.393,
+        "swap": 6.524
+      },
+      {
+        "t": 39.0,
+        "rss_gib": 21.923,
+        "gtt": 0.104,
+        "avail": 46.954,
+        "swap": 6.522
+      },
+      {
+        "t": 49.0,
+        "rss_gib": 22.311,
+        "gtt": 0.109,
+        "avail": 46.595,
+        "swap": 6.521
+      },
+      {
+        "t": 59.0,
+        "rss_gib": 23.083,
+        "gtt": 0.098,
+        "avail": 45.795,
+        "swap": 6.515
+      },
+      {
+        "t": 69.0,
+        "rss_gib": 23.592,
+        "gtt": 0.104,
+        "avail": 45.279,
+        "swap": 6.514
+      },
+      {
+        "t": 79.0,
+        "rss_gib": 23.978,
+        "gtt": 0.105,
+        "avail": 44.694,
+        "swap": 6.461
+      },
+      {
+        "t": 89.1,
+        "rss_gib": 24.677,
+        "gtt": 0.105,
+        "avail": 44.177,
+        "swap": 6.459
+      }
+    ]
+  },
+  "load_s": 15,
+  "tok_s": {
+    "pp": {
+      "n": 50,
+      "p50": 219.4
+    },
+    "decode": {
+      "n": 50,
+      "p50": 33.1
+    }
+  }
+}

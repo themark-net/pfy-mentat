@@ -1,0 +1,11 @@
+{
+  "rss_kib": 21513316,
+  "gtt_used_gib": 0.256,
+  "swap_used_gb": 6.081,
+  "mem_avail_min_gb": 50.945,
+  "samples": 6,
+  "t0": 1791272379.6787732,
+  "rss_gib": 20.517,
+  "elapsed_s": 6.0,
+  "trace": []
+}
