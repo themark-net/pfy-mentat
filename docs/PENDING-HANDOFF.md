@@ -2,6 +2,15 @@
 
 Git plus this file is the handoff when another checkout may be open. Do not commit, reset, or stash on an open founder Build branch.
 
+## 2026-10-05 — Local-bench 2 post carve + GLM shortlist (Entry 090 / #230)
+
+**Done (bot worktree `bot/local-bench-2`):** Re-ran Entry 089 harness after Mark's BIOS VRAM 16 GiB + GTT ~96 GiB. Documented ollama `MemoryHigh=40G` blocker. GLM shortlist (4.5-Air fits weights ≤90 GB but blocked by MemoryHigh; 5.3-Flash / full 4.5–4.6 / GLM-5 do not fit usable ≤90 GB). glm-4.7-flash autopsy = typos not thinking-token parse. Challenger `qwen3.6:35b` pulled (~22 GB).
+
+**Mark approvals needed:** Raise/remove `ollama.service` drop-in `MemoryHigh=40G` to use GTT for gpt-oss:120b / qwen3-coder-next / GLM-4.5-Air Q4. Do not change BIOS/kernel again unless asked.
+
+**Not a Feature GO.** Catalog HOLD 70–75. CUA-S1-FORMS stays primary local.
+
+
 ## 2026-10-06 — Local-inference bench on nimo (Entry 089 / #230 case set)
 
 - **Branch / worktree:** `bot/local-bench` · `/home/mark/DEVELOP/pfy-mentat/tmp/local-bench`.

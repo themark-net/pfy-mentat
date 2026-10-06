@@ -47,7 +47,7 @@ REQUIRED_MODELS = (
     "qwen3-coder:30b",
 )
 STRETCH_MODEL = "qwen3-coder-next:latest"
-SKIP_MODELS = ("gpt-oss:120b",)
+SKIP_MODELS = ("gpt-oss:120b",)  # weights fit ~90GB GTT budget but ollama MemoryHigh=40G still blocks
 BASELINES = {
     "cua-s1-forms": {
         "accuracy": 0.5625,
@@ -861,7 +861,10 @@ def bench_one(base: str, model: str, cases: list, args, outdir: Path, deadline: 
         rec["cases"] = rows
         if rec.get("verdict") is None:
             rec["verdict"] = "RAN"
-        rec["log"] = str(log_path.relative_to(ROOT)) if log_path.is_file() else str(log_path)
+        try:
+            rec["log"] = str(log_path.resolve().relative_to(ROOT.resolve()))
+        except ValueError:
+            rec["log"] = str(log_path)
     except Exception as e:
         rec["verdict"] = "DROP"
         rec["reason"] = "exception: %s" % e
@@ -972,7 +975,7 @@ def main(argv=None) -> int:
         return fail_closed("cannot load cases %s: %s" % (cases_path, e), code=EXIT_BROKEN)
     cases = list(cases_doc["cases"])
 
-    outdir = Path(args.outdir) if args.outdir else Path(args.receipt).resolve().parent
+    outdir = (Path(args.outdir) if args.outdir else Path(args.receipt).resolve().parent).resolve()
     outdir.mkdir(parents=True, exist_ok=True)
     receipt_path = Path(args.receipt)
 

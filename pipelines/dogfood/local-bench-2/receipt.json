@@ -1,0 +1,179 @@
+{
+  "schema": "local-bench-2.receipt.v0",
+  "entry": "090",
+  "issue": "#230",
+  "verdict": "RAN",
+  "started": "2026-10-06T04:30:00Z",
+  "finished": "2026-10-06T05:11:06Z",
+  "host": "nimo",
+  "gate": 0.85,
+  "num_ctx": 2048,
+  "inventory": {
+    "hostname": "nimo",
+    "mem_total_gb": 107.42,
+    "mem_available_gb": 77.24,
+    "vram_giB": 16,
+    "gtt_giB": 96,
+    "ttm_pages_limit": 25165824,
+    "ollama_memory_high": "40G",
+    "ollama_version": "0.30.8",
+    "note": "BIOS carve 16 GiB VRAM + GTT 96 GiB; ollama.service MemoryHigh=40G still caps loads"
+  },
+  "baselines": {
+    "cua-s1-forms": {
+      "accuracy": 0.5625,
+      "escalate_rate": 0.2292,
+      "wrong_but_confident": 16
+    },
+    "laya:english": {
+      "accuracy": 0.625,
+      "escalate_rate": 1.0,
+      "wrong_but_confident": 0
+    },
+    "entry089_qwen3-coder:30b": {
+      "accuracy": 0.7917,
+      "escalate_rate": 0.0208,
+      "wrong_but_confident": 10,
+      "eval_tok_s": 65.239
+    }
+  },
+  "models": [
+    {
+      "name": "qwen3-coder:30b",
+      "verdict": "RAN",
+      "load_duration_s": null,
+      "ollama_ps_loaded": [
+        {
+          "name": "qwen3-coder:30b",
+          "size": "18 GB",
+          "processor": "100% GPU"
+        }
+      ],
+      "speed": {
+        "prompt_eval_tok_s": 1154.3,
+        "eval_tok_s": 74.913,
+        "prompt_eval_count": null,
+        "eval_count": null
+      },
+      "decision": {
+        "accuracy": 0.7917,
+        "escalate_rate": 0.0208,
+        "wrong_but_confident": 10,
+        "n_correct": 38,
+        "n_cases": 48,
+        "parse_ok": null
+      },
+      "cases_path": "qwen3-coder_30b-cases.jsonl",
+      "log": "qwen3-coder_30b.log",
+      "reason": null
+    },
+    {
+      "name": "glm-4.7-flash:latest",
+      "verdict": "RAN",
+      "load_duration_s": 14.3039,
+      "ollama_ps_loaded": [
+        {
+          "name": "glm-4.7-flash:latest",
+          "id": "d1a8a26252f1",
+          "size": "19 GB",
+          "processor": "100% GPU",
+          "context": "2048",
+          "until": "9 minutes from now"
+        }
+      ],
+      "speed": {
+        "prompt_eval_tok_s": 639.437,
+        "eval_tok_s": 53.282,
+        "prompt_eval_count": null,
+        "eval_count": null
+      },
+      "decision": {
+        "accuracy": 0.3958,
+        "escalate_rate": 0.3333,
+        "wrong_but_confident": 13,
+        "n_correct": 19,
+        "n_cases": 48,
+        "parse_ok": null
+      },
+      "cases_path": null,
+      "log": null,
+      "reason": "posthoc: relative_to path bug after successful run; metrics valid"
+    },
+    {
+      "name": "qwen3.6:35b",
+      "verdict": "RAN",
+      "load_duration_s": 16.1047,
+      "ollama_ps_loaded": [
+        {
+          "name": "qwen3.6:35b",
+          "id": "a7eb95c53bcf",
+          "size": "21 GB",
+          "processor": "100% GPU",
+          "context": "2048",
+          "until": "9 minutes from now"
+        }
+      ],
+      "speed": {
+        "prompt_eval_tok_s": 807.579,
+        "eval_tok_s": 94.879,
+        "prompt_eval_count": null,
+        "eval_count": null
+      },
+      "decision": {
+        "accuracy": 0.7917,
+        "escalate_rate": 0.0,
+        "wrong_but_confident": 10,
+        "n_correct": 38,
+        "n_cases": 48,
+        "parse_ok": null
+      },
+      "cases_path": null,
+      "log": "pipelines/dogfood/local-bench-2/qwen3.6_35b.log",
+      "reason": null
+    }
+  ],
+  "blocked_by_ollama_memory_high_40g": [
+    {
+      "name": "qwen3-coder-next:latest",
+      "size": "51 GB",
+      "status": "cold load hung under MemoryHigh=40G; unloaded"
+    },
+    {
+      "name": "gpt-oss:120b",
+      "size": "65 GB",
+      "status": "not attempted after MemoryHigh discovery; exceeds 40G cgroup"
+    },
+    {
+      "name": "MichelRosselli/GLM-4.5-Air:Q4_K_M",
+      "size": "~73 GB",
+      "status": "fits 90GB weight budget but exceeds ollama MemoryHigh=40G"
+    }
+  ],
+  "glm_4_7_flash_typo_analysis": {
+    "note": "Not thinking-token parse failure: all 48 parse_ok. Failures were invented/typo choices (escelate, truncat, none, skipskip, fre token).",
+    "raw_accuracy": 0.3958,
+    "raw_escalate": 0.3333,
+    "raw_wbc": 13,
+    "typo_normalized_accuracy": 0.5417,
+    "typo_normalized_escalate": 0.375,
+    "typo_normalized_wbc": 7,
+    "typo_fixes": 15
+  },
+  "pending_models": [],
+  "catalog_hold": "70-75",
+  "feature_go": false,
+  "default_lane_unchanged": true,
+  "recommendation": {
+    "coding_worker": "qwen3.6:35b",
+    "note": "qwen3.6:35b tied 79.2% accuracy with 0% escalate and ~95 decode tok/s vs 30b ~75; prefer 35b for throughput. glm-4.7-flash not promoted. GLM-4.5-Air blocked by MemoryHigh=40G.",
+    "decision_lane": "CUA-S1-FORMS"
+  },
+  "glm_family_fit": {
+    "glm-4.7-flash": "fits and runnable; weak on #230 Choice (39.6% raw / 54.2% typo-norm)",
+    "GLM-4.5-Air Q4_K_M": "weights ~68\u201373.5 GB fit \u226490GB; blocked by MemoryHigh=40G",
+    "GLM-4.6 / GLM-4.5 full": "355B-class; does not fit",
+    "GLM-4.6-Air": "not released as of 2026-10-05",
+    "GLM-5.3-Flash": "320B/18B; Q4 ~176\u2013200GB; Q2 ~106+GB; UD-IQ1_S ~93GB not usable quality; Ollama cloud-only",
+    "GLM-5 full": "far too large / library retired"
+  }
+}
