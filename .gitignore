@@ -55,3 +55,7 @@ pipelines/dogfood/laya-shadow/laya-serve.log
 # Local-inference bench (Entry 089) — noisy per-model logs; keep receipt.json
 pipelines/dogfood/local-bench/*.log
 pipelines/dogfood/local-bench/*-cases.jsonl
+pipelines/dogfood/local-bench-2/*.log
+pipelines/dogfood/local-bench-2/*-cases.jsonl
+pipelines/dogfood/local-bench-2/receipt-glm.json
+pipelines/dogfood/local-bench-2/receipt-qwen36.json
