@@ -1,6 +1,6 @@
 {
-  "version": "1.3",
-  "last_updated": "2026-07-30",
+  "version": "1.4",
+  "last_updated": "2026-10-06",
   "description": "Lanes G0 structural/golden, G1 deploy_ready (build+smoke), G2 ux_uat human-only. See docs/ops/eval-gates-and-ux-uat.md (HD #33).",
   "lanes": [
     {
@@ -63,6 +63,22 @@
       "purpose": "Build green + smoke on publishable deploy path; agent implement-done bar",
       "closes_agent_work": true,
       "not": "human UAT"
+    },
+    {
+      "id": "llamacpp-nommap",
+      "requires_llm": true,
+      "requires_backend": "llama-server",
+      "opt_in": true,
+      "command": "pipelines/dogfood/local-bench-4/run_nommap_server.sh",
+      "api": "pfylib.hedge.start_llamacpp_nommap",
+      "health": "GET /v1/models",
+      "stop": "pfylib.hedge.stop_llamacpp_nommap",
+      "default_model": "qwen3.6:35b",
+      "default_model_runtime": "ollama",
+      "opt_in_model": "qwen3-coder-next",
+      "memory_floor": "MemAvailable >= model file size + 25 GiB; else exit 2 and do not spawn",
+      "purpose": "OpenAI-compatible llama-server --no-mmap. Does not replace Ollama. qwen3-coder-next is opt-in via an explicit GGUF path.",
+      "gate": "G1"
     },
     {
       "id": "ux_uat",

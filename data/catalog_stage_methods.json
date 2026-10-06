@@ -311,11 +311,11 @@
     {
       "name": "Atomic Task Graph (ATG)",
       "posture": [
-        "i1_stay",
-        "docs_only"
+        "i1_stay"
       ],
       "evidence": [
-        "notes_doc:docs/ops/atg-coupling.md"
+        "notes_doc:docs/ops/atg-coupling.md",
+        "pin"
       ],
       "ceiling": "I1",
       "llm": [

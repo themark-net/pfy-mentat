@@ -231,16 +231,18 @@
   },
   "Atomic Task Graph (ATG)": {
     "potential": "ambiguous",
-    "uses": "Paper task-graph prototype. No runnable core in this repo.",
+    "uses": "Callable compile, parallel tool waves, freeze, and localized repair via a pinned checkout. Independent reimplementation of Zhang et al. (2026), arXiv:2607.01942. Not official ATG code.",
     "features": [
       "dag",
-      "repair"
+      "repair",
+      "openai-compat-client"
     ],
     "non_goals": [
       "subtree now",
-      "pipeline dependency"
+      "pipeline dependency",
+      "I2 before a live compile exit 0"
     ],
-    "next_gate": "Stay I1 until a runnable core exists."
+    "next_gate": "Stay I1 until one live atg-compile exits 0 on a quiet host. I2 would be a probe only, not I3."
   },
   "ponytail (skills pack)": {
     "potential": "high",

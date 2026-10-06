@@ -1,3 +1,14 @@
+## 2026-10-06 — llamacpp-nommap lane + atg-compile bench (I1, live not run)
+
+- **Branch / worktree:** `build/local-lane-atg` · `/home/mark/DEVELOP/pfy-mentat/tmp/build-local-lane`. Not pushed. Not a Feature GO. Catalog HOLD 70–75. eval-harness untouched.
+- **Lane:** `llamacpp-nommap` in `data/eval-lanes.json` and `pfylib/hedge.py` (start, `GET /v1/models`, stop, GGUF path). Default model stays `qwen3.6:35b` on Ollama. `qwen3-coder-next` is opt-in. MemAvailable < model size + 25 GiB → exit 2, no spawn. This session did not start the server.
+- **Bench:** `examples/atg-compile/bench.py`, 10 cases in `data/decision-gates/atg-compile.cases.v0.json`. Calls atg by path. Pin `86d1b8905116fb7ec954ee5c4fe0d18f763b7e16` on `build/atg-finish` (`/tmp/atg-finish`, not `~/DEVELOP/atg-framework`).
+- **Catalog:** ATG card refreshed at **I1**, not I2. `tools.json` object added (scores copied from TOOLS.md, not re-scored). No new sources entry: this is not an X seed; Entry 001 was not rewritten. Credit Zhang et al. (2026), arXiv:2607.01942. Independent reimplementation. Not official ATG code. Not a paper-benchmark claim.
+- **Live:** not run. Parent held `qwen3.6:35b`. No invented live numbers. Writeup: [docs/dogfood/ATG-COMPILE-RESULTS.md](dogfood/ATG-COMPILE-RESULTS.md).
+- **Verify:** `python3 -m unittest discover -s tests -t .` → 179 OK, 2 skipped. `make eval-structural` → PASS (same 179). `python3 scripts/catalog_check.py` → PASS `n_json=7`. Fake-server bench: 1 valid / 1 invalid, exit 0. Endpoint down: exit 2, no receipt. Memory floor: injected 1.000 GiB → exit 2.
+- **atg offline (dirty pin tree):** pytest 40 passed, 1 deselected. Toy sink `{'value': 25}`.
+- **Next:** T-0127 when the host is quiet. PR body is `/tmp/pr-pfy-local-lane.md` for the parent. Do not merge.
+
 ## 2026-10-06 — atg-framework eval + Build drop-ins (Entry 093)
 
 - **Branch:** `bot/atg-eval`. Docs only. Handoff: [eval/ATG-EVAL-HANDOFF.md](eval/ATG-EVAL-HANDOFF.md).

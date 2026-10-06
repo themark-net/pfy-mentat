@@ -16,6 +16,10 @@ Rules (deterministic, offline)
   1. ``hard``  -> cloud if budget remains, else local if ready, else FAIL.
   2. others    -> local if ready, else cloud if budget remains, else FAIL.
   3. FAIL always carries a next step; the policy never fakes a lane.
+
+``llamacpp-nommap`` is a named local server lane (start / health / stop).
+It is not one of the spend lanes in ``LANES``. The default model stays
+``qwen3.6:35b`` on Ollama. ``qwen3-coder-next`` is opt-in via this lane.
 """
 from __future__ import annotations
 
@@ -247,3 +251,180 @@ def decide_and_record(task: str, **kw) -> dict:
         rec["spent"] = r.get("spent")
         rec["remaining"] = r.get("remaining")
     return rec
+
+
+# ------------------------------------------------------- llamacpp-nommap ---
+
+LLAMACPP_NOMMAP = "llamacpp-nommap"
+DEFAULT_OLLAMA_MODEL = "qwen3.6:35b"
+NOMMAP_OPT_IN_MODEL = "qwen3-coder-next"
+NOMMAP_SCRIPT_REL = Path("pipelines/dogfood/local-bench-4/run_nommap_server.sh")
+_GIB = 1024 ** 3
+NOMMAP_HEADROOM_BYTES = 25 * _GIB
+
+
+def _fmt_gib(n: int) -> str:
+    return "%.3f GiB" % (n / float(_GIB))
+
+
+def mem_available_bytes(meminfo_text: str | None = None) -> int | None:
+    """Bytes of MemAvailable. ``meminfo_text`` injects a fake /proc/meminfo."""
+    if meminfo_text is None:
+        try:
+            meminfo_text = Path("/proc/meminfo").read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return None
+    for line in meminfo_text.splitlines():
+        if not line.startswith("MemAvailable:"):
+            continue
+        parts = line.split()
+        if len(parts) < 2:
+            return None
+        try:
+            return int(parts[1]) * 1024
+        except ValueError:
+            return None
+    return None
+
+
+def _lane_fail(reason: str, next_step: str) -> dict:
+    return {
+        "ok": False,
+        "exit_code": 2,
+        "lane": LLAMACPP_NOMMAP,
+        "started": False,
+        "reason": reason,
+        "next_step": next_step,
+    }
+
+
+def start_llamacpp_nommap(
+    model_path: str | os.PathLike | None,
+    *,
+    port: int = 18080,
+    ctx: int = 4096,
+    meminfo_text: str | None = None,
+    root_dir: Path | None = None,
+    popen=None,
+) -> dict:
+    """Start the no-mmap llama-server lane, or return exit code 2.
+
+    Refuses when MemAvailable < model file size + 25 GiB. Does not spawn
+    on that refusal. ``meminfo_text`` is a fake MemAvailable reading for tests.
+    ``popen`` defaults to ``subprocess.Popen`` and is the only spawn path.
+    """
+    if not model_path:
+        return _lane_fail(
+            "llamacpp-nommap needs a GGUF path. Default model stays %s on Ollama. %s is opt-in on this lane."
+            % (DEFAULT_OLLAMA_MODEL, NOMMAP_OPT_IN_MODEL),
+            "pass the %s GGUF path. Do not load it while another model is resident." % NOMMAP_OPT_IN_MODEL,
+        )
+    path = Path(model_path)
+    if not path.is_file():
+        return _lane_fail(
+            "model path is not a file: %s" % path,
+            "pass a GGUF file for %s. %s stays on Ollama and is not started here."
+            % (NOMMAP_OPT_IN_MODEL, DEFAULT_OLLAMA_MODEL),
+        )
+    script = registry.root(root_dir) / NOMMAP_SCRIPT_REL
+    if not script.is_file():
+        return _lane_fail(
+            "nommap launcher missing: %s" % script,
+            "restore %s" % NOMMAP_SCRIPT_REL,
+        )
+    avail = mem_available_bytes(meminfo_text)
+    size = path.stat().st_size
+    need = size + NOMMAP_HEADROOM_BYTES
+    if avail is None:
+        return _lane_fail(
+            "MemAvailable unreadable; refusing %s" % LLAMACPP_NOMMAP,
+            "inject or read MemAvailable before starting the lane",
+        )
+    if avail < need:
+        return _lane_fail(
+            "MemAvailable %s < model %s + 25 GiB (need %s); refusing %s"
+            % (_fmt_gib(avail), _fmt_gib(size), _fmt_gib(need), LLAMACPP_NOMMAP),
+            "free memory until MemAvailable covers the GGUF plus 25 GiB, then start one model",
+        )
+    argv = ["bash", str(script), str(path), str(int(port)), str(int(ctx))]
+    spawn = popen or subprocess.Popen
+    proc = spawn(argv, start_new_session=True)
+    return {
+        "ok": True,
+        "exit_code": 0,
+        "lane": LLAMACPP_NOMMAP,
+        "started": True,
+        "reason": "",
+        "next_step": "",
+        "model_path": str(path),
+        "port": int(port),
+        "base_url": "http://127.0.0.1:%d" % int(port),
+        "pid": getattr(proc, "pid", None),
+        "proc": proc,
+        "argv": argv,
+    }
+
+
+def health_llamacpp_nommap(base_url: str, *, timeout: float = 2.0) -> dict:
+    """GET ``{base}/v1/models``. ``base_url`` has no ``/v1`` suffix."""
+    import urllib.error
+    import urllib.request
+
+    base = str(base_url or "").strip().rstrip("/")
+    if not base:
+        return _lane_fail("no base_url for health", "pass the lane base_url (http://127.0.0.1:<port>)")
+    url = base + "/v1/models"
+    req = urllib.request.Request(url, headers={"Accept": "application/json"}, method="GET")
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    try:
+        with opener.open(req, timeout=timeout) as resp:
+            raw = resp.read(65536).decode("utf-8", "replace")
+            status = resp.status
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        return _lane_fail(
+            "GET %s failed: %s" % (url, exc),
+            "start llamacpp-nommap or point --base-url at an OpenAI-compatible /v1/models",
+        )
+    ok = 200 <= int(status) < 300
+    if not ok:
+        return _lane_fail("GET %s returned HTTP %s" % (url, status), "fix the endpoint, then retry health")
+    return {
+        "ok": True,
+        "exit_code": 0,
+        "lane": LLAMACPP_NOMMAP,
+        "url": url,
+        "status": int(status),
+        "body": raw[:500],
+        "reason": "",
+        "next_step": "",
+    }
+
+
+def stop_llamacpp_nommap(proc, *, timeout: float = 5.0) -> dict:
+    """Terminate a process this lane started. No-op when ``proc`` is already gone."""
+    if proc is None:
+        return {"ok": True, "exit_code": 0, "lane": LLAMACPP_NOMMAP, "stopped": False, "reason": "no process"}
+    poll = getattr(proc, "poll", None)
+    if callable(poll) and poll() is not None:
+        return {
+            "ok": True,
+            "exit_code": 0,
+            "lane": LLAMACPP_NOMMAP,
+            "stopped": True,
+            "returncode": proc.returncode,
+            "reason": "already exited",
+        }
+    proc.terminate()
+    try:
+        proc.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait(timeout=timeout)
+    return {
+        "ok": True,
+        "exit_code": 0,
+        "lane": LLAMACPP_NOMMAP,
+        "stopped": True,
+        "returncode": proc.poll() if callable(poll) else getattr(proc, "returncode", None),
+        "reason": "",
+    }

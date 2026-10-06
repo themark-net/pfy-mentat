@@ -1,7 +1,7 @@
 {
-  "version": "0.4.15",
-  "last_updated": "2026-10-04",
-  "description": "v0.4.15: + Kolibri-1 (X Entry 085, B, I0; smoke pending). Previous: v0.4.14: ADR-0017 catalog<->implementation link. + rows codebase-memory-mcp (S) and Finn Loop / eval-loop / 8-exits patterns (A) copied from TOOLS.md (scores unchanged) with `implementation` objects pointing at data/toolsets.json. Previous: v0.4.13 kanbots + multi-agent-generator.",
+  "version": "0.4.16",
+  "last_updated": "2026-10-06",
+  "description": "v0.4.16: + Atomic Task Graph (ATG) object (scores copied from the TOOLS.md row on 2026-10-06; stage I1; pin 86d1b8905116fb7ec954ee5c4fe0d18f763b7e16). Previous: v0.4.15: + Kolibri-1 (X Entry 085, B, I0; smoke pending). Previous: v0.4.14: ADR-0017 catalog<->implementation link.",
   "schema_notes": {
     "required_for_all": [
       "name",
@@ -177,6 +177,33 @@
       "x_post_id": "2106306843052052616",
       "notes": "X Entry 085. Aleph Alpha 78B/3.46B-active MoE, DE+EN, Apache-2.0, FP8 weights (~78 GB) need vLLM + aleph-alpha-inference on >=2x A100 80GB / 1x H200. No stock llama.cpp/Ollama arch support; community Q3_K_S GGUF + patch is the local lab path (examples/kolibri1-llamacpp). Initial public-docs scores only; smoke pending (make smoke-kolibri1).",
       "integration_stage": "I0"
+    },
+    {
+      "name": "Atomic Task Graph (ATG)",
+      "primary_category": "Agent Frameworks & Orchestration",
+      "github": "https://github.com/themark-net/atg-framework",
+      "scores": {
+        "s1": 88,
+        "s2": 75,
+        "s3": 90,
+        "s4": 60,
+        "overall": 82
+      },
+      "tier": "A",
+      "tags": [
+        "agentic",
+        "graph",
+        "dag",
+        "planning",
+        "parallelism",
+        "failure-repair",
+        "paper-based",
+        "prototype",
+        "I1"
+      ],
+      "pinned_commit": "86d1b8905116fb7ec954ee5c4fe0d18f763b7e16",
+      "notes": "Scores copied from the TOOLS.md row on 2026-10-06 (not re-scored). Stage I1. Pin is build/atg-finish @ 86d1b8905116fb7ec954ee5c4fe0d18f763b7e16, called by path (/tmp/atg-finish on this host), not vendored. Independent reimplementation of Zhang et al. (2026), arXiv:2607.01942. Not official ATG code. Not a paper-benchmark claim. Live compile not re-measured.",
+      "integration_stage": "I1"
     }
   ],
   "aggregates": [],
