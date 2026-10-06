@@ -2,6 +2,17 @@
 
 Git plus this file is the handoff when another checkout may be open. Do not commit, reset, or stash on an open founder Build branch.
 
+## 2026-10-05 — Local-bench 4 edge probe (Entry 092 / #230)
+
+**Env:** OLLAMA_LOAD_TIMEOUT=30m + MemoryHigh=85G verified. Stacks on #272 (`96cdc73`).
+
+**Edge:** Reliable local MoE ceiling remains **~22 GB** (`qwen3.6:35b`). `qwen3-coder-next` (51 GB) **timeout after 30m** — never ready (GTT~48 GiB, runner RSS~42 GiB, swap full). gpt-oss / GLM-Air **deferred: host contention**.
+
+**atg-framework:** coding → `qwen3.6:35b` / fallback `qwen3-coder:30b`; decision → CUA-S1-FORMS.
+
+**Harness:** runner RSS fix (exe EACCES); outdir tests call helpers. Not a Feature GO.
+
+
 ## 2026-10-05 — Local-bench 3 MemoryHigh=85G (Entry 091 / #230)
 
 **Context:** Mark raised ollama `MemoryHigh` to **85G**; #271 merged as `357e3c6`. Branch `bot/local-bench-3`. Mid-slice nimo lockup + concurrent **atg-framework** Grok Build → big MoEs **deferred: host contention**; MemAvailable floor **16 GiB**.

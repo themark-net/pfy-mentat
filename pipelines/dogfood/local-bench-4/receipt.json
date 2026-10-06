@@ -1,0 +1,96 @@
+{
+  "schema": "local-bench-4.edge.v0",
+  "entry": "092",
+  "issue": "#230",
+  "stacks_on": {
+    "pr": 272,
+    "sha": "96cdc7339fc4715dbdf69b7ea25bf1129563d443"
+  },
+  "verdict": "RAN",
+  "host": "nimo",
+  "gate": 0.85,
+  "num_ctx": 2048,
+  "edge_probe_mode": true,
+  "min_mem_available_gb_probe": 4.0,
+  "inventory": {
+    "ollama_memory_high": "85G",
+    "ollama_memory_high_bytes": 91268055040,
+    "ollama_load_timeout": "30m",
+    "mem_total_gb": 107.42,
+    "vram_giB": 16,
+    "gtt_giB": 96,
+    "swap_total_gb": 8.0,
+    "ollama_version": "0.30.8"
+  },
+  "harness_fixes": {
+    "runner_rss": "Cross-user llama-server: /proc/pid/exe EACCES for ollama user; match argv0/comm. Fixes Entry 091 peak_rss_kb ~22MB (client) vs ~40GB runner.",
+    "outdir_tests": "Unit tests call resolve_outdir / log_path_for_receipt helpers (not copied logic)."
+  },
+  "models": [
+    {
+      "name": "qwen3-coder-next:latest",
+      "size_gb": 51,
+      "quant": "Q4_K_M",
+      "num_ctx": 2048,
+      "verdict": "DROP",
+      "outcome": "timeout",
+      "load_wall_s": 2000.23,
+      "mem_available_before_gb": 88.201,
+      "runner_rss_peak_gib": 42.457,
+      "gtt_used_gib": 48.3,
+      "swap_used_peak_gb": 7.99,
+      "reason": "cold load failed: timed out after ~2000s client / OLLAMA_LOAD_TIMEOUT=30m \u2014 llama-server never became available (status: loading model / not responding). Swap thrash ~7.9/8 GiB. GTT ~48.3 GiB. Runner RSS peaked ~42.5 GiB (edge probe; harness peak_rss_kb in this receipt may still be pre-fix if process started before patch).",
+      "decision": null
+    },
+    {
+      "name": "gpt-oss:120b",
+      "size_gb": 65,
+      "verdict": "SKIP",
+      "outcome": "deferred: host contention",
+      "reason": "After coder-next 30m failure + openclaw glm-4.7-flash@128k interference, MemAvailable ~70 GiB < size+25 (90) safety margin for edge start. Not forced."
+    },
+    {
+      "name": "MichelRosselli/GLM-4.5-Air:Q4_K_M",
+      "size_gb": 73,
+      "verdict": "SKIP",
+      "outcome": "deferred: host contention",
+      "reason": "Pull paused during coder-next load; not resumed (would need ~98 GiB clear margin and ~1h download). Same ready-state risk as 51GB."
+    }
+  ],
+  "workable_edge": {
+    "reliable_max_size_gb": 22,
+    "reliable_models": [
+      "qwen3.6:35b",
+      "qwen3-coder:30b"
+    ],
+    "reliable_ctx": 2048,
+    "failed_at_size_gb": 51,
+    "failed_model": "qwen3-coder-next:latest",
+    "tip_over": "llama-server reaches ~38\u201342 GiB RSS + ~48 GiB GTT but never becomes available within OLLAMA_LOAD_TIMEOUT=30m; swap fills (~7.9/8 GiB); status oscillates loading model / not responding.",
+    "memory_high_85g": "sufficient for cgroup; not sufficient for ready-state of 51GB+ MoE on this path",
+    "load_timeout_30m": "verified in env; still insufficient for coder-next ready-state"
+  },
+  "recommendation": {
+    "coding_worker": "qwen3.6:35b",
+    "coding_fallback": "qwen3-coder:30b",
+    "decision_lane": "CUA-S1-FORMS",
+    "atg_framework": {
+      "local_coding": "qwen3.6:35b",
+      "local_coding_fallback": "qwen3-coder:30b",
+      "local_decision": "cua-s1-forms",
+      "avoid_until_ready_path_fixed": [
+        "qwen3-coder-next:latest",
+        "gpt-oss:120b",
+        "MichelRosselli/GLM-4.5-Air:Q4_K_M",
+        "glm-4.7-flash:latest"
+      ]
+    }
+  },
+  "interference": "openclaw-gateway repeatedly loads glm-4.7-flash at num_ctx=128000 during probes.",
+  "catalog_hold": "70-75",
+  "feature_go": false,
+  "finished": "2026-10-06T06:48:55Z",
+  "cites": [
+    "#230"
+  ]
+}

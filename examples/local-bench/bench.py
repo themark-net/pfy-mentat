@@ -273,14 +273,60 @@ def _proc_exe(pid: int) -> str:
         return ""
 
 
+
+def resolve_outdir(outdir_arg: str | None, receipt_path: Path) -> Path:
+    """CLI --outdir must be absolute so relative paths survive chdir."""
+    if outdir_arg:
+        return Path(outdir_arg).resolve()
+    return Path(receipt_path).resolve().parent
+
+
+def log_path_for_receipt(log_path: Path, root: Path | None = None) -> str:
+    """Store log path relative to repo when possible; never raise on out-of-tree outdir."""
+    root = root or ROOT
+    try:
+        return str(log_path.resolve().relative_to(root.resolve()))
+    except ValueError:
+        return str(log_path)
+
 def is_ollama_exe(exe: str) -> bool:
     """Match the Ollama binary / llama-server, not a parent whose argv quotes those words."""
     e = (exe or "").lower()
     return "ollama" in e or "llama-server" in e
 
 
+def _cmdline_argv0(pid: int) -> str:
+    """Argv0 for cross-user runners when /proc/<pid>/exe is EACCES (ollama service user)."""
+    try:
+        raw = Path("/proc/%s/cmdline" % pid).read_bytes()
+    except OSError:
+        return ""
+    if not raw:
+        return ""
+    return raw.split(b"\x00", 1)[0].decode("utf-8", "replace")
+
+
+def _proc_comm(pid: int) -> str:
+    try:
+        return Path("/proc/%s/comm" % pid).read_text(encoding="utf-8", errors="replace").strip()
+    except OSError:
+        return ""
+
+
+def is_ollama_runner_proc(pid: int, exe: str = "") -> bool:
+    """True for ollama / llama-server. Prefer exe; if unreadable, match argv0 path or comm only."""
+    if is_ollama_exe(exe):
+        return True
+    # Cross-user: mark cannot read ollama-owned /proc/*/exe — do NOT scan full cmdline text.
+    argv0 = _cmdline_argv0(pid)
+    if argv0 and is_ollama_exe(argv0):
+        return True
+    comm = _proc_comm(pid)
+    return comm in ("llama-server", "ollama")
+
+
 def ollama_runner_stats() -> list[dict]:
-    """RSS of Ollama / llama-server executables only (not every process whose cmdline mentions ollama)."""
+    """RSS of Ollama / llama-server processes (incl. ollama-user runners mark cannot readlink)."""
     found = []
     proc = Path("/proc")
     if not proc.is_dir():
@@ -288,17 +334,19 @@ def ollama_runner_stats() -> list[dict]:
     for p in proc.iterdir():
         if not p.name.isdigit():
             continue
-        exe = _proc_exe(int(p.name)).lower()
-        if not is_ollama_exe(exe):
+        pid = int(p.name)
+        exe = _proc_exe(pid)
+        if not is_ollama_runner_proc(pid, exe):
             continue
         try:
             cmd = (p / "cmdline").read_bytes().replace(b"\x00", b" ").decode("utf-8", "replace")
         except OSError:
-            cmd = exe
-        st = proc_status(int(p.name))
+            cmd = exe or _cmdline_argv0(pid)
+        st = proc_status(pid)
         st["cmd"] = (cmd or exe).strip()[:240]
-        st["exe"] = exe
-        st["is_runner"] = "runner" in Path(exe).name or "llama-server" in Path(exe).name
+        st["exe"] = (exe or _cmdline_argv0(pid) or "").lower()
+        name = Path(st["exe"]).name if st["exe"] else _proc_comm(pid)
+        st["is_runner"] = name in ("llama-server", "runner") or "llama-server" in name
         found.append(st)
     return found
 
@@ -865,10 +913,7 @@ def bench_one(base: str, model: str, cases: list, args, outdir: Path, deadline: 
         rec["cases"] = rows
         if rec.get("verdict") is None:
             rec["verdict"] = "RAN"
-        try:
-            rec["log"] = str(log_path.resolve().relative_to(ROOT.resolve()))
-        except ValueError:
-            rec["log"] = str(log_path)
+        rec["log"] = log_path_for_receipt(log_path)
     except Exception as e:
         rec["verdict"] = "DROP"
         rec["reason"] = "exception: %s" % e
@@ -878,6 +923,9 @@ def bench_one(base: str, model: str, cases: list, args, outdir: Path, deadline: 
         rec["rss"] = sampler.finish()
         rec["peak_rss_kb"] = rec["rss"].get("peak_rss_kb")
         rec["peak_hwm_kb"] = rec["rss"].get("peak_hwm_kb")
+        # GiB view of llama-server RSS (cross-user readable via cmdline fallback)
+        pr = rec.get("peak_rss_kb")
+        rec["peak_runner_rss_gib"] = None if not pr else round(float(pr) / 1024 / 1024, 3)
         rec["seconds"] = round(time.time() - t_model, 2)
         try:
             unload(base, model, timeout=min(90, args.generate_timeout))
@@ -979,7 +1027,7 @@ def main(argv=None) -> int:
         return fail_closed("cannot load cases %s: %s" % (cases_path, e), code=EXIT_BROKEN)
     cases = list(cases_doc["cases"])
 
-    outdir = (Path(args.outdir) if args.outdir else Path(args.receipt).resolve().parent).resolve()
+    outdir = resolve_outdir(args.outdir, Path(args.receipt))
     outdir.mkdir(parents=True, exist_ok=True)
     receipt_path = Path(args.receipt)
 
