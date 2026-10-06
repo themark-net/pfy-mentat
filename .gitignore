@@ -49,3 +49,4 @@ pipelines/dogfood/build/**/grok-home/
 # Laya eval-auto trial (Entry 086) — venv + Hugging Face weights, never commit
 .venv-laya/
 .hf-cache/
+pipelines/dogfood/laya-trial/laya-serve.log

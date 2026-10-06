@@ -126,6 +126,26 @@ def typesafe_model():
     return str(os.environ.get("PFY_JEV_MODEL") or TYPESAFE_MODEL).strip() or TYPESAFE_MODEL
 
 
+def typesafe_url():
+    """Optional trial override. Default stays the TypeSafe cloud endpoint."""
+    raw = str(os.environ.get("PFY_JEV_TYPESAFE_URL") or "").strip()
+    return raw or TYPESAFE_URL
+
+
+def typesafe_timeout():
+    """Seconds for the TypeSafe POST. Default 8. Trial may raise this for CPU."""
+    raw = str(os.environ.get("PFY_JEV_TYPESAFE_TIMEOUT") or "").strip()
+    if not raw:
+        return 8
+    try:
+        v = float(raw)
+    except ValueError:
+        return 8
+    if v <= 0:
+        return 8
+    return v
+
+
 def offline():
     return str(os.environ.get("PFY_JEV_OFFLINE") or "").strip().lower() in ("1", "true", "yes")
 
@@ -398,7 +418,7 @@ def set_path(STATE, path, ROOT=None):
         rec["chip_typesafe"] = CHIP_TYPESAFE_OPT
         rec["engine"] = "typesafe"
         rec["model"] = typesafe_model()
-        rec["endpoint"] = TYPESAFE_URL
+        rec["endpoint"] = typesafe_url()
         if not key:
             rec = fail(
                 "decision",
@@ -409,7 +429,7 @@ def set_path(STATE, path, ROOT=None):
                 chip_typesafe=CHIP_TYPESAFE_OPT,
                 engine="typesafe",
                 model=typesafe_model(),
-                endpoint=TYPESAFE_URL,
+                endpoint=typesafe_url(),
             )
             rec["path"] = path
             rec["paint"] = path_paint(path)
@@ -534,7 +554,7 @@ def typesafe_evaluate(state, questions, ROOT=None):
         }
     ).encode("utf-8")
     req = urllib.request.Request(
-        TYPESAFE_URL,
+        typesafe_url(),
         data=body,
         headers={
             "Authorization": "Bearer %s" % key,
@@ -545,7 +565,7 @@ def typesafe_evaluate(state, questions, ROOT=None):
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=8) as resp:
+        with urllib.request.urlopen(req, timeout=typesafe_timeout()) as resp:
             raw = resp.read().decode("utf-8", "replace")
     except urllib.error.HTTPError as e:
         return fail("decision", "TypeSafe HTTP %s" % e.code, NEXT_KEY, engine="typesafe")
