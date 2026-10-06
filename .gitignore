@@ -51,3 +51,7 @@ pipelines/dogfood/build/**/grok-home/
 .hf-cache/
 pipelines/dogfood/laya-trial/laya-serve.log
 pipelines/dogfood/laya-shadow/laya-serve.log
+
+# Local-inference bench (Entry 089) — noisy per-model logs; keep receipt.json
+pipelines/dogfood/local-bench/*.log
+pipelines/dogfood/local-bench/*-cases.jsonl
