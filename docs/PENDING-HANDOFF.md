@@ -2,6 +2,17 @@
 
 Git plus this file is the handoff when another checkout may be open. Do not commit, reset, or stash on an open founder Build branch.
 
+## 2026-10-05 — Local-bench 3 MemoryHigh=85G (Entry 091 / #230)
+
+**Context:** Mark raised ollama `MemoryHigh` to **85G**; #271 merged as `357e3c6`. Branch `bot/local-bench-3`. Mid-slice nimo lockup + concurrent **atg-framework** Grok Build → big MoEs **deferred: host contention**; MemAvailable floor **16 GiB**.
+
+**Measured:** `qwen3.6:35b` RAN 79.2% / 0% esc / parse_ok 48. `qwen3-coder-next` + `gpt-oss:120b` DROP (ollama llama-server start timeout). GLM-4.5-Air skipped.
+
+**Models to point atg-framework at:** local coding **`qwen3.6:35b`** (fallback `qwen3-coder:30b`); local decision **CUA-S1-FORMS**; avoid glm-4.7-flash / gpt-oss / coder-next / GLM-Air until `OLLAMA_LOAD_TIMEOUT` raised + quiet-host rebench.
+
+**Mark approvals:** `OLLAMA_LOAD_TIMEOUT≈30m` in ollama drop-in; pause openclaw 128k loads during big benches. Not a Feature GO.
+
+
 ## 2026-10-05 — Local-bench 2 post carve + GLM shortlist (Entry 090 / #230)
 
 **Done (bot worktree `bot/local-bench-2`):** Re-ran Entry 089 harness after Mark's BIOS VRAM 16 GiB + GTT ~96 GiB. Documented ollama `MemoryHigh=40G` blocker. GLM shortlist (4.5-Air fits weights ≤90 GB but blocked by MemoryHigh; 5.3-Flash / full 4.5–4.6 / GLM-5 do not fit usable ≤90 GB). glm-4.7-flash autopsy = typos not thinking-token parse. Challenger `qwen3.6:35b` pulled (~22 GB).

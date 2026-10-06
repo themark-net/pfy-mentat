@@ -20,3 +20,5 @@
 | Catalog creep | Promote on tok/s alone | HOLD 70–75; cite #230 only |
 
 - **Status**: **I0 / trial-ran / no promotion**. Live nimo 2026-10-05 evening PT. See LOCAL-BENCH-2-RESULTS.md. Not a Feature GO.
+
+- **Follow-up**: Entry [091](091-local-bench-memoryhigh-85g.md) — MemoryHigh=85G unlock; big MoE rebench.
