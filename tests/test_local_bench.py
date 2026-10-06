@@ -244,32 +244,40 @@ class FailClosedTests(unittest.TestCase):
 
 class OutdirPathTests(unittest.TestCase):
     def test_relative_outdir_log_path_safe(self):
-        """Relative --outdir outside repo used to make Path.relative_to raise → false DROP."""
+        """Out-of-tree --outdir must not raise; harness helper returns absolute log path."""
         with tempfile.TemporaryDirectory(prefix="local-bench-out-") as td:
             outdir = Path(td).resolve()
             log_path = outdir / "demo_model.log"
             log_path.write_text("x\n", encoding="utf-8")
-            # Same logic as bench_one after the Entry 090 fix
-            try:
-                rel = str(log_path.resolve().relative_to(bench.ROOT.resolve()))
-                raised = False
-            except ValueError:
-                rel = str(log_path)
-                raised = True
-            self.assertTrue(raised, "temp outdir should be outside ROOT")
-            self.assertEqual(rel, str(log_path))
-            # Resolved outdir always absolute
-            resolved = (Path(td) if td else Path(".")).resolve()
-            self.assertTrue(resolved.is_absolute())
+            got = bench.log_path_for_receipt(log_path, root=bench.ROOT)
+            self.assertEqual(got, str(log_path.resolve()))
+            # In-tree path still relativizes
+            in_tree = bench.ROOT / "examples" / "local-bench" / "bench.py"
+            rel = bench.log_path_for_receipt(in_tree, root=bench.ROOT)
+            self.assertFalse(rel.startswith("/"), rel)
+            self.assertIn("examples/local-bench/bench.py", rel.replace("\\", "/"))
 
     def test_outdir_arg_is_resolved_absolute(self):
-        """main() must resolve --outdir so relative paths stay stable after chdir."""
+        """resolve_outdir() is what main() uses for --outdir."""
         with tempfile.TemporaryDirectory(prefix="local-bench-rel-") as td:
-            # Simulate CLI: relative outdir from ROOT
+            receipt = Path(td) / "receipt.json"
             rel = os.path.relpath(td, start=str(bench.ROOT))
-            outdir = (Path(rel) if rel else Path(".")).resolve()
+            outdir = bench.resolve_outdir(rel, receipt)
             self.assertTrue(outdir.is_absolute())
             self.assertEqual(outdir, Path(td).resolve())
+            # Default: parent of receipt
+            out2 = bench.resolve_outdir(None, receipt)
+            self.assertEqual(out2, Path(td).resolve())
+
+
+class RunnerRssTests(unittest.TestCase):
+    def test_is_ollama_runner_proc_matches_argv0_without_exe(self):
+        """ollama-user llama-server: /proc/pid/exe is EACCES; argv0 still identifies it."""
+        # Synthetic: empty exe + argv0 path containing llama-server
+        # We only unit-test the exe helper + comm allowlist when no live runner.
+        self.assertTrue(bench.is_ollama_exe("/usr/local/lib/ollama/llama-server"))
+        self.assertTrue(bench.is_ollama_exe("/usr/local/bin/ollama"))
+        self.assertFalse(bench.is_ollama_exe("/home/mark/.local/bin/grok"))
 
 
 

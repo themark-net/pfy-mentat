@@ -1,6 +1,23 @@
+## local-bench-4 no-double-load (2026-10-06 PT)
+
+- PR #273 extended: llama-server ROCm `--no-mmap` proves 51GB coder-next RAN (not 22GB hardware edge).
+- atg: keep qwen3.6:35b / qwen3-coder:30b + CUA-S1-FORMS; stretch coder-next only via no-mmap path.
+- Air still incomplete pull; openclaw glm@128k stalls documented.
+
 # Pending handoff
 
 Git plus this file is the handoff when another checkout may be open. Do not commit, reset, or stash on an open founder Build branch.
+
+## 2026-10-05 — Local-bench 4 edge probe (Entry 092 / #230)
+
+**Env:** OLLAMA_LOAD_TIMEOUT=30m + MemoryHigh=85G verified. Stacks on #272 (`96cdc73`).
+
+**Edge:** Reliable local MoE ceiling remains **~22 GB** (`qwen3.6:35b`). `qwen3-coder-next` (51 GB) **timeout after 30m** — never ready (GTT~48 GiB, runner RSS~42 GiB, swap full). gpt-oss / GLM-Air **deferred: host contention**.
+
+**atg-framework:** coding → `qwen3.6:35b` / fallback `qwen3-coder:30b`; decision → CUA-S1-FORMS.
+
+**Harness:** runner RSS fix (exe EACCES); outdir tests call helpers. Not a Feature GO.
+
 
 ## 2026-10-05 — Local-bench 3 MemoryHigh=85G (Entry 091 / #230)
 

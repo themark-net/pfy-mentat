@@ -1,0 +1,7 @@
+{
+  "name": "GLM-4.5-Air:Q4:nommap",
+  "backend": "llama-server-rocm-nommap",
+  "verdict": "SKIP",
+  "error": "GGUF pull incomplete (~68G partial of ~72GB + aborted shard parts); no HF GGUF on host; ~40min left in 2h cap insufficient to finish pull",
+  "blob_partial": "/usr/share/ollama/.ollama/models/blobs/sha256-a6a5f1eb99191da97aebe69aed2d53aa07c03236c082b9e5dfc1f6301cc88f16-partial"
+}

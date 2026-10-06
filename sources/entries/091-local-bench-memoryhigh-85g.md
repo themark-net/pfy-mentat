@@ -9,3 +9,5 @@
 - **Extracted Repos / Tools**: Ollama (existing). No TOOLS.md.
 - **Smoke / harness**: `python3 -m unittest tests.test_local_bench`. Receipt: `pipelines/dogfood/local-bench-3/receipt.json`.
 - **Status**: **I0 / trial-ran / no promotion**. Coding worker still **qwen3.6:35b**; decision **CUA-S1-FORMS**. See LOCAL-BENCH-3-RESULTS.md “models to point atg-framework at”. Not a Feature GO.
+
+- **Follow-up**: Entry [092](092-local-bench-edge-probe.md) — OLLAMA_LOAD_TIMEOUT=30m edge probe.

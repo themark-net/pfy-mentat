@@ -62,3 +62,7 @@ pipelines/dogfood/local-bench-2/receipt-qwen36.json
 pipelines/dogfood/local-bench-3/*.log
 pipelines/dogfood/local-bench-3/*-cases.jsonl
 pipelines/dogfood/local-bench-3/receipt-*.json
+pipelines/dogfood/local-bench-4/*.log
+pipelines/dogfood/local-bench-4/*-cases.jsonl
+pipelines/dogfood/local-bench-4/receipt-*.json
+pipelines/dogfood/local-bench-4/edge-events.jsonl
