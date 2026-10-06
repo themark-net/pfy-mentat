@@ -3,7 +3,7 @@
 Paste everything below the line into Grok Build on nimo. Run it **after** [pfy-mentat.md](pfy-mentat.md) (llama-server lane + atg-compile bench), or at the same time if you skip the parts that load models. Source: [docs/eval/TOOLSET-RANKING.md](../eval/TOOLSET-RANKING.md).
 
 ---
-Repo: `~/DEVELOP/pfy-mentat` (GitHub themark-net/pfy-mentat). Read AGENTS.md, TOOLS.md, docs/eval/TOOLSET-RANKING.md, data/tool_integration_stages.json, data/toolsets.json, docs/dogfood/LOCAL-BENCH-4-EDGE.md, and sources/entries 041, 049, 051, 069.
+Repo: `~/DEVELOP/pfy-mentat` (GitHub themark-net/pfy-mentat). Read AGENTS.md, TOOLS.md, docs/eval/TOOLSET-RANKING.md, data/tool_integration_stages.json, data/toolsets.json, docs/dogfood/LOCAL-BENCH-4-EDGE.md, Entries 041, 049 and 051 in `sources/x-posts.md` (those three have no separate entry file), and `sources/entries/069-*.md`.
 Worktree: `git fetch && git worktree add tmp/build-toolsets -b build/toolsets-next origin/main`. Never commit in the founder checkout. Vendored code goes under `_vendor/` (git-exempt). Temp files go in /tmp or `tmp/build-toolsets/tmp`.
 
 Goal: integrate the next five toolsets, ranked by local-only value. Each one is a separate commit and moves up exactly one integration stage. Stop after any item whose stage gate fails, record why, and move on to the next. Local models only (Ollama `qwen3.6:35b` by default). No paid keys.
