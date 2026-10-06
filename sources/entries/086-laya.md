@@ -9,8 +9,8 @@
 - **Extracted Repos / Tools**: https://github.com/NandhaKishorM/laya · https://github.com/mizorewww/laya-mlx (MLX port, Apple only, not usable on nimo) · https://huggingface.co/convaiinnovations/laya
 - **TOOLS.md Link**: None. Trial-ran; **no promotion** to I3 / default lane. No TOOLS.md row, no `data/tools.json` row, no stage card. Catalog 70–75 HOLD.
 - **Smoke**: `python3 examples/typed-decisions-local/smoke.py --entry laya`. It looks for `$LAYA_PYTHON` or `~/DEVELOP/pfy-mentat/tmp/laya-venv/bin/python`. Missing venv exits 2 with the install line. With the venv it runs the README billing example on CPU and expects `billing`. Receipt: `pipelines/smoke/laya/latest.json`.
-- **Next gate (eval-auto trial)**: **Done on nimo** (verdict RAN). Optional follow-up, not this slice: Laya as a shadow second opinion when CUA is held and Laya's choice disagrees → escalate. Still do not wire Laya into default smoke / `PRIMARY_LOCAL`.
-- **Non-goals**: No product attach in this slice. No Make target or env var. No `pip install` outside `~/DEVELOP`. Catalog 70–75 stay HOLD.
+- **Next gate (eval-auto trial)**: **Done on nimo** (verdict RAN). Shadow second opinion: **implemented behind `PFY_JEV_LAYA_SHADOW`** (default off). Live measure: catch 9/16, false-escalate 4/21. Still do not wire Laya into default smoke / `PRIMARY_LOCAL`. Not a Feature GO.
+- **Non-goals**: No product attach. No default-lane change. `PFY_JEV_LAYA_SHADOW` exists but stays off. No `pip install` outside `~/DEVELOP`. Catalog 70–75 stay HOLD.
 - **How this fails / how we recover**:
 
 | Risk | How it fails | Recovery |
@@ -20,4 +20,4 @@
 | Weights download blocked | HF hub unreachable from nimo | Smoke exits 1 with the error. Retry later; don't vendor weights into the repo |
 
 - **Box receipt (not nimo, 2026-10-05)**: The smoke PASSed on the Grok Bot box (Linux x86_64, 8 vCPU, no GPU) with `laya` 0.3.28 and CPU-only `torch` 2.14.1 in a throwaway venv: `choice=billing`, `answer_confidence=0.9865`, routed to the `english` checkpoint, 16.9 s wall time including the first checkpoint download and load. That shows the CPU path works. Nimo eval-auto numbers are in Status / [docs/dogfood/LAYA-TRIAL-RESULTS.md](../../docs/dogfood/LAYA-TRIAL-RESULTS.md).
-- **Status**: **trial-ran**. Eval-auto trial completed on nimo (48 cases, gate 0.85, verdict RAN). **No promotion** toward default lane / I3 — CUA-S1-FORMS stays primary local. Results: [docs/dogfood/LAYA-TRIAL-RESULTS.md](../../docs/dogfood/LAYA-TRIAL-RESULTS.md). Receipt: `pipelines/dogfood/laya-trial/receipt.json`.
+- **Status**: **trial-ran / no promotion**. Eval-auto trial completed on nimo (48 cases, gate 0.85, verdict RAN). Shadow second-opinion follow-up implemented behind `PFY_JEV_LAYA_SHADOW` (default **off**); live catch **9/16**, false-escalate **4/21**. **No promotion** toward default lane / I3 — CUA-S1-FORMS stays primary local. Flag stays off. Not a Feature GO. Results: [docs/dogfood/LAYA-TRIAL-RESULTS.md](../../docs/dogfood/LAYA-TRIAL-RESULTS.md), [docs/dogfood/LAYA-SHADOW-RESULTS.md](../../docs/dogfood/LAYA-SHADOW-RESULTS.md). Receipts: `pipelines/dogfood/laya-trial/receipt.json`, `pipelines/dogfood/laya-shadow/receipt.json`.

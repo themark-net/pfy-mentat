@@ -11,6 +11,7 @@ Does not install packages, does not change product defaults.
 Usage:
   python3 examples/typed-decisions-local/trial.py --check
   python3 examples/typed-decisions-local/trial.py
+  python3 examples/typed-decisions-local/trial.py --shadow
 """
 from __future__ import annotations
 
@@ -33,11 +34,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 CASES_REL = Path("data/decision-gates/laya-trial.cases.v0.json")
 RECEIPT_REL = Path("pipelines/dogfood/laya-trial/receipt.json")
+SHADOW_RECEIPT_REL = Path("pipelines/dogfood/laya-shadow/receipt.json")
+SHARED_TRIAL_ROOT = Path("/home/mark/DEVELOP/pfy-mentat/tmp/laya-trial")
 DEFAULT_VENV = ROOT / ".venv-laya" / "bin" / "python"
 DEFAULT_HF = ROOT / ".hf-cache"
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8765
 DEFAULT_GATE = 0.85
+SHADOW_START_TIMEOUT = 600
 ISSUE = "#230"
 STRICT_ROOT = {"model", "answers", "usage"}
 STRICT_CHOICE = {"choice", "probabilities", "confidence"}
@@ -124,7 +128,27 @@ def fail_closed(reason: str, code: int = EXIT_CANNOT_RUN, extra=None) -> int:
 
 
 def venv_python() -> Path:
-    return Path(os.environ.get("LAYA_PYTHON") or DEFAULT_VENV)
+    env = os.environ.get("LAYA_PYTHON")
+    if env:
+        return Path(env)
+    if os.access(DEFAULT_VENV, os.X_OK):
+        return DEFAULT_VENV
+    shared = SHARED_TRIAL_ROOT / ".venv-laya" / "bin" / "python"
+    if os.access(shared, os.X_OK):
+        return shared
+    return DEFAULT_VENV
+
+
+def hf_home() -> Path:
+    env = os.environ.get("HF_HOME") or os.environ.get("HF_HUB_CACHE")
+    if env:
+        return Path(env)
+    if DEFAULT_HF.is_dir():
+        return DEFAULT_HF
+    shared = SHARED_TRIAL_ROOT / ".hf-cache"
+    if shared.is_dir():
+        return shared
+    return DEFAULT_HF
 
 
 def serve_bin(py: Path) -> Path:
@@ -184,7 +208,8 @@ def start_serve(py: Path, host: str, port: int, models: str, strict: bool, log_p
     env["LAYA_JEV_STRICT"] = "1" if strict else "0"
     env["LAYA_THREADS"] = os.environ.get("LAYA_THREADS") or "16"
     env["LAYA_DEFAULT_MODEL"] = os.environ.get("LAYA_DEFAULT_MODEL") or "english"
-    env["HF_HOME"] = str(Path(os.environ.get("HF_HOME") or DEFAULT_HF))
+    env["HF_HOME"] = str(hf_home())
+    env["HF_HUB_CACHE"] = str(Path(os.environ.get("HF_HUB_CACHE") or env["HF_HOME"]))
     env["HF_HUB_DISABLE_TELEMETRY"] = "1"
     env.pop("LAYA_API_KEY", None)
     t0 = time.time()
@@ -210,6 +235,7 @@ def start_serve(py: Path, host: str, port: int, models: str, strict: bool, log_p
             "LAYA_MODELS": models,
             "LAYA_JEV_STRICT": env["LAYA_JEV_STRICT"],
             "HF_HOME": env["HF_HOME"],
+            "HF_HUB_CACHE": env["HF_HUB_CACHE"],
         },
     }
     if not ok:
@@ -356,6 +382,91 @@ def run_laya(jev, case, gate: float, model: str):
     }
 
 
+def run_shadow_held(jev, case, cua_row, gate: float):
+    """Apply maybe_laya_shadow only when CUA would have auto-acted."""
+    if cua_row.get("escalate") or not cua_row.get("ran"):
+        return {
+            "enabled": False,
+            "skipped": "cua_escalate" if cua_row.get("escalate") else "cua_error",
+            "action": "skip",
+            "cua_choice": cua_row.get("choice"),
+            "laya_choice": None,
+            "agree": None,
+            "latency_s": None,
+        }
+    rec = jev.decide_choice(case["state"], case["criteria"], instructions=case.get("instructions") or "")
+    rec["engine"] = "cua-s1-forms"
+    rec = jev.maybe_laya_shadow(
+        rec,
+        case["state"],
+        case["criteria"],
+        instructions=case.get("instructions") or "",
+        qid=case["id"],
+    )
+    shadow = rec.get("shadow")
+    if not isinstance(shadow, dict):
+        return {
+            "enabled": True,
+            "engine": "laya",
+            "action": "escalate",
+            "error": "maybe_laya_shadow returned no shadow fields",
+            "cua_choice": cua_row.get("choice"),
+            "laya_choice": None,
+            "agree": False,
+            "latency_s": None,
+        }
+    return shadow
+
+
+def summarize_shadow(cua_rows, shadow_rows):
+    wbc = [r for r in cua_rows if r.get("ran") and (not r.get("correct")) and (not r.get("escalate"))]
+    held_ok = [r for r in cua_rows if r.get("ran") and r.get("correct") and (not r.get("escalate"))]
+    by_id = {r["id"]: s for r, s in zip(cua_rows, shadow_rows)}
+    catch_ids = []
+    miss_ids = []
+    false_ids = []
+    error_ids = []
+    for row in wbc:
+        sh = by_id.get(row["id"]) or {}
+        if sh.get("error") or sh.get("laya_choice") is None:
+            error_ids.append(row["id"])
+            continue
+        if sh.get("agree") is True:
+            miss_ids.append(row["id"])
+        else:
+            catch_ids.append(row["id"])
+    for row in held_ok:
+        sh = by_id.get(row["id"]) or {}
+        if sh.get("error"):
+            error_ids.append(row["id"])
+        if sh.get("action") == "escalate":
+            false_ids.append(row["id"])
+    lats = [
+        float(s["latency_s"])
+        for s in shadow_rows
+        if s.get("latency_s") is not None and s.get("action") != "skip"
+    ]
+    return {
+        "n_cua_held": sum(1 for r in cua_rows if r.get("ran") and not r.get("escalate")),
+        "n_cua_wrong_but_confident": len(wbc),
+        "n_cua_held_correct": len(held_ok),
+        "catch": len(catch_ids),
+        "catch_ids": catch_ids,
+        "miss": len(miss_ids),
+        "miss_ids": miss_ids,
+        "false_escalate": len(false_ids),
+        "false_escalate_ids": false_ids,
+        "n_shadow_calls": sum(1 for s in shadow_rows if s.get("action") != "skip"),
+        "n_shadow_error": sum(1 for s in shadow_rows if s.get("error")),
+        "error_ids": error_ids,
+        "latency_s": {
+            "p50": percentile(lats, 50),
+            "p95": percentile(lats, 95),
+            "n": len(lats),
+        },
+    }
+
+
 def probe_wire(jev, url: str, dummy_key: str, timeout: float):
     """Diff one /v1/systemone response against the ADR-0016 typesafe parser."""
     body = {
@@ -444,16 +555,25 @@ def write_receipt(path: Path, rec: dict) -> None:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="Entry 086 Laya vs CUA-S1-FORMS trial. Cite #230.")
     ap.add_argument("--check", action="store_true", help="prereq check only (venv + optional live server)")
+    ap.add_argument("--shadow", action="store_true", help="CUA primary + Laya english second opinion on CUA-held cases")
     ap.add_argument("--cases", default=str(ROOT / CASES_REL))
-    ap.add_argument("--receipt", default=str(ROOT / RECEIPT_REL))
+    ap.add_argument("--receipt", default=None)
     ap.add_argument("--host", default=os.environ.get("LAYA_HOST") or DEFAULT_HOST)
     ap.add_argument("--port", type=int, default=int(os.environ.get("LAYA_PORT") or DEFAULT_PORT))
     ap.add_argument("--gate", type=float, default=float(os.environ.get("PFY_JEV_CONF_GATE") or DEFAULT_GATE))
-    ap.add_argument("--models", default=os.environ.get("LAYA_TRIAL_MODELS") or "english,typed-decisions")
+    ap.add_argument("--models", default=None)
     ap.add_argument("--no-start", action="store_true", help="do not spawn laya-serve; require it already up")
-    ap.add_argument("--start-timeout", type=float, default=float(os.environ.get("LAYA_START_TIMEOUT") or 1800))
+    ap.add_argument("--start-timeout", type=float, default=None)
     ap.add_argument("--http-timeout", type=float, default=float(os.environ.get("PFY_JEV_TYPESAFE_TIMEOUT") or 180))
     args = ap.parse_args(argv)
+    if args.receipt is None:
+        args.receipt = str(ROOT / (SHADOW_RECEIPT_REL if args.shadow else RECEIPT_REL))
+    if args.models is None:
+        args.models = os.environ.get("LAYA_TRIAL_MODELS") or ("english" if args.shadow else "english,typed-decisions")
+    if args.start_timeout is None:
+        args.start_timeout = float(
+            os.environ.get("LAYA_START_TIMEOUT") or (SHADOW_START_TIMEOUT if args.shadow else 1800)
+        )
 
     py = venv_python()
     missing = require_venv(py)
@@ -496,26 +616,37 @@ def main(argv=None) -> int:
     os.environ.pop("PFY_JEV_OFFLINE", None)
     os.environ.pop("TYPESAFE_KEY", None)
 
+    if args.shadow:
+        os.environ["PFY_JEV_LAYA_SHADOW"] = "1"
+        if not str(os.environ.get("PFY_JEV_MODEL") or "").strip():
+            os.environ["PFY_JEV_MODEL"] = "english"
+
     receipt = {
-        "schema": "laya-trial.receipt.v0",
+        "schema": "laya-shadow.receipt.v0" if args.shadow else "laya-trial.receipt.v0",
         "issue": ISSUE,
         "entry": "086",
+        "mode": "shadow" if args.shadow else "head-to-head",
         "started": now(),
         "host": os.uname().nodename,
         "worktree": str(ROOT),
-        "branch": "bot/laya-trial",
+        "branch": "bot/laya-shadow" if args.shadow else "bot/laya-trial",
         "gate": gate,
         "cases_file": str(cases_path.relative_to(ROOT)),
         "n_cases": len(cases),
         "labels_written": blob.get("labels_written"),
         "labels_before_models": True,
         "default_lane_unchanged": True,
+        "primary_local": jev.PRIMARY_LOCAL,
         "typesafe_url_default": jev.TYPESAFE_URL,
         "typesafe_url_override": url,
         "python": str(py),
+        "hf_home": str(hf_home()),
         "recommendation": None,
         "lanes": {},
     }
+    if args.shadow:
+        receipt["flag"] = "PFY_JEV_LAYA_SHADOW"
+        receipt["shadow_model"] = jev.laya_shadow_model()
 
     proc = None
     serve_meta = None
@@ -539,7 +670,8 @@ def main(argv=None) -> int:
                 receipt["reason"] = receipt["lanes"]["laya"]["error"]
                 write_receipt(Path(args.receipt), receipt)
                 return fail_closed(receipt["reason"], EXIT_CANNOT_RUN, extra={"receipt": args.receipt})
-            log_path = ROOT / "pipelines/dogfood/laya-trial/laya-serve.log"
+            log_dir = "pipelines/dogfood/laya-shadow" if args.shadow else "pipelines/dogfood/laya-trial"
+            log_path = ROOT / log_dir / "laya-serve.log"
             proc, serve_meta = start_serve(
                 py, host, args.port, args.models, True, log_path, args.start_timeout
             )
@@ -573,6 +705,80 @@ def main(argv=None) -> int:
             "seconds": round(time.time() - t_cua, 3),
             "cases": cua_rows,
         }
+
+        if args.shadow:
+            peak = receipt["serve"].get("peak_rss_kb_at_health") or 0
+            hwm = receipt["serve"].get("hwm_kb_at_health") or 0
+            pid = (proc.pid if proc is not None else None) or receipt["serve"].get("pid")
+            shadow_rows = []
+            t_shadow = time.time()
+            case_by_id = {c["id"]: c for c in cases}
+            for i, cua_row in enumerate(cua_rows):
+                case = case_by_id[cua_row["id"]]
+                shadow = run_shadow_held(jev, case, cua_row, gate)
+                shadow_rows.append(shadow)
+                if pid and shadow.get("action") != "skip":
+                    r = rss_kb(pid)
+                    h = hwm_kb(pid)
+                    if r:
+                        peak = max(peak, r)
+                    if h:
+                        hwm = max(hwm, h)
+            stats = summarize_shadow(cua_rows, shadow_rows)
+            stats["peak_rss_kb"] = peak
+            stats["hwm_kb"] = hwm
+            stats["seconds"] = round(time.time() - t_shadow, 3)
+            stats["model"] = jev.laya_shadow_model()
+            per_case = []
+            for cua_row, shadow in zip(cua_rows, shadow_rows):
+                row = dict(cua_row)
+                row["shadow"] = shadow
+                per_case.append(row)
+            catch = stats.get("catch") or 0
+            collateral = stats.get("false_escalate") or 0
+            wbc = stats.get("n_cua_wrong_but_confident") or 0
+            held_ok = stats.get("n_cua_held_correct") or 0
+            useful = catch > 0 and catch > collateral
+            if stats.get("n_shadow_error"):
+                recommendation = (
+                    "keep CUA-S1-FORMS; Laya shadow had errors (fail closed). Flag stays off by default."
+                )
+            elif useful:
+                recommendation = (
+                    "Laya english shadow catches %s/%s CUA wrong-but-confident with %s/%s false-escalate; "
+                    "useful as opt-in, default stays off, not a lane swap"
+                    % (catch, wbc, collateral, held_ok)
+                )
+            else:
+                recommendation = (
+                    "keep CUA-S1-FORMS as default; Laya english shadow catch %s/%s vs false-escalate %s/%s "
+                    "does not clearly beat collateral. Flag stays off."
+                    % (catch, wbc, collateral, held_ok)
+                )
+            receipt["shadow"] = stats
+            receipt["cases"] = per_case
+            receipt["recommendation"] = recommendation
+            receipt["finished"] = now()
+            receipt["verdict"] = "RAN"
+            write_receipt(Path(args.receipt), receipt)
+            print(
+                json.dumps(
+                    {
+                        "verdict": "RAN",
+                        "mode": "shadow",
+                        "receipt": str(Path(args.receipt)),
+                        "catch": "%s/%s" % (catch, wbc),
+                        "false_escalate": "%s/%s" % (collateral, held_ok),
+                        "miss": "%s/%s" % (stats.get("miss"), wbc),
+                        "latency_s": stats.get("latency_s"),
+                        "peak_rss_kb": peak,
+                        "hwm_kb": hwm,
+                        "recommendation": recommendation,
+                    },
+                    ensure_ascii=False,
+                )
+            )
+            return EXIT_OK
 
         probe = probe_wire(jev, url, dummy_key, args.http_timeout)
         receipt["wire_contract"] = probe
