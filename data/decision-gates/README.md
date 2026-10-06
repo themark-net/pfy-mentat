@@ -20,5 +20,6 @@ Catalog **HOLD 70–75** stays. These stubs are not a `TOOLS.md` row (ADR-0016).
 | File | Gate |
 |------|------|
 | [push_hold.shadow.v0.json](push_hold.shadow.v0.json) | Org `push_hold`. Criteria keys `push` \| `hold` \| `escalate`. `conf_gate` **0.55** matches org-spinny defaults. |
+| [laya-trial.cases.v0.json](laya-trial.cases.v0.json) | Entry 086 eval-auto labeled Choice set (48 cases). Labels written before either model ran. Coding-session gate **0.85**. Not a default-lane swap. |
 
 ADR-0016 keeps the coding-session Choice gate near **0.85**. The **0.55** figure belongs only to this org `push_hold` shadow stub. Confidence is a margin (`conf ok` / `conf low`), never percent-correct. Under the gate, the shadow result is escalate.

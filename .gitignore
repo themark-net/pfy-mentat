@@ -45,3 +45,7 @@ scripts/.pfy.expanded.sh
 
 # Dogfood build isolated GROK_HOME (auth.json + grok rehydrate) — never commit
 pipelines/dogfood/build/**/grok-home/
+
+# Laya eval-auto trial (Entry 086) — venv + Hugging Face weights, never commit
+.venv-laya/
+.hf-cache/

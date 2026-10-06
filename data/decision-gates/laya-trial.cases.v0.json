@@ -1,0 +1,888 @@
+{
+  "schema_version": "laya-trial.cases.v0",
+  "cites": ["#230", "ADR-0016", "Entry 086", "PR #267"],
+  "conf_gate": 0.85,
+  "conf_gate_note": "Coding-session Choice gate from ADR-0016. Margin chip, never percent-correct. Below gate → escalate, no silent auto-act. Org push_hold stub keeps its own 0.55 note; this trial still labels those cases at 0.85.",
+  "labels_written": "2026-10-06T00:00:00Z",
+  "labels_before_models": true,
+  "label_rule": "Labels are ours from live wizard/engine Choice options, data/decision-gates/push_hold.shadow.v0.json, and docs/ops/human-decision-inventory.md. Written before either CUA-S1-FORMS or Laya ran. Not a Feature GO. Catalog 70-75 HOLD.",
+  "n_cases": 48,
+  "cases": [
+    {
+      "id": "ph-01-green-idle",
+      "source": "data/decision-gates/push_hold.shadow.v0.json",
+      "family": "push_hold",
+      "instructions": "Should DevBot push this tip to origin?",
+      "state": {"ci": "green", "kronos": "idle", "known_red": false},
+      "criteria": {
+        "push": "Local CI green or waived; not known-red; Kronos yield OK",
+        "hold": "CI red, known-red, or Kronos contention — do not push",
+        "escalate": "Ambiguous state"
+      },
+      "label": "push",
+      "note": "Green CI, idle Kronos, not known-red."
+    },
+    {
+      "id": "ph-02-waived-idle",
+      "source": "data/decision-gates/push_hold.shadow.v0.json",
+      "family": "push_hold",
+      "instructions": "Should DevBot push this tip to origin?",
+      "state": {"ci": "waived", "kronos": "idle", "known_red": false},
+      "criteria": {
+        "push": "Local CI green or waived; not known-red; Kronos yield OK",
+        "hold": "CI red, known-red, or Kronos contention — do not push",
+        "escalate": "Ambiguous state"
+      },
+      "label": "push",
+      "note": "Waived CI is allowed to push when Kronos is idle and not known-red."
+    },
+    {
+      "id": "ph-03-ci-red",
+      "source": "data/decision-gates/push_hold.shadow.v0.json",
+      "family": "push_hold",
+      "instructions": "Should DevBot push this tip to origin?",
+      "state": {"ci": "red", "kronos": "idle", "known_red": false},
+      "criteria": {
+        "push": "Local CI green or waived; not known-red; Kronos yield OK",
+        "hold": "CI red, known-red, or Kronos contention — do not push",
+        "escalate": "Ambiguous state"
+      },
+      "label": "hold",
+      "note": "CI red → hold."
+    },
+    {
+      "id": "ph-04-known-red",
+      "source": "data/decision-gates/push_hold.shadow.v0.json",
+      "family": "push_hold",
+      "instructions": "Should DevBot push this tip to origin?",
+      "state": {"ci": "green", "kronos": "idle", "known_red": true},
+      "criteria": {
+        "push": "Local CI green or waived; not known-red; Kronos yield OK",
+        "hold": "CI red, known-red, or Kronos contention — do not push",
+        "escalate": "Ambiguous state"
+      },
+      "label": "hold",
+      "note": "known-red blocks push even when CI is green."
+    },
+    {
+      "id": "ph-05-kronos-busy",
+      "source": "data/decision-gates/push_hold.shadow.v0.json",
+      "family": "push_hold",
+      "instructions": "Should DevBot push this tip to origin?",
+      "state": {"ci": "green", "kronos": "busy", "known_red": false},
+      "criteria": {
+        "push": "Local CI green or waived; not known-red; Kronos yield OK",
+        "hold": "CI red, known-red, or Kronos contention — do not push",
+        "escalate": "Ambiguous state"
+      },
+      "label": "hold",
+      "note": "Kronos contention → hold."
+    },
+    {
+      "id": "ph-06-red-busy",
+      "source": "data/decision-gates/push_hold.shadow.v0.json",
+      "family": "push_hold",
+      "instructions": "Should DevBot push this tip to origin?",
+      "state": {"ci": "red", "kronos": "busy", "known_red": false},
+      "criteria": {
+        "push": "Local CI green or waived; not known-red; Kronos yield OK",
+        "hold": "CI red, known-red, or Kronos contention — do not push",
+        "escalate": "Ambiguous state"
+      },
+      "label": "hold",
+      "note": "CI red and Kronos busy: hold, not escalate."
+    },
+    {
+      "id": "ph-07-waived-busy",
+      "source": "data/decision-gates/push_hold.shadow.v0.json",
+      "family": "push_hold",
+      "instructions": "Should DevBot push this tip to origin?",
+      "state": {"ci": "waived", "kronos": "busy", "known_red": false},
+      "criteria": {
+        "push": "Local CI green or waived; not known-red; Kronos yield OK",
+        "hold": "CI red, known-red, or Kronos contention — do not push",
+        "escalate": "Ambiguous state"
+      },
+      "label": "hold",
+      "note": "Waived CI does not override Kronos contention."
+    },
+    {
+      "id": "ph-08-missing-ci",
+      "source": "data/decision-gates/push_hold.shadow.v0.json",
+      "family": "push_hold",
+      "instructions": "Should DevBot push this tip to origin?",
+      "state": {"kronos": "idle", "known_red": false},
+      "criteria": {
+        "push": "Local CI green or waived; not known-red; Kronos yield OK",
+        "hold": "CI red, known-red, or Kronos contention — do not push",
+        "escalate": "Ambiguous state"
+      },
+      "label": "escalate",
+      "note": "CI field missing → ambiguous."
+    },
+    {
+      "id": "ph-09-unknown-ci",
+      "source": "data/decision-gates/push_hold.shadow.v0.json",
+      "family": "push_hold",
+      "instructions": "Should DevBot push this tip to origin?",
+      "state": {"ci": "yellow", "kronos": "idle", "known_red": false},
+      "criteria": {
+        "push": "Local CI green or waived; not known-red; Kronos yield OK",
+        "hold": "CI red, known-red, or Kronos contention — do not push",
+        "escalate": "Ambiguous state"
+      },
+      "label": "escalate",
+      "note": "ci=yellow is not green, waived, or red."
+    },
+    {
+      "id": "ph-10-unknown-kronos",
+      "source": "data/decision-gates/push_hold.shadow.v0.json",
+      "family": "push_hold",
+      "instructions": "Should DevBot push this tip to origin?",
+      "state": {"ci": "green", "kronos": "unknown", "known_red": false},
+      "criteria": {
+        "push": "Local CI green or waived; not known-red; Kronos yield OK",
+        "hold": "CI red, known-red, or Kronos contention — do not push",
+        "escalate": "Ambiguous state"
+      },
+      "label": "escalate",
+      "note": "Kronos neither idle nor busy → ambiguous."
+    },
+    {
+      "id": "wz-01-local-30b",
+      "source": "scripts/pfy_jev_230.py:live_choice_options",
+      "family": "wizard_route",
+      "instructions": "Choose the model or tool for this coding session. Decision layer is not Gab auto and not local recommend order.",
+      "state": {
+        "wizard_lane": "local",
+        "wizard_harness": "opencode",
+        "wizard_toolsets": "bare",
+        "request": "Use the 30b coder on the FreeToken-first spine for this implement session."
+      },
+      "criteria": {
+        "qwen3-coder:30b": "local model on FreeToken-first spine (not gab auto)",
+        "qwen2.5-coder:7b": "local model on FreeToken-first spine (not gab auto)",
+        "tool:bare": "wizard toolset bare"
+      },
+      "label": "qwen3-coder:30b",
+      "note": "Local lane, request names the 30b coder."
+    },
+    {
+      "id": "wz-02-local-7b",
+      "source": "scripts/pfy_jev_230.py:live_choice_options",
+      "family": "wizard_route",
+      "instructions": "Choose the model or tool for this coding session. Decision layer is not Gab auto and not local recommend order.",
+      "state": {
+        "wizard_lane": "local",
+        "wizard_harness": "opencode",
+        "wizard_toolsets": "bare",
+        "request": "Prefer the small 7b coder for a cheap local try."
+      },
+      "criteria": {
+        "qwen3-coder:30b": "local model on FreeToken-first spine (not gab auto)",
+        "qwen2.5-coder:7b": "local model on FreeToken-first spine (not gab auto)",
+        "tool:bare": "wizard toolset bare"
+      },
+      "label": "qwen2.5-coder:7b",
+      "note": "Request names the 7b coder."
+    },
+    {
+      "id": "wz-03-local-freetoken-empty",
+      "source": "scripts/pfy_jev_230.py:live_choice_options",
+      "family": "wizard_route",
+      "instructions": "Choose the model or tool for this coding session. Decision layer is not Gab auto and not local recommend order.",
+      "state": {
+        "wizard_lane": "local",
+        "wizard_harness": "opencode",
+        "wizard_toolsets": "bare",
+        "models": [],
+        "request": "No tags listed; stay on the FreeToken-first live engine."
+      },
+      "criteria": {
+        "freetoken": "FreeToken-first live engine",
+        "tool:bare": "wizard toolset bare"
+      },
+      "label": "freetoken",
+      "note": "Empty model list rebuilds to freetoken."
+    },
+    {
+      "id": "wz-04-gab-auto",
+      "source": "scripts/pfy_jev_230.py:live_choice_options",
+      "family": "wizard_route",
+      "instructions": "Choose the model or tool for this coding session. Decision layer is not Gab auto and not local recommend order.",
+      "state": {
+        "wizard_lane": "cloud/subscription",
+        "wizard_harness": "gab",
+        "wizard_toolsets": "bare",
+        "request": "Cloud/subscription Gab Intent Engine session. model=auto is the cloud router."
+      },
+      "criteria": {
+        "gab-auto": "Gab Intent Engine model=auto — cloud router, not local ranking",
+        "tool:bare": "wizard toolset bare"
+      },
+      "label": "gab-auto",
+      "note": "Lane is Gab cloud; honesty chip still holds: this is gab auto, not local ranking."
+    },
+    {
+      "id": "wz-05-opencode-free",
+      "source": "scripts/pfy_jev_230.py:live_choice_options",
+      "family": "wizard_route",
+      "instructions": "Choose the model or tool for this coding session. Decision layer is not Gab auto and not local recommend order.",
+      "state": {
+        "wizard_lane": "opencode-free",
+        "wizard_harness": "opencode",
+        "wizard_toolsets": "bare",
+        "request": "OpenCode free-model lane."
+      },
+      "criteria": {
+        "opencode": "OpenCode free-model lane",
+        "tool:bare": "wizard toolset bare"
+      },
+      "label": "opencode",
+      "note": "opencode-free lane rebuilds to opencode."
+    },
+    {
+      "id": "wz-06-cloud-grok",
+      "source": "scripts/pfy_jev_230.py:live_choice_options",
+      "family": "wizard_route",
+      "instructions": "Choose the model or tool for this coding session. Decision layer is not Gab auto and not local recommend order.",
+      "state": {
+        "wizard_lane": "cloud/subscription",
+        "wizard_harness": "grok",
+        "wizard_toolsets": "bare",
+        "request": "Cloud/subscription harness grok."
+      },
+      "criteria": {
+        "grok": "cloud/subscription harness grok",
+        "tool:bare": "wizard toolset bare"
+      },
+      "label": "grok",
+      "note": "Non-gab cloud harness uses the harness id."
+    },
+    {
+      "id": "wz-07-toolset-jev",
+      "source": "scripts/pfy_jev_230.py:live_choice_options",
+      "family": "wizard_route",
+      "instructions": "Choose the model or tool for this coding session. Decision layer is not Gab auto and not local recommend order.",
+      "state": {
+        "wizard_lane": "local",
+        "wizard_harness": "opencode",
+        "wizard_toolsets": "jev",
+        "request": "Apply the jev decision toolset for this session. Typed Choice, not a model pick."
+      },
+      "criteria": {
+        "qwen3-coder:30b": "local model on FreeToken-first spine (not gab auto)",
+        "tool:jev": "wizard toolset jev"
+      },
+      "label": "tool:jev",
+      "note": "Request is the jev toolset, not a model."
+    },
+    {
+      "id": "wz-08-honesty-local-not-gab",
+      "source": "scripts/pfy_jev_230.py:live_choice_options",
+      "family": "wizard_route",
+      "instructions": "Choose the model or tool for this coding session. Decision layer is not Gab auto and not local recommend order.",
+      "state": {
+        "wizard_lane": "local",
+        "wizard_harness": "opencode",
+        "wizard_toolsets": "bare",
+        "request": "Launch a local coding session on the FreeToken-first spine. Do not use Gab auto. Gab auto is the cloud router, not this choice."
+      },
+      "criteria": {
+        "qwen3-coder:30b": "local model on FreeToken-first spine (not gab auto)",
+        "gab-auto": "Gab Intent Engine model=auto — cloud router, not local ranking",
+        "tool:bare": "wizard toolset bare"
+      },
+      "label": "qwen3-coder:30b",
+      "note": "Honesty: local lane must not pick gab-auto even if it is listed."
+    },
+    {
+      "id": "wz-09-local-not-tool",
+      "source": "scripts/pfy_jev_230.py:live_choice_options",
+      "family": "wizard_route",
+      "instructions": "Choose the model or tool for this coding session. Decision layer is not Gab auto and not local recommend order.",
+      "state": {
+        "wizard_lane": "local",
+        "wizard_harness": "opencode",
+        "wizard_toolsets": "bare",
+        "request": "Pick the local 30b model for implement. The bare toolset is already attached; do not re-pick the tool."
+      },
+      "criteria": {
+        "qwen3-coder:30b": "local model on FreeToken-first spine (not gab auto)",
+        "tool:bare": "wizard toolset bare"
+      },
+      "label": "qwen3-coder:30b",
+      "note": "Need a model, not the already-attached bare toolset."
+    },
+    {
+      "id": "wz-10-default-local-lane",
+      "source": "scripts/pfy_jev_230.py:live_choice_options",
+      "family": "wizard_route",
+      "instructions": "Choose the model or tool for this coding session. Decision layer is not Gab auto and not local recommend order.",
+      "state": {
+        "wizard_lane": "other",
+        "request": "Unknown lane; default local FreeToken-first."
+      },
+      "criteria": {
+        "local": "default local FreeToken-first",
+        "tool:bare": "wizard toolset bare"
+      },
+      "label": "local",
+      "note": "Else-branch of live_choice_options."
+    },
+    {
+      "id": "wz-11-cloud-generic",
+      "source": "scripts/pfy_jev_230.py:live_choice_options",
+      "family": "wizard_route",
+      "instructions": "Choose the model or tool for this coding session. Decision layer is not Gab auto and not local recommend order.",
+      "state": {
+        "wizard_lane": "cloud/subscription",
+        "wizard_harness": "",
+        "request": "Cloud/subscription with no harness id (Gab or Grok-sub)."
+      },
+      "criteria": {
+        "cloud": "cloud/subscription (Gab or Grok-sub)",
+        "tool:bare": "wizard toolset bare"
+      },
+      "label": "cloud",
+      "note": "Empty harness on cloud/subscription."
+    },
+    {
+      "id": "wz-12-local-deepseek",
+      "source": "scripts/pfy_jev_230.py:live_choice_options",
+      "family": "wizard_route",
+      "instructions": "Choose the model or tool for this coding session. Decision layer is not Gab auto and not local recommend order.",
+      "state": {
+        "wizard_lane": "local",
+        "wizard_harness": "opencode",
+        "wizard_toolsets": "bare",
+        "request": "Use deepseek-coder:6.7b as the local coder for this session."
+      },
+      "criteria": {
+        "qwen3-coder:30b": "local model on FreeToken-first spine (not gab auto)",
+        "deepseek-coder:6.7b": "local model on FreeToken-first spine (not gab auto)",
+        "tool:bare": "wizard toolset bare"
+      },
+      "label": "deepseek-coder:6.7b",
+      "note": "Request names deepseek-coder:6.7b."
+    },
+    {
+      "id": "hd-01-optional-tool-skip",
+      "source": "docs/ops/human-decision-inventory.md",
+      "family": "inventory",
+      "instructions": "Human-decision inventory B1: optional catalog tool. Prefer defaults and reversible experiments.",
+      "state": {
+        "kind": "optional catalog tool",
+        "open_source_local_coding_assist": true,
+        "safe_default": "skip install",
+        "blast_radius": "low",
+        "fits_existing_skill_or_smoke": false,
+        "note": "Antigravity-style over-promotion to OQ is the failure mode to avoid."
+      },
+      "criteria": {
+        "skip_install": "safe default exists: no runtime install, catalog I1 + P3 TODO",
+        "open_oq": "no safe default or high blast radius; batch an OQ",
+        "implement_now": "fits existing skill or smoke path; ship without a human",
+        "fix_structural": "structural lane red; fix until green",
+        "awareness_only": "not coding/design assist; catalog C/awareness only"
+      },
+      "label": "skip_install",
+      "note": "Optional tool with a skip-install default is not an OQ."
+    },
+    {
+      "id": "hd-02-high-blast-weights",
+      "source": "docs/ops/human-decision-inventory.md",
+      "family": "inventory",
+      "instructions": "Human-decision inventory B1: optional catalog tool. Prefer defaults and reversible experiments.",
+      "state": {
+        "kind": "optional catalog tool",
+        "open_source_local_coding_assist": true,
+        "need_runtime_install_or_weights": true,
+        "blast_radius": "high",
+        "safe_default": null,
+        "example": "colibri-class weights would change disk"
+      },
+      "criteria": {
+        "skip_install": "safe default exists: no runtime install, catalog I1 + P3 TODO",
+        "open_oq": "no safe default or high blast radius; batch an OQ",
+        "implement_now": "fits existing skill or smoke path; ship without a human",
+        "fix_structural": "structural lane red; fix until green",
+        "awareness_only": "not coding/design assist; catalog C/awareness only"
+      },
+      "label": "open_oq",
+      "note": "High blast-radius weights: batch OQ, do not ask ad hoc."
+    },
+    {
+      "id": "hd-03-antigravity-skip",
+      "source": "docs/ops/human-decision-inventory.md",
+      "family": "inventory",
+      "instructions": "Human-decision inventory defaults. Prefer defaults and reversible experiments.",
+      "state": {
+        "topic": "Antigravity-Manager",
+        "question": "Do we need multi-account relay?",
+        "answered": "skip; stay low-pri eval",
+        "safe_default": "no / LiteLLM + keys",
+        "blast_radius": "preference, not disk"
+      },
+      "criteria": {
+        "skip_install": "safe default exists: skip install, catalog I1 low priority",
+        "open_oq": "no safe default or high blast radius; batch an OQ",
+        "implement_now": "fits existing skill or smoke path; ship without a human",
+        "catalog_note": "priority/scheduling only; no OQ"
+      },
+      "label": "skip_install",
+      "note": "OQ-0007 lesson: skip install, do not reopen as a blocking OQ."
+    },
+    {
+      "id": "hd-04-structural-fail",
+      "source": "docs/ops/human-decision-inventory.md",
+      "family": "inventory",
+      "instructions": "Human-decision inventory B1 phase0 / structural. Prefer defaults and reversible experiments.",
+      "state": {
+        "kind": "optional catalog tool",
+        "open_source_local_coding_assist": true,
+        "structural_lane": "red",
+        "make_eval_structural": "FAIL"
+      },
+      "criteria": {
+        "skip_install": "safe default exists: no runtime install, catalog I1 + P3 TODO",
+        "open_oq": "no safe default or high blast radius; batch an OQ",
+        "implement_now": "fits existing skill or smoke path; ship without a human",
+        "fix_structural": "structural lane red; fix until green; stop",
+        "awareness_only": "not coding/design assist; catalog C/awareness only"
+      },
+      "label": "fix_structural",
+      "note": "Structural red → fix; do not skip to implement."
+    },
+    {
+      "id": "hd-05-eval-no-ollama",
+      "source": "docs/ops/human-decision-inventory.md",
+      "family": "inventory",
+      "instructions": "Human-decision inventory B3: implement-lane model eval.",
+      "state": {
+        "kind": "implement-lane model eval",
+        "ollama_present": false,
+        "gate_model_present": false
+      },
+      "criteria": {
+        "skip_eval_implement": "Ollama or gate model missing: record SKIP (exit 2); structural still PASS; no human",
+        "run_eval_suite": "Ollama + gate model present: make eval-suite",
+        "open_oq": "block on an OQ",
+        "fail_structural": "treat missing model as structural FAIL"
+      },
+      "label": "skip_eval_implement",
+      "note": "Missing Ollama is SKIP implement, not structural FAIL and not an OQ."
+    },
+    {
+      "id": "hd-06-no-subtree",
+      "source": "docs/ops/human-decision-inventory.md",
+      "family": "inventory",
+      "instructions": "Human-decision inventory B4 OQ-0003 first subtree.",
+      "state": {
+        "oq": "OQ-0003",
+        "question": "First subtree?",
+        "status": "answered wait + integration stages",
+        "default_if_unanswered": "No subtree"
+      },
+      "criteria": {
+        "no_subtree": "Default: no subtree; wait on integration stages",
+        "add_subtree_now": "Add a first subtree in this slice",
+        "open_oq": "Re-open OQ-0003 as blocked"
+      },
+      "label": "no_subtree",
+      "note": "OQ-0003 answered: wait; default no subtree."
+    },
+    {
+      "id": "hd-07-write-guard-audit",
+      "source": "docs/ops/human-decision-inventory.md",
+      "family": "inventory",
+      "instructions": "Human-decision inventory defaults: write-guard mode (OQ-0009 answered).",
+      "state": {
+        "topic": "Write-guard mode",
+        "oq": "OQ-0009",
+        "status": "answered",
+        "default": "audit"
+      },
+      "criteria": {
+        "audit": "Write-guard mode audit (answered default)",
+        "enforce": "Switch write-guard to enforce",
+        "off": "Disable write-guard"
+      },
+      "label": "audit",
+      "note": "Answered default is audit."
+    },
+    {
+      "id": "hd-08-architecture-fork",
+      "source": "docs/ops/human-decision-inventory.md",
+      "family": "inventory",
+      "instructions": "When to open an OQ vs catalog / TODO only.",
+      "state": {
+        "kind": "architecture fork",
+        "adr_class": true,
+        "safe_reversible_default": false,
+        "operator_must_choose_mutually_exclusive_product_paths": true
+      },
+      "criteria": {
+        "skip_install": "safe default exists: no runtime install",
+        "open_oq": "architecture fork / ADR-class / no safe default; batch an OQ",
+        "catalog_note": "priority/scheduling only; no OQ",
+        "implement_now": "ship without a human"
+      },
+      "label": "open_oq",
+      "note": "ADR-class fork with no safe default is an OQ."
+    },
+    {
+      "id": "hd-09-scheduling-only",
+      "source": "docs/ops/human-decision-inventory.md",
+      "family": "inventory",
+      "instructions": "When to open an OQ vs catalog / TODO only.",
+      "state": {
+        "kind": "priority/scheduling",
+        "question": "should we maybe eval this later?",
+        "blast_radius": "none",
+        "safe_default": "lower priority in eval pipeline"
+      },
+      "criteria": {
+        "skip_install": "safe default exists: no runtime install",
+        "open_oq": "architecture fork / ADR-class / no safe default; batch an OQ",
+        "catalog_note": "priority/scheduling only; no OQ",
+        "implement_now": "ship without a human"
+      },
+      "label": "catalog_note",
+      "note": "Scheduling-only is not an OQ."
+    },
+    {
+      "id": "hd-10-phase0-not-assist",
+      "source": "docs/ops/human-decision-inventory.md",
+      "family": "inventory",
+      "instructions": "Human-decision inventory B1 phase0 gate.",
+      "state": {
+        "kind": "catalog row",
+        "open_source": true,
+        "local": true,
+        "coding_or_design_assist": false
+      },
+      "criteria": {
+        "awareness_only": "Phase0 NO: catalog C/awareness only; stop",
+        "record_i1": "Phase0 YES: record I1 (uses, features, potential, non-goals)",
+        "open_oq": "batch an OQ",
+        "implement_now": "ship a skill now"
+      },
+      "label": "awareness_only",
+      "note": "Not coding/design assist → awareness only."
+    },
+    {
+      "id": "hd-11-fits-skill-path",
+      "source": "docs/ops/human-decision-inventory.md",
+      "family": "inventory",
+      "instructions": "Human-decision inventory B1 after structural green.",
+      "state": {
+        "kind": "optional catalog tool",
+        "open_source_local_coding_assist": true,
+        "structural_lane": "green",
+        "fits_existing_skill_or_smoke": true
+      },
+      "criteria": {
+        "skip_install": "safe default exists: no runtime install",
+        "open_oq": "high blast radius; batch an OQ",
+        "implement_now": "fits existing skill or smoke path; implement skill or smoke; no human",
+        "fix_structural": "structural lane red; fix until green",
+        "awareness_only": "not coding/design assist"
+      },
+      "label": "implement_now",
+      "note": "Structural green and fits an existing path → implement."
+    },
+    {
+      "id": "hd-12-colibri-no-download",
+      "source": "docs/ops/human-decision-inventory.md",
+      "family": "inventory",
+      "instructions": "Human-decision inventory B4 OQ-0008 colibri weights.",
+      "state": {
+        "oq": "OQ-0008",
+        "question": "Colibri weights?",
+        "status": "open",
+        "default_if_unanswered": "No download",
+        "blast_radius": "weights disk"
+      },
+      "criteria": {
+        "no_download": "Default if unanswered: no download",
+        "download_now": "Pull colibri weights into the lab now",
+        "open_oq_block": "Block the coding track on this OQ"
+      },
+      "label": "no_download",
+      "note": "Unanswered OQ-0008 defaults to no download; coding track does not wait."
+    },
+    {
+      "id": "fm-01-fill-model",
+      "source": "scripts/fixtures/cua_s1_forms_v0.json",
+      "family": "forms",
+      "instructions": "CUA-S1-FORMS form-fill specialist: pick one action for this element",
+      "state": {
+        "task": "fill the form from the document, then submit",
+        "form": "Launch session",
+        "element": {"role": "TextBox", "label": "model", "value": "", "placeholder": "tag"},
+        "document": [{"label": "model", "value": "qwen3-coder:30b"}, {"label": "lane", "value": "local"}]
+      },
+      "criteria": {
+        "skip": "leave this element unchanged",
+        "fill:model": "fill with model=qwen3-coder:30b",
+        "fill:lane": "fill with lane=local"
+      },
+      "label": "fill:model",
+      "note": "TextBox model matches document model=qwen3-coder:30b."
+    },
+    {
+      "id": "fm-02-fill-lane",
+      "source": "scripts/fixtures/cua_s1_forms_v0.json",
+      "family": "forms",
+      "instructions": "CUA-S1-FORMS form-fill specialist: pick one action for this element",
+      "state": {
+        "task": "fill the form from the document, then submit",
+        "form": "Launch session",
+        "element": {"role": "TextBox", "label": "lane", "value": "", "placeholder": "local|cloud"},
+        "document": [{"label": "model", "value": "qwen3-coder:30b"}, {"label": "lane", "value": "local"}]
+      },
+      "criteria": {
+        "skip": "leave this element unchanged",
+        "fill:model": "fill with model=qwen3-coder:30b",
+        "fill:lane": "fill with lane=local"
+      },
+      "label": "fill:lane",
+      "note": "TextBox lane matches document lane=local."
+    },
+    {
+      "id": "fm-03-check-decision-on",
+      "source": "scripts/fixtures/cua_s1_forms_v0.json",
+      "family": "forms",
+      "instructions": "CUA-S1-FORMS form-fill specialist: pick one action for this element",
+      "state": {
+        "task": "fill the form from the document, then submit",
+        "form": "Launch session",
+        "element": {"role": "CheckBox", "label": "decision", "checked": false},
+        "document": [{"label": "decision", "value": "on"}, {"label": "lane", "value": "local"}]
+      },
+      "criteria": {
+        "skip": "leave this element unchanged",
+        "check": "check the box because the document asks for it"
+      },
+      "label": "check",
+      "note": "Document asks for decision on."
+    },
+    {
+      "id": "fm-04-skip-decision-off",
+      "source": "scripts/fixtures/cua_s1_forms_v0.json",
+      "family": "forms",
+      "instructions": "CUA-S1-FORMS form-fill specialist: pick one action for this element",
+      "state": {
+        "task": "fill the form from the document, then submit",
+        "form": "Launch session",
+        "element": {"role": "CheckBox", "label": "decision", "checked": false},
+        "document": [{"label": "decision", "value": "off"}, {"label": "lane", "value": "local"}]
+      },
+      "criteria": {
+        "skip": "leave this element unchanged",
+        "check": "check the box because the document asks for it"
+      },
+      "label": "skip",
+      "note": "Document says decision off → leave unchecked."
+    },
+    {
+      "id": "fm-05-click-launch-ready",
+      "source": "scripts/fixtures/cua_s1_forms_v0.json",
+      "family": "forms",
+      "instructions": "CUA-S1-FORMS form-fill specialist: pick one action for this element",
+      "state": {
+        "task": "fill the form from the document, then submit",
+        "form": "Launch session",
+        "element": {"role": "Button", "label": "Launch session"},
+        "document": [{"label": "model", "value": "qwen3-coder:30b"}, {"label": "lane", "value": "local"}],
+        "required_fields_filled": true
+      },
+      "criteria": {
+        "skip": "leave this element unchanged",
+        "click": "click to submit or launch"
+      },
+      "label": "click",
+      "note": "Required fields filled; this is the submit button."
+    },
+    {
+      "id": "fm-06-skip-launch-empty",
+      "source": "scripts/fixtures/cua_s1_forms_v0.json",
+      "family": "forms",
+      "instructions": "CUA-S1-FORMS form-fill specialist: pick one action for this element",
+      "state": {
+        "task": "fill the form from the document, then submit",
+        "form": "Launch session",
+        "element": {"role": "Button", "label": "Launch session"},
+        "document": [{"label": "model", "value": ""}, {"label": "lane", "value": ""}],
+        "required_fields_filled": false,
+        "note": "Do not launch until the form is filled."
+      },
+      "criteria": {
+        "skip": "leave this element unchanged",
+        "click": "click to submit or launch"
+      },
+      "label": "skip",
+      "note": "Empty required fields: do not click Launch yet."
+    },
+    {
+      "id": "fm-07-skip-unrelated",
+      "source": "scripts/fixtures/cua_s1_forms_v0.json",
+      "family": "forms",
+      "instructions": "CUA-S1-FORMS form-fill specialist: pick one action for this element",
+      "state": {
+        "task": "fill the form from the document, then submit",
+        "form": "Launch session",
+        "element": {"role": "TextBox", "label": "api-key", "value": ""},
+        "document": [{"label": "model", "value": "qwen3-coder:30b"}, {"label": "lane", "value": "local"}]
+      },
+      "criteria": {
+        "skip": "leave this element unchanged",
+        "fill:model": "fill with model=qwen3-coder:30b",
+        "fill:lane": "fill with lane=local"
+      },
+      "label": "skip",
+      "note": "api-key is not in the document; leave unchanged."
+    },
+    {
+      "id": "fm-08-skip-already-filled",
+      "source": "scripts/fixtures/cua_s1_forms_v0.json",
+      "family": "forms",
+      "instructions": "CUA-S1-FORMS form-fill specialist: pick one action for this element",
+      "state": {
+        "task": "fill the form from the document, then submit",
+        "form": "Launch session",
+        "element": {"role": "TextBox", "label": "model", "value": "qwen3-coder:30b"},
+        "document": [{"label": "model", "value": "qwen3-coder:30b"}]
+      },
+      "criteria": {
+        "skip": "leave this element unchanged",
+        "fill:model": "fill with model=qwen3-coder:30b"
+      },
+      "label": "skip",
+      "note": "Already filled with the document value."
+    },
+    {
+      "id": "cp-01-keep-needed",
+      "source": "scripts/pfy_jev_230.py:compact_session",
+      "family": "compact",
+      "instructions": "compaction: keep session text verbatim",
+      "state": {
+        "last_user": "Why did the eval-structural target fail?",
+        "tool": "make eval-structural",
+        "text_head": "FAIL catalog-check: TOOLS.md row missing stage card for Entry 084",
+        "index": 3,
+        "n": 6
+      },
+      "criteria": {
+        "keep": "still needed for the latest user request",
+        "truncate": "keep a short head; drop the bulky body",
+        "drop": "stale tool result; no longer needed"
+      },
+      "label": "keep",
+      "note": "Latest user is asking about this eval-structural failure."
+    },
+    {
+      "id": "cp-02-drop-stale",
+      "source": "scripts/pfy_jev_230.py:compact_session",
+      "family": "compact",
+      "instructions": "compaction: keep session text verbatim",
+      "state": {
+        "last_user": "Write the Laya trial handoff doc.",
+        "tool": "web_search",
+        "text_head": "Old search hits about an unrelated npm package from twenty turns ago.",
+        "index": 1,
+        "n": 20
+      },
+      "criteria": {
+        "keep": "still needed for the latest user request",
+        "truncate": "keep a short head; drop the bulky body",
+        "drop": "stale tool result; no longer needed"
+      },
+      "label": "drop",
+      "note": "Stale search, new topic."
+    },
+    {
+      "id": "cp-03-truncate-bulky",
+      "source": "scripts/pfy_jev_230.py:compact_session",
+      "family": "compact",
+      "instructions": "compaction: keep session text verbatim",
+      "state": {
+        "last_user": "Summarize the eval-structural log and keep the failing target names.",
+        "tool": "make eval-structural",
+        "text_head": "Very long log: thousands of lines of passing checks, then a short FAIL list at the end.",
+        "index": 4,
+        "n": 8,
+        "bulky": true
+      },
+      "criteria": {
+        "keep": "still needed for the latest user request",
+        "truncate": "keep a short head; drop the bulky body",
+        "drop": "stale tool result; no longer needed"
+      },
+      "label": "truncate",
+      "note": "Still needed, but the body is bulky; user asked for a summary."
+    },
+    {
+      "id": "cp-04-keep-error",
+      "source": "scripts/pfy_jev_230.py:compact_session",
+      "family": "compact",
+      "instructions": "compaction: keep session text verbatim",
+      "state": {
+        "last_user": "The last pip install failed. Fix it.",
+        "tool": "pip install",
+        "text_head": "ERROR: Could not find a version that satisfies the requirement torch==9.9.9",
+        "index": 5,
+        "n": 7
+      },
+      "criteria": {
+        "keep": "still needed for the latest user request",
+        "truncate": "keep a short head; drop the bulky body",
+        "drop": "stale tool result; no longer needed"
+      },
+      "label": "keep",
+      "note": "The pip error is what the user wants fixed."
+    },
+    {
+      "id": "cp-05-drop-old-models-list",
+      "source": "scripts/pfy_jev_230.py:compact_session",
+      "family": "compact",
+      "instructions": "compaction: keep session text verbatim",
+      "state": {
+        "last_user": "Commit the labeled case file.",
+        "tool": "ollama list",
+        "text_head": "NAME ID SIZE — a models listing from the start of the session, unused since.",
+        "index": 2,
+        "n": 15
+      },
+      "criteria": {
+        "keep": "still needed for the latest user request",
+        "truncate": "keep a short head; drop the bulky body",
+        "drop": "stale tool result; no longer needed"
+      },
+      "label": "drop",
+      "note": "Models listing is unrelated to the commit request."
+    },
+    {
+      "id": "cp-06-truncate-readme-dump",
+      "source": "scripts/pfy_jev_230.py:compact_session",
+      "family": "compact",
+      "instructions": "compaction: keep session text verbatim",
+      "state": {
+        "last_user": "What does LAYA_JEV_STRICT strip from the response?",
+        "tool": "read_file",
+        "text_head": "Full upstream http-api.md dump, many sections; only the Strict Jev contract heading matters.",
+        "index": 6,
+        "n": 10,
+        "bulky": true
+      },
+      "criteria": {
+        "keep": "still needed for the latest user request",
+        "truncate": "keep a short head; drop the bulky body",
+        "drop": "stale tool result; no longer needed"
+      },
+      "label": "truncate",
+      "note": "Needed for the STRICT question, bulky README dump."
+    }
+  ]
+}
