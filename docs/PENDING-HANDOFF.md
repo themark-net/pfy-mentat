@@ -2,6 +2,15 @@
 
 Git plus this file is the handoff when another checkout may be open. Do not commit, reset, or stash on an open founder Build branch.
 
+## 2026-10-06 — Local-inference bench on nimo (Entry 089 / #230 case set)
+
+- **Branch / worktree:** `bot/local-bench` · `/home/mark/DEVELOP/pfy-mentat/tmp/local-bench`.
+- **Landed:** stdlib harness `examples/local-bench/bench.py`; receipt `pipelines/dogfood/local-bench/receipt.json`; writeup [docs/dogfood/LOCAL-BENCH-RESULTS.md](dogfood/LOCAL-BENCH-RESULTS.md); sources [089](../sources/entries/089-local-inference-bench.md) at **I0 / trial-ran**. Catalog HOLD 70–75. No GUI. No TOOLS.md row. **Not a Feature GO.** CUA-S1-FORMS stays primary local. No BIOS/kernel/sysctl change.
+- **Live (nimo, Ollama 0.30.8, ctx 2048, same 48 cases, gate 0.85):** 1.5b 54.2% / 0% esc / 22 wbc / 117 decode tok/s; glm-4.7-flash 39.6% / 33.3% / 13 / 53 tok/s; **qwen3-coder:30b 79.2% / 2.1% / 10 / 65 tok/s** (18 GB, 100% GPU); stretch qwen3-coder-next 83.3% / 2.1% / 7 / 18 tok/s (52 GB, 89% GPU). gpt-oss:120b skipped (65 GB > 64 GiB carve). Unloaded after. Baselines: CUA 56.3%/22.9%/16 wbc; Laya english 62.5%/100%/0.
+- **Run on nimo now:** `qwen3-coder:30b` as the coding worker; 1.5b for smokes; next only when quality > tok/s. Decision default stays CUA-S1-FORMS.
+- **Verify:** `python3 -m unittest tests.test_local_bench` · `python3 scripts/catalog_check.py` · `make eval-structural` · `python3 -m unittest discover -s tests -t .`
+- **Next:** orchestrator commit/push/PR. Do not merge / contact gates. Do not apply BIOS/GTT knobs without Mark.
+
 ## 2026-10-06 — Laya shadow second-opinion (Entry 086 follow-up / #230 / ADR-0016)
 
 - **Branch / worktree:** `bot/laya-shadow` · `/home/mark/DEVELOP/pfy-mentat/tmp/laya-shadow`.
