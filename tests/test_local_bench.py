@@ -273,12 +273,44 @@ class OutdirPathTests(unittest.TestCase):
 class RunnerRssTests(unittest.TestCase):
     def test_is_ollama_runner_proc_matches_argv0_without_exe(self):
         """ollama-user llama-server: /proc/pid/exe is EACCES; argv0 still identifies it."""
-        # Synthetic: empty exe + argv0 path containing llama-server
-        # We only unit-test the exe helper + comm allowlist when no live runner.
         self.assertTrue(bench.is_ollama_exe("/usr/local/lib/ollama/llama-server"))
         self.assertTrue(bench.is_ollama_exe("/usr/local/bin/ollama"))
         self.assertFalse(bench.is_ollama_exe("/home/mark/.local/bin/grok"))
 
+    def test_eacces_exe_falls_back_to_argv0_and_recovers_stats(self):
+        """Fail closed on unreadable exe, then recover RSS via argv0/comm (Entry 092 / #273 nit)."""
+        from unittest import mock
+
+        pid = 424242
+        # 1) Fail: EACCES-empty exe and no argv0/comm → not a runner
+        with mock.patch.object(bench, "_cmdline_argv0", return_value=""):
+            with mock.patch.object(bench, "_proc_comm", return_value=""):
+                self.assertFalse(bench.is_ollama_runner_proc(pid, exe=""))
+
+        # 1b) Fail closed: empty exe + unrelated argv0 (Grok) must NOT match
+        with mock.patch.object(bench, "_cmdline_argv0", return_value="/opt/Grok Bot/grok-bot"):
+            with mock.patch.object(bench, "_proc_comm", return_value="grok-bot"):
+                self.assertFalse(bench.is_ollama_runner_proc(pid, exe=""))
+
+        # 2) Recover via argv0 path when exe unreadable
+        argv0 = "/usr/local/lib/ollama/llama-server"
+        with mock.patch.object(bench, "_cmdline_argv0", return_value=argv0):
+            with mock.patch.object(bench, "_proc_comm", return_value=""):
+                self.assertTrue(bench.is_ollama_runner_proc(pid, exe=""))
+
+        # 2b) Recover via comm alone when argv0 empty
+        with mock.patch.object(bench, "_cmdline_argv0", return_value=""):
+            with mock.patch.object(bench, "_proc_comm", return_value="llama-server"):
+                self.assertTrue(bench.is_ollama_runner_proc(pid, exe=""))
+
+        # 3) PeakSampler consumer path: after EACCES, still record runner RSS (≥ real GiB-scale, not ~22MB client)
+        with mock.patch.object(bench, "_cmdline_argv0", return_value=argv0):
+            with mock.patch.object(bench, "_proc_comm", return_value="llama-server"):
+                with mock.patch.object(bench, "proc_status", return_value={"rss_kb": 41943040, "hwm_kb": 41943040, "pid": pid}):
+                    self.assertTrue(bench.is_ollama_runner_proc(pid, exe=""))
+                    st = bench.proc_status(pid)
+                    self.assertEqual(st["rss_kb"], 41943040)
+                    self.assertGreater(st["rss_kb"], 22_000)  # not the ~22MB client false positive
 
 
 if __name__ == "__main__":

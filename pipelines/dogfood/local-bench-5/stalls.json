@@ -1,0 +1,23 @@
+[
+  {
+    "id": "glm-air-nommap-load",
+    "model": "GLM-4.5-Air Q4 (72857521088-byte GGUF; ollama blob still named -partial but size==registry)",
+    "conditions": "MemAvailable ~77\u219215.7 GiB min; swap peaked 8.0/8 during load; peak RSS 68.6 GiB; GTT ~0.37; load~183s to healthy; concurrent: Mark ROCm apt install?, grok PID left alone",
+    "recovery": "Became healthy; swap drained during bench; server stopped after 48 cases",
+    "quality": "parse_ok 0/48, accuracy 0%, escalate 100% \u2014 Choice JSON not produced (likely thinking/chat-template); memory path WORKS; not stronger than qwen3.6:35b / coder-next on #230 gate"
+  },
+  {
+    "id": "glm-air-degenerate-output",
+    "model": "GLM-4.5-Air Q4 via llama-server ROCm --no-mmap -rea off",
+    "conditions": "MemAvailable min 15.7 GiB, swap peak 8/8, RSS ~68.5 GiB; many 'unused tensor' warnings at load (blk.46.*)",
+    "evidence": "Single forced-JSON prompt returned content of only the letter G repeated (max_tokens=128). parse_ok 0/48 both with and without -rea off.",
+    "recovery": "Stop server; do not point atg at GLM-Air on this loader",
+    "correction_for_mark": "GLM-Air is NOT the stronger #230 Choice model on nimo's Ollama-bundled llama-server+ROCm path. qwen3.6:35b wins (79.2% vs Air 0%)."
+  },
+  {
+    "id": "reasoning-on-breaks-choice",
+    "model": "qwen3.6:35b",
+    "conditions": "llama-server default reasoning/thinking fills decode; parse_ok 0/48",
+    "recovery": "Pass -rea off --reasoning-budget 0 \u2192 parse_ok 48, acc 79.2%"
+  }
+]

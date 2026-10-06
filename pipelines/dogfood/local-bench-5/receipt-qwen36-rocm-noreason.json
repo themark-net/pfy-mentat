@@ -1,0 +1,75 @@
+{
+  "name": "qwen36:rocm-noreason",
+  "backend": "rocm-noreason",
+  "flags": "-rea off --reasoning-budget 0 --no-mmap -ngl 999",
+  "verdict": "RAN",
+  "load_wait_s": 0.01,
+  "speed_wall_s": 0.352,
+  "usage_speed": {
+    "completion_tokens": 4,
+    "prompt_tokens": 102,
+    "total_tokens": 106,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    }
+  },
+  "decision": {
+    "n_cases": 48,
+    "n_ran": 48,
+    "n_error": 0,
+    "parse_ok": 48,
+    "parse_ok_rate": 1.0,
+    "accuracy": 0.7917,
+    "n_correct": 38,
+    "escalate_rate": 0.0,
+    "n_escalate": 0,
+    "n_held": 48,
+    "held_accuracy": 0.7917,
+    "wrong_but_confident": 10,
+    "wrong_but_confident_ids": [
+      "ph-05-kronos-busy",
+      "ph-07-waived-busy",
+      "ph-08-missing-ci",
+      "ph-09-unknown-ci",
+      "ph-10-unknown-kronos",
+      "hd-02-high-blast-weights",
+      "hd-10-phase0-not-assist",
+      "hd-12-colibri-no-download",
+      "fm-08-skip-already-filled",
+      "cp-06-truncate-readme-dump"
+    ],
+    "latency_s": {
+      "all_p50": 0.6631,
+      "all_p95": 0.7816,
+      "n": 48
+    },
+    "gate": 0.85,
+    "errors": []
+  },
+  "mem_available_gb": 45.899,
+  "swap_used_gb": 6.077,
+  "gtt_used_gib": 0.322,
+  "n_cases": 48,
+  "peak": {
+    "rss_kib": 21513316,
+    "gtt_used_gib": 0.256,
+    "swap_used_gb": 6.081,
+    "mem_avail_min_gb": 50.945,
+    "samples": 6,
+    "t0": 1791272379.6787732,
+    "rss_gib": 20.517,
+    "elapsed_s": 6.0,
+    "trace": []
+  },
+  "load_s": 10,
+  "tok_s": {
+    "pp": {
+      "n": 50,
+      "p50": 606.8
+    },
+    "decode": {
+      "n": 50,
+      "p50": 57.2
+    }
+  }
+}
