@@ -27,9 +27,12 @@ When integrating a new tool, **add a row here in the same PR** as the integratio
 | `PFY_GAB_MODEL` | no | optional | `auto` | Gab cloud model id | `auto` (cloud router) or pin-by-id from GET /v1/models |
 | `PFY_GAB_OFFLINE` | no | CI | `1` in CI | Force Gab `/models` fixture | Offline fixture `scripts/fixtures/gab_models_v1.json` |
 | `TYPESAFE_API_KEY` | **yes** | optional | — | TypeSafe Jev cloud (`jev-1.13.0`) | Optional. Missing on TypeSafe path → FAIL+next or CUA-S1-FORMS. Never required for #230 smoke |
-| `PFY_JEV_MODEL` | no | optional | `jev-1.13.0` | TypeSafe model id | Cloud path only |
+| `PFY_JEV_MODEL` | no | optional | `jev-1.13.0` | TypeSafe model id | Cloud path only. Under `PFY_JEV_LAYA_SHADOW` unset → `english` for the shadow call |
 | `PFY_JEV_CONF_GATE` | no | optional | `0.85` | Decision auto-act margin | Below gate → FAIL / escalate; not percent-correct |
 | `PFY_JEV_OFFLINE` | no | CI | `1` in CI | Skip TypeSafe network | Mark-free CUA-S1-FORMS selftest |
+| `PFY_JEV_LAYA_SHADOW` | no | optional | unset / `0` | Opt-in Laya english second opinion | When `1` and CUA would auto-act, disagree or Laya error → escalate. Default off. Not a lane swap |
+| `PFY_JEV_TYPESAFE_URL` | no | optional | TypeSafe cloud | Local `laya-serve` override | Shadow refuses the cloud default; point at `http://127.0.0.1:8765/v1/systemone` |
+| `PFY_JEV_TYPESAFE_TIMEOUT` | no | optional | `8` | TypeSafe / laya-serve POST timeout | Trial may raise this for CPU |
 | Host `~/.grok/auth.json` | **yes** | Grok Build default | created by `grok login` | Grok CLI OIDC/browser session | **Primary auth** for interactive Grok; mode `oidc` + refresh_token |
 | Cage `~/.agentcage/grok-home/auth.json` | **yes** | grok-in-cage | via `make cage-grok-auth-import` | Grok inside agent container | Copy of host session or device-login result; chmod 600 |
 | `GROK_HOME` | no | optional | `$HOME/.grok` | Grok CLI state dir | In cage: `/home/agent/.grok` (volume) |

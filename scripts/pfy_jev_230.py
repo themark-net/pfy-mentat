@@ -20,6 +20,7 @@ import math
 import os
 import re
 import sys
+import time
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
@@ -49,6 +50,10 @@ CHIP_TYPESAFE_OPT = "typesafe key optional"
 CHIP_CUA = "cua-s1-forms · FreeToken-first"
 CHIP_CORE = "compact context · choose model/tool"
 CHIP_FALLBACK = "mini-jev · teaching fallback"
+CHIP_SHADOW_DISAGREE = "shadow disagree"
+CHIP_SHADOW_ERROR = "shadow error"
+LAYA_SHADOW_MODEL = "english"
+LAYA_SHADOW_DUMMY_KEY = "laya-local-shadow"
 
 NEXT_KEY = "set TYPESAFE_API_KEY · " + TYPESAFE_DOCS + " · or switch local CUA-S1-FORMS"
 NEXT_LOW = "raise threshold bar, confirm, or fallback model — no silent auto-act"
@@ -150,6 +155,28 @@ def offline():
     return str(os.environ.get("PFY_JEV_OFFLINE") or "").strip().lower() in ("1", "true", "yes")
 
 
+def laya_shadow_enabled():
+    return str(os.environ.get("PFY_JEV_LAYA_SHADOW") or "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+
+
+def laya_shadow_model():
+    """Shadow call model. Unset PFY_JEV_MODEL → english (not jev-1.13.0)."""
+    raw = str(os.environ.get("PFY_JEV_MODEL") or "").strip()
+    return raw or LAYA_SHADOW_MODEL
+
+
+def typesafe_url_is_local(url=None):
+    """True only for a local laya-serve override. Cloud TypeSafe is never local."""
+    u = str(url if url is not None else typesafe_url() or "").strip().lower()
+    if not u or u.rstrip("/") == TYPESAFE_URL.lower().rstrip("/"):
+        return False
+    return "127.0.0.1" in u or "localhost" in u or "[::1]" in u
+
+
 def tokenize(text):
     return TOKEN_RE.findall(str(text or "").lower())
 
@@ -249,6 +276,136 @@ def decide_choice(state, criteria, *, instructions="", focus=""):
     }
     if not auto:
         rec["error"] = CHIP_CONF_LOW
+    return rec
+
+
+def _apply_shadow_escalate(rec, shadow, chip):
+    rec = dict(rec)
+    rec["ok"] = False
+    rec["live"] = "FAIL"
+    rec["auto_act"] = False
+    rec["usable"] = False
+    rec["error"] = CHIP_CONF_LOW
+    rec["chip_conf"] = CHIP_CONF_LOW
+    rec["chip_shadow"] = chip
+    rec["copy"] = "FAIL decision -- %s · %s" % (chip, NEXT_LOW)
+    rec["next_step"] = NEXT_LOW
+    rec["shadow"] = shadow
+    return rec
+
+
+def maybe_laya_shadow(rec, state, criteria, *, instructions="", qid="shadow"):
+    """Opt-in Laya second opinion after a CUA Choice that would auto-act.
+
+    Flag off → identity (no network, no shadow key). Flag on + disagree or
+    Laya error → escalate (exit 3). Flag on + agree → leave CUA ready and
+    attach a shadow log. Never calls cloud TypeSafe.
+    """
+    if not laya_shadow_enabled():
+        return rec
+    rec = rec or {}
+    if not rec.get("auto_act"):
+        return rec
+    cua_choice = rec.get("choice")
+    model = laya_shadow_model()
+    t0 = time.perf_counter()
+    if not typesafe_url_is_local():
+        shadow = {
+            "enabled": True,
+            "engine": "laya",
+            "model": model,
+            "cua_choice": cua_choice,
+            "laya_choice": None,
+            "laya_confidence": None,
+            "agree": False,
+            "action": "escalate",
+            "latency_s": round(time.perf_counter() - t0, 4),
+            "error": "refuse cloud TypeSafe; set PFY_JEV_TYPESAFE_URL to local laya-serve",
+        }
+        return _apply_shadow_escalate(rec, shadow, CHIP_SHADOW_ERROR)
+    if offline():
+        shadow = {
+            "enabled": True,
+            "engine": "laya",
+            "model": model,
+            "cua_choice": cua_choice,
+            "laya_choice": None,
+            "laya_confidence": None,
+            "agree": False,
+            "action": "escalate",
+            "latency_s": round(time.perf_counter() - t0, 4),
+            "error": "Laya shadow offline (PFY_JEV_OFFLINE)",
+        }
+        return _apply_shadow_escalate(rec, shadow, CHIP_SHADOW_ERROR)
+    qid = str(qid or "shadow")
+    questions = {
+        qid: {
+            "type": "choice",
+            "instructions": instructions or "",
+            "criteria": criteria,
+        }
+    }
+    saved_model = os.environ.get("PFY_JEV_MODEL")
+    injected_key = False
+    os.environ["PFY_JEV_MODEL"] = model
+    if not typesafe_key():
+        os.environ["TYPESAFE_API_KEY"] = LAYA_SHADOW_DUMMY_KEY
+        injected_key = True
+    try:
+        laya_rec = typesafe_evaluate(state, questions)
+    except Exception as e:
+        laya_rec = fail(
+            "decision",
+            "Laya shadow: %s" % str(e)[:120],
+            NEXT_LOW,
+            engine="laya",
+        )
+    finally:
+        if saved_model is None:
+            os.environ.pop("PFY_JEV_MODEL", None)
+        else:
+            os.environ["PFY_JEV_MODEL"] = saved_model
+        if injected_key:
+            os.environ.pop("TYPESAFE_API_KEY", None)
+    latency = round(time.perf_counter() - t0, 4)
+    answers = laya_rec.get("answers") if isinstance(laya_rec, dict) else {}
+    ans = {}
+    if isinstance(answers, dict):
+        raw_ans = answers.get(qid)
+        if isinstance(raw_ans, dict):
+            ans = raw_ans
+        elif len(answers) == 1:
+            only = next(iter(answers.values()))
+            if isinstance(only, dict):
+                ans = only
+    laya_choice = ans.get("choice")
+    try:
+        laya_conf = float(ans["confidence"]) if ans.get("confidence") is not None else None
+    except (TypeError, ValueError):
+        laya_conf = None
+    shadow = {
+        "enabled": True,
+        "engine": "laya",
+        "model": (laya_rec.get("model") if isinstance(laya_rec, dict) else None) or model,
+        "cua_choice": cua_choice,
+        "laya_choice": laya_choice,
+        "laya_confidence": laya_conf,
+        "agree": (laya_choice is not None) and (str(laya_choice) == str(cua_choice)),
+        "action": "pass",
+        "latency_s": latency,
+    }
+    if laya_choice is None:
+        shadow["error"] = str(
+            laya_rec.get("error") or laya_rec.get("copy") or "Laya shadow returned no choice"
+        )[:240]
+        shadow["action"] = "escalate"
+        shadow["agree"] = False
+        return _apply_shadow_escalate(rec, shadow, CHIP_SHADOW_ERROR)
+    if not shadow["agree"]:
+        shadow["action"] = "escalate"
+        return _apply_shadow_escalate(rec, shadow, CHIP_SHADOW_DISAGREE)
+    rec = dict(rec)
+    rec["shadow"] = shadow
     return rec
 
 
@@ -481,6 +638,13 @@ def cua_s1_forms_plan(form=None, ROOT=None):
         rec["role"] = role
         rec["engine"] = "cua-s1-forms"
         rec["repo"] = CUA_REPO
+        rec = maybe_laya_shadow(
+            rec,
+            state,
+            criteria,
+            instructions="CUA-S1-FORMS form-fill specialist: pick one action for this element",
+            qid=eid or "shadow",
+        )
         answers.append(rec)
     ok = all(a.get("ok") for a in answers) if answers else False
     picks = {a.get("element"): a.get("choice") for a in answers}
@@ -664,6 +828,10 @@ def route_model_tool(live=None, *, path="cua-s1-forms"):
     else:
         rec = decide_choice(live, criteria, instructions=instructions)
         rec["engine"] = "cua-s1-forms" if path != "typesafe" else "typesafe"
+        if rec.get("engine") == "cua-s1-forms":
+            rec = maybe_laya_shadow(
+                rec, live, criteria, instructions=instructions, qid="route"
+            )
     rec["path"] = path if path != "off" else "cua-s1-forms"
     rec["chip_core"] = CHIP_CORE
     rec["options_from"] = "live-state"
@@ -714,6 +882,13 @@ def compact_session(messages, *, path="cua-s1-forms"):
         state = {"last_user": last_user, "tool": tool, "text_head": text[:240], "index": i, "n": n}
         rec = decide_choice(state, criteria, instructions="compaction: keep session text verbatim")
         rec["index"] = i
+        rec = maybe_laya_shadow(
+            rec,
+            state,
+            criteria,
+            instructions="compaction: keep session text verbatim",
+            qid="compact-%s" % i,
+        )
         decisions.append(rec)
         pick = rec.get("choice") or "keep"
         if not rec.get("auto_act"):
@@ -1018,6 +1193,7 @@ def selftest():
     old_key = os.environ.pop("TYPESAFE_API_KEY", None)
     os.environ.pop("TYPESAFE_KEY", None)
     os.environ.pop("JEV_API_KEY", None)
+    os.environ.pop("PFY_JEV_LAYA_SHADOW", None)
     os.environ["PFY_JEV_OFFLINE"] = "1"
     try:
         with tempfile.TemporaryDirectory() as td:
@@ -1074,6 +1250,7 @@ def selftest():
             check(route.get("choice") in opts, "route picks a live option")
             check(route.get("options_from") == "live-state", "options from live state")
             check(CHIP_HONEST in str(route.get("honesty") or ""), "route honesty")
+            check("shadow" not in route, "flag off leaves route without shadow key")
 
             # conf low refuses auto-act
             os.environ["PFY_JEV_CONF_GATE"] = "0.99"
@@ -1083,6 +1260,24 @@ def selftest():
             check(CHIP_CONF_LOW in str(low.get("chip_conf") or low.get("error") or ""), "conf low chip")
             check(classify_decision(low) == "escalate", "conf low classifies escalate")
             check(decision_exit_code(low) == EXIT_ESCALATE, "conf low exit 3")
+            shadow_esc = {
+                "ok": False,
+                "choice": "push",
+                "auto_act": False,
+                "usable": False,
+                "error": CHIP_CONF_LOW,
+                "chip_shadow": CHIP_SHADOW_DISAGREE,
+                "shadow": {
+                    "enabled": True,
+                    "action": "escalate",
+                    "agree": False,
+                    "cua_choice": "push",
+                    "laya_choice": "hold",
+                },
+            }
+            check(classify_decision(shadow_esc) == "escalate", "shadow disagree classifies escalate")
+            check(decision_exit_code(shadow_esc) == EXIT_ESCALATE, "shadow disagree exit 3")
+            check(PRIMARY_LOCAL == "cua-s1-forms", "PRIMARY_LOCAL stays cua-s1-forms")
             ready = decide_choice({"ci": "green"}, {"push": "go", "hold": "stop"})
             # may or may not be high conf; force a peaked one
             peaked = decide_choice("push now ci green", {"push": "push green tip", "hold": "zzz unrelated"})
@@ -1130,6 +1325,7 @@ def selftest():
             os.environ["TYPESAFE_API_KEY"] = old_key
         os.environ.pop("PFY_JEV_OFFLINE", None)
         os.environ.pop("PFY_JEV_CONF_GATE", None)
+        os.environ.pop("PFY_JEV_LAYA_SHADOW", None)
 
     if errors:
         print("FAIL selftest · %d" % len(errors))
@@ -1155,6 +1351,11 @@ EXIT_ESCALATE = 3
 def classify_decision(rec):
     """Map a decision record to ready | escalate | fail."""
     rec = rec or {}
+    shadow = rec.get("shadow") if isinstance(rec.get("shadow"), dict) else {}
+    if shadow.get("action") == "escalate":
+        return "escalate"
+    if rec.get("chip_shadow") in (CHIP_SHADOW_DISAGREE, CHIP_SHADOW_ERROR):
+        return "escalate"
     if rec.get("error") == CHIP_CONF_LOW:
         return "escalate"
     if rec.get("choice") is not None and rec.get("auto_act") is False:

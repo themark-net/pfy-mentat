@@ -45,11 +45,11 @@ So Laya **always self-escalates** here. Raw choice accuracy (english 30/48, type
 
 Serve: `laya-serve` on `127.0.0.1:8765`, `LAYA_DEVICE=cpu`, `LAYA_MODELS=english,typed-decisions`, `LAYA_JEV_STRICT=1`. Health in **195.11 s**. Device `cpu`. Revisions `7b928d828b7b0e022f929d9bd2e44165aa270148` for both loaded checkpoints. Trial process `laya_peak_rss_kb` 3844044; high-water **4568580 KB**.
 
-## Next test (proposal only — NOT implemented)
+## Next test (implemented behind flag)
 
-Idea Mark liked: use Laya as a **shadow second opinion** that flags CUA confident-wrong answers. Rule: when CUA is held (at/above 0.85 / not escalate) but Laya's **choice disagrees**, escalate (do not auto-act).
+The shadow second-opinion rule is **implemented** on `bot/laya-shadow` behind `PFY_JEV_LAYA_SHADOW` (default **off**). Live measure on the same 48 cases: english **catch 9/16**, **false-escalate 4/21**, miss 7/16. Writeup: [LAYA-SHADOW-RESULTS.md](LAYA-SHADOW-RESULTS.md). Receipt: `pipelines/dogfood/laya-shadow/receipt.json`.
 
-This slice does **not** implement that rule. Numbers below are a **measured replay** of this receipt's per-case `cases` (choice disagreement only; Laya always self-escalates on confidence).
+Replay numbers below were the projection from this trial receipt (choice disagreement only). The live run matched english exactly.
 
 CUA held-correct on this set: **21**. CUA wrong-but-confident: **16**.
 
@@ -62,9 +62,7 @@ Replay IDs (english): catch `ph-03`, `ph-06`, `ph-07`, `ph-08`, `ph-09`, `ph-10`
 
 Replay IDs (typed-decisions): catch `ph-03`, `ph-06`, `ph-08`, `wz-07`, `hd-11`, `cp-02`, `cp-05`; miss `ph-04`, `ph-05`, `ph-07`, `ph-09`, `ph-10`, `fm-04`, `fm-06`, `fm-08`, `cp-06`; false-escalate `wz-09`, `hd-01`, `hd-06`, `hd-10`, `cp-03`.
 
-english would catch 9 of CUA's 16 confident-wrongs and would also escalate 4 of 21 held-correct answers. typed-decisions is weaker on this replay (7 catch, 5 collateral). Neither checkpoint held a decision of its own.
-
-A follow-up may implement the shadow rule behind a flag. It is **not** a default-lane swap and **not** a Feature GO.
+Default lane stays CUA-S1-FORMS. Flag stays off. **Not** a Feature GO.
 
 ## Locks respected
 

@@ -2,12 +2,21 @@
 
 Git plus this file is the handoff when another checkout may be open. Do not commit, reset, or stash on an open founder Build branch.
 
+## 2026-10-06 — Laya shadow second-opinion (Entry 086 follow-up / #230 / ADR-0016)
+
+- **Branch / worktree:** `bot/laya-shadow` · `/home/mark/DEVELOP/pfy-mentat/tmp/laya-shadow`.
+- **Landed:** `PFY_JEV_LAYA_SHADOW` opt-in (default off). CUA-S1-FORMS stays `PRIMARY_LOCAL`. When flag is on and CUA would auto-act, Laya **english** shadows the choice; disagree or Laya error → escalate (exit 3). No silent auto-act. Cloud TypeSafe refused.
+- **Measure (nimo, same 48 cases):** catch **9/16**, false-escalate **4/21**, miss 7/16, shadow p50 **0.185 s** / p95 **0.260 s**, HWM **2867668 KB**. Verdict RAN. Flag stays off. Not a Feature GO. Catalog HOLD 70–75. No GUI.
+- **Writeup:** [docs/dogfood/LAYA-SHADOW-RESULTS.md](dogfood/LAYA-SHADOW-RESULTS.md). Receipt `pipelines/dogfood/laya-shadow/receipt.json`.
+- **Verify:** `python3 -m unittest tests.test_laya_shadow tests.test_laya_trial_086 tests.test_jev_decision_skill tests.test_pfy_build_p` · `python3 scripts/pfy_jev_230.py --selftest` · `python3 scripts/catalog_check.py` · `make eval-structural`.
+- **Next:** orchestrator commit/push/PR. Do not merge / contact gates. Do not turn the flag on by default.
+
 ## 2026-10-06 — Laya eval-auto trial (Entry 086 / #230 / ADR-0016)
 
 - **Branch / worktree:** `bot/laya-trial` · `/home/mark/DEVELOP/pfy-mentat/tmp/laya-trial`.
 - **Trial:** verdict **RAN** on nimo (48 cases, gate 0.85). Keep **CUA-S1-FORMS** as default. No lane change. Not a Feature GO. Catalog HOLD 70–75. No GUI.
 - **Writeup:** [docs/dogfood/LAYA-TRIAL-RESULTS.md](dogfood/LAYA-TRIAL-RESULTS.md). Receipt `pipelines/dogfood/laya-trial/receipt.json`.
-- **Next:** merge when gates green. Optional follow-up: Laya as shadow second opinion (proposal + measured replay in the writeup; not implemented here).
+- **Next:** merge when gates green. Shadow second opinion: **done** on `bot/laya-shadow` (flag off by default). See [LAYA-SHADOW-RESULTS.md](dogfood/LAYA-SHADOW-RESULTS.md).
 
 ## 2026-10-05 — D4 Reviewer fix round (#266 / #265, CEO hold)
 

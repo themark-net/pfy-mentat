@@ -63,3 +63,40 @@ class LayaTrialFailClosedTests(unittest.TestCase):
         self.assertEqual(p.returncode, 2, p.stdout + p.stderr)
         self.assertIn("not reachable", p.stdout)
         self.assertIn("127.0.0.1:1", p.stdout)
+
+    def test_shadow_no_start_fails_closed_and_writes_receipt(self):
+        py = Path(os.environ.get("LAYA_PYTHON") or "/home/mark/DEVELOP/pfy-mentat/tmp/laya-trial/.venv-laya/bin/python")
+        if not os.access(py, os.X_OK):
+            py = ROOT / ".venv-laya" / "bin" / "python"
+        if not os.access(py, os.X_OK):
+            self.skipTest("Laya venv not present; venv-missing path is covered above")
+        env = os.environ.copy()
+        env["LAYA_PYTHON"] = str(py)
+        with tempfile.TemporaryDirectory(prefix="laya-shadow-") as td:
+            receipt = Path(td) / "receipt.json"
+            p = subprocess.run(
+                [
+                    sys.executable,
+                    str(TRIAL),
+                    "--shadow",
+                    "--no-start",
+                    "--host",
+                    "127.0.0.1",
+                    "--port",
+                    "1",
+                    "--receipt",
+                    str(receipt),
+                ],
+                cwd=str(ROOT),
+                env=env,
+                capture_output=True,
+                text=True,
+            )
+            # Fail: --shadow on a dead port invents catch/false-escalate numbers.
+            # Recover: write a blocker receipt and exit 2.
+            self.assertEqual(p.returncode, 2, p.stdout + p.stderr)
+            self.assertTrue(receipt.is_file(), p.stdout + p.stderr)
+            blob = json.loads(receipt.read_text(encoding="utf-8"))
+        self.assertEqual(blob.get("verdict"), "FAIL_CANNOT_RUN")
+        self.assertEqual(blob.get("mode"), "shadow")
+        self.assertIn("not reachable", blob.get("reason") or "")

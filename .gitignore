@@ -50,3 +50,4 @@ pipelines/dogfood/build/**/grok-home/
 .venv-laya/
 .hf-cache/
 pipelines/dogfood/laya-trial/laya-serve.log
+pipelines/dogfood/laya-shadow/laya-serve.log

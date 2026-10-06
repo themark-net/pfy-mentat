@@ -16,9 +16,15 @@ The script never installs packages or downloads weights itself. Installs go unde
 Head-to-head vs the ADR-0016 CUA-S1-FORMS lane on `data/decision-gates/laya-trial.cases.v0.json` (48 labeled Choice cases, labels written before either model ran). Cite #230. Catalog 70–75 HOLD. Not a Feature GO. Default decision lane stays CUA-S1-FORMS.
 
 ```bash
-# venv + CPU torch live at .venv-laya (gitignored). HF cache at .hf-cache (gitignored).
+# Reuse the trial venv + HF cache (do not copy weights into this worktree).
+export LAYA_PYTHON=/home/mark/DEVELOP/pfy-mentat/tmp/laya-trial/.venv-laya/bin/python
+export HF_HOME=/home/mark/DEVELOP/pfy-mentat/tmp/laya-trial/.hf-cache
+export HF_HUB_CACHE=/home/mark/DEVELOP/pfy-mentat/tmp/laya-trial/.hf-cache
 python3 examples/typed-decisions-local/trial.py --check
 python3 examples/typed-decisions-local/trial.py
+python3 examples/typed-decisions-local/trial.py --shadow
 ```
 
 The trial binds `laya-serve` to `127.0.0.1` only and points the typesafe lane at it with `PFY_JEV_TYPESAFE_URL` (default `https://api.typesafe.ai/v1/systemone` is unchanged). Missing venv or server → exit 2 with a reason. Receipt: `pipelines/dogfood/laya-trial/receipt.json`. Results: `docs/dogfood/LAYA-TRIAL-RESULTS.md`.
+
+`--shadow` keeps CUA-S1-FORMS as the decision, runs Laya **english** only on CUA-held cases, and escalates on choice disagreement. Receipt: `pipelines/dogfood/laya-shadow/receipt.json`. Results: `docs/dogfood/LAYA-SHADOW-RESULTS.md`. Flag `PFY_JEV_LAYA_SHADOW` stays off by default.
