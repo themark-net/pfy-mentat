@@ -1,32 +1,24 @@
 {
-  "schema": "local-bench-4.edge.v0",
   "entry": "092",
-  "issue": "#230",
-  "stacks_on": {
-    "pr": 272,
-    "sha": "96cdc7339fc4715dbdf69b7ea25bf1129563d443"
+  "pr": 273,
+  "branch": "bot/local-bench-4",
+  "cite": "#230",
+  "slice": "no-double-load / llama-server --no-mmap ROCm",
+  "not_feature_go": true,
+  "catalog": "HOLD",
+  "backend": {
+    "bin": "/usr/local/lib/ollama/llama-server",
+    "flags": "--no-mmap -ngl 999 -c 4096 -np 1 -fa on",
+    "env": [
+      "HSA_OVERRIDE_GFX_VERSION=11.5.1",
+      "GGML_BACKEND_PATH=/usr/local/lib/ollama/rocm_v7_2/libggml-hip.so",
+      "LD_LIBRARY_PATH=rocm_v7_2:/usr/local/lib/ollama",
+      "GGML_CUDA_ENABLE_UNIFIED_MEMORY=1",
+      "GGML_HIP_UMA=1"
+    ],
+    "note": "System /usr/bin/llama-server is CPU-only. Ollama-bundled binary + HIP .so discovers ROCm0 Radeon 8060S (~96 GiB). --no-mmap from --help. GGML_CUDA_ENABLE_UNIFIED_MEMORY is the symbol in libggml-hip.so (CUDA-compat name on HIP)."
   },
-  "verdict": "RAN",
-  "host": "nimo",
-  "gate": 0.85,
-  "num_ctx": 2048,
-  "edge_probe_mode": true,
-  "min_mem_available_gb_probe": 4.0,
-  "inventory": {
-    "ollama_memory_high": "85G",
-    "ollama_memory_high_bytes": 91268055040,
-    "ollama_load_timeout": "30m",
-    "mem_total_gb": 107.42,
-    "vram_giB": 16,
-    "gtt_giB": 96,
-    "swap_total_gb": 8.0,
-    "ollama_version": "0.30.8"
-  },
-  "harness_fixes": {
-    "runner_rss": "Cross-user llama-server: /proc/pid/exe EACCES for ollama user; match argv0/comm. Fixes Entry 091 peak_rss_kb ~22MB (client) vs ~40GB runner.",
-    "outdir_tests": "Unit tests call resolve_outdir / log_path_for_receipt helpers (not copied logic)."
-  },
-  "models": [
+  "ollama_defaults_prior": [
     {
       "name": "qwen3-coder-next:latest",
       "size_gb": 51,
@@ -57,40 +49,73 @@
       "reason": "Pull paused during coder-next load; not resumed (would need ~98 GiB clear margin and ~1h download). Same ready-state risk as 51GB."
     }
   ],
-  "workable_edge": {
-    "reliable_max_size_gb": 22,
-    "reliable_models": [
-      "qwen3.6:35b",
-      "qwen3-coder:30b"
-    ],
-    "reliable_ctx": 2048,
-    "failed_at_size_gb": 51,
-    "failed_model": "qwen3-coder-next:latest",
-    "tip_over": "llama-server reaches ~38\u201342 GiB RSS + ~48 GiB GTT but never becomes available within OLLAMA_LOAD_TIMEOUT=30m; swap fills (~7.9/8 GiB); status oscillates loading model / not responding.",
-    "memory_high_85g": "sufficient for cgroup; not sufficient for ready-state of 51GB+ MoE on this path",
-    "load_timeout_30m": "verified in env; still insufficient for coder-next ready-state"
-  },
-  "recommendation": {
-    "coding_worker": "qwen3.6:35b",
-    "coding_fallback": "qwen3-coder:30b",
-    "decision_lane": "CUA-S1-FORMS",
-    "atg_framework": {
-      "local_coding": "qwen3.6:35b",
-      "local_coding_fallback": "qwen3-coder:30b",
-      "local_decision": "cua-s1-forms",
-      "avoid_until_ready_path_fixed": [
-        "qwen3-coder-next:latest",
-        "gpt-oss:120b",
-        "MichelRosselli/GLM-4.5-Air:Q4_K_M",
-        "glm-4.7-flash:latest"
-      ]
+  "nommap_results": [
+    {
+      "name": "qwen3-coder-next",
+      "size_gb": 51,
+      "verdict": "RAN",
+      "accuracy": 0.8333,
+      "held_accuracy": 0.8511,
+      "escalate_rate": 0.0208,
+      "wrong_but_confident": 7,
+      "parse_ok": 48,
+      "load_s": 132,
+      "pp_p50": 351.4,
+      "decode_p50": 44.2,
+      "peak_rss_gib": 53.668,
+      "peak_gtt_gib": 24.936,
+      "steady_gtt_gib": 0.3,
+      "swap_peak_gb": 8.0,
+      "mem_avail_min_gb": 17.452,
+      "latency_p50": 0.98
+    },
+    {
+      "name": "gpt-oss:120b",
+      "size_gb": 65,
+      "verdict": "RAN",
+      "accuracy": 0.4375,
+      "held_accuracy": 0.84,
+      "escalate_rate": 0.4792,
+      "wrong_but_confident": 4,
+      "parse_ok": 26,
+      "load_s": 239,
+      "pp_p50": 262.4,
+      "decode_p50": 30.8,
+      "peak_rss_gib": 62.02,
+      "peak_gtt_gib": 1.298,
+      "steady_gtt_gib": 1.3,
+      "swap_peak_gb": 8.0,
+      "mem_avail_min_gb": 10.841,
+      "latency_p50": 3.8274,
+      "quality_note": "RAN on memory but Choice JSON weak (parse_ok 26/48, escalate 47.9%) \u2014 format/fit issue not loader"
+    },
+    {
+      "name": "MichelRosselli/GLM-4.5-Air:Q4_K_M",
+      "size_gb": 73,
+      "verdict": "SKIP",
+      "reason": "GGUF pull incomplete (~68G partial of ~72GB + aborted shard parts); no HF GGUF on host; ~40min left in 2h cap insufficient to finish pull"
+    }
+  ],
+  "edge": {
+    "ollama_defaults": {
+      "reliable_max_gb": 22,
+      "failed_at_gb": 51,
+      "tip": "double-hold RSS+GTT thrash; never ready in 30m"
+    },
+    "nommap_rocm": {
+      "reliable_max_gb": 51,
+      "ran_at_gb": [
+        51,
+        65
+      ],
+      "quality_ok_at_gb": 51,
+      "tip_soft": "swap 8/8 during load if host not quiet; 65GB runs but Choice quality poor; 73GB GGUF incomplete"
     }
   },
-  "interference": "openclaw-gateway repeatedly loads glm-4.7-flash at num_ctx=128000 during probes.",
-  "catalog_hold": "70-75",
-  "feature_go": false,
-  "finished": "2026-10-06T06:48:55Z",
-  "cites": [
-    "#230"
+  "stalls_path": "pipelines/dogfood/local-bench-4/stalls.json",
+  "scripts": [
+    "run_nommap_server.sh",
+    "bench_llamacpp.py",
+    "peak_sampler.py"
   ]
 }

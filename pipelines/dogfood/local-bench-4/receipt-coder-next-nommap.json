@@ -1,0 +1,242 @@
+{
+  "name": "qwen3-coder-next:nommap",
+  "backend": "llama-server-rocm-nommap",
+  "flags": "--no-mmap -ngl 999 -c 4096 -np 1 -fa on; env HSA_OVERRIDE_GFX_VERSION=11.5.1 GGML_BACKEND_PATH=.../libggml-hip.so GGML_CUDA_ENABLE_UNIFIED_MEMORY=1 GGML_HIP_UMA=1",
+  "verdict": "RAN",
+  "load_wait_s": 0.01,
+  "speed_wall_s": 0.4505,
+  "usage_speed": {
+    "completion_tokens": 4,
+    "prompt_tokens": 98,
+    "total_tokens": 102,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    }
+  },
+  "decision": {
+    "n_cases": 48,
+    "n_ran": 48,
+    "n_error": 0,
+    "parse_ok": 48,
+    "parse_ok_rate": 1.0,
+    "accuracy": 0.8333,
+    "n_correct": 40,
+    "escalate_rate": 0.0208,
+    "n_escalate": 1,
+    "n_held": 47,
+    "held_accuracy": 0.8511,
+    "wrong_but_confident": 7,
+    "wrong_but_confident_ids": [
+      "ph-05-kronos-busy",
+      "ph-07-waived-busy",
+      "ph-08-missing-ci",
+      "ph-10-unknown-kronos",
+      "hd-02-high-blast-weights",
+      "hd-10-phase0-not-assist",
+      "fm-08-skip-already-filled"
+    ],
+    "latency_s": {
+      "all_p50": 0.98,
+      "all_p95": 2.0228,
+      "n": 48
+    },
+    "gate": 0.85,
+    "errors": []
+  },
+  "mem_available_gb": 34.181,
+  "swap_used_gb": 7.237,
+  "gtt_used_gib": 0.325,
+  "n_cases": 48,
+  "peak": {
+    "rss_kib": 56274552,
+    "gtt_used_gib": 24.936,
+    "swap_used_gb": 8.0,
+    "mem_avail_min_gb": 17.452,
+    "samples": 245,
+    "t0": 1791269732.4058433,
+    "rss_gib": 53.668,
+    "elapsed_s": 245.2,
+    "trace": [
+      {
+        "t": 9.0,
+        "rss_gib": 7.818,
+        "gtt": 24.927,
+        "avail": 59.063,
+        "swap": 6.394
+      },
+      {
+        "t": 19.0,
+        "rss_gib": 11.55,
+        "gtt": 24.922,
+        "avail": 56.362,
+        "swap": 6.398
+      },
+      {
+        "t": 29.0,
+        "rss_gib": 16.14,
+        "gtt": 24.928,
+        "avail": 53.839,
+        "swap": 6.42
+      },
+      {
+        "t": 39.0,
+        "rss_gib": 20.05,
+        "gtt": 24.925,
+        "avail": 50.483,
+        "swap": 6.427
+      },
+      {
+        "t": 49.0,
+        "rss_gib": 23.535,
+        "gtt": 24.931,
+        "avail": 47.157,
+        "swap": 6.43
+      },
+      {
+        "t": 59.0,
+        "rss_gib": 27.148,
+        "gtt": 24.925,
+        "avail": 43.465,
+        "swap": 6.429
+      },
+      {
+        "t": 69.0,
+        "rss_gib": 30.019,
+        "gtt": 24.932,
+        "avail": 40.88,
+        "swap": 6.519
+      },
+      {
+        "t": 79.1,
+        "rss_gib": 33.025,
+        "gtt": 24.929,
+        "avail": 37.929,
+        "swap": 6.509
+      },
+      {
+        "t": 89.1,
+        "rss_gib": 39.347,
+        "gtt": 24.934,
+        "avail": 31.95,
+        "swap": 7.492
+      },
+      {
+        "t": 99.1,
+        "rss_gib": 47.402,
+        "gtt": 24.934,
+        "avail": 24.241,
+        "swap": 8.0
+      },
+      {
+        "t": 109.1,
+        "rss_gib": 48.394,
+        "gtt": 24.934,
+        "avail": 23.016,
+        "swap": 7.207
+      },
+      {
+        "t": 119.1,
+        "rss_gib": 48.392,
+        "gtt": 0.376,
+        "avail": 47.711,
+        "swap": 7.285
+      },
+      {
+        "t": 129.1,
+        "rss_gib": 48.389,
+        "gtt": 17.923,
+        "avail": 18.564,
+        "swap": 7.71
+      },
+      {
+        "t": 139.1,
+        "rss_gib": 48.319,
+        "gtt": 17.917,
+        "avail": 19.292,
+        "swap": 7.987
+      },
+      {
+        "t": 149.1,
+        "rss_gib": 48.319,
+        "gtt": 0.239,
+        "avail": 37.318,
+        "swap": 7.89
+      },
+      {
+        "t": 159.1,
+        "rss_gib": 48.318,
+        "gtt": 0.233,
+        "avail": 31.527,
+        "swap": 7.782
+      },
+      {
+        "t": 169.1,
+        "rss_gib": 48.318,
+        "gtt": 0.241,
+        "avail": 29.104,
+        "swap": 7.681
+      },
+      {
+        "t": 179.1,
+        "rss_gib": 48.318,
+        "gtt": 0.233,
+        "avail": 27.938,
+        "swap": 7.561
+      },
+      {
+        "t": 189.1,
+        "rss_gib": 48.687,
+        "gtt": 0.247,
+        "avail": 36.661,
+        "swap": 7.582
+      },
+      {
+        "t": 199.1,
+        "rss_gib": 49.419,
+        "gtt": 0.284,
+        "avail": 35.886,
+        "swap": 7.501
+      },
+      {
+        "t": 209.1,
+        "rss_gib": 50.435,
+        "gtt": 0.295,
+        "avail": 34.633,
+        "swap": 7.322
+      },
+      {
+        "t": 219.1,
+        "rss_gib": 51.361,
+        "gtt": 0.301,
+        "avail": 34.872,
+        "swap": 7.311
+      },
+      {
+        "t": 229.1,
+        "rss_gib": 52.352,
+        "gtt": 0.312,
+        "avail": 34.943,
+        "swap": 7.244
+      },
+      {
+        "t": 239.1,
+        "rss_gib": 53.131,
+        "gtt": 0.319,
+        "avail": 34.512,
+        "swap": 7.239
+      }
+    ]
+  },
+  "tok_s": {
+    "pp_tok_s_p50": 351.4,
+    "decode_tok_s_p50": 44.2,
+    "pp_tok_s_mean": 341.8,
+    "decode_tok_s_mean": 43.7
+  },
+  "load_s_to_healthy": 132,
+  "ollama_use_mmap": {
+    "api_options_key": "use_mmap",
+    "tried": true,
+    "note": "API accepts options.use_mmap:false (HTTP 200 on qwen2.5-coder:1.5b). Not re-probed at 51GB under Ollama defaults this slice \u2014 prior Ollama default for coder-next was ~42.5 GiB RSS + ~48 GiB GTT double-hold (Entry 092 pre-nommap)."
+  }
+}

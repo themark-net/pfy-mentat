@@ -1,3 +1,9 @@
+## local-bench-4 no-double-load (2026-10-06 PT)
+
+- PR #273 extended: llama-server ROCm `--no-mmap` proves 51GB coder-next RAN (not 22GB hardware edge).
+- atg: keep qwen3.6:35b / qwen3-coder:30b + CUA-S1-FORMS; stretch coder-next only via no-mmap path.
+- Air still incomplete pull; openclaw glm@128k stalls documented.
+
 # Pending handoff
 
 Git plus this file is the handoff when another checkout may be open. Do not commit, reset, or stash on an open founder Build branch.
