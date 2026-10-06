@@ -2,6 +2,13 @@
 
 Git plus this file is the handoff when another checkout may be open. Do not commit, reset, or stash on an open founder Build branch.
 
+## 2026-10-06 — Laya eval-auto trial (Entry 086 / #230 / ADR-0016)
+
+- **Branch / worktree:** `bot/laya-trial` · `/home/mark/DEVELOP/pfy-mentat/tmp/laya-trial`.
+- **Trial:** verdict **RAN** on nimo (48 cases, gate 0.85). Keep **CUA-S1-FORMS** as default. No lane change. Not a Feature GO. Catalog HOLD 70–75. No GUI.
+- **Writeup:** [docs/dogfood/LAYA-TRIAL-RESULTS.md](dogfood/LAYA-TRIAL-RESULTS.md). Receipt `pipelines/dogfood/laya-trial/receipt.json`.
+- **Next:** merge when gates green. Optional follow-up: Laya as shadow second opinion (proposal + measured replay in the writeup; not implemented here).
+
 ## 2026-10-05 — D4 Reviewer fix round (#266 / #265, CEO hold)
 
 - **Branch / worktree:** `bot/dogfood-d4-265` · `/home/mark/DEVELOP/pfy-mentat/tmp/dogfood-d4-265`. No `./pfy build -p` / no live Grok (CEO hold).

@@ -10,3 +10,15 @@ One stdlib smoke for three I0 catalog entries from the 2026-10-05 daily X intake
 
 Exit 0 = PASS, 1 = ran but the check failed, 2 = can't run here. Each run writes `pipelines/smoke/<entry>/latest.json`.
 The script never installs packages or downloads weights itself. Installs go under `~/DEVELOP/pfy-mentat/tmp/` only.
+
+## Entry 086 eval-auto trial (this worktree)
+
+Head-to-head vs the ADR-0016 CUA-S1-FORMS lane on `data/decision-gates/laya-trial.cases.v0.json` (48 labeled Choice cases, labels written before either model ran). Cite #230. Catalog 70–75 HOLD. Not a Feature GO. Default decision lane stays CUA-S1-FORMS.
+
+```bash
+# venv + CPU torch live at .venv-laya (gitignored). HF cache at .hf-cache (gitignored).
+python3 examples/typed-decisions-local/trial.py --check
+python3 examples/typed-decisions-local/trial.py
+```
+
+The trial binds `laya-serve` to `127.0.0.1` only and points the typesafe lane at it with `PFY_JEV_TYPESAFE_URL` (default `https://api.typesafe.ai/v1/systemone` is unchanged). Missing venv or server → exit 2 with a reason. Receipt: `pipelines/dogfood/laya-trial/receipt.json`. Results: `docs/dogfood/LAYA-TRIAL-RESULTS.md`.
