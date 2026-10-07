@@ -100,6 +100,9 @@ class AtgCompileBenchTests(unittest.TestCase):
     def test_e2e_malformed_then_valid_scores_one_each(self):
         import tempfile
 
+        repo = Path("/tmp/atg-finish")
+        if not repo.is_dir():
+            self.skipTest("pinned atg checkout /tmp/atg-finish is not on this machine")
         server = _Server([MALFORMED, VALID])
         try:
             with tempfile.TemporaryDirectory() as tmp:
