@@ -1,3 +1,23 @@
+## 2026-10-06 — atg-compile live probe (I2, coder-next blocked)
+
+- **Branch / worktree:** `build/local-lane-atg` · `/home/mark/DEVELOP/pfy-mentat/tmp/build-local-lane`. Not merged. Not a Feature GO. Catalog HOLD 70–75. eval-harness untouched.
+- **Live:** Ollama `qwen3.6:35b`, quiet host, `--case-timeout 180`, pin `86d1b8905116fb7ec954ee5c4fe0d18f763b7e16`. Exit 0. 2/10 valid, 2/10 sink-correct (`ac-01-mul-six-seven`, `ac-08-parallel-sums`), repairs 0, wall 478s. Receipt `pipelines/dogfood/atg-compile/receipt-live-qwen36-35b.json`. Model unloaded with `keep_alive: 0`.
+- **Stage:** I2. The receipt JSON still says `integration_stage: I1` because the bench writes that constant. The catalog card was updated after the score. Not I3.
+- **coder-next:** not loaded. Blob 51,741,599,936 bytes. MemAvailable 65.3 GiB after the 35B unload. Lane rule is size + 25 GiB.
+- **Entry:** [sources/entries/095-atg-compile.md](../sources/entries/095-atg-compile.md). Credit Zhang et al. (2026), arXiv:2607.01942. Not official code. Not a paper-benchmark claim.
+- **PR body:** `/tmp/pr-pfy-local-lane.md`. `gh` is not logged in on this host. Compare URL is in that body. Do not merge.
+
+## 2026-10-06 — llamacpp-nommap lane + atg-compile bench (I1, live not run)
+
+- **Branch / worktree:** `build/local-lane-atg` · `/home/mark/DEVELOP/pfy-mentat/tmp/build-local-lane`. Not pushed. Not a Feature GO. Catalog HOLD 70–75. eval-harness untouched.
+- **Lane:** `llamacpp-nommap` in `data/eval-lanes.json` and `pfylib/hedge.py` (start, `GET /v1/models`, stop, GGUF path). Default model stays `qwen3.6:35b` on Ollama. `qwen3-coder-next` is opt-in. MemAvailable < model size + 25 GiB → exit 2, no spawn. This session did not start the server.
+- **Bench:** `examples/atg-compile/bench.py`, 10 cases in `data/decision-gates/atg-compile.cases.v0.json`. Calls atg by path. Pin `86d1b8905116fb7ec954ee5c4fe0d18f763b7e16` on `build/atg-finish` (`/tmp/atg-finish`, not `~/DEVELOP/atg-framework`).
+- **Catalog:** ATG card refreshed at **I1**, not I2. `tools.json` object added (scores copied from TOOLS.md, not re-scored). No new sources entry: this is not an X seed; Entry 001 was not rewritten. Credit Zhang et al. (2026), arXiv:2607.01942. Independent reimplementation. Not official ATG code. Not a paper-benchmark claim.
+- **Live:** not run. Parent held `qwen3.6:35b`. No invented live numbers. Writeup: [docs/dogfood/ATG-COMPILE-RESULTS.md](dogfood/ATG-COMPILE-RESULTS.md).
+- **Verify:** `python3 -m unittest discover -s tests -t .` → 179 OK, 2 skipped. `make eval-structural` → PASS (same 179). `python3 scripts/catalog_check.py` → PASS `n_json=7`. Fake-server bench: 1 valid / 1 invalid, exit 0. Endpoint down: exit 2, no receipt. Memory floor: injected 1.000 GiB → exit 2.
+- **atg offline (dirty pin tree):** pytest 40 passed, 1 deselected. Toy sink `{'value': 25}`.
+- **Next:** T-0127 when the host is quiet. PR body is `/tmp/pr-pfy-local-lane.md` for the parent. Do not merge.
+
 ## 2026-10-06 — atg-framework eval + Build drop-ins (Entry 093)
 
 - **Branch:** `bot/atg-eval`. Docs only. Handoff: [eval/ATG-EVAL-HANDOFF.md](eval/ATG-EVAL-HANDOFF.md).

@@ -1,0 +1,96 @@
+{
+  "schema_version": "atg-compile.cases.v0",
+  "n_cases": 10,
+  "labels_before_models": true,
+  "one_model_at_a_time": true,
+  "atg_sha": "3c686b6cf712d3f8095e0df10f0789692814214f",
+  "atg_branch": "build/atg-finish",
+  "atg_repo_note": "Call the pinned checkout by path. On this host that is /tmp/atg-finish, not ~/DEVELOP/atg-framework.",
+  "credit": "Synthetic tool DAGs for an independent reimplementation of Zhang et al. (2026), arXiv:2607.01942. Not a paper benchmark. Not an official ATG release. Does not claim a GPT-4 comparison.",
+  "default_model": "qwen3.6:35b",
+  "default_model_runtime": "ollama",
+  "opt_in_model": "qwen3-coder-next",
+  "opt_in_lane": "llamacpp-nommap",
+  "cases": [
+    {
+      "id": "ac-01-mul-six-seven",
+      "task": "Multiply 6 and 7 with the mul tool. The sink declared output is value.",
+      "root_id": "job",
+      "declared_outputs": ["value"],
+      "tools": ["mul"],
+      "expected_sink": {"value": 42}
+    },
+    {
+      "id": "ac-02-add-ten-fifteen",
+      "task": "Add 10 and 15 with the add tool. The sink declared output is value.",
+      "root_id": "job",
+      "declared_outputs": ["value"],
+      "tools": ["add"],
+      "expected_sink": {"value": 25}
+    },
+    {
+      "id": "ac-03-two-branch-total",
+      "task": "Add 2 and 3. Multiply 4 and 5. Add those two results. Independent steps are siblings. The sink declared output is value.",
+      "root_id": "job",
+      "declared_outputs": ["value"],
+      "tools": ["add", "mul"],
+      "expected_sink": {"value": 25}
+    },
+    {
+      "id": "ac-04-sub-thirty-five",
+      "task": "Subtract 5 from 30 with the sub tool. The sink declared output is value.",
+      "root_id": "job",
+      "declared_outputs": ["value"],
+      "tools": ["sub"],
+      "expected_sink": {"value": 25}
+    },
+    {
+      "id": "ac-05-concat-ab-cd",
+      "task": "Concatenate the strings ab and cd with the concat tool. The sink declared output is text.",
+      "root_id": "job",
+      "declared_outputs": ["text"],
+      "tools": ["concat"],
+      "expected_sink": {"text": "abcd"}
+    },
+    {
+      "id": "ac-06-upper-hello",
+      "task": "Uppercase the string hello with the upper tool. The sink declared output is text.",
+      "root_id": "job",
+      "declared_outputs": ["text"],
+      "tools": ["upper"],
+      "expected_sink": {"text": "HELLO"}
+    },
+    {
+      "id": "ac-07-lookup-blue",
+      "task": "Look up the key blue with the lookup tool. The sink declared output is value.",
+      "root_id": "job",
+      "declared_outputs": ["value"],
+      "tools": ["lookup"],
+      "expected_sink": {"value": 3}
+    },
+    {
+      "id": "ac-08-parallel-sums",
+      "task": "Add 1 and 2. Add 3 and 4. Those two adds are independent siblings. Add their results. The sink declared output is value.",
+      "root_id": "job",
+      "declared_outputs": ["value"],
+      "tools": ["add"],
+      "expected_sink": {"value": 10}
+    },
+    {
+      "id": "ac-09-chain-add-mul",
+      "task": "Add 8 and 2, then multiply that result by 3. The sink declared output is value.",
+      "root_id": "job",
+      "declared_outputs": ["value"],
+      "tools": ["add", "mul"],
+      "expected_sink": {"value": 30}
+    },
+    {
+      "id": "ac-10-strlen-atg",
+      "task": "Take the length of the text atg with the strlen tool. The sink declared output is value.",
+      "root_id": "job",
+      "declared_outputs": ["value"],
+      "tools": ["strlen"],
+      "expected_sink": {"value": 3}
+    }
+  ]
+}
