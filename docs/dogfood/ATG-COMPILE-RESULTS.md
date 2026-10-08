@@ -20,6 +20,8 @@ python3 examples/atg-compile/bench.py \
 
 Exit 0. The bench's receipt field `integration_stage` still says `I1` because the runner writes that constant. The catalog was set to I2 after this score.
 
+That `--atg-repo` path was the worktree for this score. The bench no longer defaults to it. Point `ATG_REPO` at a clean checkout or worktree of atg `main` at `543e778ed24fbf3fc903eb961feb627039019832`.
+
 | Metric | Value |
 | --- | --- |
 | Cases | 10 |
@@ -28,8 +30,9 @@ Exit 0. The bench's receipt field `integration_stage` still says `I1` because th
 | Valid-DAG rate | 0.20 |
 | Repairs | 0 |
 | Wall | 478 s |
-| atg SHA during the score | `86d1b8905116fb7ec954ee5c4fe0d18f763b7e16` |
+| atg SHA during the score | `86d1b8905116fb7ec954ee5c4fe0d18f763b7e16` on `build/atg-finish` |
 | bench pin after the report commit | `3c686b6cf712d3f8095e0df10f0789692814214f` |
+| current bench pin | `543e778ed24fbf3fc903eb961feb627039019832` on `main` (Entry 101). The I2 score (2/10 valid, 2/10 sink-correct) was taken at 86d1b890 on build/atg-finish and has not been re-run at the main pin 543e778. |
 
 The other eight plans failed before tools ran. Typical error: the sink dropped the parent's declared output. Token rate is not re-measured. See `docs/dogfood/LOCAL-BENCH-5-RUNTIMES.md` (Ollama decode 96.4 tok/s on this tag).
 
@@ -45,7 +48,7 @@ Not loaded. The GGUF is 51,741,599,936 bytes (48.19 GiB). MemAvailable after the
 | Default model | `qwen3.6:35b` on Ollama. Not this lane. |
 | Opt-in | `qwen3-coder-next` via `llamacpp-nommap` only, one model at a time, after the host is quiet. |
 | Bench | `examples/atg-compile/bench.py` plus `data/decision-gates/atg-compile.cases.v0.json` (10 tasks). |
-| atg pin | `build/atg-finish` @ `3c686b6cf712d3f8095e0df10f0789692814214f` (this host: `/tmp/atg-finish`). The receipt names the scored parent `86d1b8905116fb7ec954ee5c4fe0d18f763b7e16`. Do not score `~/DEVELOP/atg-framework`. |
+| atg pin | `main` @ `543e778ed24fbf3fc903eb961feb627039019832`. Point `ATG_REPO` or `--atg-repo` at a clean checkout or worktree of atg `main` at that SHA. The bench has no default path. The receipt names the scored parent `86d1b8905116fb7ec954ee5c4fe0d18f763b7e16` on `build/atg-finish`. |
 
 Credit: Zhang et al. (2026), arXiv:2607.01942. This is an independent reimplementation, not official ATG code, and not a paper-benchmark result.
 

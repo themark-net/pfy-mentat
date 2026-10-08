@@ -14,8 +14,8 @@ You are the **lead orchestrator** for finishing atg-framework: Zhang et al. (202
 
 ## Resume protocol (do this first, every time)
 1. `cd ~/DEVELOP/atg-framework && git fetch --all`. Read AGENTS.md, docs/NEXT.md, docs/USING.md, docs/DECISIONS.md, docs/OPEN_QUESTIONS.md and docs/ops/pfy-mentat-handoff.md.
-2. Worktree: `git worktree add /tmp/atg-finish -b build/atg-finish origin/main` (reuse it if it exists; if the branch exists on origin, check that out). **Never touch the main checkout**, which holds uncommitted founder edits.
-3. If `/tmp/atg-finish/docs/ops/RUN-LOG-atg-finish.md` exists, resume from the first phase not marked DONE or BLOCKED. Otherwise create it with the phase checklist below.
+2. Historical: that session already created its worktree on branch `build/atg-finish`. Do not create another one from this brief. **Never touch the main checkout**, which holds uncommitted founder edits.
+3. Historical: if that session's `docs/ops/RUN-LOG-atg-finish.md` is still present, it records the first phase not marked DONE or BLOCKED. Otherwise the phase checklist below is the record of what that run did.
 4. Also read pfy-mentat's local-model results so you don't redo them: `~/DEVELOP/pfy-mentat/docs/dogfood/LOCAL-BENCH-4-EDGE.md`, plus `LOCAL-BENCH-5-RUNTIMES.md` if it exists (`git -C ~/DEVELOP/pfy-mentat fetch && git -C ~/DEVELOP/pfy-mentat show origin/main:docs/dogfood/LOCAL-BENCH-5-RUNTIMES.md`).
 
 ## Host-quiet gate (used by phases C, D and E)

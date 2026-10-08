@@ -1,7 +1,7 @@
 {
-  "version": "0.4.16",
-  "last_updated": "2026-10-06",
-  "description": "v0.4.16: + Atomic Task Graph (ATG) object (scores copied from the TOOLS.md row on 2026-10-06; stage I2 probe; pin 3c686b6cf712d3f8095e0df10f0789692814214f). Previous: v0.4.15: + Kolibri-1 (X Entry 085, B, I0; smoke pending). Previous: v0.4.14: ADR-0017 catalog<->implementation link.",
+  "version": "0.4.17",
+  "last_updated": "2026-10-08",
+  "description": "v0.4.17: ATG bench pin is atg main 543e778ed24fbf3fc903eb961feb627039019832 (Entry 101). The I2 score (2/10 valid, 2/10 sink-correct) was taken at 86d1b890 on build/atg-finish and has not been re-run at the main pin 543e778. Previous: v0.4.16: + Atomic Task Graph (ATG) object (scores copied from the TOOLS.md row on 2026-10-06; stage I2 probe). Previous: v0.4.15: + Kolibri-1 (X Entry 085, B, I0; smoke pending). Previous: v0.4.14: ADR-0017 catalog<->implementation link.",
   "schema_notes": {
     "required_for_all": [
       "name",
@@ -201,8 +201,8 @@
         "prototype",
         "I2"
       ],
-      "pinned_commit": "3c686b6cf712d3f8095e0df10f0789692814214f",
-      "notes": "Scores copied from the TOOLS.md row on 2026-10-06 (not re-scored). Stage I2 probe after a live atg-compile on Ollama qwen3.6:35b: exit 0, 2/10 valid, 2/10 sink-correct, repairs 0, wall 478s. Pin is build/atg-finish @ 3c686b6cf712d3f8095e0df10f0789692814214f, called by path (/tmp/atg-finish on this host), not vendored. Independent reimplementation of Zhang et al. (2026), arXiv:2607.01942. Not official ATG code. Not a paper-benchmark claim. Not I3.",
+      "pinned_commit": "543e778ed24fbf3fc903eb961feb627039019832",
+      "notes": "Scores copied from the TOOLS.md row on 2026-10-06 (not re-scored). Entry 101. Stage I2 probe after a live atg-compile on Ollama qwen3.6:35b: exit 0, 2/10 valid, 2/10 sink-correct, repairs 0, wall 478s. Pin is main @ 543e778ed24fbf3fc903eb961feb627039019832. The I2 score (2/10 valid, 2/10 sink-correct) was taken at 86d1b890 on build/atg-finish and has not been re-run at the main pin 543e778. Point ATG_REPO or --atg-repo at a clean checkout or worktree of atg main at that SHA. Not vendored. Live receipt scored at 86d1b8905116fb7ec954ee5c4fe0d18f763b7e16 on build/atg-finish. Independent reimplementation of Zhang et al. (2026), arXiv:2607.01942. Not official ATG code. Not a paper-benchmark claim. Not I3.",
       "integration_stage": "I2"
     }
   ],
