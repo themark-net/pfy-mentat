@@ -3,9 +3,27 @@
 **Status:** I2 probe 2026-10-06. The 2026-08-06 snapshot below is superseded.  
 **Prototype:** https://github.com/themark-net/atg-framework  
 **Paper:** Zhang, Chen, Huang, Cui, Ji, and Wang (2026), arXiv:2607.01942. This repo is an independent reimplementation. It is not official ATG code and it does not claim the paper's benchmark numbers.  
-**Pinned checkout:** branch `build/atg-finish` @ `3c686b6cf712d3f8095e0df10f0789692814214f` (this host: `/tmp/atg-finish`). The live receipt was taken at `86d1b8905116fb7ec954ee5c4fe0d18f763b7e16`, before the report commit. Do not score `~/DEVELOP/atg-framework`.  
+**Pinned checkout:** branch `main` @ `543e778ed24fbf3fc903eb961feb627039019832`. Point `ATG_REPO` or `--atg-repo` at a clean checkout or worktree of atg `main` at that SHA. There is no default path. The live receipt was taken at `86d1b8905116fb7ec954ee5c4fe0d18f763b7e16` on `build/atg-finish` (2/10 valid DAGs, 2/10 sink-correct, I2), before the report commit.  
+**Entry:** [101](../../sources/entries/101-atg-compile.md). Entry 095 is Qwen3.8-Flash-Next.  
 **Integration stage:** **I2**. Not I3. Submodule later stays an intent, not an instruction.  
 **Reviews:** 2026-08-06 → issue #30 (stay I1). 2026-10-06 → live atg-compile exit 0 with 2/10 sinks correct, promote to I2 only.
+
+## Run the bench
+
+| Name | Where | Purpose |
+|------|--------|---------|
+| `ATG_REPO` | environment, or `--atg-repo` | Required. Clean checkout or worktree of atg `main` at the pinned SHA. |
+| `--base-url` | flag, or `ATG_BASE_URL` | OpenAI-compatible endpoint. Ollama is `http://127.0.0.1:11434`. |
+| `--model` | flag, or `ATG_MODEL` | One model. Default `qwen3.6:35b`. |
+
+```bash
+ATG_REPO=/path/to/atg \
+  python3 examples/atg-compile/bench.py \
+  --base-url http://127.0.0.1:11434 \
+  --model qwen3.6:35b
+```
+
+Unset `ATG_REPO` exits 2 and writes no receipt. If HEAD is not the pin, the bench exits 2 the same way. Point `ATG_REPO` at the pin and retry. Scoring, cases, and catalog stage stay I2.
 
 ## 2026-10-06 snapshot
 

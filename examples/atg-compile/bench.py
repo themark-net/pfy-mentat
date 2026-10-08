@@ -2,11 +2,12 @@
 """atg-compile bench. One model, one endpoint, call atg-framework by path.
 
 Metrics: valid-DAG rate, sink-correct rate, repairs, wall time.
-Exit 2 when the pinned atg checkout or the OpenAI-compatible endpoint is
-missing. That path writes no receipt. It does not start a model server.
+Exit 2 when ATG_REPO / --atg-repo is unset, HEAD is not the pinned SHA, or
+the OpenAI-compatible endpoint is missing. That path writes no receipt.
+It does not start a model server.
 
-    python3 examples/atg-compile/bench.py --base-url http://127.0.0.1:9
-    python3 examples/atg-compile/bench.py --base-url http://127.0.0.1:PORT --limit 2
+    ATG_REPO=/path/to/atg python3 examples/atg-compile/bench.py --base-url http://127.0.0.1:9
+    python3 examples/atg-compile/bench.py --atg-repo /path/to/atg --base-url http://127.0.0.1:PORT --limit 2
 """
 from __future__ import annotations
 
@@ -26,9 +27,8 @@ if str(ROOT) not in sys.path:
 
 from pfylib.hedge import health_llamacpp_nommap  # noqa: E402
 
-PINNED_SHA = "3c686b6cf712d3f8095e0df10f0789692814214f"
-PINNED_BRANCH = "build/atg-finish"
-DEFAULT_ATG_REPO = os.environ.get("ATG_REPO") or "/tmp/atg-finish"
+PINNED_SHA = "543e778ed24fbf3fc903eb961feb627039019832"
+PINNED_BRANCH = "main"
 CASES_REL = Path("data/decision-gates/atg-compile.cases.v0.json")
 RECEIPT_REL = Path("pipelines/dogfood/atg-compile/receipt.json")
 DRIVER_REL = Path("examples/atg-compile/atg_case_driver.py")
@@ -163,7 +163,7 @@ def run(argv: list[str] | None = None) -> int:
     ap.add_argument("--model", default=os.environ.get("ATG_MODEL") or DEFAULT_MODEL)
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--receipt", default=str(ROOT / RECEIPT_REL))
-    ap.add_argument("--atg-repo", default=DEFAULT_ATG_REPO)
+    ap.add_argument("--atg-repo", default=os.environ.get("ATG_REPO") or "")
     ap.add_argument("--health-timeout", type=float, default=2.0)
     ap.add_argument("--case-timeout", type=float, default=60.0)
     ap.add_argument("--run-id", default="", help="marker forwarded to the atg driver argv")
@@ -177,19 +177,21 @@ def run(argv: list[str] | None = None) -> int:
             % DEFAULT_MODEL,
         )
     model = models[0]
-    repo = Path(args.atg_repo).expanduser()
+    atg_next = (
+        "Point ATG_REPO or --atg-repo at a clean checkout or worktree of atg %s at %s."
+        % (PINNED_BRANCH, PINNED_SHA)
+    )
+    raw_repo = str(args.atg_repo or "").strip()
+    if not raw_repo:
+        return cannot_run("ATG_REPO is unset", atg_next)
+    repo = Path(raw_repo).expanduser()
     if not repo.is_dir():
-        return cannot_run(
-            "atg checkout missing: %s" % repo,
-            "set ATG_REPO to the %s checkout pinned at %s (this host: /tmp/atg-finish). Do not use ~/DEVELOP/atg-framework."
-            % (PINNED_BRANCH, PINNED_SHA),
-        )
+        return cannot_run("atg checkout missing: %s" % repo, atg_next)
     head = atg_head(repo)
     if head != PINNED_SHA:
         return cannot_run(
             "atg HEAD %s != pinned %s" % (head or "(unreadable)", PINNED_SHA),
-            "check out %s at %s and pass --atg-repo. Do not score ~/DEVELOP/atg-framework."
-            % (PINNED_BRANCH, PINNED_SHA),
+            atg_next,
         )
     py = atg_python(repo)
     if py is None:

@@ -1,6 +1,6 @@
 {
   "version": "1.2",
-  "last_updated": "2026-10-06",
+  "last_updated": "2026-10-08",
   "policy": "docs/ops/integration-stages.md",
   "default_stage": "I1",
   "tools": {
@@ -41,13 +41,13 @@
       ],
       "evidence": [
         "notes_doc:docs/ops/atg-coupling.md",
-        "pin:3c686b6cf712d3f8095e0df10f0789692814214f"
+        "pin:543e778ed24fbf3fc903eb961feb627039019832"
       ],
       "tier_ceiling": "I2",
-      "pin": "3c686b6cf712d3f8095e0df10f0789692814214f",
-      "atg_sha": "3c686b6cf712d3f8095e0df10f0789692814214f",
-      "atg_branch": "build/atg-finish",
-      "atg_repo": "/tmp/atg-finish",
+      "pin": "543e778ed24fbf3fc903eb961feb627039019832",
+      "atg_sha": "543e778ed24fbf3fc903eb961feb627039019832",
+      "atg_branch": "main",
+      "atg_repo": "ATG_REPO or --atg-repo; no default path",
       "gates": {
         "gap_fill": "partial — compile, parallel waves, freeze, and localized repair are not a first-party pfy skill; LangGraph overlaps run-a-DAG",
         "operator_leverage": "no — the live probe does not shorten the default pipeline",

@@ -8,7 +8,8 @@ Exit 0 if
   2. data/toolsets.json is well-formed against data/harnesses.json (pfylib.registry.validate);
   3. every tools.json `implementation` object names an existing toolset whose
      `catalog_tool` is this row's name, with a stage in I0-I4;
-  4. every toolset with a non-null `catalog_tool` has exactly that reverse link.
+  4. every toolset with a non-null `catalog_tool` has exactly that reverse link;
+  5. no two sources/entries/NNN-*.md files share an NNN prefix.
 """
 from __future__ import annotations
 
@@ -25,6 +26,30 @@ from pfylib import registry  # noqa: E402
 STAGES = ("I0", "I1", "I2", "I3", "I4")
 CARD = ("uses", "features", "potential", "non_goals", "next_gate")
 ROW_RE = re.compile(r"^\| \*\*([^*]+)\*\*([^|]*)\|", re.M)
+ENTRY_NUM_RE = re.compile(r"^(\d{3})-.+\.md$")
+
+
+def entry_number_collisions(entries_dir: Path) -> list[str]:
+    """One problem per NNN shared by two or more sources/entries/NNN-*.md files."""
+    if not entries_dir.is_dir():
+        return ["sources/entries directory missing: %s" % entries_dir]
+    groups: dict[str, list[str]] = {}
+    for path in sorted(entries_dir.iterdir()):
+        if not path.is_file():
+            continue
+        match = ENTRY_NUM_RE.match(path.name)
+        if not match:
+            continue
+        groups.setdefault(match.group(1), []).append(path.name)
+    problems = []
+    for number in sorted(groups):
+        names = groups[number]
+        if len(names) > 1:
+            problems.append(
+                "sources/entries number %s is used by more than one file: %s"
+                % (number, ", ".join(names))
+            )
+    return problems
 
 
 def tools_md_names(md: str, stage_keys: set[str] | None = None) -> list[str]:
@@ -51,7 +76,7 @@ def main() -> int:
     md = (ROOT / "TOOLS.md").read_text(encoding="utf-8", errors="replace")
     catalog_names = tools_md_names(md, set(stage_rows))
     rows = tools.get("tools") or []
-    problems: list[str] = []
+    problems: list[str] = entry_number_collisions(ROOT / "sources" / "entries")
 
     missing_stage = [n for n in catalog_names if n not in stage_rows]
     if missing_stage:
