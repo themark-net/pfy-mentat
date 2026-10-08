@@ -1,7 +1,7 @@
 ## 2026-10-08 — atg-compile entry 101, atg `main` pin
 
 - **Entry:** 101, [sources/entries/101-atg-compile.md](../sources/entries/101-atg-compile.md). Qwen3.8-Flash-Next stays Entry 095. Not a Feature GO. Catalog HOLD 70–75. Stage stays **I2** (not I3). eval-harness untouched.
-- **Pin:** atg `main` @ `543e778ed24fbf3fc903eb961feb627039019832`. Live receipt stays honest: scored at `86d1b8905116fb7ec954ee5c4fe0d18f763b7e16` on `build/atg-finish`, 2/10 valid DAGs, 2/10 sink-correct, I2. Receipt `pipelines/dogfood/atg-compile/receipt-live-qwen36-35b.json`.
+- **Pin:** atg `main` @ `543e778ed24fbf3fc903eb961feb627039019832`. Live receipt stays honest: scored at `86d1b8905116fb7ec954ee5c4fe0d18f763b7e16` on `build/atg-finish`, 2/10 valid DAGs, 2/10 sink-correct, I2. The I2 score (2/10 valid, 2/10 sink-correct) was taken at 86d1b890 on build/atg-finish and has not been re-run at the main pin 543e778. Receipt `pipelines/dogfood/atg-compile/receipt-live-qwen36-35b.json`.
 - **Bench:** `ATG_REPO` or `--atg-repo` is required. No default checkout path. Point it at a clean checkout or worktree of atg `main` at the pin. If HEAD is not the pin, the bench exits 2 and writes no receipt.
 
 ```bash
@@ -12,6 +12,7 @@ ATG_REPO=/path/to/atg \
 ```
 
 - **Guard:** `python3 scripts/catalog_check.py` fails when two `sources/entries/NNN-*.md` files share an NNN prefix.
+- **CI:** The atg e2e and endpoint-down bench tests skip unless `ATG_REPO` is set. The nimo runner env is deliberately unchanged; changing it needs Mark's OK.
 - **Operator note:** [docs/ops/atg-coupling.md](ops/atg-coupling.md).
 
 ## 2026-10-06 — atg-compile live probe (I2, coder-next blocked)

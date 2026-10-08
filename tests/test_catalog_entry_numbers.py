@@ -1,14 +1,22 @@
 """catalog_check fails when two sources/entries files share an NNN prefix."""
 from __future__ import annotations
 
+import importlib.util
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CHECK = ROOT / "scripts" / "catalog_check.py"
-ENTRIES = ROOT / "sources" / "entries"
+
+
+def _load():
+    spec = importlib.util.spec_from_file_location("catalog_check", CHECK)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
 
 
 def _run_check() -> subprocess.CompletedProcess[str]:
@@ -26,25 +34,22 @@ class CatalogEntryNumberTests(unittest.TestCase):
         proc = _run_check()
         self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
         self.assertIn("PASS catalog-check", proc.stdout)
+        self.assertEqual(_load().entry_number_collisions(), [])
 
     def test_duplicate_prefix_fails_with_both_names(self):
-        first = ENTRIES / "998-catalog-dup-a.md"
-        second = ENTRIES / "998-catalog-dup-b.md"
-        first.write_text("# fixture\n", encoding="utf-8")
-        second.write_text("# fixture\n", encoding="utf-8")
-        try:
-            proc = _run_check()
-            text = proc.stdout + proc.stderr
-            self.assertNotEqual(proc.returncode, 0, text)
-            self.assertIn("FAIL catalog-check", text)
-            self.assertIn(
+        mod = _load()
+        with tempfile.TemporaryDirectory() as tmp:
+            entries = Path(tmp)
+            (entries / "998-catalog-dup-a.md").write_text("# fixture\n", encoding="utf-8")
+            (entries / "998-catalog-dup-b.md").write_text("# fixture\n", encoding="utf-8")
+            problems = mod.entry_number_collisions(entries)
+        self.assertEqual(
+            problems,
+            [
                 "sources/entries number 998 is used by more than one file: "
-                "998-catalog-dup-a.md, 998-catalog-dup-b.md",
-                text,
-            )
-        finally:
-            first.unlink(missing_ok=True)
-            second.unlink(missing_ok=True)
+                "998-catalog-dup-a.md, 998-catalog-dup-b.md"
+            ],
+        )
 
 
 if __name__ == "__main__":

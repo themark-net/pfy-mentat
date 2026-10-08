@@ -3,7 +3,7 @@
 **Status:** I2 probe 2026-10-06. The 2026-08-06 snapshot below is superseded.  
 **Prototype:** https://github.com/themark-net/atg-framework  
 **Paper:** Zhang, Chen, Huang, Cui, Ji, and Wang (2026), arXiv:2607.01942. This repo is an independent reimplementation. It is not official ATG code and it does not claim the paper's benchmark numbers.  
-**Pinned checkout:** branch `main` @ `543e778ed24fbf3fc903eb961feb627039019832`. Point `ATG_REPO` or `--atg-repo` at a clean checkout or worktree of atg `main` at that SHA. There is no default path. The live receipt was taken at `86d1b8905116fb7ec954ee5c4fe0d18f763b7e16` on `build/atg-finish` (2/10 valid DAGs, 2/10 sink-correct, I2), before the report commit.  
+**Pinned checkout:** branch `main` @ `543e778ed24fbf3fc903eb961feb627039019832`. Point `ATG_REPO` or `--atg-repo` at a clean checkout or worktree of atg `main` at that SHA. There is no default path. The live receipt was taken at `86d1b8905116fb7ec954ee5c4fe0d18f763b7e16` on `build/atg-finish` (2/10 valid DAGs, 2/10 sink-correct, I2), before the report commit. The I2 score (2/10 valid, 2/10 sink-correct) was taken at 86d1b890 on build/atg-finish and has not been re-run at the main pin 543e778.  
 **Entry:** [101](../../sources/entries/101-atg-compile.md). Entry 095 is Qwen3.8-Flash-Next.  
 **Integration stage:** **I2**. Not I3. Submodule later stays an intent, not an instruction.  
 **Reviews:** 2026-08-06 → issue #30 (stay I1). 2026-10-06 → live atg-compile exit 0 with 2/10 sinks correct, promote to I2 only.

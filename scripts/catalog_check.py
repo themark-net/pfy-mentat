@@ -29,8 +29,10 @@ ROW_RE = re.compile(r"^\| \*\*([^*]+)\*\*([^|]*)\|", re.M)
 ENTRY_NUM_RE = re.compile(r"^(\d{3})-.+\.md$")
 
 
-def entry_number_collisions(entries_dir: Path) -> list[str]:
+def entry_number_collisions(entries_dir: Path | None = None) -> list[str]:
     """One problem per NNN shared by two or more sources/entries/NNN-*.md files."""
+    if entries_dir is None:
+        entries_dir = ROOT / "sources" / "entries"
     if not entries_dir.is_dir():
         return ["sources/entries directory missing: %s" % entries_dir]
     groups: dict[str, list[str]] = {}
@@ -76,7 +78,7 @@ def main() -> int:
     md = (ROOT / "TOOLS.md").read_text(encoding="utf-8", errors="replace")
     catalog_names = tools_md_names(md, set(stage_rows))
     rows = tools.get("tools") or []
-    problems: list[str] = entry_number_collisions(ROOT / "sources" / "entries")
+    problems: list[str] = entry_number_collisions()
 
     missing_stage = [n for n in catalog_names if n not in stage_rows]
     if missing_stage:

@@ -32,7 +32,7 @@ That `--atg-repo` path was the worktree for this score. The bench no longer defa
 | Wall | 478 s |
 | atg SHA during the score | `86d1b8905116fb7ec954ee5c4fe0d18f763b7e16` on `build/atg-finish` |
 | bench pin after the report commit | `3c686b6cf712d3f8095e0df10f0789692814214f` |
-| current bench pin | `543e778ed24fbf3fc903eb961feb627039019832` on `main` (Entry 101) |
+| current bench pin | `543e778ed24fbf3fc903eb961feb627039019832` on `main` (Entry 101). The I2 score (2/10 valid, 2/10 sink-correct) was taken at 86d1b890 on build/atg-finish and has not been re-run at the main pin 543e778. |
 
 The other eight plans failed before tools ran. Typical error: the sink dropped the parent's declared output. Token rate is not re-measured. See `docs/dogfood/LOCAL-BENCH-5-RUNTIMES.md` (Ollama decode 96.4 tok/s on this tag).
 
