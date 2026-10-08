@@ -9,10 +9,12 @@ Exit 0 if
   3. every tools.json `implementation` object names an existing toolset whose
      `catalog_tool` is this row's name, with a stage in I0-I4;
   4. every toolset with a non-null `catalog_tool` has exactly that reverse link;
-  5. no two sources/entries/NNN-*.md files share an NNN prefix.
+  5. no two sources/entries/NNN-*.md files share an NNN prefix
+     (--entries-dir overrides only that scan; default is sources/entries).
 """
 from __future__ import annotations
 
+import argparse
 import json
 import re
 import sys
@@ -71,14 +73,24 @@ def card_open(row: dict) -> bool:
     return any(not row.get(k) for k in CARD)
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description="Catalog subset check and duplicate entry-number guard.")
+    ap.add_argument(
+        "--entries-dir",
+        default="",
+        help="Directory of NNN-*.md files for the duplicate-number check. Default: sources/entries. Other checks still use this repo.",
+    )
+    args = ap.parse_args(argv)
+    raw_entries = str(args.entries_dir or "").strip()
+    entries_dir = Path(raw_entries).expanduser() if raw_entries else None
+
     tools = json.loads((ROOT / "data/tools.json").read_text())
     stages_doc = json.loads((ROOT / "data/tool_integration_stages.json").read_text())
     stage_rows = stages_doc.get("tools") or {}
     md = (ROOT / "TOOLS.md").read_text(encoding="utf-8", errors="replace")
     catalog_names = tools_md_names(md, set(stage_rows))
     rows = tools.get("tools") or []
-    problems: list[str] = entry_number_collisions()
+    problems: list[str] = entry_number_collisions(entries_dir)
 
     missing_stage = [n for n in catalog_names if n not in stage_rows]
     if missing_stage:
