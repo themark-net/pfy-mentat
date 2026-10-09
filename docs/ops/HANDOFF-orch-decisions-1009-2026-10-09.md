@@ -5,8 +5,7 @@ Not a Feature GO. Catalog HOLD 070–075 untouched. eval-harness untouched. Issu
 **Branch:** `build/orch-decisions-1009`  
 **Worktree:** `/home/mark/DEVELOP/pfy-mentat/tmp/orch-decisions-1009`  
 **Base:** `origin/main` `8c0b547`  
-**Head SHA:** `HEAD_SHA_PLACEHOLDER`  
-A commit cannot store its own id. `HEAD_SHA_PLACEHOLDER` is replaced with the handoff commit's id in the tip commit. Tester and Reviewer must use `git rev-parse HEAD` on `origin/build/orch-decisions-1009` after the push. That tip id is the value printed in the orchestrator final message. The placeholder line, once filled, is the parent of that tip. The product diff is the same at both.  
+**Head SHA:** tip of `origin/build/orch-decisions-1009` after this push. A commit cannot contain its own id, so the 40-hex value is the orchestrator final message (`Links: … head <sha>`). Tester and Reviewer PASS at that exact sha. `git rev-parse HEAD` on the branch matches it.  
 **Compare:** https://github.com/themark-net/pfy-mentat/compare/main...build/orch-decisions-1009  
 **PR:** `gh` is not logged in on this host. Body: [PR-BODY-orch-decisions-1009.md](PR-BODY-orch-decisions-1009.md) and `/tmp/pr-orch-decisions-1009.md`. Do not log in from this run. Do not merge.
 

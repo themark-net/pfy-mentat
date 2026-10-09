@@ -66,4 +66,4 @@ state: DONE | tests: final unittest Ran 190 tests in 3.882s OK (skipped=4); eval
 
 ## Push
 
-Recorded in the orchestrator final message after `git push -u origin build/orch-decisions-1009`. Not force. Not main.
+Not force. Not main. The push result and the tip SHA are in the orchestrator final message.
