@@ -141,10 +141,45 @@ class AtgCompileBenchTests(unittest.TestCase):
         self.assertEqual(rec["verdict"], "FAIL_CANNOT_RUN")
         self.assertFalse(rec["claims_pass"])
         self.assertEqual(rec["reason"], "ATG_REPO is unset")
+        self.assertEqual(rec["integration_stage"], "unscored")
         self.assertIn(PIN, rec["next_step"])
         self.assertIn("clean checkout", rec["next_step"])
         self.assertIn("main", rec["next_step"])
         self.assertNotIn("DEVELOP", rec["next_step"])
+        self.assertFalse(receipt.exists())
+
+    def test_unset_atg_repo_copies_integration_stage_flag(self):
+        import tempfile
+
+        env = os.environ.copy()
+        env.pop("ATG_REPO", None)
+        with tempfile.TemporaryDirectory() as tmp:
+            receipt = Path(tmp) / "receipt.json"
+            proc = subprocess.run(
+                [
+                    sys.executable,
+                    str(BENCH),
+                    "--base-url",
+                    "http://127.0.0.1:9",
+                    "--model",
+                    "fake-dag",
+                    "--receipt",
+                    str(receipt),
+                    "--integration-stage",
+                    "I2",
+                ],
+                cwd=str(ROOT),
+                capture_output=True,
+                text=True,
+                timeout=20,
+                env=env,
+            )
+        self.assertEqual(proc.returncode, 2, proc.stdout + "\n" + proc.stderr)
+        rec = _cannot_run(proc)
+        self.assertEqual(rec["verdict"], "FAIL_CANNOT_RUN")
+        self.assertEqual(rec["reason"], "ATG_REPO is unset")
+        self.assertEqual(rec["integration_stage"], "I2")
+        self.assertFalse(rec["claims_pass"])
         self.assertFalse(receipt.exists())
 
     def test_wrong_head_exits_2_without_receipt(self):
@@ -220,55 +255,61 @@ class AtgCompileBenchTests(unittest.TestCase):
         repo = _atg_repo()
         if not repo:
             self.skipTest(SKIP_NO_ATG)
-        server = _Server([MALFORMED, VALID])
-        try:
-            with tempfile.TemporaryDirectory() as tmp:
-                receipt = Path(tmp) / "receipt.json"
-                run_id = "atg-bench-%s" % uuid.uuid4().hex
-                proc = subprocess.run(
-                    [
-                        sys.executable,
-                        str(BENCH),
-                        "--base-url",
-                        server.base,
-                        "--model",
-                        "fake-dag",
-                        "--limit",
-                        "2",
-                        "--receipt",
-                        str(receipt),
-                        "--atg-repo",
-                        repo,
-                        "--health-timeout",
-                        "2",
-                        "--run-id",
-                        run_id,
-                    ],
-                    cwd=str(ROOT),
-                    capture_output=True,
-                    text=True,
-                    timeout=60,
-                )
-                self.assertEqual(proc.returncode, 0, proc.stdout + "\n" + proc.stderr)
-                self.assertTrue(receipt.is_file())
-                data = json.loads(receipt.read_text(encoding="utf-8"))
-                self.assertEqual(data["n_valid"], 1)
-                self.assertEqual(data["n_invalid"], 1)
-                self.assertEqual(data["n_sink_correct"], 1)
-                self.assertEqual(data["repairs"], 0)
-                self.assertFalse(data["claims_pass"])
-                self.assertEqual(data["integration_stage"], "I1")
-                self.assertEqual(data["atg_sha"], PIN)
-                by = {row["id"]: row for row in data["cases"]}
-                self.assertFalse(by["ac-01-mul-six-seven"]["valid_dag"])
-                self.assertTrue(by["ac-02-add-ten-fifteen"]["valid_dag"])
-                self.assertTrue(by["ac-02-add-ten-fifteen"]["sink_correct"])
-                self.assertEqual(by["ac-01-mul-six-seven"]["llm_calls"], 1)
-                self.assertEqual(by["ac-02-add-ten-fifteen"]["llm_calls"], 1)
-                self.assertEqual(server.replies, [])
-                self.assertNotIn(run_id, _marked_pids(run_id))
-        finally:
-            server.stop()
+
+        def score(extra: list[str], expect_stage: str) -> None:
+            server = _Server([MALFORMED, VALID])
+            try:
+                with tempfile.TemporaryDirectory() as tmp:
+                    receipt = Path(tmp) / "receipt.json"
+                    run_id = "atg-bench-%s" % uuid.uuid4().hex
+                    proc = subprocess.run(
+                        [
+                            sys.executable,
+                            str(BENCH),
+                            "--base-url",
+                            server.base,
+                            "--model",
+                            "fake-dag",
+                            "--limit",
+                            "2",
+                            "--receipt",
+                            str(receipt),
+                            "--atg-repo",
+                            repo,
+                            "--health-timeout",
+                            "2",
+                            "--run-id",
+                            run_id,
+                        ]
+                        + extra,
+                        cwd=str(ROOT),
+                        capture_output=True,
+                        text=True,
+                        timeout=60,
+                    )
+                    self.assertEqual(proc.returncode, 0, proc.stdout + "\n" + proc.stderr)
+                    self.assertTrue(receipt.is_file())
+                    data = json.loads(receipt.read_text(encoding="utf-8"))
+                    self.assertEqual(data["n_valid"], 1)
+                    self.assertEqual(data["n_invalid"], 1)
+                    self.assertEqual(data["n_sink_correct"], 1)
+                    self.assertEqual(data["repairs"], 0)
+                    self.assertFalse(data["claims_pass"])
+                    self.assertEqual(data["integration_stage"], expect_stage)
+                    self.assertEqual(data["atg_sha"], PIN)
+                    by = {row["id"]: row for row in data["cases"]}
+                    self.assertFalse(by["ac-01-mul-six-seven"]["valid_dag"])
+                    self.assertTrue(by["ac-02-add-ten-fifteen"]["valid_dag"])
+                    self.assertTrue(by["ac-02-add-ten-fifteen"]["sink_correct"])
+                    self.assertEqual(by["ac-01-mul-six-seven"]["llm_calls"], 1)
+                    self.assertEqual(by["ac-02-add-ten-fifteen"]["llm_calls"], 1)
+                    self.assertEqual(server.replies, [])
+                    self.assertNotIn(run_id, _marked_pids(run_id))
+            finally:
+                server.stop()
+
+        score([], "unscored")
+        score(["--integration-stage", "I1"], "I1")
 
     def test_endpoint_down_exits_2_without_pass_receipt_or_orphan(self):
         import tempfile
