@@ -8,7 +8,7 @@ Routine: daily X intake for pfy-mentat (Grok Bot). Sources this run: Mark's new 
 |------|------|-----|---------------|
 | 098 | [Sponsio](https://github.com/SponsioLabs/Sponsio) | Deterministic tool-call contracts (LTL monitors), block/escalate/redirect, no LLM at runtime; shell, filesystem, destructive bundles | Yes, pure Python in a venv under `tmp/`. Smoke PASSed on the Grok Bot box |
 | 099 | [Open Steps](https://github.com/kharmanskyi/open-steps) | Done-or-not / check-work skills plus a stop hook that refuses to end a session until it writes a report | Yes, bash + git. Smoke PASSed on the Grok Bot box |
-| 100 | [repository-harness](https://github.com/hoangnb24/repository-harness) | AGENTS.md + docs map protocol with a checksum-verified three-way-merge updater | Yes, single binary under `tmp/`. Smoke PASSed on the Grok Bot box |
+| 100 | [repository-harness](https://github.com/hoangnb24/repository-harness) | AGENTS.md + docs map protocol with a checksum-verified three-way-merge updater | Yes, single binary under `tmp/` (`harness-v0.1.10` harness-linux-x64 sha256 `68b6a51e40cd8e229f1f056c2aa5ea93de7934f746dcf8dd38e3b7d9dd4ee397`). Smoke PASSed on the Grok Bot box |
 
 Files: `sources/entries/098-sponsio.md`, `099-open-steps.md`, `100-repository-harness.md`, `examples/x-intake-local/smoke_098_100.py` (three new checks that reuse the helpers in `smoke.py`, which is unchanged), the folder README, and this handoff. No TOOLS.md rows, no `data/tools.json` rows, no stage cards, no Make target. Box receipts are not committed; commit receipts only from a real nimo run.
 
