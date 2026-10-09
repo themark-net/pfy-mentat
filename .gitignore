@@ -73,3 +73,8 @@ pipelines/dogfood/local-bench-5/*-cases.jsonl
 pipelines/dogfood/local-bench-5/edge-events.jsonl
 pipelines/dogfood/local-bench-5/*-load-excerpt.txt
 pipelines/dogfood/local-bench-5/tmp/
+
+# X intake 098-100 local receipts. Do not ignore pipelines/smoke/ broadly (kolibri1/latest.json stays tracked).
+pipelines/smoke/sponsio/
+pipelines/smoke/opensteps/
+pipelines/smoke/repoharness/

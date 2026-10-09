@@ -7,19 +7,28 @@ Same contract and receipts as smoke.py next to it (whose helpers it reuses): exi
 the check failed, 2 = can't run here (prereq missing; reason recorded). Writes pipelines/smoke/<entry>/latest.json.
 Never installs or downloads anything; every scratch file goes to a fresh tempfile directory that is removed.
 
+PFY_XINTAKE_TIMEOUT (float seconds, must be > 0) overrides the sponsio, opensteps, and repoharness tool
+timeouts. Empty or invalid keeps the defaults: 120s sponsio and repoharness, 60s opensteps hooks. Git keeps the
+parent env. Sponsio and repoharness tool subprocesses get a fresh temp HOME, as opensteps hooks already do.
+
   sponsio      $SPONSIO_PY or ~/DEVELOP/pfy-mentat/tmp/sponsio/.venv/bin/python with `sponsio` importable.
                Arms the bundled sponsio:capability/shell pack in enforce mode and expects `ls -la` allowed while
                `rm -rf ~/` and curl-to-bash are blocked before execution. No LLM, no network, no account.
+               The probe runs with HOME pointed at a temp dir.
   opensteps    $OPEN_STEPS_DIR or ~/DEVELOP/pfy-mentat/tmp/open-steps (a clone). With HOME pointed at a temp dir:
                session-start records a baseline, a clean stop exits 0, a stop after a file change exits 2 and
                asks for the os-done-or-not report, and a repeat stop with no new change exits 0 (no loop).
+               A hook timeout is a recorded check failure (exit 1), not a traceback.
   repoharness  $HARNESS_BIN or ~/DEVELOP/pfy-mentat/tmp/repository-harness/harness (release binary), then PATH.
-               In a throwaway git repo with our own AGENTS.md: install must apply, leave AGENTS.md byte-identical,
-               pass `doctor`, and `status` must flag a local edit to an installed file.
+               harness-linux-x64 for harness-v0.1.10 is pinned; $HARNESS_SHA256 overrides that pin. A mismatch
+               exits 2 without exec. In a throwaway git repo with our own AGENTS.md: install must apply, leave
+               AGENTS.md byte-identical, pass `doctor`, and `status` must flag a local edit to an installed file.
+               The harness subprocess gets a fresh temp HOME. A timeout is a recorded check failure (exit 1).
 """
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import shutil
@@ -30,6 +39,39 @@ import time
 from pathlib import Path
 
 from smoke import TMP, find_bin, run, write
+
+# harness-linux-x64 published checksum for release harness-v0.1.10
+HARNESS_V010_SHA256 = "68b6a51e40cd8e229f1f056c2aa5ea93de7934f746dcf8dd38e3b7d9dd4ee397"
+
+
+def xintake_timeout(default: float) -> float:
+    """Seconds from PFY_XINTAKE_TIMEOUT when that value is a float > 0; otherwise default."""
+    raw = os.environ.get("PFY_XINTAKE_TIMEOUT")
+    if raw is None:
+        return default
+    raw = raw.strip()
+    if not raw:
+        return default
+    try:
+        value = float(raw)
+    except ValueError:
+        return default
+    if not value > 0:
+        return default
+    return value
+
+
+def sha256_file(path: str) -> str:
+    digest = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(65536), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def harness_sha256_expected() -> str:
+    raw = (os.environ.get("HARNESS_SHA256") or "").strip().lower()
+    return raw or HARNESS_V010_SHA256
 
 
 SPONSIO_PROBE = r"""
@@ -56,11 +98,13 @@ def smoke_sponsio(r: dict) -> int:
                        "~/DEVELOP/pfy-mentat/tmp/sponsio/.venv/bin/pip install --pre sponsio (Apache-2.0, alpha). "
                        "No `sponsio init` in a real repo, no `sponsio push` (hosted console)")
         return 2
-    with tempfile.TemporaryDirectory(prefix="pfy-sponsio-") as d:
+    with tempfile.TemporaryDirectory(prefix="pfy-sponsio-") as d, tempfile.TemporaryDirectory(prefix="pfy-sponsio-home-") as home:
         Path(d, "sponsio.yaml").write_text(
             f'agents:\n  smoke:\n    workspace: "{d}"\n    include:\n      - sponsio:capability/shell\n')
+        env = dict(os.environ, HOME=home)
         try:
-            p = run([py, "-c", SPONSIO_PROBE], cwd=d, timeout=120)
+            p = subprocess.run([py, "-c", SPONSIO_PROBE], cwd=d, capture_output=True, text=True,
+                               timeout=xintake_timeout(120), env=env)
         except subprocess.TimeoutExpired:
             r["reason"] = "sponsio probe timed out"
             return 1
@@ -113,16 +157,31 @@ def smoke_opensteps(r: dict) -> int:
         run(g + ["commit", "-q", "-m", "init"], cwd=w)
         payload = json.dumps({"session_id": "pfy-smoke-1", "cwd": w})
 
-        def hook(path: str) -> subprocess.CompletedProcess:
-            return subprocess.run(["bash", path], cwd=w, input=payload, capture_output=True, text=True,
-                                  timeout=60, env=env)
+        def hook(path: str) -> subprocess.CompletedProcess | None:
+            try:
+                return subprocess.run(["bash", path], cwd=w, input=payload, capture_output=True, text=True,
+                                      timeout=xintake_timeout(60), env=env)
+            except subprocess.TimeoutExpired:
+                r["reason"] = "opensteps hook timeout"
+                return None
 
-        codes = {"session_start": hook(start).returncode, "clean_stop": hook(stop).returncode}
+        started = hook(start)
+        if started is None:
+            return 1
+        clean = hook(stop)
+        if clean is None:
+            return 1
+        codes = {"session_start": started.returncode, "clean_stop": clean.returncode}
         with open(os.path.join(w, "a.txt"), "a") as f:
             f.write("b\n")
         dirty = hook(stop)
+        if dirty is None:
+            return 1
         codes["dirty_stop"] = dirty.returncode
-        codes["repeat_stop"] = hook(stop).returncode
+        repeat = hook(stop)
+        if repeat is None:
+            return 1
+        codes["repeat_stop"] = repeat.returncode
     r["exit_codes"] = codes
     r["dirty_stop_stderr"] = dirty.stderr[-300:]
     if codes["session_start"] != 0 or codes["clean_stop"] != 0:
@@ -142,29 +201,44 @@ def smoke_repoharness(r: dict) -> int:
     r["bin"] = b
     if not b:
         r["reason"] = ("no harness binary. Operator: download harness-linux-x64 and its .sha256 from "
-                       "https://github.com/hoangnb24/repository-harness/releases (harness-v0.1.10 checked), verify, "
+                       "https://github.com/hoangnb24/repository-harness/releases (harness-v0.1.10, "
+                       f"sha256 {HARNESS_V010_SHA256}), verify, "
                        "save as ~/DEVELOP/pfy-mentat/tmp/repository-harness/harness. Not the curl|bash installer, and "
                        "never run it against a real product repo in this smoke")
+        return 2
+    expect = harness_sha256_expected()
+    digest = sha256_file(b)
+    if digest != expect:
+        r["reason"] = f"sha256 mismatch: harness binary is {digest}, expected {expect}"
         return 2
     if not shutil.which("git"):
         r["reason"] = "git not on PATH"
         return 2
 
-    def hj(args: list[str], cwd: str) -> dict:
-        p = run([b] + args + ["--json"], cwd=cwd, timeout=120)
-        try:
-            return json.loads(p.stdout)
-        except ValueError:
-            return {"raw": (p.stdout + p.stderr)[-400:], "rc": p.returncode}
-
     ours = "# pfy-owned AGENTS.md router (smoke)\n"
-    with tempfile.TemporaryDirectory(prefix="pfy-harness-") as d:
+    with tempfile.TemporaryDirectory(prefix="pfy-harness-") as d, tempfile.TemporaryDirectory(prefix="pfy-harness-home-") as home:
+        env = dict(os.environ, HOME=home)
+
+        def hj(args: list[str], cwd: str) -> dict | None:
+            try:
+                p = subprocess.run([b] + args + ["--json"], cwd=cwd, capture_output=True, text=True,
+                                   timeout=xintake_timeout(120), env=env)
+            except subprocess.TimeoutExpired:
+                r["reason"] = "repoharness timeout"
+                return None
+            try:
+                return json.loads(p.stdout)
+            except ValueError:
+                return {"raw": (p.stdout + p.stderr)[-400:], "rc": p.returncode}
+
         g = ["git", "-c", "user.email=smoke@localhost", "-c", "user.name=smoke"]
         run(["git", "init", "-q"], cwd=d)
         Path(d, "AGENTS.md").write_text(ours)
         run(["git", "add", "."], cwd=d)
         run(g + ["commit", "-q", "-m", "init"], cwd=d)
         inst = hj(["install"], d)
+        if inst is None:
+            return 1
         r["installed_version"] = inst.get("version")
         r["changes"] = len(inst.get("changes") or [])
         if not inst.get("applied"):
@@ -174,6 +248,8 @@ def smoke_repoharness(r: dict) -> int:
             r["reason"] = "install rewrote our existing AGENTS.md"
             return 1
         doc = hj(["doctor"], d)
+        if doc is None:
+            return 1
         if not doc.get("healthy"):
             r["reason"] = f"doctor not healthy: {str(doc)[:400]}"
             return 1
@@ -184,6 +260,8 @@ def smoke_repoharness(r: dict) -> int:
         with open(target, "a") as f:
             f.write("\nlocal edit\n")
         st = hj(["status"], d)
+        if st is None:
+            return 1
         flagged = [x for x in (st.get("files") or []) if x.get("path") == "docs/README.md"]
         r["status_docs_readme"] = flagged
         if not flagged or not flagged[0].get("modified"):
