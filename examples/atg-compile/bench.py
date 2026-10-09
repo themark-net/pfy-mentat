@@ -42,7 +42,7 @@ def now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def cannot_run(reason: str, next_step: str) -> int:
+def cannot_run(reason: str, next_step: str, integration_stage: str) -> int:
     rec = {
         "verdict": "FAIL_CANNOT_RUN",
         "exit_code": EXIT_CANNOT_RUN,
@@ -51,7 +51,7 @@ def cannot_run(reason: str, next_step: str) -> int:
         "claims_pass": False,
         "feature_go": False,
         "catalog_hold": "70-75",
-        "integration_stage": "I1",
+        "integration_stage": integration_stage,
     }
     print(json.dumps(rec))
     print("next step: %s" % next_step)
@@ -167,7 +167,9 @@ def run(argv: list[str] | None = None) -> int:
     ap.add_argument("--health-timeout", type=float, default=2.0)
     ap.add_argument("--case-timeout", type=float, default=60.0)
     ap.add_argument("--run-id", default="", help="marker forwarded to the atg driver argv")
+    ap.add_argument("--integration-stage", help="copied into integration_stage; absent writes unscored")
     args = ap.parse_args(argv)
+    integration_stage = "unscored" if args.integration_stage is None else args.integration_stage
 
     models = [part.strip() for part in str(args.model).split(",") if part.strip()]
     if len(models) != 1:
@@ -175,6 +177,7 @@ def run(argv: list[str] | None = None) -> int:
             "atg-compile runs one model at a time (got %d)" % len(models),
             "pass a single --model. Default is %s on Ollama. qwen3-coder-next is a separate llamacpp-nommap run."
             % DEFAULT_MODEL,
+            integration_stage,
         )
     model = models[0]
     atg_next = (
@@ -183,46 +186,50 @@ def run(argv: list[str] | None = None) -> int:
     )
     raw_repo = str(args.atg_repo or "").strip()
     if not raw_repo:
-        return cannot_run("ATG_REPO is unset", atg_next)
+        return cannot_run("ATG_REPO is unset", atg_next, integration_stage)
     repo = Path(raw_repo).expanduser()
     if not repo.is_dir():
-        return cannot_run("atg checkout missing: %s" % repo, atg_next)
+        return cannot_run("atg checkout missing: %s" % repo, atg_next, integration_stage)
     head = atg_head(repo)
     if head != PINNED_SHA:
         return cannot_run(
             "atg HEAD %s != pinned %s" % (head or "(unreadable)", PINNED_SHA),
             atg_next,
+            integration_stage,
         )
     py = atg_python(repo)
     if py is None:
         return cannot_run(
             "atg interpreter missing under %s" % (repo / ".venv"),
             "in that checkout run uv sync --extra dev, then rerun this bench. Do not start a model to do it.",
+            integration_stage,
         )
     driver = ROOT / DRIVER_REL
     if not driver.is_file():
-        return cannot_run("atg case driver missing: %s" % driver, "restore %s" % DRIVER_REL)
+        return cannot_run("atg case driver missing: %s" % driver, "restore %s" % DRIVER_REL, integration_stage)
     cases_path = Path(args.cases)
     if not cases_path.is_file():
-        return cannot_run("case set missing: %s" % cases_path, "restore %s" % CASES_REL)
+        return cannot_run("case set missing: %s" % cases_path, "restore %s" % CASES_REL, integration_stage)
     base = str(args.base_url or "").strip().rstrip("/")
     if not base:
         return cannot_run(
             "no OpenAI-compatible endpoint",
             "pass --base-url (Ollama http://127.0.0.1:11434, or the llamacpp-nommap port). Do not start a second model while one is loaded.",
+            integration_stage,
         )
     health = health_llamacpp_nommap(base, timeout=args.health_timeout)
     if not health.get("ok"):
         return cannot_run(
             health.get("reason") or "endpoint down",
             health.get("next_step") or "start the endpoint and retry. /v1/models must answer.",
+            integration_stage,
         )
     try:
         cases = load_cases(cases_path, args.limit)
     except (OSError, json.JSONDecodeError) as exc:
-        return cannot_run("case set unreadable: %s" % exc, "fix %s" % cases_path)
+        return cannot_run("case set unreadable: %s" % exc, "fix %s" % cases_path, integration_stage)
     if not cases:
-        return cannot_run("case set is empty", "restore cases in %s" % cases_path)
+        return cannot_run("case set is empty", "restore cases in %s" % cases_path, integration_stage)
 
     sampler = peak_sampler_cls()(interval=0.25).start()
     started = time.perf_counter()
@@ -243,7 +250,7 @@ def run(argv: list[str] | None = None) -> int:
         "claims_pass": False,
         "feature_go": False,
         "catalog_hold": "70-75",
-        "integration_stage": "I1",
+        "integration_stage": integration_stage,
         "when": now(),
         "model": model,
         "one_model_at_a_time": True,

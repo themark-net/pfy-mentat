@@ -1,3 +1,11 @@
+## 2026-10-09 — orch-decisions-1009 decide-and-ship
+
+- **Branch:** `build/orch-decisions-1009` (worktree `/home/mark/DEVELOP/pfy-mentat/tmp/orch-decisions-1009`). Not merged. Not a Feature GO. Catalog HOLD 70–75. eval-harness untouched. #76 stays closed.
+- **Landed:** x-intake HOME isolation, timeout receipts (exit 1), full harness sha256 `68b6a51e40cd8e229f1f056c2aa5ea93de7934f746dcf8dd38e3b7d9dd4ee397`, three smoke receipt dirs gitignored; agent-substrate bundle setup line; atg bench `integration_stage` defaults to `unscored`; TODO dedupe; T-0076 skill cross-links (Refs #6, not closed); T-0040 Claude Code notes (Refs #8, not closed).
+- **Decisions:** 11 lines in [ops/AUTONOMOUS-DECISIONS-2026-10-09.md](ops/AUTONOMOUS-DECISIONS-2026-10-09.md).
+- **Verify:** unittest 184 OK skipped=4 → 190 OK skipped=4. `make eval-structural` PASS. `catalog_check` PASS n_json=7. `make smoke-grok-skills` PASS.
+- **PR:** `gh` is not logged in. Body [ops/PR-BODY-orch-decisions-1009.md](ops/PR-BODY-orch-decisions-1009.md). Compare https://github.com/themark-net/pfy-mentat/compare/main...build/orch-decisions-1009 . Handoff [ops/HANDOFF-orch-decisions-1009-2026-10-09.md](ops/HANDOFF-orch-decisions-1009-2026-10-09.md). Do not merge until Tester and Reviewer PASS at the head SHA in that handoff.
+
 ## 2026-10-08 — atg-compile entry 101, atg `main` pin
 
 - **Entry:** 101, [sources/entries/101-atg-compile.md](../sources/entries/101-atg-compile.md). Qwen3.8-Flash-Next stays Entry 095. Not a Feature GO. Catalog HOLD 70–75. Stage stays **I2** (not I3). eval-harness untouched.

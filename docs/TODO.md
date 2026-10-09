@@ -1,8 +1,3 @@
-## Done / shipping
-
-- #230 Jev-style decision layer (CUA-S1-FORMS primary local; TypeSafe optional)
-- #228 Gab cloud lane + local recommend sync
-
 # TODO — next steps
 
 **Purpose:** Single ordered work queue for humans and agents.  
@@ -38,17 +33,15 @@ Active work is also tracked as issues: https://github.com/themark-net/pfy-mentat
 | T-0091 | [#2](https://github.com/themark-net/pfy-mentat/issues/2) | P1 doing |
 | T-0070 | [#3](https://github.com/themark-net/pfy-mentat/issues/3) | P1 doing |
 | T-0074 | [#4](https://github.com/themark-net/pfy-mentat/issues/4) | P1 doing |
-| T-0075 | [#5](https://github.com/themark-net/pfy-mentat/issues/5) | P2 |
-| T-0076 | [#6](https://github.com/themark-net/pfy-mentat/issues/6) | P2 |
+| T-0076 | [#6](https://github.com/themark-net/pfy-mentat/issues/6) | P2 **done** |
 | T-0081 | [#7](https://github.com/themark-net/pfy-mentat/issues/7) | P2 |
-| T-0040 | [#8](https://github.com/themark-net/pfy-mentat/issues/8) | P2 |
+| T-0040 | [#8](https://github.com/themark-net/pfy-mentat/issues/8) | P2 **done** |
 | T-0094 | [#9](https://github.com/themark-net/pfy-mentat/issues/9) | P3 |
 | T-0095 | [#10](https://github.com/themark-net/pfy-mentat/issues/10) | P3 |
 | T-0064 | [#11](https://github.com/themark-net/pfy-mentat/issues/11) | P3 parked |
 | T-0043 | [#12](https://github.com/themark-net/pfy-mentat/issues/12) | P3 parked |
 | T-0062 | [#13](https://github.com/themark-net/pfy-mentat/issues/13) | P3 |
 | T-0046 | [#14](https://github.com/themark-net/pfy-mentat/issues/14) | P3 |
-| T-0007 | [#15](https://github.com/themark-net/pfy-mentat/issues/15) | P3 |
 | T-0002 | [#16](https://github.com/themark-net/pfy-mentat/issues/16) | P3 |
 | T-0005 | [#21](https://github.com/themark-net/pfy-mentat/issues/21) | P2 todo |
 | T-0004 | [#22](https://github.com/themark-net/pfy-mentat/issues/22) | P2 **done** |
@@ -98,9 +91,9 @@ Active work is also tracked as issues: https://github.com/themark-net/pfy-mentat
 | T-0070 | P1 | doing | Grow design/coding **skills + structural eval** (more text scorers) | — | T-0065 | [#3](https://github.com/themark-net/pfy-mentat/issues/3) · `013-stage-card` scorer. Keep `eval-structural` green |
 | T-0074 | P1 | doing | Implement-lane via `make eval-auto` (fit-select + candidates) | — | — | [#4](https://github.com/themark-net/pfy-mentat/issues/4) · empty fit-select falls back to `deepseek-coder:6.7b-instruct`, then `deepseek-coder:6.7b` |
 | T-0075 | P2 | done | More structural scorers: ADR shape, open-question row shape | — | T-0070 | [#5](https://github.com/themark-net/pfy-mentat/issues/5) **done** |
-| T-0076 | P2 | todo | Wire mattpocock to-spec/tdd checklist into structural or skill cross-links | — | — | [#6](https://github.com/themark-net/pfy-mentat/issues/6) · paths pack already installed |
+| T-0076 | P2 | done | Wire mattpocock to-spec/tdd checklist into structural or skill cross-links | — | — | [#6](https://github.com/themark-net/pfy-mentat/issues/6) · paths pack already installed |
 | T-0081 | P2 | todo | Optional OpenCode-in-cage smoke | — | T-0080 | [#7](https://github.com/themark-net/pfy-mentat/issues/7) · After host smoke green |
-| T-0040 | P2 | todo | Broader multi-CLI parity notes (Claude Code) | — | T-0080 | [#8](https://github.com/themark-net/pfy-mentat/issues/8) · OpenCode first |
+| T-0040 | P2 | done | Broader multi-CLI parity notes (Claude Code) | — | T-0080 | [#8](https://github.com/themark-net/pfy-mentat/issues/8) · OpenCode first |
 
 ### Active — parked (env / not this track)
 
@@ -110,7 +103,6 @@ Active work is also tracked as issues: https://github.com/themark-net/pfy-mentat
 | T-0043 | P3 | todo | Write-guard mcp-host wiring | — | T-0031 | [#12](https://github.com/themark-net/pfy-mentat/issues/12) · Parked |
 | T-0062 | P3 | todo | Laguna local model DoD | — | — | [#13](https://github.com/themark-net/pfy-mentat/issues/13) · Hardware-gated |
 | T-0046 | P3 | todo | Re-evaluate AgenC | [ADR-0010](adr/0010-reject-agenc-as-primary-runtime.md) | T-0044 | [#14](https://github.com/themark-net/pfy-mentat/issues/14) |
-| T-0007 | P3 | todo | adr-tools companion docs | — | — | [#15](https://github.com/themark-net/pfy-mentat/issues/15) |
 | T-0002 | P3 | todo | Aggregate synthesis | — | — | [#16](https://github.com/themark-net/pfy-mentat/issues/16) |
 
 ### Active — follow-ups (OQs answered; not blocked)
@@ -128,12 +120,16 @@ Active work is also tracked as issues: https://github.com/themark-net/pfy-mentat
 
 | ID | Priority | Status | Item | Notes |
 |----|----------|--------|------|-------|
+| — | — | done | #230 Jev-style decision layer (CUA-S1-FORMS primary local; TypeSafe optional) | — |
+| — | — | done | #228 Gab cloud lane + local recommend sync | — |
 | T-0110 | P1 | done | Pluggable local runtime (FreeToken, llama-swap, llama-server, Ollama, Shimmy last) | ADR-0014 · [#76](https://github.com/themark-net/pfy-mentat/issues/76) stays closed — do not reopen |
 | T-0090 | P0 | done | Minimal product levers: default `make help` is onboard / stage / ship | `make help-platform` holds cage, smoke, eval · [#1](https://github.com/themark-net/pfy-mentat/issues/1) · [product-operator-surface.md](ops/product-operator-surface.md) |
 | T-0121 | P1 | done | Attach clones → `pfylib/attach.py` + remaining `plan()` bodies wrap legacy scripts (no rewrite) | `data/harnesses.json[].attach`; shims `pfy_attach_usable_{196,202,220,221}`; planners in `pfylib/toolsets.py`; leftover OpenCode 162 = T-0124 |
 | T-0125 | P1 | done | Loop UI: catalog modules + live local/cloud hedge | `pfylib/loop_paint.py`; HTML+tk LOCAL COMPUTE \| CLOUD ORCHESTRATION + MODULES; Launch session applies enabled modules |
 | T-0120 | P1 | done | Toolset × harness matrix + jev reference `plan()`/`apply()` | `data/toolsets.json` · `pfylib/`; stacked PRs on this branch |
 | T-0075 | P2 | done | ADR + OQ structural scorers | #5; tasks 006/007 |
+| T-0076 | P2 | done | Wire mattpocock to-spec/tdd checklist into structural or skill cross-links | #6; skill cross-links only; issue not closed |
+| T-0040 | P2 | done | Broader multi-CLI parity notes (Claude Code) | #8; docs/ops/multi-cli-parity.md; issue not closed |
 | T-0007 | P3 | done | adr-tools companion docs | #15; docs/ops/adr-tools-companion.md |
 | T-0004 | P2 | done | ATG coupling I1 submodule-later | #22; docs/ops/atg-coupling.md. 2026-10-06 I2 probe at SHA 86d1b890 after a live pass. Not I3. |
 | T-0015 | P3 | done | Antigravity catalog-only skip install | #23; antigravity-catalog-posture.md |
