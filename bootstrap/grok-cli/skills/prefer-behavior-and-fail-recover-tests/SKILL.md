@@ -72,6 +72,13 @@ One solid sociable/integration (or E2E) that goes red if the bug shipped beats t
 Tests: prefer E2E/integration/operate-or-FAIL (Trophy). No tautological or implementation-detail unit sprawl. Unit tests only for shaky behavior; must be able to fail with the bug present (sociable where possible). For each risk: how could this fail + how do we recover.
 ```
 
+## Related checklists
+
+Paths pack (installed via `skills.paths`; do not copy the skill bodies). Use when planning the change or writing the tests:
+
+- Spec-before-code: `bootstrap/grok-cli/skills-external/mattpocock/to-spec/SKILL.md`
+- TDD: `bootstrap/grok-cli/skills-external/mattpocock/tdd/SKILL.md`
+
 ## Sources
 
 - Kent C. Dodds — Write tests. Not too many. Mostly integration. / Testing Implementation Details
