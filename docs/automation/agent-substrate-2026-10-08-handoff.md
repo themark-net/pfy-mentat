@@ -32,6 +32,8 @@ Bundle: `runsc spec -- <cmd>`, then `root.path=/` read-only and `terminal=false`
 Commands, for repeating it in Stage A:
 
 ```bash
+mkdir b && ./runsc spec -bundle b -- <cmd>
+# root.path=/ read-only and terminal=false
 R="./runsc --network=none --ignore-cgroups --root=$PWD/state"
 unshare -Urm --propagation private bash -c "
   $R run -detach -bundle b c1 > out1.log 2>&1
