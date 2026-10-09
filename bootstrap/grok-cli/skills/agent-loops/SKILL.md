@@ -111,6 +111,13 @@ Do **not** force-push main or skip gates “because the loop is autonomous.”
 Multi-session OK: separate sessions for spec / build / review as long as the
 **exit card** and DoD live in-repo (TODO, PR body, or short worksheet).
 
+## Related checklists
+
+Paths pack (installed via `skills.paths`; do not copy the skill bodies):
+
+- Spec: `bootstrap/grok-cli/skills-external/mattpocock/to-spec/SKILL.md`
+- TDD: `bootstrap/grok-cli/skills-external/mattpocock/tdd/SKILL.md`
+
 ---
 
 ## Step 3 — Eval layer (Entry 032 + 031)

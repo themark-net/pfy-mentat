@@ -70,8 +70,8 @@ Host-only `selftest` is tier 0; integration DoD still needs the cage Make target
 
 ## Related checklists
 
-- Spec-before-code: paths pack **to-spec** (`skills-external/mattpocock/to-spec`) — see [docs/ops/mattpocock-checklist-wiring.md](../../../../docs/ops/mattpocock-checklist-wiring.md)
-- TDD: **tdd** skill in same pack
+- Spec-before-code: paths pack **to-spec** (`skills-external/mattpocock/to-spec`) — `bootstrap/grok-cli/skills-external/mattpocock/to-spec/SKILL.md` — see [docs/ops/mattpocock-checklist-wiring.md](../../../../docs/ops/mattpocock-checklist-wiring.md)
+- TDD: **tdd** skill in same pack — `bootstrap/grok-cli/skills-external/mattpocock/tdd/SKILL.md`
 
 ## DoD vs human UAT (HD #33)
 

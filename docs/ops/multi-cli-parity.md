@@ -34,3 +34,18 @@
 | Cheap local bulk | OpenCode → Ollama |
 | Cross-agent skill distribute | evaluate **asm** (Entry 075, #26) |
 | Quality hooks | claude-codex-settings extract (#27) |
+
+## Claude Code (adapter T-0104, attach #221)
+
+Notes only. Primary harness stays Grok (ADR-0002). This section is not a claim that Claude Code is feature-equal, and it is not an install guide.
+
+T-0104 (Claude Code adapter) is **done** in `docs/TODO.md` (issue #57). `data/harnesses.json` id `claude-code`, status `partial`, detect `claude`, `github_issue` 57. Attach: `issue` 221, `script` `pfy_attach_usable_221`, `session_id` `claude`.
+
+- `docs/modules/claude-code-adapter.md` — adapter module: exec `claude` from `./pfy start`; attach usable is issue #221.
+- `data/harnesses.json` — registry row above (`status` partial; detect `claude`).
+- `scripts/pfy_attach_usable_221.py` — attach usable shim (`--prove` / `--selftest`). Body is `pfylib/attach.py` parameterised by `claude-code.attach`.
+- `tests/test_attach.py` — maps `claude-code` to script `pfy_attach_usable_221` and checks `attach.profile("claude")` resolves to id `claude-code`.
+- `pfylib/attach.py` — `profile()` accepts the session id `claude` for harness id `claude-code`.
+- `pfylib/toolsets.py` — appends the session brief to `CLAUDE.md` under `CLAUDE_CONFIG_DIR`.
+
+Do not read this as feature parity, and do not treat it as steps to install or sign in.
