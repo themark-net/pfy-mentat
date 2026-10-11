@@ -1,4 +1,4 @@
-# X intake local smokes (Entries 095-100, 103-105)
+# X intake local smokes (Entries 095-100, 103-108)
 
 Stdlib-only operate-or-FAIL checks for the X intake entries. Exit 0 PASS, 1 FAIL, 2 can't run here.
 Each run writes `pipelines/smoke/<entry>/latest.json`. Nothing is installed or downloaded; scratch files go to a
@@ -14,6 +14,9 @@ python3 examples/x-intake-local/smoke_098_100.py --entry repoharness  # reposito
 python3 examples/x-intake-local/smoke_103_105.py --entry bugpatrol    # npm --prefix bugpatrol@0.3.0, Node 22+, git; fake local OpenAI-compatible endpoint, no model or key
 python3 examples/x-intake-local/smoke_103_105.py --entry graphjin     # graphjin v3.21.6 linux_amd64 binary sha256 e6f0fd88f99b07e8036ba7db76f24f0fceab697935559d154e823b5951f46805; throwaway SQLite
 python3 examples/x-intake-local/smoke_103_105.py --entry antislop     # a clone of miqdadbadjuber/anti-slop; SKILL.md frontmatter check
+python3 examples/x-intake-local/smoke_106_108.py --entry rulora       # npm --prefix @rulora/core@0.1.0-alpha.4, Node 20+; Core controls offline, no model
+python3 examples/x-intake-local/smoke_106_108.py --entry har          # npm --prefix @osfactory/har@1.16.0, Node 20+, git; telemetry off, temp HOME, throwaway repo
+python3 examples/x-intake-local/smoke_106_108.py --entry cassmemory   # cass-memory v0.5.0 linux-x64 binary sha256 06e1563881f8bb1225cf7036068252ef210f242704a27f8ce32518b822181bd7; no keys
 ```
 
 Prereqs are looked up via `$SANDLOCK_BIN` / `$FOREMERGE_BIN` / `$SPONSIO_PY` / `$OPEN_STEPS_DIR` / `$HARNESS_BIN`,
@@ -28,4 +31,12 @@ bugpatrol/node/bin/node,graphjin/graphjin,anti-slop}`, then PATH where it applie
 HOME. The bugpatrol smoke strips paid provider keys from the env and serves its own stdlib fake model on 127.0.0.1,
 so it never calls a real model; the graphjin smoke only binds 127.0.0.1 on a free port. `PFY_XINTAKE_TIMEOUT`
 overrides 120s for bugpatrol explore and 60s for graphjin startup.
+
+Entries 106-108 (`smoke_106_108.py`) look up `$RULORA_DIR` + `$RULORA_NODE` / `$HAR_BIN` + `$HAR_NODE` / `$CM_BIN`
+(pin override `$CM_SHA256`), then `~/DEVELOP/pfy-mentat/tmp/{rulora,rulora/node/bin/node,har/node_modules/.bin/har,
+har/node/bin/node,cass-memory/cm}`, then PATH where it applies. Tool subprocesses get a fresh temp HOME and an env
+with paid provider keys (plus AWS credentials, `OLLAMA_BASE_URL`, `HAR_PORTAL_TOKEN`, `CASS_PATH`) stripped; none of
+the three calls a model. The har smoke runs `har telemetry off` before anything else and FAILs if agent hook files
+(`~/.cursor/hooks.json`, `~/.claude/settings.json`, `~/.codex/hooks.json`) appear in its temp HOME; its session
+worktree lives under that temp HOME too. `PFY_XINTAKE_TIMEOUT` overrides the 120s per-command timeout.
 Not wired into CI or Make.
