@@ -73,6 +73,21 @@ def kernel_at_least(major: int, minor: int) -> bool:
         return False
 
 
+def timeout_reason(tag: str) -> str:
+    """The only timeout reason text an x-intake smoke records."""
+    return f"{tag} timeout"
+
+
+def pinned(r: dict, var: str, pin: str, lower: bool = False) -> str:
+    """$var when set (recorded as source env, with a stderr WARN), else the pin; recorded in r["expected"]."""
+    raw = (os.environ.get(var) or "").strip()
+    raw = raw.lower() if lower else raw
+    r.setdefault("expected", {})[var] = {"value": raw or pin, "source": "env" if raw else "pin", "pin": pin}
+    if raw:
+        print(f"WARN: ${var}={raw} overrides the pinned {pin}", file=sys.stderr)
+    return raw or pin
+
+
 def smoke_qwen38flash(r: dict) -> int:
     base = os.environ.get("QWEN38_URL")
     r["note"] = "serving check only; quality vs qwen3.6:35b needs the 48-case decision benchmark"
@@ -127,7 +142,7 @@ def smoke_sandlock(r: dict) -> int:
         try:
             p = run(cmd, timeout=60)
         except subprocess.TimeoutExpired:
-            r["reason"] = "sandlock run timed out"
+            r["reason"] = timeout_reason("sandlock run")
             return 1
         r["output"] = (p.stdout + p.stderr)[-600:]
         allowed, leaked = (ok / "a").exists(), (no / "b").exists()

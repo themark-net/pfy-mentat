@@ -38,7 +38,7 @@ import tempfile
 import time
 from pathlib import Path
 
-from smoke import TMP, find_bin, run, write
+from smoke import TMP, find_bin, pinned, run, timeout_reason, write
 
 # harness-linux-x64 published checksum for release harness-v0.1.10
 HARNESS_V010_SHA256 = "68b6a51e40cd8e229f1f056c2aa5ea93de7934f746dcf8dd38e3b7d9dd4ee397"
@@ -67,11 +67,6 @@ def sha256_file(path: str) -> str:
         for chunk in iter(lambda: fh.read(65536), b""):
             digest.update(chunk)
     return digest.hexdigest()
-
-
-def harness_sha256_expected() -> str:
-    raw = (os.environ.get("HARNESS_SHA256") or "").strip().lower()
-    return raw or HARNESS_V010_SHA256
 
 
 SPONSIO_PROBE = r"""
@@ -106,7 +101,7 @@ def smoke_sponsio(r: dict) -> int:
             p = subprocess.run([py, "-c", SPONSIO_PROBE], cwd=d, capture_output=True, text=True,
                                timeout=xintake_timeout(120), env=env)
         except subprocess.TimeoutExpired:
-            r["reason"] = "sponsio probe timed out"
+            r["reason"] = timeout_reason("sponsio probe")
             return 1
     line = next((ln for ln in p.stdout.splitlines() if ln.startswith("PFY_JSON ")), None)
     if not line:
@@ -162,7 +157,7 @@ def smoke_opensteps(r: dict) -> int:
                 return subprocess.run(["bash", path], cwd=w, input=payload, capture_output=True, text=True,
                                       timeout=xintake_timeout(60), env=env)
             except subprocess.TimeoutExpired:
-                r["reason"] = "opensteps hook timeout"
+                r["reason"] = timeout_reason("opensteps hook")
                 return None
 
         started = hook(start)
@@ -206,7 +201,7 @@ def smoke_repoharness(r: dict) -> int:
                        "save as ~/DEVELOP/pfy-mentat/tmp/repository-harness/harness. Not the curl|bash installer, and "
                        "never run it against a real product repo in this smoke")
         return 2
-    expect = harness_sha256_expected()
+    expect = pinned(r, "HARNESS_SHA256", HARNESS_V010_SHA256, lower=True)
     digest = sha256_file(b)
     if digest != expect:
         r["reason"] = f"sha256 mismatch: harness binary is {digest}, expected {expect}"
@@ -224,7 +219,7 @@ def smoke_repoharness(r: dict) -> int:
                 p = subprocess.run([b] + args + ["--json"], cwd=cwd, capture_output=True, text=True,
                                    timeout=xintake_timeout(120), env=env)
             except subprocess.TimeoutExpired:
-                r["reason"] = "repoharness timeout"
+                r["reason"] = timeout_reason("repoharness")
                 return None
             try:
                 return json.loads(p.stdout)

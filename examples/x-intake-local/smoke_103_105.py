@@ -46,7 +46,7 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from smoke import PAID_KEYS, TMP, find_bin, run, write
+from smoke import PAID_KEYS, TMP, find_bin, pinned, run, timeout_reason, write
 
 # graphjin_3.21.6_linux_amd64.tar.gz -> `graphjin` binary (tarball sha256 checked against upstream checksums.txt)
 GRAPHJIN_V3216_SHA256 = "e6f0fd88f99b07e8036ba7db76f24f0fceab697935559d154e823b5951f46805"
@@ -174,7 +174,7 @@ def smoke_bugpatrol(r: dict) -> int:
                     return subprocess.run([node, js, "explore", "--steps", "2"], cwd=d, capture_output=True,
                                           text=True, timeout=xintake_timeout(120), env=env)
                 except subprocess.TimeoutExpired:
-                    r["reason"] = "bugpatrol explore timeout"
+                    r["reason"] = timeout_reason("bugpatrol explore")
                     return None
 
             Path(d, ".bugpatrol/bugpatrol.yml").write_text(cfg(False))
@@ -263,8 +263,12 @@ def graphjin_world(b: str, read_only: bool, production: bool, r: dict, tag: str)
             "    access:\n      read: authenticated\n      write: authenticated\n      delete: authenticated\n"
             "      missing_namespace_column: allow\n")
         log = open(os.path.join(d, "serve.log"), "w")
-        proc = subprocess.Popen([b, "serve", "--path", str(cfgdir)], cwd=d, stdout=log, stderr=subprocess.STDOUT,
-                                env=clean_env(home))
+        try:
+            proc = subprocess.Popen([b, "serve", "--path", str(cfgdir)], cwd=d, stdout=log, stderr=subprocess.STDOUT,
+                                    env=clean_env(home))
+        except Exception:
+            log.close()
+            raise
         try:
             deadline = time.time() + xintake_timeout(60)
             up = False
@@ -309,7 +313,7 @@ def smoke_graphjin(r: dict) -> int:
                        f"to ~/DEVELOP/pfy-mentat/tmp/graphjin/graphjin (binary sha256 {GRAPHJIN_V3216_SHA256}). "
                        "Not the .deb, not `npm install -g`, never pointed at a real product database")
         return 2
-    expect = (os.environ.get("GRAPHJIN_SHA256") or "").strip().lower() or GRAPHJIN_V3216_SHA256
+    expect = pinned(r, "GRAPHJIN_SHA256", GRAPHJIN_V3216_SHA256, lower=True)
     digest = sha256_file(b)
     r["sha256"] = digest
     if digest != expect:

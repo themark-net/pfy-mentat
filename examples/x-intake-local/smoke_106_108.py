@@ -24,8 +24,9 @@ keeps the default.
               `har env init --profile cli` (no agents, no cursor rule, no commit gate), `env launch 1`,
               `env verify 1 --full --json` must pass with every stage passing, a broken `test` script in the
               session worktree must make verify fail on unit-tests, the main checkout must stay untouched, and
-              `env teardown 1` must remove the worktree. FAILs if any agent hook file (~/.cursor/hooks.json,
-              ~/.claude/settings.json, ~/.codex/hooks.json) appears in the temp HOME with telemetry off.
+              `env teardown 1` must remove the worktree. FAILs if the launch work dir is not under the temp
+              HOME, or if any agent hook file (~/.cursor/hooks.json, ~/.claude/settings.json,
+              ~/.codex/hooks.json, ~/.har/otel-hooks) appears in the temp HOME with telemetry off.
   cassmemory  $CM_BIN, then ~/DEVELOP/pfy-mentat/tmp/cass-memory/cm, then PATH (`cm`). The v0.5.0
               cass-memory-linux-x64 release binary is pinned by sha256; $CM_SHA256 overrides the pin, and a
               mismatch exits 2 without exec. In a temp HOME with every LLM provider key and OLLAMA_BASE_URL
@@ -48,11 +49,11 @@ import tempfile
 import time
 from pathlib import Path
 
-from smoke import PAID_KEYS, TMP, find_bin, run, write
+from smoke import PAID_KEYS, TMP, find_bin, pinned, run, timeout_reason, write
 
 # cass-memory v0.5.0 release asset cass-memory-linux-x64 (matches upstream cass-memory-linux-x64.sha256)
 CM_V050_SHA256 = "06e1563881f8bb1225cf7036068252ef210f242704a27f8ce32518b822181bd7"
-HOOK_FILES = (".cursor/hooks.json", ".claude/settings.json", ".codex/hooks.json")
+HOOK_FILES = (".cursor/hooks.json", ".claude/settings.json", ".codex/hooks.json", ".har/otel-hooks")
 
 
 def xintake_timeout(default: float) -> float:
@@ -75,7 +76,12 @@ def sha256_file(path: str) -> str:
 
 def clean_env(home: str, **extra: str) -> dict:
     env = {k: v for k, v in os.environ.items() if k not in PAID_KEYS}
-    env.update(HOME=home, NO_COLOR="1", **extra)
+    env.update(HOME=home, NO_COLOR="1",
+               XDG_CONFIG_HOME=os.path.join(home, ".config"),
+               XDG_CACHE_HOME=os.path.join(home, ".cache"),
+               XDG_DATA_HOME=os.path.join(home, ".local", "share"),
+               npm_config_cache=os.path.join(home, ".npm"),
+               **extra)
     return env
 
 
@@ -98,7 +104,7 @@ def call(cmd: list[str], cwd: str, env: dict, r: dict, tag: str) -> subprocess.C
     try:
         return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=xintake_timeout(120), env=env)
     except subprocess.TimeoutExpired:
-        r["reason"] = f"{tag} timeout"
+        r["reason"] = timeout_reason(tag)
         return None
 
 
@@ -256,8 +262,12 @@ def smoke_har(r: dict) -> int:
             r["reason"] = f"env launch failed or printed no work dir: {out[-400:]}"
             return 1
         work = m.group(1)
-        r["work_dir_under_temp_home"] = work.startswith(home)
+        under = Path(work).resolve().is_relative_to(Path(home).resolve())
+        r["work_dir_under_temp_home"] = under
         try:
+            if not under:
+                r["reason"] = "work dir is not under the temp HOME"
+                return 1
             p = har("verify pass", "env", "verify", "1", "--full", "--json")
             if p is None:
                 return 1
@@ -317,7 +327,7 @@ def smoke_cassmemory(r: dict) -> int:
                        f"it as ~/DEVELOP/pfy-mentat/tmp/cass-memory/cm (sha256 {CM_V050_SHA256}). Not the "
                        "curl | bash installer, not brew, no `cm hook`; MIT with an OpenAI/Anthropic rider")
         return 2
-    expect = (os.environ.get("CM_SHA256") or "").strip().lower() or CM_V050_SHA256
+    expect = pinned(r, "CM_SHA256", CM_V050_SHA256, lower=True)
     digest = sha256_file(b)
     r["sha256"] = digest
     if digest != expect:
