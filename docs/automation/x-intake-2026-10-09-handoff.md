@@ -10,7 +10,7 @@ Routine: daily X intake for pfy-mentat (Grok Bot). Sources this run: Mark's new 
 | 104 | [GraphJin](https://github.com/dosco/graphjin) | Governed GraphQL + MCP over DBs, files and code, with `read_only` sources and production query allow-lists; SQLite supported | Yes, single Go binary under `tmp/`. Smoke PASSed on the Grok Bot box |
 | 105 | [anti-slop](https://github.com/miqdadbadjuber/anti-slop) | SKILL.md rule packs that filter generic AI UI, copy and code comments; Design Bot and Reviewer lanes | Yes, plain files in a clone under `tmp/`. Smoke PASSed on the Grok Bot box |
 
-Files: `sources/entries/103-bugpatrol.md`, `104-graphjin.md`, `105-anti-slop.md`, `examples/x-intake-local/smoke_103_105.py` (three new checks that reuse the helpers in `smoke.py`; `smoke.py` and `smoke_098_100.py` are unchanged), the folder README, and this handoff. No TOOLS.md rows, no `data/tools.json` rows, no stage cards, no Make target. Box receipts are not committed; commit receipts only from a real nimo run.
+Files: `sources/entries/103-bugpatrol.md`, `104-graphjin.md`, `105-anti-slop.md`, `examples/x-intake-local/smoke_103_105.py` (three new checks that reuse the helpers in `smoke.py`; `smoke.py` and `smoke_098_100.py` are unchanged), the folder README, and this handoff. No TOOLS.md rows, no `data/tools.json` rows, no stage cards, no Make target. Box receipts are not committed; commit receipts only from a real nimo run. Those receipt directories are gitignored, so committing a real nimo receipt uses `git add -f pipelines/smoke/<entry>/latest.json`.
 
 This slice was written by the routine directly through the GitHub connector rather than `./pfy build -p`, since it is docs plus one stdlib script and nimo was not needed for it.
 

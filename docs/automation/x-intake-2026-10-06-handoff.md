@@ -10,7 +10,7 @@ Routine: daily X intake for pfy-mentat (Grok Bot). Sources this run: Mark's new 
 | 096 | [Sandlock](https://github.com/multikernel/sandlock) | Rootless Landlock + seccomp sandbox for agent commands; COW dry-run; host allowlist | If nimo's kernel is 6.12+. Smoke PASSed on the Grok Bot box |
 | 097 | [Foremerge](https://github.com/naw103/foremerge) | Intent-level conflict detection for parallel agents in one repo | Yes (single binary under `~/DEVELOP/pfy-mentat/tmp`). Smoke PASSed on the Grok Bot box |
 
-Files: `sources/entries/095-qwen38-flash-next.md`, `096-sandlock.md`, `097-foremerge.md`, `examples/x-intake-local/` (stdlib smoke + README), this handoff. No TOOLS.md rows, no `data/tools.json` rows, no stage cards, no Make target. Box receipts are not committed; commit receipts only from a real nimo run.
+Files: `sources/entries/095-qwen38-flash-next.md`, `096-sandlock.md`, `097-foremerge.md`, `examples/x-intake-local/` (stdlib smoke + README), this handoff. No TOOLS.md rows, no `data/tools.json` rows, no stage cards, no Make target. Box receipts are not committed; commit receipts only from a real nimo run. Those receipt directories are gitignored, so committing a real nimo receipt uses `git add -f pipelines/smoke/<entry>/latest.json`.
 
 ## Recommended next steps (not started)
 
