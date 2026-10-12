@@ -53,9 +53,36 @@ PR body (gh is not logged in): `docs/ops/PR-BODY-orch-fixes-1011.md`
 
 ## Left alone
 
-- `pipelines/smoke/{brigade,smolvm,runx}/` are still not gitignored. The 109 test writes `brigade/latest.json`. That file was removed after the suite and was not committed. A later run of that test will show it as untracked again.
 - Entries 109–111 already had `pinned()` for `SMOLVM_SHA256`, `RUNX_SHA256`, and `BRIGADE_VERSION`. They now import the shared function.
-- No Feature GO. Nothing merged, deployed, or force-pushed.
+- No Feature GO. Nothing merged or deployed. The first push was not a force-push. The Tester FAIL follow-up below rebases onto `origin/main` and is pushed with `--force-with-lease` on this branch only.
+
+## Tester FAIL follow-up
+
+Rebased onto `c1c94fe9b3cfb70ec4d02e9f461d6dd2d9d7f84a` (`origin/main`, docs-only #288). No conflicts. Rebase rewrote the seven commits in the table above. Pre-rebase tip `fe094911bc2704c8a2a60a38e8f83050ce04e48a` is not on this branch after the rebase.
+
+| Rebased commit | Subject |
+|----------------|---------|
+| `879057ef3f31618be64af57a78b491d5757487c0` | fix(x-intake): gitignore smoke receipts for entries 103-108 |
+| `bd4438ed66cf194d01a54914a16f712db5bf7aff` | docs: Stage A spec-edit commands and receipt git add -f |
+| `47515cae96669c3e1118696f0066775c7b53eef6` | test: remove pfylib temp dirs the suite creates |
+| `a48e632470953f9636ef8faea845a6ddf98b74da` | fix(x-intake): record sha source, share timeout text, close har leaks |
+| `e3b18c93b74adc0cffa45f345dc79bd2146bb8fd` | docs: handoff orch-fixes-1011 |
+| `e66eab712e171a8c5a2ec3d5eb466a6242a225d2` | docs: record orch-fixes-1011 head c1726a8 |
+| `5362fb7f006a845ad89ad8e141464968bde14dda` | docs: record orch-fixes-1011 push of 4fe7ba7 |
+
+| | Command | Result |
+|--|---------|--------|
+| After the FAIL fix | `python3 -m unittest discover -s tests -t .` | Ran 204 tests in 7.004s · OK (skipped=4) · exit 0 |
+
+- `.gitignore` adds `pipelines/smoke/{laya,nimble,beacon,qwen38flash,sandlock,foremerge,smolvm,brigade,runx}/`. `git check-ignore` matches `pipelines/smoke/<entry>/latest.json` for each of those entries (the paths the 2026-10-05, 2026-10-06, and 2026-10-11 handoffs cite). `pipelines/smoke/kolibri1/latest.json` stays tracked: `git check-ignore` exits 1 and `git ls-files --error-unmatch` succeeds.
+- `tests/test_pfylib_tmp_cleanup.py` asserts only that the nested module run adds no `/tmp/pfylib-*` directory. It does not require that subprocess to exit 0.
+- `test_har_work_dir_sibling_prefix_fails` launches a work dir of `HOME + "-evil"` (same shape as `/tmp/foo-evil` vs `/tmp/foo`). The smoke FAILs with `work dir is not under the temp HOME` because `Path.is_relative_to` rejects the sibling. The test shows `str.startswith` accepts that sibling.
+
+`pipelines/smoke/brigade/latest.json` from the 109 test is gitignored, so a suite run leaves `git status` clean of smoke receipts.
+
+Decisions: 18 lines in `docs/ops/AUTONOMOUS-DECISIONS-2026-10-11.md`.
+
+Follow-up tip: recorded in the next commit. A commit cannot store its own hash.
 
 ## Push
 

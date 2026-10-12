@@ -146,6 +146,53 @@ process.exit(3);
             reason = self._receipt("har").get("reason") or ""
             self.assertIn("not under the temp HOME", reason, blob)
 
+    def test_har_work_dir_sibling_prefix_fails(self) -> None:
+        # Fail: startswith treats /tmp/foo-evil as inside /tmp/foo, so a sibling work dir is accepted.
+        # Recover: is_relative_to rejects it; the smoke exits 1 with the temp-HOME reason.
+        js = r"""
+const fs = require('fs');
+const args = process.argv.slice(2);
+if (args[0] === 'telemetry') process.exit(0);
+if (args[0] === 'env' && args[1] === 'init') {
+  fs.mkdirSync('.har', {recursive: true});
+  fs.writeFileSync('.har/stages.json', '{}\n');
+  process.exit(0);
+}
+if (args[0] === 'env' && args[1] === 'launch') {
+  const home = process.env.HOME;
+  const work = home + '-evil';
+  fs.writeFileSync(process.env.PFY_PROBE_OUT, JSON.stringify({home: home, work: work}));
+  console.log('make ALL file edits under: ' + work);
+  process.exit(0);
+}
+if (args[0] === 'env' && args[1] === 'teardown') process.exit(0);
+process.exit(3);
+"""
+        with tempfile.TemporaryDirectory(prefix="pfy-xintake-har-sib-") as td:
+            root = Path(td)
+            home = root / "home"
+            home.mkdir()
+            probe = root / "probe.json"
+            env = self._base_env(home)
+            env["PFY_PROBE_OUT"] = str(probe)
+            env.update(self._har_bins(root, js))
+            proc = self._run("har", env)
+            blob = proc.stdout + proc.stderr
+            self.assertTrue(probe.is_file(), blob)
+            seen = json.loads(probe.read_text(encoding="utf-8"))
+            work = seen["work"]
+            got_home = seen["home"]
+            self.assertEqual(work, got_home + "-evil", seen)
+            self.assertTrue(work.startswith(got_home), seen)
+            self.assertFalse(Path(work).resolve().is_relative_to(Path(got_home).resolve()), seen)
+            self.assertTrue("/tmp/foo-evil".startswith("/tmp/foo"))
+            self.assertFalse(Path("/tmp/foo-evil").is_relative_to(Path("/tmp/foo")))
+            receipt = self._receipt("har")
+            self.assertEqual(proc.returncode, 1, blob + "\n" + json.dumps(receipt))
+            self.assertNotIn("Traceback", proc.stderr)
+            self.assertFalse(receipt.get("work_dir_under_temp_home"), receipt)
+            self.assertIn("not under the temp HOME", receipt.get("reason") or "", blob)
+
     def test_har_env_dirs_are_under_temp_home(self) -> None:
         # Fail: the har process inherits the parent HOME or XDG/npm cache paths outside its HOME.
         # Recover: HOME is a fresh temp dir and the four dirs sit under that HOME.

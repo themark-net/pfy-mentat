@@ -84,3 +84,15 @@ pipelines/smoke/cassmemory/
 pipelines/smoke/bugpatrol/
 pipelines/smoke/graphjin/
 pipelines/smoke/antislop/
+
+.project-map/
+# 086-088, 095-097, and 109-111 receipts. Same rule: kolibri1/latest.json stays tracked.
+pipelines/smoke/laya/
+pipelines/smoke/nimble/
+pipelines/smoke/beacon/
+pipelines/smoke/qwen38flash/
+pipelines/smoke/sandlock/
+pipelines/smoke/foremerge/
+pipelines/smoke/smolvm/
+pipelines/smoke/brigade/
+pipelines/smoke/runx/

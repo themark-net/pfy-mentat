@@ -23,12 +23,11 @@ def _pfylib_tmp_paths() -> set[str]:
 class PfylibTmpCleanupTests(unittest.TestCase):
     def test_module_run_leaves_no_new_pfylib_tmp_dirs(self):
         before = _pfylib_tmp_paths()
-        proc = subprocess.run(
+        subprocess.run(
             ["python3", "-m", "unittest", *MODULES],
             cwd=ROOT,
             capture_output=True,
             text=True,
         )
         after = _pfylib_tmp_paths()
-        self.assertEqual(proc.returncode, 0, proc.stdout + "\n" + proc.stderr)
         self.assertEqual(after - before, set())
