@@ -46,12 +46,10 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from smoke import TMP, find_bin, run, write
+from smoke import PAID_KEYS, TMP, find_bin, run, write
 
 # graphjin_3.21.6_linux_amd64.tar.gz -> `graphjin` binary (tarball sha256 checked against upstream checksums.txt)
 GRAPHJIN_V3216_SHA256 = "e6f0fd88f99b07e8036ba7db76f24f0fceab697935559d154e823b5951f46805"
-PAID_KEYS = ("OPENROUTER_API_KEY", "AI_GATEWAY_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GOOGLE_APIKEY",
-             "BUGPATROL_MODEL_ENDPOINT", "BUGPATROL_MODEL_NAME", "GITHUB_TOKEN", "GH_TOKEN")
 
 
 def xintake_timeout(default: float) -> float:

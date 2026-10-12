@@ -11,8 +11,9 @@ PFY_XINTAKE_TIMEOUT (float seconds, > 0) overrides the per-command tool timeouts
 commands that may pull an image); empty or invalid keeps the default.
 
 When bubblewrap (`bwrap`) is on PATH and works, the brigade and runx commands run inside it with a read-only root,
-only the temp HOME and the scratch dir writable, and no network, so a write anywhere else or a network call
-fails the step. Without bwrap the smoke falls back to checking that the tool's real-HOME state dirs were not
+only the temp HOME and the scratch dir writable, no network, and its own PID namespace, so a write anywhere else
+or a network call fails the step. smolvm is never run under bwrap. Every tool command runs in its own session and
+a timeout SIGKILLs its whole process group, so no forked child outlives the smoke. Without bwrap the smoke falls back to checking that the tool's real-HOME state dirs were not
 created or modified. The receipt records which mode ran (`containment`).
 
   smolvm   $SMOLVM_BIN, then ~/DEVELOP/pfy-mentat/tmp/smolvm/smolvm (the wrapper script from the v1.26.1
@@ -54,6 +55,7 @@ import json
 import os
 import platform
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -61,7 +63,7 @@ import time
 import uuid
 from pathlib import Path
 
-from smoke import TMP, find_bin, run, write
+from smoke import PAID_KEYS, TMP, find_bin, run, write
 
 # smolvm v1.26.1 smolvm-1.26.1-linux-x86_64.tar.gz: smolvm-bin (matches the tarball's own checksums.txt; the tarball
 # itself is sha256 bcae519f7dad3cead2deaa0362a42a1ad7bffce73ea7a28161dea6822c559654 in the release checksums.sha256)
@@ -70,10 +72,6 @@ SMOLVM_V1261_BIN_SHA256 = "62ed0353d664c2d6d78bd87ecf3213c64464003f51cb58506b87b
 # sha256 59eee2af81d24d0f8ba2416e2bac55d147ed93693e6a41ffe7c2cfd5cba98cc7, matching the upstream .sha256 asset)
 RUNX_V091_SHA256 = "e0c0627882c2ce7a4e8cfb20cf4896a4aa371db0e13c95c8b86fa31276388b60"
 BRIGADE_PIN = "0.27.0"
-PAID_KEYS = ("OPENROUTER_API_KEY", "AI_GATEWAY_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GOOGLE_APIKEY",
-             "GOOGLE_API_KEY", "GOOGLE_GENERATIVE_AI_API_KEY", "GEMINI_API_KEY", "XAI_API_KEY", "OLLAMA_BASE_URL",
-             "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "AWS_PROFILE",
-             "GITHUB_TOKEN", "GH_TOKEN", "NOTION_API_KEY")
 DROP_PREFIXES = ("XDG_", "RUNX_", "SMOLVM_", "BRIGADE_")
 
 
@@ -102,11 +100,34 @@ def clean_env(home: str, **extra: str) -> dict:
 
 
 def call(cmd: list[str], cwd: str, env: dict, r: dict, tag: str, timeout: float = 120) -> subprocess.CompletedProcess | None:
+    """Run cmd in its own session; on timeout SIGKILL the whole process group, not just the direct child."""
+    proc = subprocess.Popen(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env,
+                            start_new_session=True)
     try:
-        return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=xintake_timeout(timeout), env=env)
+        out, err = proc.communicate(timeout=xintake_timeout(timeout))
     except subprocess.TimeoutExpired:
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        try:
+            proc.communicate(timeout=5)
+        except subprocess.TimeoutExpired:  # a descendant that left the group still holds the pipes
+            proc.kill()
+            proc.wait()
         r["reason"] = f"{tag} timeout"
         return None
+    return subprocess.CompletedProcess(cmd, proc.returncode, out, err)
+
+
+def pinned(r: dict, var: str, pin: str, lower: bool = False) -> str:
+    """$var when set (recorded as source env, with a stderr WARN), else the pin; recorded in r["expected"]."""
+    raw = (os.environ.get(var) or "").strip()
+    raw = raw.lower() if lower else raw
+    r.setdefault("expected", {})[var] = {"value": raw or pin, "source": "env" if raw else "pin", "pin": pin}
+    if raw:
+        print(f"WARN: ${var}={raw} overrides the pinned {pin}", file=sys.stderr)
+    return raw or pin
 
 
 def last_json(text: str) -> dict | None:
@@ -143,7 +164,8 @@ def bwrap_prefix(writable: list[str]) -> list[str] | None:
     bw = shutil.which("bwrap")
     if not bw:
         return None
-    base = [bw, "--ro-bind", "/", "/", "--dev", "/dev", "--proc", "/proc", "--unshare-net", "--die-with-parent"]
+    base = [bw, "--ro-bind", "/", "/", "--dev", "/dev", "--proc", "/proc", "--unshare-net", "--unshare-pid",
+            "--die-with-parent"]
     try:
         if subprocess.run(base + ["true"], capture_output=True, timeout=30).returncode != 0:
             return None
@@ -170,7 +192,7 @@ def smoke_smolvm(r: dict) -> int:
     payload = os.path.join(os.path.dirname(real), "smolvm-bin")
     if not os.path.isfile(payload):
         payload = real
-    expect = (os.environ.get("SMOLVM_SHA256") or "").strip().lower() or SMOLVM_V1261_BIN_SHA256
+    expect = pinned(r, "SMOLVM_SHA256", SMOLVM_V1261_BIN_SHA256, lower=True)
     digest = sha256_file(payload)
     r["pinned_file"], r["sha256"] = payload, digest
     if digest != expect:
@@ -284,7 +306,7 @@ def smoke_brigade(r: dict) -> int:
     if not shutil.which("git"):
         r["reason"] = "git not on PATH"
         return 2
-    want = (os.environ.get("BRIGADE_VERSION") or "").strip() or BRIGADE_PIN
+    want = pinned(r, "BRIGADE_VERSION", BRIGADE_PIN)
     with tempfile.TemporaryDirectory(prefix="pfy-brigade-") as d, \
             tempfile.TemporaryDirectory(prefix="pfy-brigade-home-") as home:
         env = clean_env(home, BRIGADE_NO_UPDATE_CHECK="1",
@@ -408,7 +430,7 @@ def smoke_runx(r: dict) -> int:
                        "a2416e2bac55d147ed93693e6a41ffe7c2cfd5cba98cc7), and unpack runx + runx-js-worker into "
                        "~/DEVELOP/pfy-mentat/tmp/runx/. Not the curl | sh installer, not npm i -g, no `runx login`")
         return 2
-    expect = (os.environ.get("RUNX_SHA256") or "").strip().lower() or RUNX_V091_SHA256
+    expect = pinned(r, "RUNX_SHA256", RUNX_V091_SHA256, lower=True)
     digest = sha256_file(b)
     r["sha256"] = digest
     if digest != expect:
