@@ -48,14 +48,10 @@ import tempfile
 import time
 from pathlib import Path
 
-from smoke import TMP, find_bin, run, write
+from smoke import PAID_KEYS, TMP, find_bin, run, write
 
 # cass-memory v0.5.0 release asset cass-memory-linux-x64 (matches upstream cass-memory-linux-x64.sha256)
 CM_V050_SHA256 = "06e1563881f8bb1225cf7036068252ef210f242704a27f8ce32518b822181bd7"
-PAID_KEYS = ("OPENROUTER_API_KEY", "AI_GATEWAY_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GOOGLE_APIKEY",
-             "GOOGLE_API_KEY", "GOOGLE_GENERATIVE_AI_API_KEY", "GEMINI_API_KEY", "OLLAMA_BASE_URL",
-             "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "AWS_PROFILE",
-             "HAR_PORTAL_TOKEN", "CASS_PATH", "GITHUB_TOKEN", "GH_TOKEN")
 HOOK_FILES = (".cursor/hooks.json", ".claude/settings.json", ".codex/hooks.json")
 
 

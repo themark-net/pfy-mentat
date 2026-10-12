@@ -34,6 +34,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 TMP = Path.home() / "DEVELOP/pfy-mentat/tmp"
+# Env vars stripped from every x-intake tool subprocess (smoke_103_105/106_108/109_111 import this): paid model
+# keys and endpoints, cloud and forge tokens, so a third-party binary never sees them.
+PAID_KEYS = ("OPENROUTER_API_KEY", "AI_GATEWAY_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GOOGLE_APIKEY",
+             "GOOGLE_API_KEY", "GOOGLE_GENERATIVE_AI_API_KEY", "GEMINI_API_KEY", "XAI_API_KEY", "GROK_API_KEY",
+             "OLLAMA_BASE_URL", "BUGPATROL_MODEL_ENDPOINT", "BUGPATROL_MODEL_NAME",
+             "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "AWS_PROFILE",
+             "HAR_PORTAL_TOKEN", "CASS_PATH", "NOTION_API_KEY", "GITHUB_TOKEN", "GH_TOKEN")
 
 
 def write(entry: str, receipt: dict, code: int) -> int:
