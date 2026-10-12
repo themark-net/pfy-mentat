@@ -42,4 +42,8 @@ Eight small fixes on the x-intake smokes, the agent-substrate Stage A commands, 
 - handoff-docs | DONE | tests: fixture under /tmp, both python snippets; root.path `/`, readonly true, terminal false. No markdown unit. | files: 8 | err: none | commit 4c514e5
 - smoke-gitignore | DONE | tests: six smokes exit 2; `git status --porcelain pipelines/smoke` empty; kolibri1/latest.json still tracked (`git check-ignore` exit 1) | files: 1 | err: none | commit 451a8d5153ac927e66f3e4c96aa271b7288722f6
 - pfylib-tmp | DONE | tests: red `AssertionError` listing new `/tmp/pfylib-{attach,test,cli,hedge,loop}-*` dirs (`Ran 1 test` FAILED). Green: `python3 -m unittest tests.test_pfylib_tmp_cleanup` Ran 1 test in 0.461s OK (lead re-ran). Subprocess of the five modules: Ran 77 tests OK. `test_detector_runs_offline` did not fail. | files: 6 | err: none | commit a6b2a5f
-- handoff | DONE | docs written; push recorded below after the push | files: handoff, PR body, this log, TODO, decisions | err: none
+- handoff | DONE | commit c1726a835cbea38e7ae1924af2f002002b0eb14c then a child commit that names it | files: handoff, PR body, this log, TODO, decisions | err: none
+
+## Push
+
+Child of `c1726a835cbea38e7ae1924af2f002002b0eb14c` is the tip. The push result line is appended after `git push`.

@@ -6,7 +6,7 @@ Worktree: `/home/mark/DEVELOP/pfy-mentat/tmp/orch-fixes-1011`. Founder checkout 
 
 ## Head
 
-A commit cannot store its own hash. The product commits are below. The branch tip is the latest commit on `build/orch-fixes-1011` whose subject starts with `docs: handoff orch-fixes-1011`, or the stamp commit after it if one exists. The run log records the `git rev-parse HEAD` taken after the push.
+Handoff body commit: `c1726a835cbea38e7ae1924af2f002002b0eb14c` (`docs: handoff orch-fixes-1011`). The branch tip is the child of that commit, subject `docs: record orch-fixes-1011 head c1726a8`. `git rev-parse HEAD` after the push is that child. A commit cannot store its own hash, so the tip hash is printed in the run log push line and in the operator summary.
 
 | Commit | Subject |
 |--------|---------|
@@ -14,7 +14,8 @@ A commit cannot store its own hash. The product commits are below. The branch ti
 | `4c514e5` | docs: Stage A spec-edit commands and receipt git add -f |
 | `a6b2a5f` | test: remove pfylib temp dirs the suite creates |
 | `d2d4378c166e78ead9614f42795cc6edc3b62835` | fix(x-intake): record sha source, share timeout text, close har leaks |
-| (this handoff commit) | docs: handoff orch-fixes-1011 |
+| `c1726a835cbea38e7ae1924af2f002002b0eb14c` | docs: handoff orch-fixes-1011 |
+| (child of c1726a8) | docs: record orch-fixes-1011 head c1726a8 |
 
 Base: `a5c036231b7baa102dddce30d804fb15840d376a` (`origin/main` at start). The request named `27c2d3b`; that commit is the parent of `a5c0362`. The branch was not reset.
 
