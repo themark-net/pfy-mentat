@@ -1,4 +1,4 @@
-# X intake local smokes (Entries 095-100, 103-108)
+# X intake local smokes (Entries 095-100, 103-111)
 
 Stdlib-only operate-or-FAIL checks for the X intake entries. Exit 0 PASS, 1 FAIL, 2 can't run here.
 Each run writes `pipelines/smoke/<entry>/latest.json`. Nothing is installed or downloaded; scratch files go to a
@@ -17,6 +17,9 @@ python3 examples/x-intake-local/smoke_103_105.py --entry antislop     # a clone 
 python3 examples/x-intake-local/smoke_106_108.py --entry rulora       # npm --prefix @rulora/core@0.1.0-alpha.4, Node 20+; Core controls offline, no model
 python3 examples/x-intake-local/smoke_106_108.py --entry har          # npm --prefix @osfactory/har@1.16.0, Node 20+, git; telemetry off, temp HOME, throwaway repo
 python3 examples/x-intake-local/smoke_106_108.py --entry cassmemory   # cass-memory v0.5.0 linux-x64 binary sha256 06e1563881f8bb1225cf7036068252ef210f242704a27f8ce32518b822181bd7; no keys
+python3 examples/x-intake-local/smoke_109_111.py --entry smolvm       # smolvm v1.26.1 linux-x86_64 tarball (smolvm-bin sha256 62ed0353d664c2d6d78bd87ecf3213c64464003f51cb58506b87b187b1a6494a), /dev/kvm read/write
+python3 examples/x-intake-local/smoke_109_111.py --entry brigade      # venv with brigade-cli==0.27.0, git; BRIGADE_NO_UPDATE_CHECK=1, throwaway repo
+python3 examples/x-intake-local/smoke_109_111.py --entry runx         # runx 0.9.1 musl binary sha256 e0c0627882c2ce7a4e8cfb20cf4896a4aa371db0e13c95c8b86fa31276388b60, clone at cli-v0.9.1, node
 ```
 
 Prereqs are looked up via `$SANDLOCK_BIN` / `$FOREMERGE_BIN` / `$SPONSIO_PY` / `$OPEN_STEPS_DIR` / `$HARNESS_BIN`,
@@ -39,4 +42,16 @@ with paid provider keys (plus AWS credentials, `OLLAMA_BASE_URL`, `HAR_PORTAL_TO
 the three calls a model. The har smoke runs `har telemetry off` before anything else and FAILs if agent hook files
 (`~/.cursor/hooks.json`, `~/.claude/settings.json`, `~/.codex/hooks.json`) appear in its temp HOME; its session
 worktree lives under that temp HOME too. `PFY_XINTAKE_TIMEOUT` overrides the 120s per-command timeout.
+
+Entries 109-111 (`smoke_109_111.py`) look up `$SMOLVM_BIN` (pin override `$SMOLVM_SHA256`) / `$BRIGADE_BIN`
+(version override `$BRIGADE_VERSION`) / `$RUNX_BIN` (pin override `$RUNX_SHA256`) + `$RUNX_SRC` + `$RUNX_NODE`, then
+`~/DEVELOP/pfy-mentat/tmp/{smolvm/smolvm,brigade/.venv/bin/brigade,runx/runx,runx/src,runx/node/bin/node}`, then PATH
+where it applies. Tool subprocesses get a fresh temp HOME and an env with paid provider keys, `XDG_*` and inherited
+`SMOLVM_*`/`BRIGADE_*`/`RUNX_*` stripped; none of the three calls a model. When `bwrap` works, the brigade and runx
+commands run with a read-only root, only the temp HOME and scratch dir writable, and no network; otherwise the smoke
+checks the tools' real-HOME state dirs did not change (receipt field `containment`). The smolvm smoke exits 2 without
+read/write `/dev/kvm`, pulls `alpine` from Docker Hub on the host (`$SMOLVM_IMAGE` overrides), and adds
+checkpoint/rewind only with `SMOLVM_CHECKPOINT=1`. `PFY_XINTAKE_TIMEOUT` overrides the 120s per-command timeout (300s
+for smolvm machine commands).
+
 Not wired into CI or Make.
