@@ -4,6 +4,7 @@ from __future__ import annotations
 import io
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -30,6 +31,7 @@ class _Tmp(unittest.TestCase):
     def setUp(self):
         self._saved = {k: os.environ.get(k) for k in ("PFY_STATE_DIR", "PFY_CLOUD_BUDGET", "DEPLOY_PROFILE", "CODEX_HOME", "PFY_JEV_OFFLINE")}
         self.tmp = Path(tempfile.mkdtemp(prefix="pfylib-cli-"))
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         self.state = self.tmp / "state"
         os.environ["PFY_STATE_DIR"] = str(self.state)
         os.environ["CODEX_HOME"] = str(self.tmp / "codex")

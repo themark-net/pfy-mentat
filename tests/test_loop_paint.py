@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import sys
 import tempfile
 import unittest
@@ -17,6 +18,7 @@ from pfylib import loop_paint, registry  # noqa: E402
 class LoopPaintTests(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="pfylib-loop-"))
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         self.state = self.tmp / "state"
         self._saved = {k: os.environ.get(k) for k in ("PFY_STATE_DIR", "PFY_CLOUD_BUDGET", "DEPLOY_PROFILE", "GAB_API_KEY")}
         os.environ["PFY_STATE_DIR"] = str(self.state)

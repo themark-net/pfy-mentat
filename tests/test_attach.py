@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import shutil
 import sys
 import tempfile
 import unittest
@@ -109,6 +110,7 @@ class _Tmp(unittest.TestCase):
     def setUp(self):
         self._saved = {k: os.environ.get(k) for k in ("PFY_STATE_DIR", "LOCAL_OPENAI_BASE_URL", "OPENAI_API_KEY", "PATH")}
         self.tmp = Path(tempfile.mkdtemp(prefix="pfylib-attach-"))
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         self.state = self.tmp / "state"
         self.state.mkdir()
         os.environ["PFY_STATE_DIR"] = str(self.state)

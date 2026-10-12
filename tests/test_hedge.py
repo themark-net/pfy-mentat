@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import tempfile
 import sys
 import unittest
@@ -24,6 +25,7 @@ class _Tmp(unittest.TestCase):
         for k in self._saved:
             os.environ.pop(k, None)
         self.state = Path(tempfile.mkdtemp(prefix="pfylib-hedge-"))
+        self.addCleanup(shutil.rmtree, self.state, ignore_errors=True)
 
     def tearDown(self):
         for k, v in self._saved.items():
