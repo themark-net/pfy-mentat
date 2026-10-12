@@ -82,7 +82,7 @@ Rebased onto `c1c94fe9b3cfb70ec4d02e9f461d6dd2d9d7f84a` (`origin/main`, docs-onl
 
 Decisions: 18 lines in `docs/ops/AUTONOMOUS-DECISIONS-2026-10-11.md`.
 
-Follow-up tip: recorded in the next commit. A commit cannot store its own hash.
+Follow-up: Tester FAIL fix is `3bf7079975274c1bc0e1e6d7b5b7d69c0ea14e9b` (`fix(x-intake): gitignore claimed nimo receipts and reject a har sibling dir`). The commit that records this sentence is the branch tip and cannot store its own hash.
 
 ## Push
 
