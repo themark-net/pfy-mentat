@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import tempfile
 import sys
 import unittest
@@ -24,6 +25,7 @@ class _TmpEnv(unittest.TestCase):
     def setUp(self):
         self._saved = {k: os.environ.get(k) for k in self.KEYS}
         self.tmp = Path(tempfile.mkdtemp(prefix="pfylib-test-"))
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         self.state = self.tmp / "state"
         os.environ["PFY_STATE_DIR"] = str(self.state)
         os.environ["GROK_HOME"] = str(self.tmp / "grok-home")

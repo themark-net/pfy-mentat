@@ -63,7 +63,7 @@ import time
 import uuid
 from pathlib import Path
 
-from smoke import PAID_KEYS, TMP, find_bin, run, write
+from smoke import PAID_KEYS, TMP, find_bin, pinned, run, timeout_reason, write
 
 # smolvm v1.26.1 smolvm-1.26.1-linux-x86_64.tar.gz: smolvm-bin (matches the tarball's own checksums.txt; the tarball
 # itself is sha256 bcae519f7dad3cead2deaa0362a42a1ad7bffce73ea7a28161dea6822c559654 in the release checksums.sha256)
@@ -115,19 +115,9 @@ def call(cmd: list[str], cwd: str, env: dict, r: dict, tag: str, timeout: float 
         except subprocess.TimeoutExpired:  # a descendant that left the group still holds the pipes
             proc.kill()
             proc.wait()
-        r["reason"] = f"{tag} timeout"
+        r["reason"] = timeout_reason(tag)
         return None
     return subprocess.CompletedProcess(cmd, proc.returncode, out, err)
-
-
-def pinned(r: dict, var: str, pin: str, lower: bool = False) -> str:
-    """$var when set (recorded as source env, with a stderr WARN), else the pin; recorded in r["expected"]."""
-    raw = (os.environ.get(var) or "").strip()
-    raw = raw.lower() if lower else raw
-    r.setdefault("expected", {})[var] = {"value": raw or pin, "source": "env" if raw else "pin", "pin": pin}
-    if raw:
-        print(f"WARN: ${var}={raw} overrides the pinned {pin}", file=sys.stderr)
-    return raw or pin
 
 
 def last_json(text: str) -> dict | None:

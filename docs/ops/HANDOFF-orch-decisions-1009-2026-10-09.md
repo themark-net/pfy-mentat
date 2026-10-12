@@ -40,7 +40,7 @@ Skipped on purpose: #64 release promotion, #53 epic, #24/#25 model labs, T-0124,
 Red before the fix, then green:
 
 - x-intake: `/tmp/orch-decisions-1009/xintake-red.txt` — `FAILED (failures=5)`. HOME probes saw the parent HOME; timeout receipts did not contain `timeout`; sha256 mismatch returned 1. Green: 5 OK in 0.672s.
-- atg: `/tmp/orch-decisions-1009/atg-red.txt` — `AssertionError: 'I1' != 'unscored'`. Green without `ATG_REPO`: `OK (skipped=2)`. Lead re-ran the fake-server e2e with `ATG_REPO` at pin `543e778` (detached worktree, venv symlink, no model): `OK`.
+- atg: `/tmp/orch-decisions-1009/atg-red.txt` — `AssertionError: 'I1' != 'unscored'`. Green without `ATG_REPO`: `OK (skipped=2)`. Lead re-ran the fake-server e2e with `ATG_REPO` at pin `543e778` (detached worktree, venv symlink, no model): `OK`. The temporary atg pin worktree from that e2e was removed. atg-framework has only its main checkout, and `/tmp/atg-poc` is absent. This 2026-10-11 run did not delete it.
 
 Gitignore after the x-intake tests: `git status --porcelain pipelines/smoke` empty. `git check-ignore` matches the three new dirs. `git ls-files --error-unmatch pipelines/smoke/kolibri1/latest.json` succeeds. `git check-ignore` on that kolibri path exits 1.
 

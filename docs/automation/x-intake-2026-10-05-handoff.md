@@ -30,4 +30,4 @@ Full candidate log (every post seen, verdict and reason) is kept outside the rep
 |------|----------------|----------|
 | Entry numbers collide | Another branch also adds 086–088 | Renumber on rebase; entries are self-contained files |
 | Smoke run in CI without prereqs | CI calls the smoke and treats exit 2 as red | It's not wired into CI or Make. Exit 2 is the honest "can't run here" |
-| Receipts committed by accident | A local run writes `pipelines/smoke/<entry>/latest.json` | Same pattern as Kolibri-1; commit receipts only from a real nimo run |
+| Receipts committed by accident | A local run writes `pipelines/smoke/<entry>/latest.json` | Same pattern as Kolibri-1; commit receipts only from a real nimo run. Those receipt directories are gitignored, so committing a real nimo receipt uses `git add -f pipelines/smoke/<entry>/latest.json`. |

@@ -19,7 +19,7 @@ A lighter local path worth an eval. The whole Substrate stack on minikube is pla
 
 Environment: Grok Bot box, kernel 6.12, cgroup v2, uid 1000, no sudo. runsc `release-20260824.0-120-g727c8c389c36` extracted from `https://storage.googleapis.com/gvisor/releases/nightly/2026-09-02/x86_64/gvisor.tar.zstd` (sha256 `d547d81401461fd1c679c5c4fa0a6c2b8ef7dc3c22ce23c9e25dcc4c69cfd06f`, the same pin as Substrate's `manifests/ate-install/sandboxconfig-gvisor.yaml`) into `/tmp/runsc-smoke`.
 
-Bundle: `runsc spec -- <cmd>`, then `root.path=/` read-only and `terminal=false`.
+Bundle: `runsc spec -- <cmd>`, then the two command blocks under Commands that set `root.path=/` read-only and `terminal=false` (spec edit root path read-only, then spec edit process.terminal false).
 
 | Step | Result |
 |------|--------|
@@ -33,7 +33,40 @@ Commands, for repeating it in Stage A:
 
 ```bash
 mkdir b && ./runsc spec -bundle b -- <cmd>
-# root.path=/ read-only and terminal=false
+```
+
+Spec edit root path read-only:
+
+```bash
+python3 - <<'PY'
+import json
+path = "b/config.json"
+with open(path) as fh:
+    cfg = json.load(fh)
+cfg["root"]["path"] = "/"
+cfg["root"]["readonly"] = True
+with open(path, "w") as fh:
+    json.dump(cfg, fh, indent=2)
+    fh.write("\n")
+PY
+```
+
+Spec edit process.terminal false:
+
+```bash
+python3 - <<'PY'
+import json
+path = "b/config.json"
+with open(path) as fh:
+    cfg = json.load(fh)
+cfg["process"]["terminal"] = False
+with open(path, "w") as fh:
+    json.dump(cfg, fh, indent=2)
+    fh.write("\n")
+PY
+```
+
+```bash
 R="./runsc --network=none --ignore-cgroups --root=$PWD/state"
 unshare -Urm --propagation private bash -c "
   $R run -detach -bundle b c1 > out1.log 2>&1

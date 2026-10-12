@@ -120,6 +120,7 @@ Active work is also tracked as issues: https://github.com/themark-net/pfy-mentat
 
 | ID | Priority | Status | Item | Notes |
 |----|----------|--------|------|-------|
+| — | P3 | done | X-intake receipt sha source, shared timeout text, har temp HOME, graphjin log close, pfylib tmp cleanup | `build/orch-fixes-1011` · 2026-10-11 · not a Feature GO · catalog HOLD untouched |
 | — | — | done | #230 Jev-style decision layer (CUA-S1-FORMS primary local; TypeSafe optional) | — |
 | — | — | done | #228 Gab cloud lane + local recommend sync | — |
 | T-0110 | P1 | done | Pluggable local runtime (FreeToken, llama-swap, llama-server, Ollama, Shimmy last) | ADR-0014 · [#76](https://github.com/themark-net/pfy-mentat/issues/76) stays closed — do not reopen |

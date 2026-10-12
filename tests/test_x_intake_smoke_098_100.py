@@ -8,12 +8,17 @@ import hashlib
 import json
 import os
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "examples" / "x-intake-local"))
+from smoke_098_100 import HARNESS_V010_SHA256  # noqa: E402
+
 SMOKE = ROOT / "examples" / "x-intake-local" / "smoke_098_100.py"
+OTHER_SHA = "0123456789abcdef" * 4
 
 # Fail: the probe inherited the smoke process HOME and wrote probe-file there.
 # Recover: a fresh temp HOME, and the parent HOME stays empty of probe-file.
@@ -164,6 +169,62 @@ class XIntakeSmoke098100Tests(unittest.TestCase):
             self.assertIn("mismatch", reason, blob)
             self.assertFalse(marker.exists(), "harness stub was executed")
             self.assertNotIn("Traceback", proc.stderr)
+
+    def _repoharness_sha(self, override: str | None) -> None:
+        # Fail: a mismatched pin still execs, or the receipt omits expected source/value,
+        # or an override is silent. Recover: exit 2, no exec, source pin or env, WARN only for env.
+        with tempfile.TemporaryDirectory(prefix="pfy-xintake-pin-") as td:
+            root = Path(td)
+            home = root / "home"
+            home.mkdir()
+            marker = root / "executed-marker"
+            stub = root / "harness"
+            _write_exe(stub, "#!/bin/sh\ntouch %s\n" % marker)
+            env = self._base_env(home)
+            env["HARNESS_BIN"] = str(stub)
+            if override is None:
+                env.pop("HARNESS_SHA256", None)
+            else:
+                env["HARNESS_SHA256"] = override
+            proc = self._run("repoharness", env)
+            blob = proc.stdout + proc.stderr
+            self.assertEqual(proc.returncode, 2, blob)
+            self.assertFalse(marker.exists(), "harness stub was executed")
+            self.assertNotIn("Traceback", proc.stderr)
+            got = (self._receipt("repoharness").get("expected") or {}).get("HARNESS_SHA256") or {}
+            if override is None:
+                self.assertNotIn("WARN:", proc.stderr)
+                self.assertEqual(got.get("source"), "pin", blob)
+                self.assertEqual(got.get("value"), HARNESS_V010_SHA256, blob)
+            else:
+                warn = f"WARN: $HARNESS_SHA256={override} overrides the pinned {HARNESS_V010_SHA256}"
+                self.assertIn(warn, proc.stderr)
+                self.assertEqual(got.get("source"), "env", blob)
+                self.assertEqual(got.get("value"), override, blob)
+
+    def test_d_repoharness_sha_unset_records_pin_and_does_not_exec(self) -> None:
+        self._repoharness_sha(None)
+
+    def test_d_repoharness_sha_env_warns_records_override_and_does_not_exec(self) -> None:
+        self._repoharness_sha(OTHER_SHA)
+
+    def test_b_sponsio_timeout_reason_is_exact(self) -> None:
+        # Fail: the probe timeout is a traceback, or the reason is not exactly "sponsio probe timeout".
+        # Recover: exit 1, no traceback, receipt reason is that string.
+        with tempfile.TemporaryDirectory(prefix="pfy-xintake-sp-") as td:
+            root = Path(td)
+            home = root / "home"
+            home.mkdir()
+            stub = root / "sponsio-stub"
+            _write_exe(stub, SLEEP_STUB)
+            env = self._base_env(home)
+            env["SPONSIO_PY"] = str(stub)
+            env["PFY_XINTAKE_TIMEOUT"] = "0.2"
+            proc = self._run("sponsio", env)
+            blob = proc.stdout + proc.stderr
+            self.assertEqual(proc.returncode, 1, blob)
+            self.assertNotIn("Traceback", proc.stderr)
+            self.assertEqual(self._receipt("sponsio").get("reason"), "sponsio probe timeout", blob)
 
 
 if __name__ == "__main__":
