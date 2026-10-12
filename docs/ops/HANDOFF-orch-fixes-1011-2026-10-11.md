@@ -6,7 +6,7 @@ Worktree: `/home/mark/DEVELOP/pfy-mentat/tmp/orch-fixes-1011`. Founder checkout 
 
 ## Head
 
-Handoff body commit: `c1726a835cbea38e7ae1924af2f002002b0eb14c` (`docs: handoff orch-fixes-1011`). The branch tip is the child of that commit, subject `docs: record orch-fixes-1011 head c1726a8`. `git rev-parse HEAD` after the push is that child. A commit cannot store its own hash, so the tip hash is printed in the run log push line and in the operator summary.
+First pushed tip: `4fe7ba776f6da53e773de9d3bae70762a0705916` (`docs: record orch-fixes-1011 head c1726a8`). Push of that commit created `build/orch-fixes-1011` on `git@github.com:themark-net/pfy-mentat.git` (exit 0). The commit that records this sentence is a docs-only follow-up and is the branch tip after the second push. A commit cannot store its own hash.
 
 | Commit | Subject |
 |--------|---------|
@@ -15,7 +15,7 @@ Handoff body commit: `c1726a835cbea38e7ae1924af2f002002b0eb14c` (`docs: handoff 
 | `a6b2a5f` | test: remove pfylib temp dirs the suite creates |
 | `d2d4378c166e78ead9614f42795cc6edc3b62835` | fix(x-intake): record sha source, share timeout text, close har leaks |
 | `c1726a835cbea38e7ae1924af2f002002b0eb14c` | docs: handoff orch-fixes-1011 |
-| (child of c1726a8) | docs: record orch-fixes-1011 head c1726a8 |
+| `4fe7ba776f6da53e773de9d3bae70762a0705916` | docs: record orch-fixes-1011 head c1726a8 |
 
 Base: `a5c036231b7baa102dddce30d804fb15840d376a` (`origin/main` at start). The request named `27c2d3b`; that commit is the parent of `a5c0362`. The branch was not reset.
 
@@ -59,4 +59,4 @@ PR body (gh is not logged in): `docs/ops/PR-BODY-orch-fixes-1011.md`
 
 ## Push
 
-SSH only: `git push git@github.com:themark-net/pfy-mentat.git build/orch-fixes-1011`. Result is in the run log.
+`git push git@github.com:themark-net/pfy-mentat.git build/orch-fixes-1011` created the branch (exit 0) at `4fe7ba776f6da53e773de9d3bae70762a0705916`. The follow-up that records this paragraph is pushed the same way. No merge.

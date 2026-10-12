@@ -46,4 +46,4 @@ Eight small fixes on the x-intake smokes, the agent-substrate Stage A commands, 
 
 ## Push
 
-Child of `c1726a835cbea38e7ae1924af2f002002b0eb14c` is the tip. The push result line is appended after `git push`.
+`git push git@github.com:themark-net/pfy-mentat.git build/orch-fixes-1011` → new branch, exit 0. First pushed tip: `4fe7ba776f6da53e773de9d3bae70762a0705916`. A docs-only follow-up records this line and is pushed after it.
