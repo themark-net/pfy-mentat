@@ -180,8 +180,88 @@ def install_skill_tree(src: Path, dest: Path) -> tuple[bool, str]:
     return True, got
 
 
+def _delete_pfy_entry(obj: dict, item_id: str) -> bool:
+    removed = False
+    for key in list(obj.keys()):
+        val = obj[key]
+        if (
+            isinstance(val, dict)
+            and isinstance(val.get("_pfy"), dict)
+            and str(val["_pfy"].get("item") or "") == item_id
+        ):
+            del obj[key]
+            removed = True
+            continue
+        if isinstance(val, dict) and _delete_pfy_entry(val, item_id):
+            removed = True
+            if val == {}:
+                del obj[key]
+    return removed
+
+
+def _strip_json_item(raw: bytes, item_id: str) -> bytes | None:
+    """Return stripped bytes, or None when nothing meaningful remains."""
+    try:
+        data = json.loads(raw.decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeError):
+        return raw
+    if not isinstance(data, dict) or not _delete_pfy_entry(data, item_id):
+        return raw
+    if not data:
+        return None
+    return (json.dumps(data, indent=2) + "\n").encode("utf-8")
+
+
+def _strip_toml_item(text: str, item_id: str) -> str | None:
+    marker = "# managed-by: pfy item=%s" % item_id
+    if marker not in text:
+        return text
+    lines = text.splitlines(keepends=True)
+    out: list[str] = []
+    i = 0
+    while i < len(lines):
+        if marker in lines[i]:
+            i += 1
+            if i < len(lines) and lines[i].strip().startswith("["):
+                i += 1
+            while i < len(lines):
+                stripped = lines[i].strip()
+                if stripped.startswith("[") or stripped.startswith("# managed-by:"):
+                    break
+                i += 1
+            continue
+        out.append(lines[i])
+        i += 1
+    result = "".join(out)
+    if not result.strip():
+        return None
+    return result
+
+
+def remove_created_file(path: Path, sha: str, item_id: str, kind: str) -> str:
+    """Drop a file pfy created, or only its entry when other content remains.
+
+    The ledger hash must still match. A mismatch is a user edit: leave the file.
+    """
+    if not path.exists():
+        return "absent"
+    if not path.is_file() or file_sha(path) != sha:
+        return "warn"
+    raw = path.read_bytes()
+    if kind == "json":
+        new = _strip_json_item(raw, item_id)
+    else:
+        stripped = _strip_toml_item(raw.decode("utf-8"), item_id)
+        new = None if stripped is None else stripped.encode("utf-8")
+    if new is None or not new.strip() or new == raw:
+        path.unlink()
+        return "removed"
+    atomic_write(path, new)
+    return "removed"
+
+
 def restore_file(path: Path, backup: str, sha: str) -> str:
-    """Copy the backup back when the live hash still matches. Backup stays."""
+    """Copy the backup back when the live hash still matches, then delete that backup."""
     if not path.is_file():
         return "absent"
     if file_sha(path) != sha:
@@ -191,7 +271,10 @@ def restore_file(path: Path, backup: str, sha: str) -> str:
     bpath = Path(backup)
     if not bpath.is_file():
         return "warn"
-    atomic_write(path, bpath.read_bytes())
+    data = bpath.read_bytes()
+    atomic_write(path, data)
+    if path.is_file() and path.read_bytes() == data:
+        bpath.unlink()
     return "restored"
 
 
@@ -267,5 +350,8 @@ class Adapter:
         if kind in ("mcp", "file"):
             if path is None:
                 return "skip"
-            return restore_file(path, str(owned.get("backup") or ""), sha)
+            backup = str(owned.get("backup") or "")
+            if not backup:
+                return remove_created_file(path, sha, str(owned.get("item") or ""), self.config_kind)
+            return restore_file(path, backup, sha)
         return "skip"

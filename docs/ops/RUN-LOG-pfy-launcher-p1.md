@@ -48,3 +48,6 @@ state: DONE | tests: test_loop_paint stub set is core-skills and rea; make eval-
 
 ## handoff
 state: DONE | tests: make eval-structural PASS · Ran 219 OK (skipped=4) · baseline was 204 | files: HANDOFF, TODO, this log | err: none
+
+## review-291
+state: DONE | tests: base recount on 7702826 Ran 15 in 17.382s FAILED (failures=12, errors=3); launcher module Ran 24 in 2.338s OK; make eval-structural PASS; pfylib_unittests Ran 228 in 9.339s OK (skipped=4) | files: pfylib/adapters/base.py, pfylib/setup.py, tests/test_pfy_launcher_p1.py, docs/design/pfy-launcher.md, HANDOFF, decisions 14–22 | err: none. v0.4.17 still absent on origin. Do not tag. Do not merge.

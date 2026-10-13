@@ -26,6 +26,24 @@ from .adapters.base import (
 
 EXIT_READY, EXIT_FAIL, EXIT_USAGE = 0, 1, 2
 _FIELDS = ("backup", "harness", "item", "kind", "path", "sha256_after")
+# Child processes get this set only. Paid-provider variables stay in the parent.
+_NPX_ENV_ALLOW = frozenset(
+    {
+        "PATH",
+        "HOME",
+        "TMPDIR",
+        "TEMP",
+        "TMP",
+        "XDG_CONFIG_HOME",
+        "XDG_CACHE_HOME",
+        "XDG_DATA_HOME",
+        "XDG_STATE_HOME",
+        "XDG_RUNTIME_DIR",
+        "npm_config_cache",
+        "NPM_CONFIG_CACHE",
+        "LANG",
+    }
+)
 
 
 def _root(args) -> Path:
@@ -102,8 +120,24 @@ def _find(records: list[dict], rec: dict) -> int | None:
 
 
 def _upsert(records: list[dict], rec: dict) -> bool:
-    """Insert or replace. Return True when the ledger content changes."""
+    """Insert or replace. Return True when the ledger content changes.
+
+    Skill rows are keyed by item + path. Codex and OpenCode share
+    ~/.agents/skills, so the second harness updates the first row.
+    """
     body = _canon(rec)
+    if body["kind"] == "skill":
+        for i, old in enumerate(records):
+            if (
+                str(old.get("kind") or "") == "skill"
+                and str(old.get("item") or "") == body["item"]
+                and str(old.get("path") or "") == body["path"]
+            ):
+                body["harness"] = str(old.get("harness") or body["harness"])
+                if _canon(old) == body:
+                    return False
+                records[i] = body
+                return True
     idx = _find(records, body)
     if idx is None:
         records.append(body)
@@ -268,16 +302,57 @@ def _expand_cmd(cmd: list[str], flag: str, clients: list[str], insert: bool) -> 
     return out
 
 
-def _run_npx(tail: list[str]) -> int:
+def _npx_env() -> dict[str, str]:
+    return {key: value for key, value in os.environ.items() if key in _NPX_ENV_ALLOW}
+
+
+def _parse_json_obj(text: str) -> dict | None:
+    raw = (text or "").strip()
+    if not raw:
+        return None
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _delegate_failed(code: int, receipt: dict | None) -> bool:
+    if code != 0:
+        return True
+    status = str((receipt or {}).get("status") or "")
+    return status in ("needs_human", "needs_confirmation", "failed")
+
+
+def _run_npx(tail: list[str]) -> tuple[int, dict | None]:
     npx = shutil.which("npx")
     if not npx:
         print("npx not found\nnext: install Node.js so npx is on PATH", file=sys.stderr)
-        return EXIT_FAIL
-    proc = subprocess.run([npx, *tail], env=os.environ)
-    if proc.returncode != 0:
-        print("delegate command failed\nnext: re-run when npx exits 0", file=sys.stderr)
-        return EXIT_FAIL
-    return EXIT_READY
+        return EXIT_FAIL, None
+    proc = subprocess.run([npx, *tail], env=_npx_env(), capture_output=True, text=True)
+    receipt = _parse_json_obj(proc.stdout)
+    if _delegate_failed(proc.returncode, receipt):
+        return EXIT_FAIL, receipt
+    return EXIT_READY, receipt
+
+
+def _merge_actions(base: list, extra) -> list:
+    out = list(base)
+    if not isinstance(extra, list):
+        return out
+    for item in extra:
+        if item not in out:
+            out.append(item)
+    return out
+
+
+def _file_action(op: dict) -> dict:
+    return {
+        "harness": op["harness"],
+        "item": op["item"],
+        "kind": op["kind"],
+        "path": str(op["path"]),
+    }
 
 
 def _delegate_tail(item: dict, harnesses: list[str], insert: bool) -> tuple[list[str] | None, str | None]:
@@ -407,8 +482,28 @@ def _apply_skill(op: dict, records: list[dict]) -> tuple[bool, bool]:
 
 
 def _zero(args, plan: list[dict] | None = None) -> int:
-    payload = {"status": "ok", "plan": plan or [], "doctor": [], "message": "0 writes"}
+    payload = {
+        "status": "ok",
+        "plan": plan or [],
+        "plannedActions": plan or [],
+        "appliedActions": [],
+        "doctor": [],
+        "message": "0 writes",
+    }
     _emit(args, payload, ["0 writes"])
+    return EXIT_READY
+
+
+def _nothing_planned(args) -> int:
+    payload = {
+        "status": "planned",
+        "plan": [],
+        "plannedActions": [],
+        "appliedActions": [],
+        "doctor": [],
+        "message": "nothing was planned",
+    }
+    _emit(args, payload, ["nothing was planned"])
     return EXIT_READY
 
 
@@ -453,8 +548,10 @@ def cmd_setup(args) -> int:
         _emit(args, {"status": "failed", "plan": [], "doctor": []}, [err])
         return EXIT_USAGE if err.startswith("unknown") else EXIT_FAIL
     if not harnesses or not items:
+        if harnesses and not items:
+            return _nothing_planned(args)
         if dry:
-            _emit(args, {"status": "planned", "plan": [], "doctor": [], "message": "0 writes"}, ["0 writes"])
+            _emit(args, {"status": "planned", "plan": [], "plannedActions": [], "appliedActions": [], "doctor": [], "message": "0 writes"}, ["0 writes"])
             return EXIT_READY
         return _zero(args)
 
@@ -476,6 +573,7 @@ def cmd_setup(args) -> int:
 
     writes = 0
     lines: list[str] = []
+    written: list[dict] = []
     ledger_changed = False
     for op in file_ops:
         if op["kind"] == "skill":
@@ -485,6 +583,7 @@ def cmd_setup(args) -> int:
         if wrote:
             writes += 1
             lines.append("wrote %s %s %s" % (op["harness"], op["item"], op["path"]))
+            written.append(_file_action(op))
         if changed:
             ledger_changed = True
             writes += 1
@@ -495,14 +594,33 @@ def cmd_setup(args) -> int:
             continue
         tail, err = _delegate_tail(item, harnesses, True)
         if err or tail is None:
-            _emit(args, {"status": "failed", "plan": plan, "doctor": []}, [err or "delegate failed"])
+            _emit(args, {"status": "failed", "plan": plan, "plannedActions": plan, "appliedActions": written, "doctor": []}, [err or "delegate failed"])
             return EXIT_FAIL
-        if _run_npx(tail) != EXIT_READY:
+        code, receipt = _run_npx(tail)
+        if code != EXIT_READY:
             if ledger_changed:
                 save_ledger(records)
+            status = "needs_human" if receipt and str(receipt.get("status") or "") == "needs_human" else "failed"
+            payload = {
+                "status": status,
+                "plan": plan,
+                "plannedActions": _merge_actions(plan, (receipt or {}).get("plannedActions")),
+                "appliedActions": _merge_actions(written, (receipt or {}).get("appliedActions")),
+                "doctor": [],
+                "writes": writes,
+            }
+            print("delegate command failed\nnext: re-run when npx exits 0", file=sys.stderr)
+            _emit(args, payload, ["delegate command failed", "next: re-run when npx exits 0"])
             return EXIT_FAIL
         writes += 1
         lines.append("delegate %s" % iid)
+        delegate_row = {
+            "harness": ",".join(harnesses),
+            "item": iid,
+            "kind": "delegate",
+            "path": "npx " + " ".join(tail),
+        }
+        written.append(delegate_row)
         cmap = ((item.get("install") or {}).get("delegate") or {}).get("client_map") or {}
         for hid in harnesses:
             client = str(cmap[hid])
@@ -524,14 +642,64 @@ def cmd_setup(args) -> int:
         save_ledger(records)
     if writes == 0:
         lines.append("0 writes")
-    payload = {"status": "ok", "plan": plan, "doctor": [], "writes": writes}
+    payload = {
+        "status": "ok",
+        "plan": plan,
+        "plannedActions": plan,
+        "appliedActions": written,
+        "doctor": [],
+        "writes": writes,
+    }
     if writes == 0:
         payload["message"] = "0 writes"
     _emit(args, payload, lines)
     return EXIT_READY
 
 
+def _skill_harnesses(path: Path) -> list[str]:
+    owners: list[str] = []
+    for adapter in ADAPTERS:
+        try:
+            path.relative_to(adapter.skills_dir())
+        except ValueError:
+            continue
+        owners.append(adapter.id)
+    return owners
+
+
+def _expand_shared_skills(records: list[dict]) -> list[dict]:
+    """Show a shared skill dir under every harness that reads it.
+
+    The ledger keeps one row. Doctor still reports codex and opencode.
+    """
+    out: list[dict] = []
+    seen: set[tuple[str, str, str, str]] = set()
+    for rec in records:
+        clones = [rec]
+        if str(rec.get("kind") or "") == "skill" and rec.get("path"):
+            owners = _skill_harnesses(Path(str(rec.get("path"))))
+            if owners:
+                clones = []
+                for hid in owners:
+                    clone = dict(rec)
+                    clone["harness"] = hid
+                    clones.append(clone)
+        for clone in clones:
+            key = (
+                str(clone.get("harness") or ""),
+                str(clone.get("item") or ""),
+                str(clone.get("path") or ""),
+                str(clone.get("kind") or ""),
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(clone)
+    return out
+
+
 def _group_states(records: list[dict]) -> list[dict]:
+    records = _expand_shared_skills(records)
     order: list[tuple[str, str]] = []
     groups: dict[tuple[str, str], list[dict]] = {}
     for rec in records:
@@ -675,7 +843,9 @@ def cmd_uninstall(args) -> int:
         if err or tail is None:
             _emit(args, {"status": "failed", "plan": [], "doctor": []}, [err or "delegate failed"])
             return EXIT_FAIL
-        if _run_npx(tail) != EXIT_READY:
+        code, _receipt = _run_npx(tail)
+        if code != EXIT_READY:
+            print("delegate command failed\nnext: re-run when npx exits 0", file=sys.stderr)
             for rec in records:
                 if rec.get("kind") == "delegate" and rec.get("item") == iid:
                     kept.append(_canon(rec))

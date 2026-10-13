@@ -135,7 +135,7 @@ Adapters reuse rea's resolution rules as the reference (MIT) and cite them in a 
 
 ## 9. Idempotency, ownership, uninstall
 
-- **State ledger:** `~/.local/state/pfy/installed.json` (XDG_STATE_HOME). One record per write: `{harness, item, item_version, path, kind: mcp|skill|file|delegate, key, sha256_after, backup}`. Uninstall removes only ledger-recorded objects whose current hash still matches. If the user edited one, pfy reports and leaves it.
+- **State ledger:** `~/.local/state/pfy/installed.json` (XDG_STATE_HOME). One record per write: `{harness, item, item_version, path, kind: mcp|skill|file|delegate, key, sha256_after, backup}`. A shared skill path such as `~/.agents/skills` is one row even when two harnesses read it. Uninstall removes only ledger-recorded objects whose current hash still matches. If the user edited one, pfy reports and leaves it. A matching file with an empty backup was created by pfy: remove it, or strip only the pfy entry when other content is in the file. A clean restore deletes the `.pfy.backup`.
 - **Markers in place:** MCP entries are named `<item>` with a sibling `"_pfy": {"owner": "pfy", "item": "rea", "v": "…"}` where the format allows it (JSON). In TOML, pfy uses a `# managed-by: pfy item=<id>` comment line above the table. Skills get a `.pfy-owned` file in the skill dir. These are the same kind of thing as today's `<!-- pfy-toolset:<id> -->` markers.
 - **Write discipline (copied from rea):** parse every target first, and if any file is malformed, abort the whole plan. Preserve unrelated keys and comments: `tomlkit`-style round-trip, or the existing `bootstrap/grok-cli/scripts/merge_config.py` until it is replaced. Take the first backup as `<file>.pfy.backup`, once. Write to a temp file and rename atomically, then re-read to verify.
 - **Re-run = no-op:** a second `pfy setup` with the same selection must report `0 writes`. A changed pin produces an in-place update of the owned entry only.
@@ -178,7 +178,7 @@ DoD:
 3. Running the same command again reports `0 writes` and makes no new backups.
 4. Unrelated pre-existing MCP entries and TOML comments survive byte-for-byte.
 5. With a malformed `~/.claude.json`, the whole plan aborts before **any** write (all four files are unchanged) and exits 1 with the path and a next step.
-6. `pfy uninstall` removes only ledger-owned entries and skills, leaves a user-edited owned entry in place with a warning, and calls rea's own uninstall. After it runs, the harness files equal the pre-setup files apart from the backups.
+6. `pfy uninstall` removes only ledger-owned entries and skills, leaves a user-edited owned entry or skill dir in place with a warning, and calls rea's own uninstall. A file pfy created (no backup) is removed when its hash still matches, or only the pfy entry is removed when that file has other content. A clean byte-for-byte restore deletes the `.pfy.backup`. After it runs, the harness files equal the pre-setup files.
 7. `pfy doctor --json` is read-only (file hashes unchanged) and reports per-harness/item `aligned|missing|drifted`.
 8. `grep -R` finds no secret, auth, or token reads in the new code. `make eval-structural` stays green.
 

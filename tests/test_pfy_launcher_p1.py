@@ -90,9 +90,17 @@ class _Home(unittest.TestCase):
             bindir / "npx",
             "#!/usr/bin/env python3\n"
             "import json, os, sys\n"
-            "p = os.environ['NPX_LOG']\n"
-            "with open(p, 'a', encoding='utf-8') as f:\n"
-            "    f.write(json.dumps(sys.argv[1:]) + '\\n')\n",
+            "home = os.environ['HOME']\n"
+            "log = os.environ.get('NPX_LOG') or os.path.join(home, 'npx.log')\n"
+            "with open(log, 'a', encoding='utf-8') as f:\n"
+            "    f.write(json.dumps(sys.argv[1:]) + '\\n')\n"
+            "with open(os.path.join(home, 'npx-env.json'), 'w', encoding='utf-8') as f:\n"
+            "    json.dump(dict(os.environ), f)\n"
+            "mode_path = os.path.join(home, 'npx-mode.json')\n"
+            "if os.path.isfile(mode_path):\n"
+            "    mode = json.load(open(mode_path, encoding='utf-8'))\n"
+            "    sys.stdout.write(mode.get('stdout') or '')\n"
+            "    raise SystemExit(int(mode.get('exit', 0)))\n",
         )
 
     def _mkdtemp(self) -> str:
@@ -168,6 +176,20 @@ class _Home(unittest.TestCase):
         if not self.npx_log.is_file():
             return []
         return [json.loads(line) for line in self.npx_log.read_text().splitlines() if line.strip()]
+
+    def ledger_records(self) -> list[dict]:
+        path = self.home / ".local" / "state" / "pfy" / "installed.json"
+        if not path.is_file():
+            return []
+        data = json.loads(path.read_text())
+        recs = data.get("records") if isinstance(data, dict) else data
+        return [r for r in recs or [] if isinstance(r, dict)]
+
+    def seed_harness_dirs(self) -> None:
+        (self.home / ".grok").mkdir()
+        (self.home / ".claude").mkdir()
+        (self.home / ".codex").mkdir()
+        (self.home / ".config" / "opencode").mkdir(parents=True)
 
 
 def _toolsets() -> dict:
@@ -380,6 +402,14 @@ class SetupTests(_Home):
             self.assertEqual(backup.read_bytes(), originals[path])
         setups = [c for c in self.npx_calls() if "setup" in c]
         self.assertEqual(setups, [SETUP_ARGV])
+        shared = [
+            r
+            for r in self.ledger_records()
+            if r.get("kind") == "skill" and "/.agents/skills/" in str(r.get("path") or "")
+        ]
+        shared_paths = [str(r.get("path") or "") for r in shared]
+        self.assertEqual(len(shared_paths), len(set(shared_paths)))
+        self.assertEqual(len(shared_paths), len(names))
 
     def test_second_run_zero_writes(self):
         originals = self.seed_harnesses()
@@ -428,7 +458,7 @@ class SetupTests(_Home):
         self.assertEqual(proc.returncode, 0, blob)
         for path, raw in originals.items():
             self.assertEqual(path.read_bytes(), raw, path)
-            self.assertEqual(Path(str(path) + ".pfy.backup").read_bytes(), raw)
+            self.assertFalse(Path(str(path) + ".pfy.backup").exists(), path)
         self.assertFalse((self.home / ".grok" / "skills" / "adr").exists())
         self.assertFalse((self.home / ".claude" / "skills" / "adr").exists())
         self.assertFalse((self.home / ".agents" / "skills" / "adr").exists())
@@ -495,6 +525,277 @@ class SetupTests(_Home):
         self.assertEqual(got[("grok", "code-graph")], "drifted")
         self.assertEqual(got[("claude-code", "code-graph")], "aligned")
         self.assertEqual(self.snap(), after_edit)
+
+    def test_uninstall_removes_files_pfy_created(self):
+        self.seed_harness_dirs()
+        applied = self._apply()
+        blob = applied.stdout + applied.stderr
+        self.assertEqual(applied.returncode, 0, blob)
+        grok = self.home / ".grok" / "config.toml"
+        self.assertTrue(grok.is_file())
+        self.assertFalse(Path(str(grok) + ".pfy.backup").exists())
+        proc = self.run_pfy("uninstall", "--yes")
+        blob = proc.stdout + proc.stderr
+        self.assertEqual(proc.returncode, 0, blob)
+        self.assertNotIn("warn", blob.lower())
+        self.assertNotIn("sha256", blob.lower())
+        for path in (
+            grok,
+            self.home / ".claude.json",
+            self.home / ".codex" / "config.toml",
+            self.home / ".config" / "opencode" / "opencode.json",
+        ):
+            self.assertFalse(path.exists(), path)
+        for root in (
+            self.home / ".grok" / "skills",
+            self.home / ".claude" / "skills",
+            self.home / ".agents" / "skills",
+        ):
+            owned = list(root.rglob(".pfy-owned")) if root.exists() else []
+            self.assertEqual(owned, [], root)
+        self.assertEqual(self.ledger_records(), [])
+
+    def test_uninstall_strips_pfy_entry_when_created_file_has_other_content(self):
+        grok = self.home / ".grok" / "config.toml"
+        grok.parent.mkdir(parents=True)
+        body = (
+            "# user comment stays\n"
+            "[mcp_servers.other]\n"
+            'command = "keep-me"\n'
+            "\n"
+            "# managed-by: pfy item=code-graph\n"
+            "[mcp_servers.code-graph]\n"
+            'command = "codebase-memory-mcp"\n'
+        )
+        grok.write_text(body)
+        claude = self.home / ".claude.json"
+        claude_obj = {
+            "mcpServers": {
+                "other": {"command": "keep-me"},
+                "code-graph": {
+                    "command": "codebase-memory-mcp",
+                    "_pfy": {"owner": "pfy", "item": "code-graph", "v": "1"},
+                },
+            }
+        }
+        claude_raw = (json.dumps(claude_obj, indent=2) + "\n").encode()
+        claude.write_bytes(claude_raw)
+        ledger = self.home / ".local" / "state" / "pfy" / "installed.json"
+        ledger.parent.mkdir(parents=True)
+        records = [
+            {
+                "backup": "",
+                "harness": "grok",
+                "item": "code-graph",
+                "kind": "mcp",
+                "path": str(grok),
+                "sha256_after": hashlib.sha256(body.encode()).hexdigest(),
+            },
+            {
+                "backup": "",
+                "harness": "claude-code",
+                "item": "code-graph",
+                "kind": "mcp",
+                "path": str(claude),
+                "sha256_after": hashlib.sha256(claude_raw).hexdigest(),
+            },
+        ]
+        ledger.write_text(json.dumps({"records": records}, indent=2) + "\n")
+        proc = self.run_pfy("uninstall", "--yes")
+        blob = proc.stdout + proc.stderr
+        self.assertEqual(proc.returncode, 0, blob)
+        self.assertNotIn("warn", blob.lower())
+        self.assertNotIn("sha256", blob.lower())
+        text = grok.read_text()
+        self.assertIn("# user comment stays", text)
+        self.assertIn("keep-me", text)
+        self.assertNotIn("code-graph", text)
+        self.assertNotIn("managed-by: pfy", text)
+        opened = json.loads(claude.read_text())
+        self.assertEqual(opened["mcpServers"]["other"]["command"], "keep-me")
+        self.assertNotIn("code-graph", opened["mcpServers"])
+        self.assertEqual(self.ledger_records(), [])
+
+    def test_first_backup_is_never_overwritten(self):
+        originals = self.seed_harnesses()
+        grok = self.home / ".grok" / "config.toml"
+        backup = Path(str(grok) + ".pfy.backup")
+        sentinel = b"# first snapshot must stay\n"
+        backup.write_bytes(sentinel)
+        proc = self._apply()
+        blob = proc.stdout + proc.stderr
+        self.assertEqual(proc.returncode, 0, blob)
+        self.assertEqual(backup.read_bytes(), sentinel)
+        self.assertIn("managed-by: pfy item=code-graph", grok.read_text())
+        for path, raw in originals.items():
+            if path == grok:
+                continue
+            self.assertEqual(Path(str(path) + ".pfy.backup").read_bytes(), raw)
+        grok.write_text(grok.read_text().replace("# managed-by: pfy item=code-graph\n", ""))
+        again = self._apply()
+        self.assertEqual(again.returncode, 0, again.stdout + again.stderr)
+        self.assertEqual(backup.read_bytes(), sentinel)
+
+    def test_uninstall_leaves_user_edited_skill_dir(self):
+        self.seed_harnesses()
+        applied = self._apply()
+        self.assertEqual(applied.returncode, 0, applied.stdout + applied.stderr)
+        skill = self.home / ".grok" / "skills" / "adr"
+        skill_md = skill / "SKILL.md"
+        skill_md.write_text(skill_md.read_text() + "\n# user edit\n")
+        proc = self.run_pfy("uninstall", "--yes")
+        blob = proc.stdout + proc.stderr
+        self.assertEqual(proc.returncode, 0, blob)
+        self.assertIn("warn", blob.lower())
+        self.assertIn(str(skill), blob)
+        self.assertTrue(skill.is_dir())
+        self.assertIn("# user edit", skill_md.read_text())
+        self.assertTrue((skill / ".pfy-owned").is_file())
+        self.assertFalse((self.home / ".grok" / "skills" / "docs").exists())
+        kept = [r for r in self.ledger_records() if str(r.get("path") or "").endswith("/.grok/skills/adr")]
+        self.assertEqual(len(kept), 1)
+
+    def test_failing_rea_setup_exits_nonzero(self):
+        self.seed_harnesses()
+        (self.home / "npx-mode.json").write_text(json.dumps({"exit": 1, "stdout": ""}))
+        proc = self._apply()
+        blob = proc.stdout + proc.stderr
+        self.assertNotEqual(proc.returncode, 0, blob)
+        self.assertIn("delegate command failed", blob)
+        self.assertNotIn("0 writes", blob)
+        (self.home / "npx-mode.json").write_text(
+            json.dumps(
+                {
+                    "exit": 0,
+                    "stdout": json.dumps({"status": "needs_human", "plannedActions": [], "appliedActions": []}),
+                }
+            )
+        )
+        proc2 = self._apply()
+        self.assertNotEqual(proc2.returncode, 0, proc2.stdout + proc2.stderr)
+
+    def test_needs_human_receipt_lists_written_files(self):
+        self.seed_harnesses()
+        rea = {
+            "status": "needs_human",
+            "plannedActions": [{"id": "configure_client:grok_build", "path": "/rea/planned"}],
+            "appliedActions": [{"id": "configured_client:grok_build", "path": "/rea/applied"}],
+        }
+        (self.home / "npx-mode.json").write_text(json.dumps({"exit": 1, "stdout": json.dumps(rea)}))
+        proc = self.run_pfy(
+            "setup",
+            "--preset",
+            "core",
+            "--yes",
+            "--json",
+            "--harness",
+            "grok",
+        )
+        blob = proc.stdout + proc.stderr
+        self.assertEqual(proc.returncode, 1, blob)
+        payload = json.loads(proc.stdout)
+        self.assertEqual(payload["status"], "needs_human")
+        applied = payload["appliedActions"]
+        planned = payload["plannedActions"]
+        self.assertTrue(any(str(a.get("path") or "").endswith("config.toml") or "/skills/" in str(a.get("path") or "") for a in applied))
+        self.assertTrue(any(a.get("path") == "/rea/applied" for a in applied))
+        self.assertTrue(any(a.get("path") == "/rea/planned" for a in planned))
+        self.assertIn("code-graph", (self.home / ".grok" / "config.toml").read_text())
+
+    def test_npx_env_allowlist_drops_paid_keys(self):
+        self.seed_harnesses()
+        proc = self.run_pfy(
+            "setup",
+            "--preset",
+            "core",
+            "--yes",
+            "--harness",
+            "grok",
+            OPENAI_API_KEY="SENTINEL_OPENAI",
+            ANTHROPIC_API_KEY="SENTINEL_ANTHROPIC",
+            ANTHROPIC_AUTH_TOKEN="SENTINEL_ANTHROPIC_TOKEN",
+            CURSOR_API_KEY="SENTINEL_CURSOR",
+            GEMINI_API_KEY="SENTINEL_GEMINI",
+            LANG="C.UTF-8",
+            TMPDIR=str(self.home / "tmp"),
+            npm_config_cache=str(self.home / "npm-cache"),
+            XDG_CACHE_HOME=str(self.home / "cache"),
+        )
+        blob = proc.stdout + proc.stderr
+        self.assertEqual(proc.returncode, 0, blob)
+        env = json.loads((self.home / "npx-env.json").read_text())
+        dumped = json.dumps(env)
+        for sentinel in (
+            "SENTINEL_OPENAI",
+            "SENTINEL_ANTHROPIC",
+            "SENTINEL_ANTHROPIC_TOKEN",
+            "SENTINEL_CURSOR",
+            "SENTINEL_GEMINI",
+        ):
+            self.assertNotIn(sentinel, dumped)
+        self.assertNotIn("OPENAI_API_KEY", env)
+        self.assertNotIn("ANTHROPIC_API_KEY", env)
+        self.assertEqual(env.get("HOME"), str(self.home))
+        self.assertIn(str(self.home / "bin"), env.get("PATH", ""))
+        self.assertEqual(env.get("LANG"), "C.UTF-8")
+        self.assertEqual(env.get("TMPDIR"), str(self.home / "tmp"))
+        self.assertEqual(env.get("npm_config_cache"), str(self.home / "npm-cache"))
+        self.assertEqual(env.get("XDG_CACHE_HOME"), str(self.home / "cache"))
+        allowed = {
+            "PATH",
+            "HOME",
+            "TMPDIR",
+            "TEMP",
+            "TMP",
+            "XDG_CONFIG_HOME",
+            "XDG_CACHE_HOME",
+            "XDG_DATA_HOME",
+            "XDG_STATE_HOME",
+            "XDG_RUNTIME_DIR",
+            "npm_config_cache",
+            "NPM_CONFIG_CACHE",
+            "LANG",
+        }
+        self.assertTrue(set(env).issubset(allowed), sorted(set(env) - allowed))
+
+    def test_harness_without_preset_plans_nothing(self):
+        originals = self.seed_harnesses()
+        proc = self.run_pfy("setup", "--harness", "grok", "--dry-run", "--json")
+        blob = proc.stdout + proc.stderr
+        self.assertEqual(proc.returncode, 0, blob)
+        self.assertIn("nothing was planned", blob)
+        payload = json.loads(proc.stdout)
+        self.assertEqual(payload["plan"], [])
+        self.assertEqual(payload["plannedActions"], [])
+        self.assertEqual(payload["appliedActions"], [])
+        for path, raw in originals.items():
+            self.assertEqual(path.read_bytes(), raw)
+        self.assertEqual(self.npx_calls(), [])
+        proc2 = self.run_pfy("setup", "--harness", "claude-code", "--yes")
+        blob2 = proc2.stdout + proc2.stderr
+        self.assertEqual(proc2.returncode, 0, blob2)
+        self.assertIn("nothing was planned", blob2)
+        self.assertEqual(self.npx_calls(), [])
+
+    def test_shared_skill_rows_stay_deduped_across_runs(self):
+        self.seed_harnesses()
+        first = self.run_pfy("setup", "--preset", "core", "--yes", "--harness", "codex")
+        self.assertEqual(first.returncode, 0, first.stdout + first.stderr)
+        second = self.run_pfy("setup", "--preset", "core", "--yes", "--harness", "opencode")
+        self.assertEqual(second.returncode, 0, second.stdout + second.stderr)
+        names = [s["name"] for s in _by_id()["core-skills"]["provides"]["skills"]]
+        shared = [
+            r
+            for r in self.ledger_records()
+            if r.get("kind") == "skill" and "/.agents/skills/" in str(r.get("path") or "")
+        ]
+        paths = [str(r.get("path") or "") for r in shared]
+        self.assertEqual(len(paths), len(set(paths)))
+        self.assertEqual(len(paths), len(names))
+        got = json.loads(self.run_pfy("doctor", "--json").stdout)
+        states = {(r["harness"], r["item"]): r["state"] for r in got["doctor"]}
+        self.assertEqual(states[("codex", "core-skills")], "aligned")
+        self.assertEqual(states[("opencode", "core-skills")], "aligned")
 
 
 class SecretTests(unittest.TestCase):

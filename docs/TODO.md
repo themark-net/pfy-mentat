@@ -120,7 +120,7 @@ Active work is also tracked as issues: https://github.com/themark-net/pfy-mentat
 
 | ID | Priority | Status | Item | Notes |
 |----|----------|--------|------|-------|
-| — | P1 | done | pfy launcher phase 1: `install.sh`, catalog v2 (`core-skills`, `code-graph`, `rea`), setup/doctor/uninstall on grok, claude-code, codex, opencode | [#290](https://github.com/themark-net/pfy-mentat/issues/290) · `build/pfy-launcher-p1` · not a Feature GO · HOLD 70–75 untouched · phases 2–4 not started |
+| — | P1 | done | pfy launcher phase 1: `install.sh`, catalog v2 (`core-skills`, `code-graph`, `rea`), setup/doctor/uninstall on grok, claude-code, codex, opencode | [#290](https://github.com/themark-net/pfy-mentat/issues/290) · PR 291 · `build/pfy-launcher-p1` · review fixes on the same branch (created-file uninstall, npx allowlist, shared-skill dedupe, backup delete, needs_human receipt) · suite 228 OK skipped=4 · `v0.4.17` tag still absent on origin · not a Feature GO · HOLD 70–75 untouched · phases 2–4 not started |
 | — | P3 | done | X-intake receipt sha source, shared timeout text, har temp HOME, graphjin log close, pfylib tmp cleanup | `build/orch-fixes-1011` · 2026-10-11 · not a Feature GO · catalog HOLD untouched |
 | — | — | done | #230 Jev-style decision layer (CUA-S1-FORMS primary local; TypeSafe optional) | — |
 | — | — | done | #228 Gab cloud lane + local recommend sync | — |
