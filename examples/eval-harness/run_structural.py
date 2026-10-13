@@ -14,6 +14,7 @@ Checks:
      (scripts/check_no_encoded_payloads.py)
   8. pfylib unit tests: python3 -m unittest discover -s tests (ADR-0017; offline)
   9. Catalog <-> implementation link (scripts/catalog_check.py; ADR-0015/0017)
+  10. Catalog item v2 (scripts/catalog_item_validate.py)
 
 Write summary to pipelines/eval/structural.latest.md when --write-md.
 """
@@ -269,6 +270,18 @@ def check_pfylib_unittests() -> tuple[bool, str]:
     return True, f"{ran} · {verdict}"
 
 
+def check_catalog_item_v2() -> tuple[bool, str]:
+    """Catalog item v2 rows pass scripts/catalog_item_validate.py."""
+    script = ROOT / "scripts/catalog_item_validate.py"
+    if not script.is_file():
+        return False, "scripts/catalog_item_validate.py missing"
+    code, out = run([sys.executable, str(script)])
+    lines = [ln.strip() for ln in out.splitlines() if ln.strip()]
+    if code == 0:
+        return True, (lines[0] if lines else "ok")
+    return False, "; ".join(lines[:4]) or f"exit {code}"
+
+
 def check_catalog_link() -> tuple[bool, str]:
     """ADR-0017: tools.json implementation <-> data/toolsets.json catalog_tool, via scripts/catalog_check.py."""
     script = ROOT / "scripts/catalog_check.py"
@@ -299,6 +312,7 @@ def main() -> int:
         ("no_encoded_payloads", check_no_encoded_payloads),
         ("pfylib_unittests", check_pfylib_unittests),
         ("catalog_implementation_link", check_catalog_link),
+        ("catalog_item_v2", check_catalog_item_v2),
     ]
     rows: list[tuple[str, bool, str]] = []
     for name, fn in checks:

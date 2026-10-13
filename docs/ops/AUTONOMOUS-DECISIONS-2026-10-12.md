@@ -1,0 +1,17 @@
+# Autonomous decisions — 2026-10-12 (pfy launcher phase 1)
+
+One line each. Choice, alternatives, why.
+
+1. Skill SoT for `core-skills` stays `bootstrap/grok-cli/skills/` (copy into harness homes); do not add a new `skills/` tree or delete the other copies — the design’s single-directory question is still open, and moving trees is harder to undo than a copy.
+2. Installer pin is `v0.4.17` (matches `data/tools.json`); the one-liner uses that tag and never `main`. Origin has no git tags, so dry-run prints the pin and does not fetch; `PFY_INSTALL_SOURCE` may point at a local tree for an offline copy. Alternatives were `main` (forbidden) or inventing a pushed tag (a release, not this PR).
+3. Bare `pfy setup [profile]` and bare `pfy doctor` stay the existing profile installer and FreeToken health check. Catalog flags (`--preset/--harness/--item/--dry-run/--yes/--json`) and `pfy doctor --json|--harness|--item` and `pfy uninstall` go to `pfylib`. Replacing the old verbs would break `./pfy help` and the operator profile path.
+4. Non-TTY `pfy setup` and `pfy uninstall` without `--yes` exit 1 with `needs_confirmation` and write nothing. A bare `--yes` with no `--harness` and no `--preset` only refreshes ledger-owned rows and does not select new harnesses. This is the design’s rea rule, and the tests are non-interactive.
+5. `pfy doctor` does not exec `npx`. Delegated `rea` is `aligned` when the ledger has that client. An exec would be a side effect, and the DoD requires unchanged file hashes and no network.
+6. `code-graph` MCP command is `codebase-memory-mcp`, entry name `code-graph`. Do not write an Axon block. That matches the live path in `scripts/pfy_code_graph_215.py`.
+7. New toolset rows `core-skills` and `rea` use legacy `implementation` status `stub` on every harness, with `catalog_tool: null`. `pfy toolset plan` has no planner for them, and a non-stub cell without a planner fails `tests/test_toolsets.py`. The v2 `harnesses` map records the four phase-1 adapters as `implemented`. `code-graph` keeps its existing matrix cells. Phase 3 is what clears matrix stubs.
+8. Clean uninstall restores a pre-existing config from its first `<file>.pfy.backup` when the current hash still matches the ledger, so the bytes equal the pre-setup file. A hash mismatch leaves that file and warns. Reserializing JSON would not round-trip.
+9. No extra git worktrees. Sub-agents share this worktree on disjoint paths and do not commit. The lead commits once on `build/pfy-launcher-p1`. `git worktree add` writes the main checkout’s `.git`, which this run must not touch.
+10. Gemini, Exo, and Continue stay `partial` in `data/harnesses.json`. The gate nit is wording only: that status is `partial`, while their toolset cells are `stub`, and `./pfy start continue` is a separate STUB exit.
+11. Do not add ADR-0018 in this phase. The design lists it as an open question, and this PR is the phase-1 behavior, not a new decision record.
+12. `gh` has no token in this environment. Push the branch with git over SSH. If `gh pr create` fails, write `tmp/pfy-launcher-p1.pr.md` and print the compare URL. Do not merge.
+13. `tests/test_loop_paint.py` now expects the all-stub module set to be exactly `core-skills` and `rea`. Alternative was a toolset planner that returns FAIL so Loop would offer them; `pfy setup` owns those writes, and a non-stub cell without a real planner fails `tests/test_toolsets.py`.
