@@ -119,6 +119,9 @@ pfy — simple setup & launch for the pfy-mentat stack
   pfy                     inference → env-stage → native operator window (no harness exec)
   pfy env                 inference + env-stage (no window, no harness exec)
   pfy setup [local-only|balanced|max-performance]
+  pfy setup --preset core --harness <id> [--yes|--dry-run]  catalog install (#290); flags select this path
+  pfy doctor --json        read-only catalog alignment (bare doctor stays FreeToken health)
+  pfy uninstall [--yes]    remove ledger-owned catalog writes only
   pfy status              harness table + local usage block
   pfy usage               local usage only (engine/endpoint/models/tok_path/vram)
   pfy up                  same as bare pfy (native window; attach is in-window sidecar)
@@ -2068,11 +2071,39 @@ main() {
   case "$cmd" in
     help|-h|--help) usage ;;
     gui|"") cmd_gui ;;
-    setup) cmd_setup "${1:-balanced}" ;;
+    setup)
+      local _pfy_route=0 _a
+      for _a in "$@"; do
+        case "$_a" in
+          --preset|--item|--harness|--dry-run|--yes|--json|--all-detected) _pfy_route=1 ;;
+        esac
+      done
+      if [[ "$_pfy_route" -eq 1 ]]; then
+        export PFY_ROOT="$ROOT"
+        exec python3 "$ROOT/pfylib/cli.py" setup "$@"
+      fi
+      cmd_setup "${1:-balanced}"
+      ;;
     status) cmd_status ;;
     usage) cmd_usage ;;
     endpoint) cmd_endpoint ;;
-    doctor) cmd_doctor ;;
+    doctor)
+      local _pfy_route=0 _a
+      for _a in "$@"; do
+        case "$_a" in
+          --json|--harness|--item) _pfy_route=1 ;;
+        esac
+      done
+      if [[ "$_pfy_route" -eq 1 ]]; then
+        export PFY_ROOT="$ROOT"
+        exec python3 "$ROOT/pfylib/cli.py" doctor "$@"
+      fi
+      cmd_doctor
+      ;;
+    uninstall)
+      export PFY_ROOT="$ROOT"
+      exec python3 "$ROOT/pfylib/cli.py" uninstall "$@"
+      ;;
     smoke) cmd_smoke ;;
     context) cmd_context "$@" ;;
     code-graph|axon) cmd_code_graph "$@" ;;

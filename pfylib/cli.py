@@ -17,7 +17,7 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     __package__ = "pfylib"  # noqa: A001 -- PEP 366 so relative imports work when run by path
 
-from . import hedge, registry, toolsets  # noqa: E402
+from . import hedge, registry, setup, toolsets  # noqa: E402
 
 EXIT_READY, EXIT_FAIL, EXIT_USAGE, EXIT_STUB = 0, 1, 2, 3
 
@@ -199,6 +199,18 @@ def _hedge_ledger(args) -> int:
     return EXIT_READY
 
 
+def _setup_verb(args) -> int:
+    return setup.cmd_setup(args)
+
+
+def _doctor_verb(args) -> int:
+    return setup.cmd_doctor(args)
+
+
+def _uninstall_verb(args) -> int:
+    return setup.cmd_uninstall(args)
+
+
 def _hedge_record(args) -> int:
     rec = hedge.record(args.amount, lane=args.lane, task=args.task or "", note=args.note or "", state=args.state, budget=args.budget)
     _emit(rec, args.json)
@@ -262,6 +274,28 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--budget", type=int, default=None)
     p.add_argument("--json", action="store_true")
     p.set_defaults(fn=_hedge_record)
+
+    sp = verbs.add_parser("setup", help="install catalog items into harness configs")
+    sp.add_argument("--preset", action="append", default=None)
+    sp.add_argument("--item", action="append", default=None)
+    sp.add_argument("--harness", action="append", default=None)
+    sp.add_argument("--dry-run", action="store_true")
+    sp.add_argument("--yes", action="store_true")
+    sp.add_argument("--json", action="store_true")
+    sp.add_argument("--all-detected", action="store_true")
+    sp.set_defaults(fn=_setup_verb)
+
+    sp = verbs.add_parser("doctor", help="read-only install status (does not exec delegates)")
+    sp.add_argument("--json", action="store_true")
+    sp.add_argument("--harness", action="append", default=None)
+    sp.add_argument("--item", action="append", default=None)
+    sp.set_defaults(fn=_doctor_verb)
+
+    sp = verbs.add_parser("uninstall", help="remove ledger-owned installs")
+    sp.add_argument("--yes", action="store_true")
+    sp.add_argument("--json", action="store_true")
+    sp.add_argument("--dry-run", action="store_true")
+    sp.set_defaults(fn=_uninstall_verb)
     return ap
 
 

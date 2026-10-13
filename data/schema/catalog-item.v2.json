@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pfy-mentat.local/schema/catalog-item.v2.json",
+  "title": "Catalog item v2",
+  "description": "One installable catalog item (skill, mcp, external, env, or bundle). A non-empty presets array requires secrets maxItems 0: preset items declare no secrets.",
+  "$comment": "A non-empty presets array requires secrets maxItems 0.",
+  "type": "object",
+  "required": ["id", "title", "kind", "provides", "install", "presets", "secrets"],
+  "properties": {
+    "id": {"type": "string", "minLength": 1},
+    "title": {"type": "string", "minLength": 1},
+    "kind": {
+      "description": "kind classifies the item: skill (SKILL.md dir), mcp (server pfy writes), external (delegate to the tool's own setup), env (launch-only process env), or bundle (a set of other items).",
+      "type": "string",
+      "enum": ["skill", "mcp", "external", "env", "bundle"]
+    },
+    "version": {"type": "string"},
+    "provides": {"type": "object"},
+    "install": {
+      "type": "object",
+      "required": ["strategy"],
+      "properties": {
+        "strategy": {
+          "type": "string",
+          "enum": ["native", "delegate"]
+        }
+      }
+    },
+    "presets": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "A non-empty presets array requires secrets maxItems 0."
+    },
+    "secrets": {
+      "type": "array",
+      "description": "Secret names this item needs. A non-empty presets array requires secrets maxItems 0."
+    }
+  },
+  "allOf": [
+    {
+      "description": "A non-empty presets array requires secrets maxItems 0.",
+      "if": {
+        "type": "object",
+        "required": ["presets"],
+        "properties": {
+          "presets": {"type": "array", "minItems": 1}
+        }
+      },
+      "then": {
+        "properties": {
+          "secrets": {"maxItems": 0}
+        }
+      }
+    }
+  ]
+}

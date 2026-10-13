@@ -29,7 +29,19 @@ class RegistryLoadTests(unittest.TestCase):
 
     def test_toolsets_seeded(self):
         tids = registry.toolset_ids(ROOT)
-        self.assertEqual(set(tids), {"jev", "gab", "opencontext", "code-graph", "orchestration", "catalog-ask"})
+        self.assertEqual(
+            set(tids),
+            {
+                "jev",
+                "gab",
+                "opencontext",
+                "code-graph",
+                "orchestration",
+                "catalog-ask",
+                "core-skills",
+                "rea",
+            },
+        )
         self.assertEqual(len(tids), len(set(tids)))
         jev = registry.toolset("jev", ROOT)
         self.assertIsNotNone(jev)
