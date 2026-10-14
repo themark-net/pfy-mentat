@@ -1,4 +1,4 @@
-# X intake local smokes (Entries 095-100, 103-114)
+# X intake local smokes (Entries 095-100, 103-116)
 
 Stdlib-only operate-or-FAIL checks for the X intake entries. Exit 0 PASS, 1 FAIL, 2 can't run here.
 Each run writes `pipelines/smoke/<entry>/latest.json`. Nothing is installed or downloaded; scratch files go to a
@@ -57,13 +57,16 @@ for smolvm machine commands).
 Entries 112-114 (`smoke_112_114.py`) look up `$OVERTIME_DIR` + `$OVERTIME_NODE` (version override `$OVERTIME_VERSION`) /
 `$FEST_BIN` with `camp` beside it (pin overrides `$FEST_SHA256`, `$CAMP_SHA256`) / `$SLOPTRIM_DIR` (commit override
 `$SLOPTRIM_COMMIT`), then `~/DEVELOP/pfy-mentat/tmp/{overtime,overtime/node/bin/node,festival/fest,sloptrim}`, then PATH
-where it applies. Every child, including `node --version` and sloptrim's `git rev-parse`, gets a fresh temp HOME and an
-env limited to `PATH`, `HOME`, `TERM`, `LANG`, and `NO_COLOR`. Festival also sets `GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`,
-`GIT_COMMITTER_NAME`, and `GIT_COMMITTER_EMAIL`. None of the three calls a model. Festival and Sloptrim run under `bwrap`
-with a read-only root, no network, and `--unshare-pid` when that probe works. Overtime starts a detached daemon, so it
-runs unwrapped; `daemon stop` runs in a finally, and the smoke FAILs if a daemon is left or the real `~/overtime`
-changes, including when a command times out. A timeout SIGKILLs the command's process group. Overtime needs Node >= 22.19
-(exit 2 otherwise). `PFY_XINTAKE_TIMEOUT` overrides the 120s per-command timeout.
+where it applies. Every child, including the bwrap probe, `node --version`, sloptrim's `git rev-parse`, tool commands,
+and overtime `daemon stop`, goes through `run_isolated` in `smoke.py`. That helper gives a fresh temp HOME and an env
+limited to `PATH`, `HOME`, `TERM`, `LANG`, and `NO_COLOR`, plus the git identity variables Festival sets
+(`GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`, `GIT_COMMITTER_NAME`, `GIT_COMMITTER_EMAIL`). None of the three calls a model.
+Festival and Sloptrim pass `bwrap_writable`, so they run under `bwrap` with a read-only root, no network, and
+`--unshare-pid` when that probe works. Overtime starts a detached daemon, so it passes no bwrap prefix. `daemon stop`
+runs in a finally, and the smoke FAILs if a daemon is left or the real `~/overtime` changes, including when a command
+times out. A timeout SIGKILLs the command's process group, so a forked grandchild dies too. Overtime needs Node >= 22.19
+(exit 2 otherwise). `PFY_XINTAKE_TIMEOUT` overrides the 120s per-command timeout and, when it is smaller than 10s, the
+`node --version` probe.
 
 New smokes must start every subprocess with `run_isolated` in `smoke.py` and with nothing else. Not `subprocess`,
 not `os.system`, and not the older `run` helper (that one stays for Entries 095-097). `run_isolated` builds a clean

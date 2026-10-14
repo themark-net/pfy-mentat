@@ -6,7 +6,9 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
@@ -64,6 +66,37 @@ mkdir -p "__PARENT_OT__"
 echo touched > "__PARENT_OT__/marker"
 "$0" --grandchild __MARKER__ >/dev/null 2>&1 &
 sleep 60
+"""
+
+# node --version that never returns: forks a sleeper, then sleeps. The pid file proves the
+# grandchild started. Fail: node_ok waits out its own timeout and the sleeper is still alive.
+# Recover: node_ok returns false quickly and the sleeper is dead.
+HANGING_NODE = """#!/bin/sh
+if [ "$1" = "--grandchild" ]; then
+  echo $$ > "__PIDFILE__"
+  sleep 60
+  exit 0
+fi
+"$0" --grandchild >/dev/null 2>&1 &
+sleep 60
+"""
+
+# Records the bwrap probe's environment (the invocation whose command is true or /bin/true).
+# Any later wrapped tool command exits without running, so the probe file is not overwritten.
+BWRAP_STUB = """#!/usr/bin/python3
+import os
+import sys
+from pathlib import Path
+args = sys.argv[1:]
+out = Path(__file__).resolve().parent.joinpath("bwrap.probe-env")
+if args and args[-1] in ("true", "/bin/true") and not out.exists():
+    lines = [f"{k}={v}" for k, v in sorted(os.environ.items())]
+    out.write_text("\\n".join(lines) + "\\n", encoding="utf-8")
+raise SystemExit(0)
+"""
+
+GIT_PIN_STUB = """#!/usr/bin/python3
+print("112114bwrapprobesentinelcommit")
 """
 
 
@@ -203,6 +236,106 @@ class XIntakeSmoke112114Tests(unittest.TestCase):
             receipt = _receipt("overtime")
             self.assertIn("real HOME ~/overtime was created or changed", receipt.get("reason") or "", blob)
             self.assertEqual(left, [], "a forked tool grandchild outlived the smoke timeout")
+
+    def test_bwrap_probe_drops_paid_keys_and_uses_temp_home(self) -> None:
+        # Fail: bwrap_prefix's `bwrap ... true` inherits the parent env, so a planted paid key
+        # is visible or HOME is still the operator HOME.
+        # Recover: the probe child has none of PAID_KEYS and HOME is a different temp dir.
+        loc = str(ROOT / "examples" / "x-intake-local")
+        if loc not in sys.path:
+            sys.path.insert(0, loc)
+        from smoke import PAID_KEYS
+
+        real_home = Path.home()
+        paid = {key: f"pfy-fake-{key}" for key in PAID_KEYS}
+        with tempfile.TemporaryDirectory(prefix="pfy-xintake-112-bwrap-") as td:
+            root = Path(td)
+            operator = root / "operator-home"
+            operator.mkdir()
+            bindir = root / "bin"
+            bindir.mkdir()
+            _write_exe(bindir / "bwrap", BWRAP_STUB)
+            _write_exe(bindir / "git", GIT_PIN_STUB)
+            slop = root / "sloptrim" / "scripts"
+            slop.mkdir(parents=True)
+            (slop / "detect.py").write_text("raise SystemExit(0)\n", encoding="utf-8")
+            env = _parent_env(operator)
+            env["PATH"] = str(bindir) + os.pathsep + env.get("PATH", "")
+            env["SLOPTRIM_DIR"] = str(root / "sloptrim")
+            env["SLOPTRIM_COMMIT"] = "112114bwrapprobesentinelcommit"
+            env.update(paid)
+            proc = _run("sloptrim", env)
+            blob = proc.stdout + proc.stderr
+            self.assertNotIn("Traceback", proc.stderr, blob)
+            probe = bindir / "bwrap.probe-env"
+            self.assertTrue(probe.is_file(), blob)
+            text = probe.read_text(encoding="utf-8")
+            seen = _seen(text)
+            leaked = [key for key, value in paid.items() if key in seen or value in text]
+            self.assertEqual(leaked, [], blob)
+            child_home = Path(seen["HOME"])
+            self.assertNotEqual(child_home.resolve(), operator.resolve())
+            self.assertNotEqual(child_home.resolve(), real_home.resolve())
+            self.assertTrue(str(child_home).startswith(tempfile.gettempdir()))
+
+    def test_node_ok_hanging_stub_on_path_reaps_grandchild(self) -> None:
+        # Fail: node_ok's `node --version` uses subprocess.run, so a forked sleeper outlives the timeout.
+        # Recover: node_ok returns false and that grandchild is dead.
+        loc = str(ROOT / "examples" / "x-intake-local")
+        if loc not in sys.path:
+            sys.path.insert(0, loc)
+        import smoke_112_114
+
+        with tempfile.TemporaryDirectory(prefix="pfy-xintake-112-nodeok-") as td:
+            root = Path(td)
+            bindir = root / "bin"
+            bindir.mkdir()
+            pidfile = root / "grandchild.pid"
+            _write_exe(bindir / "node", HANGING_NODE.replace("__PIDFILE__", str(pidfile)))
+            found = shutil.which("node", path=str(bindir) + os.pathsep + os.environ.get("PATH", ""))
+            self.assertEqual(found, str(bindir / "node"))
+            previous = os.environ.get("PFY_XINTAKE_TIMEOUT")
+            os.environ["PFY_XINTAKE_TIMEOUT"] = "0.4"
+            ok, detail = True, ""
+            try:
+                ok, detail = smoke_112_114.node_ok(found)
+            finally:
+                if previous is None:
+                    os.environ.pop("PFY_XINTAKE_TIMEOUT", None)
+                else:
+                    os.environ["PFY_XINTAKE_TIMEOUT"] = previous
+                time.sleep(0.2)
+                alive = _pid_alive(pidfile)
+                if alive and pidfile.is_file():
+                    try:
+                        os.kill(int(pidfile.read_text(encoding="utf-8").strip()), 9)
+                    except (OSError, ValueError):
+                        pass
+            self.assertTrue(pidfile.is_file(), "the node stub never forked its grandchild")
+            self.assertFalse(ok, detail)
+            self.assertIn("not runnable", detail)
+            self.assertFalse(alive, "a node --version grandchild outlived node_ok")
+
+    def test_overtime_festival_sloptrim_receipts_are_ignored(self) -> None:
+        for entry in ("overtime", "festival", "sloptrim"):
+            rel = f"pipelines/smoke/{entry}/latest.json"
+            ignored = subprocess.run(["git", "check-ignore", "-q", "--", rel], cwd=str(ROOT))
+            self.assertEqual(ignored.returncode, 0, rel)
+        tracked = subprocess.run(
+            ["git", "check-ignore", "-q", "--", "pipelines/smoke/kolibri1/latest.json"], cwd=str(ROOT))
+        self.assertEqual(tracked.returncode, 1)
+
+
+def _pid_alive(pidfile: Path) -> bool:
+    if not pidfile.is_file():
+        return False
+    try:
+        pid = int(pidfile.read_text(encoding="utf-8").strip())
+        stat = Path(f"/proc/{pid}/stat").read_text(encoding="utf-8")
+    except (OSError, ValueError):
+        return False
+    state = stat.rsplit(")", 1)[-1].split()[0]
+    return state not in ("Z", "X")
 
 
 if __name__ == "__main__":

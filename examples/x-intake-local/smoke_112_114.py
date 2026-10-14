@@ -3,18 +3,20 @@
 
 Usage: python3 examples/x-intake-local/smoke_112_114.py --entry overtime|festival|sloptrim
 
-Same contract and receipts as smoke.py next to it (whose helpers it reuses): exit 0 = PASS, 1 = the tool ran but
-the check failed, 2 = can't run here (prereq missing; reason recorded). Writes pipelines/smoke/<entry>/latest.json.
-Never installs anything; scratch goes to a fresh tempfile directory that is removed. Every child, including
-`node --version` and sloptrim's `git rev-parse`, gets a fresh temp HOME and an env limited to PATH, HOME, TERM,
-LANG, and NO_COLOR. Festival also sets GIT_AUTHOR_NAME, GIT_AUTHOR_EMAIL, GIT_COMMITTER_NAME, and
-GIT_COMMITTER_EMAIL so `camp create` can commit. No smoke calls a model.
-PFY_XINTAKE_TIMEOUT (float seconds, > 0) overrides the 120s per-command timeout. Each `sh()` command runs in its
-own session; on timeout the smoke SIGKILLs that process group, including a forked grandchild.
+Same contract and receipts as smoke.py next to it: exit 0 = PASS, 1 = the tool ran but the check failed, 2 = can't
+run here (prereq missing; reason recorded). Writes pipelines/smoke/<entry>/latest.json. Never installs anything;
+scratch goes to a fresh tempfile directory that is removed. Every child, including the bwrap probe, `node --version`,
+sloptrim's `git rev-parse`, tool commands, and overtime `daemon stop`, goes through smoke.run_isolated. That helper
+uses a fresh temp HOME and an env limited to PATH, HOME, TERM, LANG, and NO_COLOR, plus only the variables this
+smoke passes in `extra`. Festival passes GIT_AUTHOR_NAME, GIT_AUTHOR_EMAIL, GIT_COMMITTER_NAME, and
+GIT_COMMITTER_EMAIL so `camp create` can commit. No smoke calls a model. The parent environment is not copied.
+PFY_XINTAKE_TIMEOUT (float seconds, > 0) overrides the 120s per-command timeout and, when it is smaller than 10s,
+the `node --version` probe. Each child is a new session; on timeout run_isolated SIGKILLs that process group,
+including a forked grandchild.
 
 When bubblewrap (`bwrap`) accepts the probe, festival and sloptrim run with a read-only root, only the temp HOME
 and scratch dir writable, and no network. The prefix includes `--unshare-pid` when that probe works. Overtime
-starts a detached background daemon, so it runs without bwrap. `overtime daemon stop` runs in a finally. The
+starts a detached background daemon, so it passes no bwrap prefix. `overtime daemon stop` runs in a finally. The
 smoke checks that the real HOME's ~/overtime was not created or changed even when a command times out, and that
 `daemon stop` leaves no daemon behind. The receipt records the mode (`containment`).
 
@@ -44,14 +46,13 @@ import json
 import os
 import re
 import shutil
-import signal
 import subprocess
 import sys
 import tempfile
 import time
 from pathlib import Path
 
-from smoke import TMP, write
+from smoke import TMP, run_isolated, write
 
 OVERTIME_PIN = "0.5.3"
 # festival v0.3.20 festival-0.3.20-linux-x86_64.tar.gz (tarball sha256
@@ -86,54 +87,25 @@ def sha256(p: str) -> str:
     return h.hexdigest()
 
 
-def clean_env(home: str, path: str) -> dict:
-    return {"HOME": home, "PATH": path, "TERM": "dumb", "LANG": "C.UTF-8", "NO_COLOR": "1"}
+def sh(cmd, *, home: str, path: str, cwd=None, extra: dict | None = None,
+       bwrap_writable: list[str] | None = None):
+    """Every child in this smoke. Delegates to run_isolated; does not spawn on its own."""
+    return run_isolated(list(cmd), home=home, path=path, cwd=None if cwd is None else str(cwd), timeout=tmo(),
+                        extra=extra, bwrap_writable=bwrap_writable)
 
 
-def bwrap_prefix() -> list[str] | None:
-    """bwrap argv prefix. Includes --unshare-pid when that probe works; None if bwrap cannot run."""
-    b = shutil.which("bwrap")
-    if not b:
-        return None
-    base = [b, "--ro-bind", "/", "/", "--dev", "/dev", "--proc", "/proc", "--unshare-net", "--die-with-parent"]
-    with_pid = [b, "--ro-bind", "/", "/", "--dev", "/dev", "--proc", "/proc", "--unshare-net", "--unshare-pid",
-                "--die-with-parent"]
-    for flags in (with_pid, base):
-        try:
-            if subprocess.run(flags + ["true"], capture_output=True, timeout=10).returncode == 0:
-                return flags
-        except Exception:
-            continue
-    return None
-
-
-def wrap(cmd: list[str], writable: list[str], prefix: list[str] | None) -> list[str]:
-    if not prefix:
-        return cmd
-    w = list(prefix)
-    for d in writable:
-        w += ["--bind", d, d]
-    return w + cmd
-
-
-def sh(cmd, env, cwd=None):
-    """Run cmd in its own session. On timeout SIGKILL the process group, then re-raise."""
-    proc = subprocess.Popen(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env,
-                            start_new_session=True)
+def containment(home: str, writable: list[str], bare: str) -> str:
+    """Receipt label for a bwrap_writable run. The probe itself goes through run_isolated."""
     try:
-        out, err = proc.communicate(timeout=tmo())
-    except subprocess.TimeoutExpired:
-        try:
-            os.killpg(proc.pid, signal.SIGKILL)
-        except ProcessLookupError:
-            pass
-        try:
-            proc.communicate(timeout=5)
-        except subprocess.TimeoutExpired:  # a descendant that left the group still holds the pipes
-            proc.kill()
-            proc.wait()
-        raise
-    return subprocess.CompletedProcess(cmd, proc.returncode, out, err)
+        probe = run_isolated(["/bin/true"], home=home, timeout=min(10.0, tmo()), bwrap_writable=writable)
+    except (OSError, subprocess.TimeoutExpired):
+        return bare
+    args = [str(a) for a in (probe.args or [])]
+    if "--unshare-pid" in args:
+        return "bwrap read-only root, no network, own pid namespace"
+    if args and Path(args[0]).name == "bwrap":
+        return "bwrap read-only root, no network"
+    return bare
 
 
 def tree_sig(p: Path) -> str | None:
@@ -152,9 +124,9 @@ def tree_sig(p: Path) -> str | None:
 def node_ok(node: str) -> tuple[bool, str]:
     try:
         with tempfile.TemporaryDirectory(prefix="pfy-node-") as td:
-            v = subprocess.run([node, "--version"], capture_output=True, text=True, timeout=10,
-                               env=clean_env(td, "/usr/bin:/bin")).stdout.strip()
-    except Exception as e:
+            v = run_isolated([node, "--version"], home=td, path="/usr/bin:/bin",
+                             timeout=min(10.0, tmo())).stdout.strip()
+    except (OSError, subprocess.TimeoutExpired) as e:
         return False, f"node not runnable: {e}"
     m = re.match(r"v(\d+)\.(\d+)", v)
     return bool(m and (int(m[1]), int(m[2])) >= (22, 19)), v
@@ -197,27 +169,28 @@ def smoke_overtime(r: dict) -> int:
             home.mkdir()
             prot = Path(td) / "protected"
             prot.mkdir()
-            env = clean_env(str(home), f"{Path(node).parent}:/usr/bin:/bin")
+            home_s = str(home)
+            path = f"{Path(node).parent}:/usr/bin:/bin"
             ot = [node, str(pkg / "dist/bin.js")]
             steps = r.setdefault("steps", [])
             try:
-                p = sh(ot + ["new", "smoke-agent"], env)
+                p = sh(ot + ["new", "smoke-agent"], home=home_s, path=path)
                 steps.append({"new": p.returncode})
                 a = home / "overtime/agents/smoke-agent"
                 if p.returncode != 0 or not (a / "AGENT.md").is_file() or not (a / ".overtime/settings.json").is_file():
                     r["reason"] = f"`new` did not create the agent folder: {p.stdout[-300:]}{p.stderr[-300:]}"
                     return 1
-                p = sh(ot + ["ls"], env)
+                p = sh(ot + ["ls"], home=home_s, path=path)
                 if "smoke-agent" not in p.stdout:
                     r["reason"] = "`ls` does not list the new agent"
                     return 1
-                p = sh(ot + ["set", "smoke-agent", "budget=1", f"protect={prot}"], env)
+                p = sh(ot + ["set", "smoke-agent", "budget=1", f"protect={prot}"], home=home_s, path=path)
                 s = json.loads((a / ".overtime/settings.json").read_text())
                 steps.append({"set": p.returncode, "settings": s})
                 if p.returncode != 0 or s.get("dailyBudgetUsd") != 1 or str(prot) not in s.get("protect", []):
                     r["reason"] = "`set budget=1 protect=` did not land in .overtime/settings.json"
                     return 1
-                p = sh(ot + ["settings", "smoke-agent"], env)
+                p = sh(ot + ["settings", "smoke-agent"], home=home_s, path=path)
                 if "$1 a day" not in p.stdout or str(prot) not in p.stdout:
                     r["reason"] = "`settings` does not show the new budget and protected path"
                     return 1
@@ -237,7 +210,7 @@ def smoke_overtime(r: dict) -> int:
                 r["agent_md_edit_adopted"] = adopted
             finally:
                 try:
-                    p = sh(ot + ["daemon", "stop"], env)
+                    p = sh(ot + ["daemon", "stop"], home=home_s, path=path)
                     steps.append({"daemon_stop": p.returncode})
                 except subprocess.TimeoutExpired:
                     steps.append({"daemon_stop": "timeout"})
@@ -289,16 +262,15 @@ def smoke_festival(r: dict) -> int:
         return 2
     real = [Path.home() / ".obey", Path.home() / "campaigns"]
     before = [tree_sig(p) for p in real]
-    prefix = bwrap_prefix()
-    pid = ", own pid namespace" if prefix and "--unshare-pid" in prefix else ""
-    r["containment"] = f"bwrap read-only root, no network{pid}" if prefix else "real-home-check"
     with tempfile.TemporaryDirectory(prefix="pfy-festival-") as td:
         home = Path(td) / "home"
         home.mkdir()
-        env = clean_env(str(home), f"{Path(fest).parent}:{Path(git).parent}:/usr/bin:/bin")
-        env.update(GIT_AUTHOR_NAME="smoke", GIT_AUTHOR_EMAIL="smoke@localhost", GIT_COMMITTER_NAME="smoke",
-                   GIT_COMMITTER_EMAIL="smoke@localhost")
-        W = lambda c, cwd=None: sh(wrap(c, [td], prefix), env, cwd)
+        home_s = str(home)
+        path = f"{Path(fest).parent}:{Path(git).parent}:/usr/bin:/bin"
+        extra = {"GIT_AUTHOR_NAME": "smoke", "GIT_AUTHOR_EMAIL": "smoke@localhost",
+                 "GIT_COMMITTER_NAME": "smoke", "GIT_COMMITTER_EMAIL": "smoke@localhost"}
+        r["containment"] = containment(home_s, [td], "real-home-check")
+        W = lambda c, cwd=None: sh(c, home=home_s, path=path, cwd=cwd, extra=extra, bwrap_writable=[td])
         p = W([fest, "--version"])
         r["version"] = p.stdout.strip()
         p = W([camp, "create", "smokecamp", "-d", "smoke", "-m", "smoke mission"])
@@ -359,24 +331,20 @@ def smoke_sloptrim(r: dict) -> int:
         head = ""
     else:
         with tempfile.TemporaryDirectory(prefix="pfy-sloptrim-git-") as ghome:
-            head = sh([git, "-C", str(d), "rev-parse", "HEAD"], clean_env(ghome, "/usr/bin:/bin")).stdout.strip()
+            head = sh([git, "-C", str(d), "rev-parse", "HEAD"], home=ghome, path="/usr/bin:/bin").stdout.strip()
     r["commit"] = head
     if head != want:
         r["reason"] = f"sloptrim HEAD {head or '(not a git clone)'} != pinned {want} ($SLOPTRIM_COMMIT overrides)"
         return 2
-    prefix = bwrap_prefix()
-    pid = ", own pid namespace" if prefix and "--unshare-pid" in prefix else ""
-    r["containment"] = (f"bwrap read-only root, no network{pid}" if prefix
-                        else "none needed (stdlib, no network per upstream)")
     py = sys.executable
     with tempfile.TemporaryDirectory(prefix="pfy-sloptrim-") as td:
-        env = clean_env(td, "/usr/bin:/bin")
+        r["containment"] = containment(td, [td], "none needed (stdlib, no network per upstream)")
         files = {"slop": SLOP, "plain": PLAIN, "zw": PLAIN.replace("Tuesday", "Tues\u200bday")}
         scores = {}
         for k, v in files.items():
             f = Path(td) / f"{k}.md"
             f.write_text(v, encoding="utf-8")
-            p = sh(wrap([py, str(d / "scripts/detect.py"), str(f)], [td], prefix), env)
+            p = sh([py, str(d / "scripts/detect.py"), str(f)], home=td, path="/usr/bin:/bin", bwrap_writable=[td])
             try:
                 scores[k] = json.loads(p.stdout)["_metrics"]
             except (ValueError, KeyError):
@@ -390,7 +358,8 @@ def smoke_sloptrim(r: dict) -> int:
         if not scores["zw"].get("invisible_chars"):
             r["reason"] = "planted zero-width character not reported"
             return 1
-        p = sh(wrap([py, str(d / "scripts/detect.py"), "--clean", str(Path(td) / "zw.md")], [td], prefix), env)
+        p = sh([py, str(d / "scripts/detect.py"), "--clean", str(Path(td) / "zw.md")], home=td, path="/usr/bin:/bin",
+               bwrap_writable=[td])
         if p.returncode != 0 or "\u200b" in p.stdout or "Tuesday" not in p.stdout:
             r["reason"] = "`--clean` did not remove the zero-width character"
             return 1
