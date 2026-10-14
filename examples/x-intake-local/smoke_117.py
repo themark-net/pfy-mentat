@@ -2,7 +2,7 @@
 """Entry 117 NVIDIA AI-Q (Deep Researcher Agent) local smoke. Stdlib only.
 
 Exit 0 PASS, 1 FAIL, 2 can't run here.
-Receipt: pipelines/smoke/aiq/latest.json
+Receipt: pipelines/smoke/aiq/latest.json (override with AIQ_RECEIPT; unit tests set it)
 
 Staging is a separate step. A plain run never installs or clones.
 
@@ -63,10 +63,18 @@ def develop_root() -> Path:
     return Path.home() / "DEVELOP"
 
 
+def receipt_path() -> Path:
+    """Operator receipt, unless AIQ_RECEIPT points at a unit-test file."""
+    override = os.environ.get("AIQ_RECEIPT", "").strip()
+    if override:
+        return Path(override)
+    return ROOT / "pipelines/smoke" / ENTRY / "latest.json"
+
+
 def write(receipt: dict, code: int) -> int:
     receipt["exit_code"] = code
     receipt["verdict"] = {0: "PASS", 1: "FAIL", 2: "FAIL_CANNOT_RUN_HERE"}[code]
-    out = ROOT / "pipelines/smoke" / ENTRY / "latest.json"
+    out = receipt_path()
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(receipt, indent=2, ensure_ascii=False) + "\n")
     print(json.dumps({k: receipt.get(k) for k in ("verdict", "reason")}, ensure_ascii=False))

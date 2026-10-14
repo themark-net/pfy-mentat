@@ -61,6 +61,13 @@ def _parent_env(home: Path, **extra: str) -> dict[str, str]:
     return env
 
 
+def _operator_receipt() -> str | None:
+    path = ROOT / "pipelines/smoke/aiq/latest.json"
+    if not path.exists():
+        return None
+    return path.read_text(encoding="utf-8")
+
+
 def _run(env: dict[str, str]) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         ["python3", "examples/x-intake-local/smoke_117.py", "--entry", "aiq"],
@@ -109,16 +116,21 @@ class XIntakeSmoke117Tests(unittest.TestCase):
                 home.mkdir()
                 probe = Path(td, "child-env")
                 nat = Path(td, "nat")
+                before = _operator_receipt()
                 _write_exe(nat, f"""#!/bin/sh
 env >> {shlex.quote(str(probe))}
 if [ "$1" = --version ]; then echo "nat 1.8.0"; exit 0; fi
 printf '%s\\n' '--------------------------------------------------' 'Workflow Result:' 'A short local research report about Rust news with a citation.' '--------------------------------------------------'
 exit 0
 """)
-                ran = _run(_parent_env(home, AIQ_BIN=str(nat), AIQ_OLLAMA_URL=base, AIQ_ROOT=str(Path(td, "empty"))))
+                ran = _run(_parent_env(
+                    home, AIQ_BIN=str(nat), AIQ_OLLAMA_URL=base, AIQ_ROOT=str(Path(td, "empty")),
+                    AIQ_RECEIPT=str(Path(td, "receipt.json")),
+                ))
                 self.assertEqual(ran.returncode, 0, ran.stdout + ran.stderr)
                 self.assertNotIn("Traceback", ran.stderr)
                 _assert_child_clean(self, probe, home)
+                self.assertEqual(_operator_receipt(), before)
         finally:
             server.shutdown()
             server.server_close()
@@ -130,6 +142,7 @@ exit 0
                 home = Path(td, "operator-home")
                 home.mkdir()
                 nat = Path(td, "nat")
+                before = _operator_receipt()
                 _write_exe(nat, """#!/bin/sh
 if [ "$1" = --version ]; then echo "nat 1.8.0"; exit 0; fi
 if [ "$1" = --child ]; then sleep 60; exit 0; fi
@@ -138,7 +151,7 @@ sleep 60
 """)
                 ran = _run(_parent_env(
                     home, AIQ_BIN=str(nat), AIQ_OLLAMA_URL=base, AIQ_ROOT=str(Path(td, "empty")),
-                    PFY_XINTAKE_TIMEOUT="1",
+                    PFY_XINTAKE_TIMEOUT="1", AIQ_RECEIPT=str(Path(td, "receipt.json")),
                 ))
                 time.sleep(0.5)
                 left = subprocess.run(["pgrep", "-f", str(nat)], capture_output=True, text=True).stdout.split()
@@ -149,8 +162,9 @@ sleep 60
                         pass
                 self.assertEqual(ran.returncode, 1, ran.stdout + ran.stderr)
                 self.assertNotIn("Traceback", ran.stderr)
-                receipt = json.loads((ROOT / "pipelines/smoke/aiq/latest.json").read_text(encoding="utf-8"))
+                receipt = json.loads(Path(td, "receipt.json").read_text(encoding="utf-8"))
                 self.assertIn("timeout", receipt["reason"])
+                self.assertEqual(_operator_receipt(), before)
                 self.assertEqual(left, [], "a forked tool grandchild outlived the smoke timeout")
         finally:
             server.shutdown()
@@ -162,12 +176,14 @@ sleep 60
             home.mkdir()
             empty = Path(td, "empty-stage")
             empty.mkdir()
-            ran = _run(_parent_env(home, AIQ_ROOT=str(empty)))
+            before = _operator_receipt()
+            ran = _run(_parent_env(home, AIQ_ROOT=str(empty), AIQ_RECEIPT=str(Path(td, "receipt.json"))))
             self.assertEqual(ran.returncode, 2, ran.stdout + ran.stderr)
             self.assertNotIn("Traceback", ran.stderr)
             self.assertIn("not staged", ran.stdout)
-            receipt = json.loads((ROOT / "pipelines/smoke/aiq/latest.json").read_text(encoding="utf-8"))
+            receipt = json.loads(Path(td, "receipt.json").read_text(encoding="utf-8"))
             self.assertEqual(receipt["verdict"], "FAIL_CANNOT_RUN_HERE")
+            self.assertEqual(_operator_receipt(), before)
 
     def test_aiq_receipt_is_ignored(self) -> None:
         rel = "pipelines/smoke/aiq/latest.json"

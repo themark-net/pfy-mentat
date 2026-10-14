@@ -64,7 +64,8 @@ under `$AIQ_SRC` or `tmp/aiq/src`). `--stage` is the only path that clones or ru
 local config whose LLM roles use `_type: openai` at `http://localhost:11434/v1` model `qwen3.6:35b` with literal
 `api_key: local-dummy`, and whose only search tool is DuckDuckGo News. It exits 2 when the venv is missing, the
 pin does not match, or Ollama is unreachable. `PFY_XINTAKE_TIMEOUT` overrides the 900s research timeout.
-`$AIQ_OLLAMA_URL` overrides the Ollama origin. No bubblewrap on the research command: it has to reach Ollama and
-DuckDuckGo.
+`$AIQ_OLLAMA_URL` overrides the Ollama origin. `$AIQ_RECEIPT` overrides the receipt path so unit tests
+do not replace `pipelines/smoke/aiq/latest.json`. No bubblewrap on the research command: it has to reach
+Ollama and DuckDuckGo.
 
 Not wired into CI or Make.

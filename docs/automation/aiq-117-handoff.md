@@ -19,7 +19,7 @@ A direct `ChatOpenAI` probe through the same venv, before `nat run`, returned `p
 1. Research clone at `~/DEVELOP/pfy-mentat/tmp/aiq/src`, pin `951a1a1114e9818073ddbe2a5fdbfa824751f4d3` (2026-10-10, `fix(ui): upgrade next and sharp to clear npm audit findings (#494)`). Package `deep-researcher-agent` 2.2.0, Apache-2.0, 898 stars at the unauthenticated API read. `nvidia-nat` / `nvidia-nat-core` 1.8.0. `nemo-relay` git rev `ffb24817442bac99212da0971b13bdad5bc4d84d`.
 2. `python3 examples/x-intake-local/smoke_117.py --stage` — `uv sync --python 3.13 --frozen --group dev` into `~/DEVELOP/pfy-mentat/tmp/aiq/.venv`. Host CPython is 3.14.4; the package requires `>=3.11,<3.14`, so the venv is CPython 3.13.11 under `tmp/aiq/python`. `uv` is 0.9.26 (`scripts/setup.sh` prefers `>=0.11.25`; frozen sync exited 0). `nat, version 1.8.0`.
 3. `python3 examples/x-intake-local/smoke_117.py --entry aiq` — local YAML, every LLM role `_type: openai` at `http://localhost:11434/v1` model `qwen3.6:35b`, literal `api_key: local-dummy`, DuckDuckGo News only, clarifier and escalation off. Ollama `/api/tags` had the model. `nat run --input` produced the report above.
-4. Unit tests in `tests/test_x_intake_smoke_117.py`: sentinel env keys never reach the child, a stub grandchild dies on timeout, unstaged `AIQ_ROOT` exits 2, and `pipelines/smoke/aiq/` is gitignored while `pipelines/smoke/kolibri1/latest.json` is not.
+4. Unit tests in `tests/test_x_intake_smoke_117.py`: sentinel env keys never reach the child, a stub grandchild dies on timeout, unstaged `AIQ_ROOT` exits 2, and `pipelines/smoke/aiq/` is gitignored while `pipelines/smoke/kolibri1/latest.json` is not. Those runs set `AIQ_RECEIPT` to a temp file. The first full-suite run, before that override, replaced the operator receipt with the unstaged exit 2; the PASS receipt was restored from the smoke log and the original JSON.
 5. `python3 -m unittest discover -s tests -t .` — **232 tests, OK, skipped=4** (12.4s).
 6. `python3 scripts/catalog_check.py` — **PASS** `n_json=7` `toolsets=8` `linked=2` `catalog_tool=null:6` `tools_md=51` `stage_cards=51` `i1_cards_open=0` `stage_only=4`.
 
@@ -55,7 +55,7 @@ python3 examples/x-intake-local/smoke_117.py --stage
 python3 examples/x-intake-local/smoke_117.py --entry aiq
 ```
 
-`--stage` is the only clone and `uv sync`. It refuses a root outside `~/DEVELOP`. `--entry` alone exits 2 when `tmp/aiq/.venv/bin/nat` is missing. `PFY_XINTAKE_TIMEOUT` overrides the 900s research timeout. `$AIQ_ROOT`, `$AIQ_SRC`, `$AIQ_BIN`, and `$AIQ_OLLAMA_URL` override paths. The research child is not bubblewrap-wrapped, because it must reach Ollama and DuckDuckGo. Receipt: `pipelines/smoke/aiq/latest.json`.
+`--stage` is the only clone and `uv sync`. It refuses a root outside `~/DEVELOP`. `--entry` alone exits 2 when `tmp/aiq/.venv/bin/nat` is missing. `PFY_XINTAKE_TIMEOUT` overrides the 900s research timeout. `$AIQ_ROOT`, `$AIQ_SRC`, `$AIQ_BIN`, `$AIQ_OLLAMA_URL`, and `$AIQ_RECEIPT` override paths. Leave `AIQ_RECEIPT` unset for a real run. The research child is not bubblewrap-wrapped, because it must reach Ollama and DuckDuckGo. Receipt: `pipelines/smoke/aiq/latest.json`.
 
 ## Blockers
 
