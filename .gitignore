@@ -86,7 +86,7 @@ pipelines/smoke/graphjin/
 pipelines/smoke/antislop/
 
 .project-map/
-# 086-088, 095-097, and 109-111 receipts. Same rule: kolibri1/latest.json stays tracked.
+# 086-088, 095-097, 109-111, and 112-114 receipts. Same rule: kolibri1/latest.json stays tracked.
 pipelines/smoke/laya/
 pipelines/smoke/nimble/
 pipelines/smoke/beacon/
@@ -96,3 +96,6 @@ pipelines/smoke/foremerge/
 pipelines/smoke/smolvm/
 pipelines/smoke/brigade/
 pipelines/smoke/runx/
+pipelines/smoke/overtime/
+pipelines/smoke/festival/
+pipelines/smoke/sloptrim/

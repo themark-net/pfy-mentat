@@ -8,7 +8,9 @@ Daily X intake routine, window 2026-10-12 00:34Z to 2026-10-13 00:40Z (Mark's bo
 | 113 | [Festival](https://github.com/Obedience-Corp/festival) (Apache-2.0, v0.3.20) | Plan, gates and `fest next` live in files and git so any harness (Grok Build named upstream) resumes. Comparison point for orchestrator + loop-exits + Tester/Reviewer gates + handoffs | Yes, static binaries under `tmp/festival`, `HOME` under `tmp/`. Smoke PASSed on the box under a read-only root with no network |
 | 114 | [Sloptrim](https://github.com/seyedehsanhadi/sloptrim) (Apache-2.0, v0.9.4) | Stdlib, offline 0-100 score for AI-writing patterns in prose files; a cheap Reviewer/Design check on bot-written docs, pairs with Entry 105 | Yes, a clone under `tmp/sloptrim`, system python3. Smoke PASSed on the box under a read-only root with no network |
 
-Files: `sources/entries/112-overtime.md`, `113-festival.md`, `114-sloptrim.md`, `examples/x-intake-local/smoke_112_114.py` (reuses `write` and `TMP` from `smoke.py`; the other smoke scripts are unchanged), the folder README, and this handoff. No TOOLS.md rows, no `data/tools.json` rows, no stage cards, no Make target, no `.gitignore` change. Box receipts are not committed.
+Files: `sources/entries/112-overtime.md`, `113-festival.md`, `114-sloptrim.md`, `examples/x-intake-local/smoke_112_114.py` (reuses `write` and `TMP` from `smoke.py`; the other smoke scripts are unchanged), the folder README, `tests/test_x_intake_smoke_112_114.py`, and this handoff. No TOOLS.md rows, no `data/tools.json` rows, no stage cards, no Make target. `.gitignore` ignores `pipelines/smoke/overtime/`, `pipelines/smoke/festival/`, and `pipelines/smoke/sloptrim/` (`pipelines/smoke/kolibri1/latest.json` stays tracked). Box receipts are not committed.
+
+Fix after Tester FAIL on PR 292: `node --version` and sloptrim `git rev-parse` get that same reduced env (a temp HOME, only `PATH` / `HOME` / `TERM` / `LANG` / `NO_COLOR`). `sh()` starts a new session and SIGKILLs the process group on timeout. bwrap adds `--unshare-pid` when the probe accepts it, and still runs without that flag when the probe does not. Overtime `daemon stop` runs in a `finally`, and the real `~/overtime` check still runs when a command times out. `tests/test_x_intake_smoke_112_114.py` plants fake key sentinels and a stub grandchild under a 1s `PFY_XINTAKE_TIMEOUT`; both fail on the code from the first PR head.
 
 This slice was written by the routine directly through the GitHub connector rather than `./pfy build -p`, since it is docs plus one stdlib script and nimo was not needed for it.
 
@@ -22,7 +24,9 @@ On nimo each `python3 examples/x-intake-local/smoke_112_114.py --entry overtime|
 
 Or point `$OVERTIME_DIR`/`$OVERTIME_NODE`, `$FEST_BIN`, `$SLOPTRIM_DIR` at a staged copy. Receipts go to `pipelines/smoke/<entry>/latest.json`.
 
-What was checked on the Grok Bot box (all in `/tmp`, temp HOMEs): all three PASS. Negative paths: no prereqs gives exit 2 for each; Node 20 gives exit 2 for overtime; `$OVERTIME_VERSION=9.9.9` gives 2; a wrong `$FEST_SHA256` gives 2 without exec; a wrong `$SLOPTRIM_COMMIT` gives 2; `PFY_XINTAKE_TIMEOUT=0.001` gives exit 1 with a timeout reason. After the runs no Overtime daemon was left and the box's real `~/overtime`, `~/.obey` and `~/campaigns` did not exist. `python3 -m py_compile` is clean. The repo's `scripts/catalog_check.py` and unit tests were not run in this slice (no checkout on the box); Tester should run them on the PR head.
+What was checked on the Grok Bot box (all in `/tmp`, temp HOMEs): all three PASS. Negative paths: no prereqs gives exit 2 for each; Node 20 gives exit 2 for overtime; `$OVERTIME_VERSION=9.9.9` gives 2; a wrong `$FEST_SHA256` gives 2 without exec; a wrong `$SLOPTRIM_COMMIT` gives 2; `PFY_XINTAKE_TIMEOUT=0.001` gives exit 1 with a timeout reason. After the runs no Overtime daemon was left and the box's real `~/overtime`, `~/.obey` and `~/campaigns` did not exist. `python3 -m py_compile` is clean.
+
+Repo checks on this worktree after the Tester fix: before the fix, `tests.test_x_intake_smoke_112_114` was 2 tests and 3 failures. After the fix, `python3 -m unittest discover -s tests -t .` ran 206 tests, OK (skipped=4). `python3 scripts/catalog_check.py` PASS (`n_json=7`, toolsets=6 linked=2 catalog_tool=null:4, tools_md=51 stage_cards=51 i1_cards_open=0 stage_only=4).
 
 ## Findings worth knowing
 
@@ -57,4 +61,7 @@ Catalog 70-75 HOLD untouched. Nothing installed or downloaded on nimo. Mark's ma
 | Entry numbers collide | Another branch also adds 112-114 | Renumber on rebase; entries are self-contained files |
 | Smoke in CI without prereqs | Exit 2 read as red | Not wired into CI or Make; exit 2 is the honest "can't run here" |
 | Overtime daemon left running | Smoke killed mid-run | `finally` runs `daemon stop`; the daemon lives in a temp HOME that is removed |
+| Parent env reaches a child | `node --version` or sloptrim `git rev-parse` inherited the parent environment | Those children get the same reduced env as the tool commands (temp HOME, five variables) |
+| Timeout leaves a grandchild | Only the direct child was killed | `sh()` uses a new session and SIGKILLs the process group; bwrap adds `--unshare-pid` when the probe accepts it |
+| Timeout skips the real-HOME check | `TimeoutExpired` unwound before the `~/overtime` compare | The compare runs after the timeout is caught; a change fails the smoke |
 | Release churn | Festival and Overtime both shipped on 2026-10-12 | Binaries sha-pinned, versions and commits pinned; smokes exit 2 with a reason |

@@ -57,10 +57,12 @@ for smolvm machine commands).
 Entries 112-114 (`smoke_112_114.py`) look up `$OVERTIME_DIR` + `$OVERTIME_NODE` (version override `$OVERTIME_VERSION`) /
 `$FEST_BIN` with `camp` beside it (pin overrides `$FEST_SHA256`, `$CAMP_SHA256`) / `$SLOPTRIM_DIR` (commit override
 `$SLOPTRIM_COMMIT`), then `~/DEVELOP/pfy-mentat/tmp/{overtime,overtime/node/bin/node,festival/fest,sloptrim}`, then PATH
-where it applies. Tool subprocesses get a fresh temp HOME and an env with only `PATH`, `HOME`, `TERM`, `LANG` and
-`NO_COLOR`; none of the three calls a model. Festival and Sloptrim run under `bwrap` with a read-only root and no network
-when it works. Overtime starts a detached daemon, so it runs unwrapped; the smoke stops the daemon and FAILs if one is
-left or the real `~/overtime` changes. Overtime needs Node >= 22.19 (exit 2 otherwise). `PFY_XINTAKE_TIMEOUT` overrides
-the 120s per-command timeout.
+where it applies. Every child, including `node --version` and sloptrim's `git rev-parse`, gets a fresh temp HOME and an
+env limited to `PATH`, `HOME`, `TERM`, `LANG`, and `NO_COLOR`. Festival also sets `GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`,
+`GIT_COMMITTER_NAME`, and `GIT_COMMITTER_EMAIL`. None of the three calls a model. Festival and Sloptrim run under `bwrap`
+with a read-only root, no network, and `--unshare-pid` when that probe works. Overtime starts a detached daemon, so it
+runs unwrapped; `daemon stop` runs in a finally, and the smoke FAILs if a daemon is left or the real `~/overtime`
+changes, including when a command times out. A timeout SIGKILLs the command's process group. Overtime needs Node >= 22.19
+(exit 2 otherwise). `PFY_XINTAKE_TIMEOUT` overrides the 120s per-command timeout.
 
 Not wired into CI or Make.
