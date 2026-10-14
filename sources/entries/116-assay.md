@@ -10,7 +10,7 @@
 - **Finding**: a button that does nothing at all was not flagged: three checks passed with "the visible text is unchanged". The README demo shows a no-change failure on a drag list, so silent no-ops are caught only in some cases. A link to a missing page showed up in `console_errors` but its click check passed. The smoke records `dead_button_flagged` without failing.
 - **Extracted Repos / Tools**: https://github.com/awss1i/assay · https://github.com/awss1i/assay/blob/main/docs/harnesses.md
 - **TOOLS.md Link**: None yet. I0 awareness. No TOOLS.md row, no `data/tools.json` row.
-- **Smoke**: `python3 examples/x-intake-local/smoke_115_116.py --entry assay`. Uses `$ASSAY_BIN` or `~/DEVELOP/pfy-mentat/tmp/assay/venv/bin/assay`, version pinned 0.3.0, Chromium from `$PLAYWRIGHT_BROWSERS_PATH` or `tmp/assay/ms-playwright` (exit 2 if missing; never downloads). Receipt: `pipelines/smoke/assay/latest.json`.
+- **Smoke**: `python3 examples/x-intake-local/smoke_115_116.py --entry assay`. Uses `$ASSAY_BIN` or `~/DEVELOP/pfy-mentat/tmp/assay/venv/bin/assay`, version pinned 0.3.0, Chromium from `$PLAYWRIGHT_BROWSERS_PATH` or `tmp/assay/ms-playwright` (exit 2 if missing; never downloads). Every subprocess, including `assay --version`, goes through `run_isolated` (clean env, temp HOME). Page runs add bwrap with `--unshare-pid` when that flag works. Receipt: `pipelines/smoke/assay/latest.json`.
 - **Non-goals**: No skill or plugin installed, no hook wiring, no Tester change in this slice.
 - **How this fails / how we recover**:
 

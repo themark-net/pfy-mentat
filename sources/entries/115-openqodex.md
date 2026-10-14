@@ -10,7 +10,7 @@
 - **Finding**: the default block threshold is warn-only. A finalize with one major security finding printed "Passed with warnings" and exited 0, so a gate must set a threshold in `.openqodex/config.yaml` or read the receipt, not the exit code.
 - **Extracted Repos / Tools**: https://github.com/openqodex/openqodex · https://github.com/openqodex/openqodex/blob/main/docs/for-agents.md
 - **TOOLS.md Link**: None yet. I0 awareness. No TOOLS.md row, no `data/tools.json` row.
-- **Smoke**: `python3 examples/x-intake-local/smoke_115_116.py --entry openqodex`. Uses `$OPENQODEX_DIR` or `~/DEVELOP/pfy-mentat/tmp/openqodex`, version pinned 0.12.0, Node >= 22, `HOME` from `$OPENQODEX_HOME` or `tmp/openqodex/home`. Exits 2 if `claude` or `codex` is on the tool PATH so no model can start. Receipt: `pipelines/smoke/openqodex/latest.json`.
+- **Smoke**: `python3 examples/x-intake-local/smoke_115_116.py --entry openqodex`. Uses `$OPENQODEX_DIR` or `~/DEVELOP/pfy-mentat/tmp/openqodex`, version pinned 0.12.0, Node >= 22, `HOME` from `$OPENQODEX_HOME` or `tmp/openqodex/home`. That HOME must resolve under `~/DEVELOP/pfy-mentat/tmp` or the system temp directory. Every subprocess, including `node --version`, goes through `run_isolated` (clean env, temp HOME, process-group kill on timeout). Exits 2 if `claude` or `codex` is on the tool PATH so no model can start. Receipt: `pipelines/smoke/openqodex/latest.json`.
 - **Non-goals**: No `init`, no hooks, no skills or rules installed, no `.openqodex/` committed to pfy-mentat in this slice.
 - **How this fails / how we recover**:
 
@@ -19,4 +19,5 @@
 | Warn-only default | A major finding still exits 0 | Set the block threshold in config, or gate on the receipt's finding counts |
 | Repo writes | `.openqodex/` appears in the checkout | Throwaway worktree only; add to `.gitignore` if adopted |
 | Scanner download | First run needs network and ~360 MB | HOME under `tmp/`, kept between runs; smoke exit 2 is honest offline |
+| OPENQODEX_HOME outside the temp area | Scanners download into the real home or the repo | Smoke exits 2 and does not start a review |
 | Young project | Released 2026-10-02, fast churn | Version pinned; bump deliberately |

@@ -1,13 +1,13 @@
 # X intake 2026-10-13: handoff (Entries 115-116)
 
-Daily X intake routine, window 2026-10-13 00:40Z to 2026-10-14 00:39Z (Mark's bookmarks plus the watch list). Two catalog entries at **I0** plus one stdlib smoke script. Catalog-only; not a Feature GO. Catalog HOLD 70-75 untouched. Previous slice: #292 (Entries 112-114), open and in gates when this branch was cut from `main` (highest entry on `main`: 111). The two PRs touch different files, so either can merge first.
+Daily X intake routine, window 2026-10-13 00:40Z to 2026-10-14 00:39Z (Mark's bookmarks plus the watch list). Two catalog entries at **I0** plus one stdlib smoke script. Catalog-only; not a Feature GO. Catalog HOLD 70-75 untouched. Previous slice: #292 (Entries 112-114), open and in gates when this branch was cut from `main` (highest entry on `main`: 111). This fix also edits `examples/x-intake-local/smoke.py`, the x-intake README, and `.gitignore`. If #292 edits those same lines, keep one `run_isolated` and point both smokes at it.
 
 | Entry | Tool | Why | Fits nimo? |
 |------|------|-----|------------|
 | 115 | [OpenQodex](https://github.com/openqodex/openqodex) (Apache-2.0, npm 0.12.0) | Pre-push review: scanners on changed lines, then a reviewer that must raise or drop every finding, checked by a model-free `--finalize`. `review --agent` lets any agent be the reviewer. **Eval-auto candidate** as the Reviewer's first pass vs today's hand review of the diff | Yes, package plus Node 22 under `tmp/openqodex`, `HOME` under `tmp/`. Never `init`. Smoke PASSed on the Grok Bot box |
 | 116 | [assay](https://github.com/awss1i/assay) (MIT, PyPI `assay-ui` 0.3.0) | Deterministic, no-LLM web-page QA: opens the page in Chromium and uses every control. A cheap pre-check before Tester's launch check on GUI PRs | Yes, venv and Chromium under `tmp/assay`. Smoke PASSed on the box under a read-only root with no network |
 
-Files: `sources/entries/115-openqodex.md`, `116-assay.md`, `examples/x-intake-local/smoke_115_116.py` (imports `TMP` and `write` from `smoke.py`; other smoke scripts unchanged), and this handoff. The folder README is not edited here, to avoid a conflict with #292's README paragraph; the script's docstring documents its env vars. No TOOLS.md rows, no `data/tools.json` rows, no stage cards, no Make target, no `.gitignore` change. Box receipts are not committed.
+Files: `sources/entries/115-openqodex.md`, `116-assay.md`, `examples/x-intake-local/smoke_115_116.py`, `examples/x-intake-local/smoke.py` (adds `run_isolated`, the only subprocess helper a new smoke may use), `examples/x-intake-local/README.md` (that rule), `tests/test_x_intake_smoke_115_116.py`, `.gitignore` (`pipelines/smoke/assay/` and `pipelines/smoke/openqodex/`), and this handoff. Entries 098-111 smoke scripts are unchanged. No TOOLS.md rows, no `data/tools.json` rows, no stage cards, no Make target. Box receipts are not committed. Those two receipt directories are gitignored, so a real nimo receipt commit uses `git add -f pipelines/smoke/<entry>/latest.json`. `pipelines/smoke/kolibri1/latest.json` stays tracked.
 
 This slice was written by the routine directly through the GitHub connector rather than `./pfy build -p`, since it is docs plus one stdlib script and nimo was not needed for it.
 
@@ -18,9 +18,11 @@ On nimo each `python3 examples/x-intake-local/smoke_115_116.py --entry openqodex
 - openqodex: `npm install --prefix ~/DEVELOP/pfy-mentat/tmp/openqodex --ignore-scripts openqodex@0.12.0`, plus Node 22 at `tmp/openqodex/node/` (nodejs.org `latest-v22.x` linux-x64 `.tar.gz`, checked against `SHASUMS256.txt`) if nimo's Node is older. The first smoke run downloads scanners into `tmp/openqodex/home` (about 360 MB, network needed once).
 - assay: `python3 -m venv ~/DEVELOP/pfy-mentat/tmp/assay/venv && ~/DEVELOP/pfy-mentat/tmp/assay/venv/bin/pip install assay-ui==0.3.0`, then `PLAYWRIGHT_BROWSERS_PATH=~/DEVELOP/pfy-mentat/tmp/assay/ms-playwright ~/DEVELOP/pfy-mentat/tmp/assay/venv/bin/playwright install chromium` (about 690 MB).
 
-Or point `$OPENQODEX_DIR`/`$OPENQODEX_NODE`/`$OPENQODEX_HOME` and `$ASSAY_BIN`/`$PLAYWRIGHT_BROWSERS_PATH` at staged copies. Receipts go to `pipelines/smoke/<entry>/latest.json`.
+Or point `$OPENQODEX_DIR`/`$OPENQODEX_NODE`/`$OPENQODEX_HOME` and `$ASSAY_BIN`/`$PLAYWRIGHT_BROWSERS_PATH` at staged copies. `$OPENQODEX_HOME` must resolve under `~/DEVELOP/pfy-mentat/tmp` or the system temp directory; any other path exits 2 before a review starts. Receipts go to `pipelines/smoke/<entry>/latest.json`.
 
-What was checked on the Grok Bot box (all in `/tmp`, temp HOMEs): both PASS. Negative paths: no prereqs gives exit 2 for each; Node 20 gives 2 (openqodex); `$OPENQODEX_VERSION=9.9.9` gives 2; `$ASSAY_VERSION=9.9.9` gives 2; a `PLAYWRIGHT_BROWSERS_PATH` with no Chromium gives 2; `PFY_XINTAKE_TIMEOUT=0.001` gives exit 1 with a timeout reason. The box's real `~/.openqodex` and `~/.claude` did not exist afterwards. `python3 -m py_compile` is clean. The repo's `scripts/catalog_check.py` and unit tests were not run in this slice (no checkout on the box); Tester should run them on the PR head.
+What was checked on the Grok Bot box (all in `/tmp`, temp HOMEs): both PASS. Negative paths: no prereqs gives exit 2 for each; Node 20 gives 2 (openqodex); `$OPENQODEX_VERSION=9.9.9` gives 2; `$ASSAY_VERSION=9.9.9` gives 2; a `PLAYWRIGHT_BROWSERS_PATH` with no Chromium gives 2; `PFY_XINTAKE_TIMEOUT=0.001` gives exit 1 with a timeout reason. The box's real `~/.openqodex` and `~/.claude` did not exist afterwards. `python3 -m py_compile` is clean.
+
+Tester FAIL on the PR head, same three defects as #292: `node --version` and `assay --version` inherited the parent environment, a timeout killed only the direct child, and `pipelines/smoke/{assay,openqodex}/` were not gitignored. `$OPENQODEX_HOME` could also point outside the temp area. The fix is `run_isolated` in `smoke.py` (clean env, temp HOME, new session, process-group kill, bwrap `--unshare-pid` when that flag works). `smoke_115_116.py` uses it for every subprocess, including the version probes. On this worktree after the fix: `python3 scripts/catalog_check.py` PASS (`n_json=7`, toolsets=8, linked=2, catalog_tool=null:6, tools_md=51, stage_cards=51, i1_cards_open=0, stage_only=4). `python3 -m unittest discover -s tests -t .` ran 232 tests, OK (skipped=4). With no prereqs and `HOME` under `/tmp`, both entries still exit 2. On this host `bwrap` runs and the prefix includes `--unshare-pid`.
 
 ## Findings worth knowing
 
@@ -46,7 +48,7 @@ SKIPPED: Colibri (already cataloged, Entry 003 and TOOLS.md), Asqav SDK and Clis
 
 ## Locks respected
 
-Catalog 70-75 HOLD untouched. Nothing installed or downloaded on nimo. Mark's main checkout and stashes untouched; no pfy-mentat checkout was made (files read through the GitHub connector and raw URLs). No accounts, sign-ins, paid keys or spend. Tools ran only on the Grok Bot box in `/tmp` with temp HOMEs; no model was called. No installer scripts were run (`npm --ignore-scripts`; OpenQodex `init` not run).
+Catalog 70-75 HOLD untouched. Nothing installed or downloaded on nimo. Mark's main checkout and stashes untouched; no pfy-mentat checkout was made for the original slice (files read through the GitHub connector and raw URLs). No accounts, sign-ins, paid keys or spend. The box runs used `/tmp` with temp HOMEs; no model was called. No installer scripts were run (`npm --ignore-scripts`; OpenQodex `init` not run). The Tester fix ran its regression tests in this worktree with temp HOMEs and did not write the real home.
 
 ## How this fails / how we recover
 
@@ -55,4 +57,7 @@ Catalog 70-75 HOLD untouched. Nothing installed or downloaded on nimo. Mark's ma
 | Entry numbers collide | Another branch also adds 115-116 | Renumber on rebase; entries are self-contained files |
 | Smoke in CI without prereqs | Exit 2 read as red | Not wired into CI or Make; exit 2 is the honest "can't run here" |
 | OpenQodex starts a model | `claude` or `codex` appears on PATH | Smoke exits 2 before running when either is on its PATH |
+| Parent env reaches a tool | A version probe inherits keys | `run_isolated` passes a clean env and a temp HOME; the 115-116 test plants sentinels |
+| Timeout leaves a grandchild | Killing the direct child orphans the group | The helper starts a new session and SIGKILLs the group |
+| OPENQODEX_HOME outside the temp area | Scanners download outside `tmp/` | Smoke exits 2 and does not start a review |
 | Large downloads | Scanners and Chromium fill `tmp/` | Both stay under `tmp/`; delete the folders to reclaim |
