@@ -96,3 +96,6 @@ pipelines/smoke/foremerge/
 pipelines/smoke/smolvm/
 pipelines/smoke/brigade/
 pipelines/smoke/runx/
+# 115-116 receipts. Same rule: kolibri1/latest.json stays tracked.
+pipelines/smoke/assay/
+pipelines/smoke/openqodex/

@@ -54,4 +54,25 @@ read/write `/dev/kvm`, pulls `alpine` from Docker Hub on the host (`$SMOLVM_IMAG
 checkpoint/rewind only with `SMOLVM_CHECKPOINT=1`. `PFY_XINTAKE_TIMEOUT` overrides the 120s per-command timeout (300s
 for smolvm machine commands).
 
+New smokes must start every subprocess with `run_isolated` in `smoke.py` and with nothing else. Not `subprocess`,
+not `os.system`, and not the older `run` helper (that one stays for Entries 095-097). `run_isolated` builds a clean
+environment and does not copy the parent process's variables. It sets `HOME` to the temp directory the caller
+passes. It starts the child in a new session and SIGKILLs the process group on timeout, so a grandchild the child
+forked dies too. Pass `bwrap_writable` (a list of directories to bind writable) to add a bubblewrap prefix when
+`bwrap` works; the prefix includes `--unshare-pid` when that flag works. Pass `None` to skip bubblewrap. `extra`
+is only for variables the smoke itself names. Do not pass the parent environment as `extra`.
+
+Entries 115-116 (`smoke_115_116.py`):
+
+```sh
+python3 examples/x-intake-local/smoke_115_116.py --entry openqodex   # Node >= 22, package pinned 0.12.0
+python3 examples/x-intake-local/smoke_115_116.py --entry assay       # assay-ui pinned 0.3.0, local Chromium
+```
+
+OpenQodex looks up `$OPENQODEX_DIR` and `$OPENQODEX_NODE`, then `~/DEVELOP/pfy-mentat/tmp/openqodex`. Its HOME is
+`$OPENQODEX_HOME` or `tmp/openqodex/home`, and that path must resolve under `~/DEVELOP/pfy-mentat/tmp` or the
+system temp directory. Assay looks up `$ASSAY_BIN`, then `tmp/assay/venv/bin/assay`, and Chromium from
+`$PLAYWRIGHT_BROWSERS_PATH` or `tmp/assay/ms-playwright`. Version probes use the same helper as the tool commands.
+`PFY_XINTAKE_TIMEOUT` overrides the 600s per-command timeout.
+
 Not wired into CI or Make.
