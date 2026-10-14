@@ -40,9 +40,10 @@ class LoopPaintTests(unittest.TestCase):
         self.assertEqual(ids, registry.toolset_ids(ROOT))
         self.assertTrue(any(m["status"] == "implemented" for m in f["modules"]))
         self.assertTrue(any(m["status"] == "partial" for m in f["modules"]))
-        # A module is stub only when every harness cell is stub (none of today's
-        # gathered toolsets are all-stub — T-0121 wired remaining planners).
-        self.assertFalse(any(m["status"] == "stub" for m in f["modules"]))
+        # Stub means every harness cell is stub. core-skills and rea are written
+        # by `pfy setup`, and toolset plan() has no planner for them (phase 1).
+        stub_ids = {m["id"] for m in f["modules"] if m["status"] == "stub"}
+        self.assertEqual(stub_ids, {"core-skills", "rea"})
         h = f["hedge"]
         self.assertTrue(h["local_ready"])
         self.assertEqual(h["lane"], "local")

@@ -10,7 +10,8 @@ Branch: `design/pfy-launcher` (from `main` @ a5c0362). PR: design-only, **do not
 ## Findings worth knowing
 - `pfylib/` cites **ADR-0017** (toolset × harness), but there is no `docs/adr/0017-*.md` and no index row. Someone should write it.
 - Skills exist in three copies (`.grok/skills/`, `bootstrap/grok-cli/skills/`, `bootstrap/project-process/skills/`).
-- Only Grok is `ready` in `data/harnesses.json`. Claude Code, Codex, Hermes, and OpenCode are `partial`. Cursor CLI is **not listed at all**.
+- Only Grok is `ready` in `data/harnesses.json`. Claude Code, Codex, Hermes, OpenCode, Gemini, Exo, and Continue are `partial` there. Gemini, Exo, and Continue are `stub` in the toolset matrix. Cursor CLI is **not listed at all**.
+- The project-map subagent writes `.project-map/index.html` and does not write other project files.
 
 ## Next step
 Hand **Phase 1** (design §13) to a Grok Build orchestrator run on a fresh worktree (`build/pfy-launcher-p1`). Use fake-HOME tests only: no real harness writes and no network (stub `npx`). Local models only. No sudo.

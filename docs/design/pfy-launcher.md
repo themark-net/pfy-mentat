@@ -1,13 +1,13 @@
 # Design: `pfy` launcher — pick a harness, pick a model, install the catalog into it
 
 Status: **Proposed** (design only; no code in this PR) · 2026-10-12 · base `main` @ `a5c0362`
-Owner: Mark · Related: ADR-0012 (simple `./pfy`), ADR-0014 (inference spine), "ADR-0017" (toolset × harness; cited in `pfylib/` but **not yet in `docs/adr/`**), `data/harnesses.json`, `data/toolsets.json`, `pfylib/toolsets.py`, `scripts/pfy_launch_wizard_225.py` (#225).
+Owner: Mark · Related: [0012-simple-harness-agnostic-launch.md](../adr/0012-simple-harness-agnostic-launch.md) (simple `./pfy`; the number 0012 is also used by `0012-voice-half-duplex-local-first.md`, so cite this filename), ADR-0014 (inference spine), "ADR-0017" (toolset × harness; cited in `pfylib/` but **not yet in `docs/adr/`**), `data/harnesses.json`, `data/toolsets.json`, `pfylib/toolsets.py`, `scripts/pfy_launch_wizard_225.py` (#225).
 
 > Mark: "an extremely good example of integrating skills and functionality to existing agents is [morluto/rea]. Figure out how to make pfy-mentat as easy as this to set up, or easier. The point of our repo is to add these types of tools such as rea but also additional ones. Think about how ollama lets you pick your harness."
 
 ## 1. Problem
 
-Today a new user has to: clone the repo, run `./pfy setup`, then `./bootstrap/grok-cli/install.sh [--with-codebase-memory]`, then optional `make env-init` / `make env-check` profiles, then `./pfy toolset apply <id> --harness <h> --yes` one toolset at a time, and read AGENTS.md, ADR-0011/0012, and `bootstrap/opencode/README.md` to work out which surface is "primary". The skills live in three places (`.grok/skills/`, `bootstrap/grok-cli/skills/`, `bootstrap/project-process/skills/`). Only Grok really installs end to end. Claude Code, Codex, Hermes, and OpenCode are `partial` in `data/harnesses.json`. Gemini, Exo, and Continue are stubs. Setup is really an operator lab. It is not a product install.
+Today a new user has to: clone the repo, run `./pfy setup`, then `./bootstrap/grok-cli/install.sh [--with-codebase-memory]`, then optional `make env-init` / `make env-check` profiles, then `./pfy toolset apply <id> --harness <h> --yes` one toolset at a time, and read AGENTS.md, ADR-0011, `docs/adr/0012-simple-harness-agnostic-launch.md` (not the voice file that reuses number 0012), and `bootstrap/opencode/README.md` to work out which surface is "primary". The skills live in three places (`.grok/skills/`, `bootstrap/grok-cli/skills/`, `bootstrap/project-process/skills/`). Only Grok really installs end to end. Claude Code, Codex, Hermes, OpenCode, Gemini, Exo, and Continue are all `partial` in `data/harnesses.json`. Gemini, Exo, and Continue are `stub` in the toolset matrix, and `./pfy start continue` is a separate STUB exit. Setup is really an operator lab. It is not a product install.
 
 rea gets the same job (put tools + skills into whichever agent you already use) down to **one command plus a reviewed plan**. Ollama's `ollama launch` gets the "pick your harness, pick your model" job down to **one command plus one selector**. `pfy` should do both.
 
@@ -33,7 +33,7 @@ rea gets the same job (put tools + skills into whichever agent you already use) 
 
 ```bash
 # one line (no sudo, no clone needed):
-curl -fsSL https://raw.githubusercontent.com/themark-net/pfy-mentat/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/themark-net/pfy-mentat/v0.4.17/install.sh | bash
 #  → installs pfy to ~/.local/share/pfy (pinned tag) + shim ~/.local/bin/pfy, then runs `pfy setup` if a TTY exists
 
 pfy setup                         # interactive: harnesses → catalog items → plan → approve
@@ -131,13 +131,13 @@ class Adapter:
 | Hermes | `hermes`, Hermes home | adapter TBD (copy rea's resolver) | `~/.agents/skills` | `ollama launch hermes` |
 | Gemini / Droid / Pi / Qwen | later phases | from rea's table | `~/.agents/skills` | local only |
 
-Adapters reuse rea's resolution rules as the reference (MIT) and cite them in a comment. Where pfy already has a working path (Grok: `bootstrap/grok-cli/install.sh` with `merge_config.py`; `pfy_attach_usable_2xx.py`), the adapter wraps it first and replaces it later, which follows T-0121's "no duplicated logic" rule.
+Adapters reuse rea's resolution rules as the reference (MIT) and cite them in a comment. Where pfy already has a working path (Grok: `bootstrap/grok-cli/install.sh` with `bootstrap/grok-cli/scripts/merge_config.py`; `pfy_attach_usable_2xx.py`), the adapter wraps it first and replaces it later, which follows T-0121's "no duplicated logic" rule.
 
 ## 9. Idempotency, ownership, uninstall
 
-- **State ledger:** `~/.local/state/pfy/installed.json` (XDG_STATE_HOME). One record per write: `{harness, item, item_version, path, kind: mcp|skill|file|delegate, key, sha256_after, backup}`. Uninstall removes only ledger-recorded objects whose current hash still matches. If the user edited one, pfy reports and leaves it.
+- **State ledger:** `~/.local/state/pfy/installed.json` (XDG_STATE_HOME). One record per write: `{harness, item, item_version, path, kind: mcp|skill|file|delegate, key, sha256_after, backup}`. A shared skill path such as `~/.agents/skills` is one row even when two harnesses read it. Uninstall removes only ledger-recorded objects whose current hash still matches. If the user edited one, pfy reports and leaves it. A matching file with an empty backup was created by pfy: remove it, or strip only the pfy entry when other content is in the file. A clean restore deletes the `.pfy.backup`.
 - **Markers in place:** MCP entries are named `<item>` with a sibling `"_pfy": {"owner": "pfy", "item": "rea", "v": "…"}` where the format allows it (JSON). In TOML, pfy uses a `# managed-by: pfy item=<id>` comment line above the table. Skills get a `.pfy-owned` file in the skill dir. These are the same kind of thing as today's `<!-- pfy-toolset:<id> -->` markers.
-- **Write discipline (copied from rea):** parse every target first, and if any file is malformed, abort the whole plan. Preserve unrelated keys and comments: `tomlkit`-style round-trip, or the existing `merge_config.py` until it is replaced. Take the first backup as `<file>.pfy.backup`, once. Write to a temp file and rename atomically, then re-read to verify.
+- **Write discipline (copied from rea):** parse every target first, and if any file is malformed, abort the whole plan. Preserve unrelated keys and comments: `tomlkit`-style round-trip, or the existing `bootstrap/grok-cli/scripts/merge_config.py` until it is replaced. Take the first backup as `<file>.pfy.backup`, once. Write to a temp file and rename atomically, then re-read to verify.
 - **Re-run = no-op:** a second `pfy setup` with the same selection must report `0 writes`. A changed pin produces an in-place update of the owned entry only.
 - **Delegated items:** pfy records `{kind: delegate, item: rea, clients: [...]}` and calls the tool's own `uninstall`/`doctor`. pfy never edits rea-owned entries itself.
 
@@ -178,7 +178,7 @@ DoD:
 3. Running the same command again reports `0 writes` and makes no new backups.
 4. Unrelated pre-existing MCP entries and TOML comments survive byte-for-byte.
 5. With a malformed `~/.claude.json`, the whole plan aborts before **any** write (all four files are unchanged) and exits 1 with the path and a next step.
-6. `pfy uninstall` removes only ledger-owned entries and skills, leaves a user-edited owned entry in place with a warning, and calls rea's own uninstall. After it runs, the harness files equal the pre-setup files apart from the backups.
+6. `pfy uninstall` removes only ledger-owned entries and skills, leaves a user-edited owned entry or skill dir in place with a warning, and calls rea's own uninstall. A file pfy created (no backup) is removed when its hash still matches, or only the pfy entry is removed when that file has other content. A clean byte-for-byte restore deletes the `.pfy.backup`. After it runs, the harness files equal the pre-setup files.
 7. `pfy doctor --json` is read-only (file hashes unchanged) and reports per-harness/item `aligned|missing|drifted`.
 8. `grep -R` finds no secret, auth, or token reads in the new code. `make eval-structural` stays green.
 
@@ -197,6 +197,6 @@ DoD: from tag N, `pfy update` moves to N+1 and verifies `pfy --version`. A tampe
 ## 14. Open questions (to file as OQs)
 
 - OQ: Which skill dir is the single SoT: `.grok/skills/` or a new `skills/`? (Recommendation: `skills/`, with the others generated.)
-- OQ: Write ADR-0017 properly (it is cited in `pfylib/` but missing from `docs/adr/`) and add ADR-0018 "pfy launcher: setup/launch/adapters/ledger", superseding parts of ADR-0012.
+- OQ: Write ADR-0017 properly (it is cited in `pfylib/` but missing from `docs/adr/`) and add ADR-0018 "pfy launcher: setup/launch/adapters/ledger", superseding parts of `docs/adr/0012-simple-harness-agnostic-launch.md` (number 0012 is also used by `0012-voice-half-duplex-local-first.md`).
 - OQ: Cursor CLI skills location. Is it a native skills dir or rules only? Verify against current Cursor CLI docs before Phase 3.
 - OQ: Is the minimum Ollama version with `launch` new enough on Mark's hosts to make delegation the default?

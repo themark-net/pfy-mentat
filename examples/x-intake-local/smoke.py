@@ -6,6 +6,7 @@ Usage: python3 examples/x-intake-local/smoke.py --entry qwen38flash|sandlock|for
 Exit 0 = PASS. 1 = the tool ran but the check failed. 2 = can't run here (prereq missing; reason recorded).
 Writes pipelines/smoke/<entry>/latest.json every time. Never installs anything, never downloads into the repo,
 and every scratch file goes to a fresh tempfile directory that is removed afterwards.
+New x-intake smokes must start every subprocess with run_isolated below, not with run() or subprocess.
 
   qwen38flash  $QWEN38_URL = an OpenAI-compatible base URL (e.g. http://127.0.0.1:8080/v1 from llama-server)
                already serving a Qwen3.8-Flash-Next GGUF. Asks for an exact token and checks it comes back.
@@ -24,6 +25,7 @@ import json
 import os
 import platform
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -56,6 +58,97 @@ def write(entry: str, receipt: dict, code: int) -> int:
 
 def run(cmd: list[str], cwd: str | None = None, timeout: int = 120) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout)
+
+
+# None until the first probe. Empty tuple means bubblewrap is unusable here.
+_BWRAP_FLAGS: tuple[str, ...] | None = None
+
+
+def _child_env(home: str, path: str = "/usr/bin:/bin", extra: dict | None = None) -> dict[str, str]:
+    """An environment with nothing copied from this process. HOME is always `home`."""
+    env = {"PATH": path, "TERM": "dumb", "LANG": "C.UTF-8", "NO_COLOR": "1"}
+    for key, value in (extra or {}).items():
+        if key != "HOME":
+            env[str(key)] = str(value)
+    env["HOME"] = home
+    return env
+
+
+def _spawn(cmd: list[str], env: dict, cwd: str | None, timeout: float) -> subprocess.CompletedProcess:
+    """New session. On timeout SIGKILL the process group so a forked grandchild dies too."""
+    proc = subprocess.Popen(
+        cmd, cwd=cwd, env=env, stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, start_new_session=True,
+    )
+    try:
+        out, err = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            proc.kill()
+        try:
+            proc.communicate(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait(timeout=5)
+        raise subprocess.TimeoutExpired(cmd, timeout)
+    return subprocess.CompletedProcess(cmd, proc.returncode, out, err)
+
+
+def _probe_bwrap() -> tuple[str, ...]:
+    bw = shutil.which("bwrap")
+    if not bw:
+        return ()
+    flags = ["--ro-bind", "/", "/", "--dev", "/dev", "--proc", "/proc", "--unshare-net", "--die-with-parent"]
+    with tempfile.TemporaryDirectory(prefix="pfy-bwrap-probe-") as home:
+        env = _child_env(home)
+        for extra in (["--unshare-pid"], []):
+            try:
+                probe = _spawn([bw, *flags, *extra, "/bin/true"], env, None, 10)
+            except (OSError, subprocess.TimeoutExpired):
+                continue
+            if probe.returncode == 0:
+                return tuple([bw, *flags, *extra])
+    return ()
+
+
+def _bwrap_prefix(writable: list[str]) -> list[str]:
+    global _BWRAP_FLAGS
+    if _BWRAP_FLAGS is None:
+        _BWRAP_FLAGS = _probe_bwrap()
+    if not _BWRAP_FLAGS:
+        return []
+    prefix = list(_BWRAP_FLAGS)
+    for directory in writable:
+        prefix += ["--bind", directory, directory]
+    return prefix
+
+
+def run_isolated(
+    cmd: list[str],
+    *,
+    home: str,
+    cwd: str | None = None,
+    timeout: float = 120,
+    path: str = "/usr/bin:/bin",
+    extra: dict | None = None,
+    bwrap_writable: list[str] | None = None,
+) -> subprocess.CompletedProcess:
+    """Start the one kind of child a new x-intake smoke is allowed to start.
+
+    `home` is the child's HOME and must be a temp directory the caller owns. PATH, TERM, LANG,
+    NO_COLOR, and the explicit `extra` keys are the only other variables. This process's environment
+    is not copied. The child is a new session; a timeout SIGKILLs that process group, grandchildren
+    included. When `bwrap_writable` is a list and bubblewrap can run, the command is prefixed with a
+    read-only root and no network, plus --unshare-pid when that flag works. None skips bubblewrap.
+    """
+    argv = list(cmd)
+    if bwrap_writable is not None:
+        prefix = _bwrap_prefix(bwrap_writable)
+        if prefix:
+            argv = prefix + argv
+    return _spawn(argv, _child_env(home, path, extra), cwd, timeout)
 
 
 def find_bin(env: str, tmp_rel: str, name: str) -> str | None:

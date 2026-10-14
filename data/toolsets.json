@@ -1,6 +1,6 @@
 {
-  "version": "0.1.0",
-  "last_updated": "2026-09-20",
+  "version": "0.2.0",
+  "last_updated": "2026-10-12",
   "adr": "ADR-0017",
   "description": "Toolset declarations for the toolset x harness handoff matrix. A toolset is declared once and applied to N harnesses (pfylib/toolsets.py). Statuses are derived from what scripts/pfy_*_NNN.py actually wire today; do not inflate.",
   "harness_axis": "data/harnesses.json rows with role == harness",
@@ -105,9 +105,26 @@
       "adr": null,
       "lanes": ["local"],
       "lane_note": "axon CLI or codebase-memory-mcp on PATH",
+      "kind": "mcp",
+      "version": "1",
+      "secrets": [],
+      "presets": ["core"],
+      "install": {"strategy": "native"},
+      "harnesses": {
+        "grok": "implemented",
+        "claude-code": "implemented",
+        "codex": "implemented",
+        "opencode": "implemented",
+        "hermes": "stub",
+        "gemini": "stub",
+        "exo": "stub",
+        "continue": "stub"
+      },
       "provides": {
         "env": ["PFY_GRAPH_PATH", "PFY_CODE_GRAPH", "AXON_BIN", "CODEBASE_MEMORY_MCP", "PFY_MCP", "PFY_GRAPH_EVIDENCE", "PFY_GRAPH_HANDOFF", "PFY_GRAPH_PROMPT"],
         "mcp_servers": ["axon (axon serve --watch)", "codebase-memory (codebase-memory-mcp)"],
+        "mcp": [{"name": "code-graph", "command": "codebase-memory-mcp", "args": [], "env": {}}],
+        "skills": [],
         "brief": "code-graph-handoff.md",
         "commands": ["./pfy code-graph", "attach mode code-graph"]
       },
@@ -174,6 +191,126 @@
         "gemini": {"status": "stub", "how": "stub: not in SIDECAR_OK; no adapter"},
         "exo": {"status": "stub", "how": "stub: lab path only"},
         "continue": {"status": "stub", "how": "stub: no prompt surface in IDE recipe"}
+      }
+    },
+    {
+      "id": "core-skills",
+      "title": "Core skills bundle",
+      "catalog_tool": null,
+      "source": "pfylib/setup.py",
+      "issue": 290,
+      "adr": null,
+      "lanes": ["local"],
+      "kind": "bundle",
+      "version": "1",
+      "secrets": [],
+      "presets": ["core"],
+      "install": {"strategy": "native"},
+      "harnesses": {
+        "grok": "implemented",
+        "claude-code": "implemented",
+        "codex": "implemented",
+        "opencode": "implemented",
+        "hermes": "stub",
+        "gemini": "stub",
+        "exo": "stub",
+        "continue": "stub"
+      },
+      "provides": {
+        "env": [],
+        "mcp_servers": [],
+        "mcp": [],
+        "skills": [
+          {"name": "adr", "from": "bootstrap/grok-cli/skills/adr"},
+          {"name": "agent-loops", "from": "bootstrap/grok-cli/skills/agent-loops"},
+          {"name": "best-effort-and-bot-budget-build-max", "from": "bootstrap/grok-cli/skills/best-effort-and-bot-budget-build-max"},
+          {"name": "catalog-docs", "from": "bootstrap/grok-cli/skills/catalog-docs"},
+          {"name": "docs", "from": "bootstrap/grok-cli/skills/docs"},
+          {"name": "hermes-feedback", "from": "bootstrap/grok-cli/skills/hermes-feedback"},
+          {"name": "investigate", "from": "bootstrap/grok-cli/skills/investigate"},
+          {"name": "jev-decision", "from": "bootstrap/grok-cli/skills/jev-decision"},
+          {"name": "karpathy-guidelines", "from": "bootstrap/grok-cli/skills/karpathy-guidelines"},
+          {"name": "marketing-council", "from": "bootstrap/grok-cli/skills/marketing-council"},
+          {"name": "one-shot", "from": "bootstrap/grok-cli/skills/one-shot"},
+          {"name": "open-questions", "from": "bootstrap/grok-cli/skills/open-questions"},
+          {"name": "prefer-behavior-and-fail-recover-tests", "from": "bootstrap/grok-cli/skills/prefer-behavior-and-fail-recover-tests"},
+          {"name": "ui-is-the-app-design-in-loop", "from": "bootstrap/grok-cli/skills/ui-is-the-app-design-in-loop"},
+          {"name": "worker-monitor", "from": "bootstrap/grok-cli/skills/worker-monitor"}
+        ],
+        "brief": null,
+        "commands": ["./pfy setup --preset core"]
+      },
+      "implementation": {
+        "grok": {"status": "stub", "how": "stub: pfy setup writes this; pfy toolset plan has no planner yet (phase 1)"},
+        "opencode": {"status": "stub", "how": "stub: pfy setup writes this; pfy toolset plan has no planner yet (phase 1)"},
+        "claude-code": {"status": "stub", "how": "stub: pfy setup writes this; pfy toolset plan has no planner yet (phase 1)"},
+        "codex": {"status": "stub", "how": "stub: pfy setup writes this; pfy toolset plan has no planner yet (phase 1)"},
+        "hermes": {"status": "stub", "how": "stub: pfy setup writes this; pfy toolset plan has no planner yet (phase 1)"},
+        "gemini": {"status": "stub", "how": "stub: pfy setup writes this; pfy toolset plan has no planner yet (phase 1)"},
+        "exo": {"status": "stub", "how": "stub: pfy setup writes this; pfy toolset plan has no planner yet (phase 1)"},
+        "continue": {"status": "stub", "how": "stub: pfy setup writes this; pfy toolset plan has no planner yet (phase 1)"}
+      }
+    },
+    {
+      "id": "rea",
+      "title": "REA — reverse engineer anything",
+      "catalog_tool": null,
+      "source": "pfylib/setup.py",
+      "issue": 290,
+      "adr": null,
+      "lanes": ["local"],
+      "kind": "external",
+      "version": "6.4.0",
+      "secrets": [],
+      "presets": ["core"],
+      "install": {
+        "strategy": "delegate",
+        "delegate": {
+          "cmd": ["npx", "-y", "rea-agents@6.4.0", "setup", "--yes", "--json"],
+          "client_flag": "--client",
+          "client_map": {
+            "grok": "grok_build",
+            "claude-code": "claude_code",
+            "codex": "codex",
+            "cursor": "cursor",
+            "opencode": "opencode",
+            "hermes": "hermes",
+            "gemini": "gemini_cli"
+          }
+        },
+        "uninstall": {"cmd": ["npx", "-y", "rea-agents@6.4.0", "uninstall"]},
+        "doctor": {
+          "cmd": ["npx", "-y", "rea-agents@6.4.0", "doctor", "--json"],
+          "client_flag": "--client"
+        }
+      },
+      "harnesses": {
+        "grok": "implemented",
+        "claude-code": "implemented",
+        "codex": "implemented",
+        "opencode": "implemented",
+        "hermes": "stub",
+        "gemini": "stub",
+        "exo": "stub",
+        "continue": "stub"
+      },
+      "provides": {
+        "env": [],
+        "mcp_servers": [],
+        "mcp": [],
+        "skills": [{"name": "reverse-engineer-anything", "from": "upstream"}],
+        "brief": null,
+        "commands": ["./pfy setup --preset core"]
+      },
+      "implementation": {
+        "grok": {"status": "stub", "how": "stub: pfy setup writes this; pfy toolset plan has no planner yet (phase 1)"},
+        "opencode": {"status": "stub", "how": "stub: pfy setup writes this; pfy toolset plan has no planner yet (phase 1)"},
+        "claude-code": {"status": "stub", "how": "stub: pfy setup writes this; pfy toolset plan has no planner yet (phase 1)"},
+        "codex": {"status": "stub", "how": "stub: pfy setup writes this; pfy toolset plan has no planner yet (phase 1)"},
+        "hermes": {"status": "stub", "how": "stub: pfy setup writes this; pfy toolset plan has no planner yet (phase 1)"},
+        "gemini": {"status": "stub", "how": "stub: pfy setup writes this; pfy toolset plan has no planner yet (phase 1)"},
+        "exo": {"status": "stub", "how": "stub: pfy setup writes this; pfy toolset plan has no planner yet (phase 1)"},
+        "continue": {"status": "stub", "how": "stub: pfy setup writes this; pfy toolset plan has no planner yet (phase 1)"}
       }
     }
   ]
