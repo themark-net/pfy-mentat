@@ -5,7 +5,7 @@ Usage: python3 examples/x-intake-local/smoke_117_118.py --entry kander|moira
 
 Same contract and receipts as smoke.py next to it (whose helpers it reuses): exit 0 = PASS, 1 = the tool ran but
 the check failed, 2 = can't run here (prereq missing; reason recorded). Writes pipelines/smoke/<entry>/latest.json.
-Never installs or downloads anything. Every child process starts through `run_isolated` in smoke.py (fresh temp HOME,
+Never installs anything (compose up may pull the pinned Moira image). Every child process starts through `run_isolated` in smoke.py (fresh temp HOME,
 env limited to PATH/HOME/TERM/LANG/NO_COLOR plus the variables named below; nothing copied from this process; a
 timeout SIGKILLs the process group). No provider keys. No smoke calls a model or starts an agent.
 PFY_XINTAKE_TIMEOUT (float seconds, > 0) overrides the 600s per-command timeout.
@@ -26,10 +26,15 @@ PFY_XINTAKE_TIMEOUT (float seconds, > 0) overrides the 600s per-command timeout.
           its secrets). Needs docker ($DOCKER_BIN, ~/DEVELOP/pfy-mentat/tmp/docker/docker, or
           PATH) with the compose plugin; exit 2 without them. The image must be pinned by digest:
           $MOIRA_IMAGE, or MOIRA_IMAGE in the .env, must contain "@sha256:" (upstream defaults to :latest), else exit 2.
-          Passes only MOIRA_PORT and MOIRA_IMAGE to compose (no bwrap: it needs the docker socket). Brings the
+          The traefik image line in the staged docker-compose.yml must also be digest-pinned (upstream ships a
+          tag), or read ${TRAEFIK_IMAGE} with a digest-pinned $TRAEFIK_IMAGE / .env TRAEFIK_IMAGE, else exit 2.
+          The clean env drops DOCKER_HOST and the temp HOME hides ~/.docker contexts, so only the default
+          /var/run/docker.sock is used; for another socket (e.g. rootless unix:///run/user/$UID/docker.sock)
+          set $MOIRA_DOCKER_HOST, which is passed to compose as DOCKER_HOST.
+          Passes only MOIRA_PORT, MOIRA_IMAGE (and TRAEFIK_IMAGE / DOCKER_HOST when set) to compose (no bwrap: it needs the docker socket). Brings the
           stack up as compose project "pfy-moira-smoke" on $MOIRA_PORT (default 18080), waits up to the
           timeout for the ingress, then GET /docs/ must be 200 and POST /mcp (an MCP initialize with no login) must
-          answer with an HTTP status (recorded as `mcp_status`; 401/403 is fine). Always runs `compose down` after.
+          answer with an HTTP status (recorded as `mcp_status`; 401/403 is fine). Always runs `compose down -v` after (named volumes removed).
 """
 from __future__ import annotations
 
@@ -93,6 +98,24 @@ def smoke_kander(r: dict) -> int:
     watched = (".agents/kander", ".config/kander")
     before = {d: tree_sig(real_home / d) for d in watched}
     checks: dict[str, bool] = {}
+    try:
+        code = _kander_board(r, b, want_v, checks)
+    finally:
+        # runs on timeout too, so a timed-out run still proves the real HOME was left alone (the #292 bug)
+        after = {d: tree_sig(real_home / d) for d in watched}
+        checks["real_home_untouched"] = before == after
+        r["checks"] = checks
+    if code:
+        return code
+    failed = [x for x, ok in checks.items() if not ok]
+    if failed:
+        r["reason"] = f"failed checks: {', '.join(failed)}"
+        return 1
+    r["reason"] = "board init, card create/list/show/check all worked in a temp HOME; no agent started"
+    return 0
+
+
+def _kander_board(r: dict, b: str, want_v: str, checks: dict) -> int:
     with tempfile.TemporaryDirectory(prefix="pfy-kander-") as td:
         home, repo = Path(td, "home"), Path(td, "repo")
         home.mkdir()
@@ -147,14 +170,6 @@ def smoke_kander(r: dict) -> int:
         checks["check_ok"] = c.returncode == 0 and "ok: 1 tasks" in c.stdout
         bad = k("show", "--json", "no-such-task")
         checks["unknown_id_nonzero"] = bad.returncode != 0
-    after = {d: tree_sig(real_home / d) for d in watched}
-    checks["real_home_untouched"] = before == after
-    r["checks"] = checks
-    failed = [x for x, ok in checks.items() if not ok]
-    if failed:
-        r["reason"] = f"failed checks: {', '.join(failed)}"
-        return 1
-    r["reason"] = "board init, card create/list/show/check all worked in a temp HOME; no agent started"
     return 0
 
 
@@ -182,19 +197,35 @@ def smoke_moira(r: dict) -> int:
         r["reason"] = "docker is not available"
         return 2
     path = f"{Path(docker).parent}:/usr/bin:/bin"
-    image = os.environ.get("MOIRA_IMAGE", "").strip()
-    if not image:
-        for line in (d / ".env").read_text().splitlines():
-            if line.startswith("MOIRA_IMAGE="):
-                image = line.split("=", 1)[1].strip()
+    env_file = {k.strip(): v.strip() for k, _, v in (ln.partition("=") for ln in (d / ".env").read_text().splitlines())
+                if k.strip() in ("MOIRA_IMAGE", "TRAEFIK_IMAGE")}
+    image = os.environ.get("MOIRA_IMAGE", "").strip() or env_file.get("MOIRA_IMAGE", "")
     r["image"] = image
     if "@sha256:" not in image:
         r["reason"] = "MOIRA_IMAGE is not pinned by digest (upstream defaults to :latest); set it to <image>@sha256:..."
+        return 2
+    # upstream hardcodes `image: traefik:v2.x`; the staged compose must pin it by digest too (or use
+    # ${TRAEFIK_IMAGE} with a digest-pinned $TRAEFIK_IMAGE / .env TRAEFIK_IMAGE)
+    timg = os.environ.get("TRAEFIK_IMAGE", "").strip() or env_file.get("TRAEFIK_IMAGE", "")
+    traefik = [ln.split("image:", 1)[1].strip().strip("'\"") for ln in
+               (d / "docker-compose.yml").read_text().splitlines()
+               if ln.strip().startswith("image:") and "traefik" in ln.lower()]
+    traefik = [timg if "${" in t else t for t in traefik]
+    r["traefik_image"] = traefik
+    if not traefik or any("@sha256:" not in t for t in traefik):
+        r["reason"] = ("the traefik image in docker-compose.yml is not pinned by digest (upstream uses a tag); "
+                       "edit it to traefik@sha256:... or use ${TRAEFIK_IMAGE} with a digest-pinned $TRAEFIK_IMAGE")
         return 2
     port = os.environ.get("MOIRA_PORT", "18080")
     checks: dict[str, bool] = {}
     with tempfile.TemporaryDirectory(prefix="pfy-moira-") as home:
         extra = {"MOIRA_PORT": port, "MOIRA_IMAGE": image}
+        if timg:
+            extra["TRAEFIK_IMAGE"] = timg
+        # the clean env drops DOCKER_HOST and the temp HOME hides ~/.docker contexts; opt in explicitly
+        if os.environ.get("MOIRA_DOCKER_HOST"):
+            extra["DOCKER_HOST"] = os.environ["MOIRA_DOCKER_HOST"]
+            r["docker_host"] = extra["DOCKER_HOST"]
 
         def dc(*args: str, tag: str) -> subprocess.CompletedProcess:
             try:
@@ -228,7 +259,7 @@ def smoke_moira(r: dict) -> int:
             r["mcp_status"] = st
             checks["mcp_answers"] = st != 0
         finally:
-            r["down_rc"] = dc("down", tag="docker compose down").returncode
+            r["down_rc"] = dc("down", "-v", tag="docker compose down").returncode
     r["checks"] = checks
     failed = [x for x, ok in checks.items() if not ok]
     if failed:
@@ -249,6 +280,8 @@ def main() -> int:
         code = fn(receipt)
     except TimeoutError as e:
         receipt["reason"] = str(e)
+        if receipt.get("checks", {}).get("real_home_untouched") is False:
+            receipt["reason"] += "; real HOME ~/.agents/kander or ~/.config/kander changed"
         code = 1
     return write(a.entry, receipt, code)
 

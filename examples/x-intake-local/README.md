@@ -1,8 +1,9 @@
 # X intake local smokes (Entries 095-100, 103-116)
 
 Stdlib-only operate-or-FAIL checks for the X intake entries. Exit 0 PASS, 1 FAIL, 2 can't run here.
-Each run writes `pipelines/smoke/<entry>/latest.json`. Nothing is installed or downloaded; scratch files go to a
-tempfile dir that is removed.
+Each run writes `pipelines/smoke/<entry>/latest.json`. The smokes install nothing themselves; scratch files go to a tempfile dir that is removed.
+Caveat: a first run can still download things the staged tool fetches on its own (e.g. the OpenQodex scanner pulls
+its scanner on first use, and Moira's `docker compose up` pulls the digest-pinned image if it is not cached).
 
 ```sh
 QWEN38_URL=http://127.0.0.1:8080/v1 python3 examples/x-intake-local/smoke.py --entry qwen38flash
@@ -100,6 +101,10 @@ Kander looks up `$KANDER_BIN`, then `~/DEVELOP/pfy-mentat/tmp/kander/kander`, th
 `$KANDER_SHA256`). Moira looks up `$MOIRA_DIR` or `tmp/moira` (upstream compose file, Traefik config and an
 operator-made `.env`) and `$DOCKER_BIN`, `tmp/docker/docker` or PATH, and refuses an image that is not pinned by
 digest. Every child goes through `run_isolated`; Kander runs under bwrap when it works, Moira's compose calls do not
-(they need the docker socket). `PFY_XINTAKE_TIMEOUT` overrides the 600s per-command timeout.
+(they need the docker socket). The Traefik `image:` line in the staged compose file must be digest-pinned too
+(upstream ships `traefik:v2.11.58`), or read `${TRAEFIK_IMAGE}` with a digest-pinned `$TRAEFIK_IMAGE`. The clean env
+drops `DOCKER_HOST` and the temp HOME hides `~/.docker` contexts, so compose talks to `/var/run/docker.sock` only; on
+nimo with a non-default socket (e.g. rootless Docker) set `MOIRA_DOCKER_HOST=unix:///run/user/$(id -u)/docker.sock`.
+`compose down -v` always runs, so named volumes do not survive. `PFY_XINTAKE_TIMEOUT` overrides the 600s per-command timeout.
 
 Not wired into CI or Make.

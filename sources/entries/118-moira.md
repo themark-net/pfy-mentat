@@ -10,7 +10,7 @@
 - **Finding**: upstream's compose and `.env.example` default to `ghcr.io/moira-mcp/moira:latest`, so a trial must pin the image by digest. The `.env` template holds an auth secret and an admin password: generate them on nimo, keep the file under `tmp/` (gitignored), and never paste them anywhere.
 - **Extracted Repos / Tools**: https://github.com/moira-mcp/moira · https://github.com/moira-mcp/moira/blob/main/docs/VISION.md
 - **TOOLS.md Link**: None yet. I0 awareness, catalog only. No TOOLS.md row, no `data/tools.json` row.
-- **Smoke**: `python3 examples/x-intake-local/smoke_117_118.py --entry moira`. Needs a staged compose dir (`$MOIRA_DIR` or `tmp/moira`), docker with compose, and a digest-pinned `MOIRA_IMAGE`; otherwise exit 2. Brings the stack up on port 18080, checks `/docs/` returns 200 and `/mcp` answers, then always runs `compose down`. Receipt: `pipelines/smoke/moira/latest.json`.
+- **Smoke**: `python3 examples/x-intake-local/smoke_117_118.py --entry moira`. Needs a staged compose dir (`$MOIRA_DIR` or `tmp/moira`), docker with compose, and a digest-pinned `MOIRA_IMAGE` plus a digest-pinned Traefik `image:` line in the staged compose file (upstream uses the tag `traefik:v2.11.58`); otherwise exit 2. The smoke's clean env drops `DOCKER_HOST` and docker contexts (temp HOME), so only `/var/run/docker.sock` is used; for another socket on nimo set `MOIRA_DOCKER_HOST` (e.g. `unix:///run/user/$(id -u)/docker.sock`). Brings the stack up on port 18080, checks `/docs/` returns 200 and `/mcp` answers, then always runs `compose down -v` (named volumes removed). Receipt: `pipelines/smoke/moira/latest.json`.
 - **Non-goals**: No Docker install, no cloud account, no workflow authored in this slice.
 - **How this fails / how we recover**:
 

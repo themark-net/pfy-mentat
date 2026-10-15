@@ -58,3 +58,20 @@ Catalog 70-75 HOLD untouched. Nothing installed or downloaded on nimo. Mark's ma
 | Smoke in CI without prereqs | Exit 2 read as red | Not wired into CI or Make; exit 2 is the honest "can't run here" |
 | Kander trial writes to the real HOME | Rules land in `~/.agents` on nimo | Set `HOME` under `tmp/`; the smoke FAILs if the real HOME changes |
 | Moira smoke happy path untested | Fails the first time Docker is there | Treat the first nimo run as the real test; fix the smoke in a follow-up |
+
+## Review fixes (2026-10-14, Reviewer + Tester FAIL on c1baa53)
+
+Done on nimo in worktree `tmp/xintake-117-118-fix` (no installs, no sudo, nothing outside `~/DEVELOP`).
+
+- `.gitignore`: `pipelines/smoke/kander/` and `pipelines/smoke/moira/` added (the blocker; smokes left them untracked).
+- Moira: `compose down -v` in the `finally`, so named volumes do not survive. The Traefik `image:` line in the staged
+  compose file must be digest-pinned too (upstream ships `traefik:v2.11.58`), or read `${TRAEFIK_IMAGE}` with a
+  digest-pinned `$TRAEFIK_IMAGE`; otherwise exit 2. The clean env drops `DOCKER_HOST` and the temp HOME hides
+  `~/.docker` contexts; for a non-default socket on nimo set `MOIRA_DOCKER_HOST` (passed to compose as `DOCKER_HOST`).
+- Kander: the real-HOME-untouched check now runs in a `finally`, so a timed-out run still records it (the #292 bug).
+- README: the "nothing downloaded" line now caveats first-run downloads (OpenQodex scanner, Moira's pinned images).
+- `tests/test_x_intake_smoke_117_118.py` (7 tests): wrong kander version -> 2; kander timeout still records
+  `real_home_untouched`; unpinned Moira image -> 2; unpinned Traefik image -> 2; missing docker -> 2; `compose down -v`
+  runs after a failed `up`; kander/moira receipts gitignored. Each fix reverted on its own turned its test red.
+- Full suite 244 tests OK (4 skipped); `scripts/catalog_check.py` PASS; both smokes exit 2 on nimo (prereqs not
+  staged) and `git status` stays clean after them.
