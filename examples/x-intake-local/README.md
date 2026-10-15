@@ -89,4 +89,17 @@ system temp directory. Assay looks up `$ASSAY_BIN`, then `tmp/assay/venv/bin/ass
 `$PLAYWRIGHT_BROWSERS_PATH` or `tmp/assay/ms-playwright`. Version probes use the same helper as the tool commands.
 `PFY_XINTAKE_TIMEOUT` overrides the 600s per-command timeout.
 
+Entries 117-118 (`smoke_117_118.py`):
+
+```sh
+python3 examples/x-intake-local/smoke_117_118.py --entry kander   # binary pinned 0.9.5 + sha256, temp HOME, no agent started
+python3 examples/x-intake-local/smoke_117_118.py --entry moira    # needs docker compose and a digest-pinned image
+```
+
+Kander looks up `$KANDER_BIN`, then `~/DEVELOP/pfy-mentat/tmp/kander/kander`, then PATH (overrides `$KANDER_VERSION`,
+`$KANDER_SHA256`). Moira looks up `$MOIRA_DIR` or `tmp/moira` (upstream compose file, Traefik config and an
+operator-made `.env`) and `$DOCKER_BIN`, `tmp/docker/docker` or PATH, and refuses an image that is not pinned by
+digest. Every child goes through `run_isolated`; Kander runs under bwrap when it works, Moira's compose calls do not
+(they need the docker socket). `PFY_XINTAKE_TIMEOUT` overrides the 600s per-command timeout.
+
 Not wired into CI or Make.
