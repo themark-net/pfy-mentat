@@ -2,9 +2,9 @@
   "ok": true,
   "spec": {
     "kind": "text",
-    "target": "/home/mark/DEVELOP/pfy-mentat/tmp/agentdescent-trial/tmp/ad-target/SKILL.md",
+    "target": "tmp/ad-target/SKILL.md",
     "data": {
-      "path": "/home/mark/DEVELOP/pfy-mentat/tmp/agentdescent-trial/examples/agentdescent-trial/train.jsonl",
+      "path": "examples/agentdescent-trial/train.jsonl",
       "prompt": "prompt",
       "gold": "gold",
       "id": "id"

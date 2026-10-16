@@ -9,18 +9,20 @@ worktree `~/DEVELOP/pfy-mentat/tmp/agentdescent-trial`. Results: [REPORT.md](../
 Held-out accuracy (20 cases): **baseline 0.70, AgentDescent 0.95, DSPy MIPROv2-light 1.00**.
 AgentDescent: 201 s, 36 calls. DSPy: 686 s, 388 calls, ~338k tokens.
 
-**Recommendation: adopt AgentDescent** as the eval-auto tool for tuning pfy SKILL.md text, through normal PRs only
-(never `apply` outside a PR with Tester and Reviewer). It matched DSPy within one held-out case at about 1/3 the wall
-time and 1/10 the calls, and its output is a four-line diff to the real skill file that a Reviewer can read. Keep DSPy
-for the #230 decision bench where a compiled program with demos is the artifact anyway. Separately, the four
-AgentDescent lines are a candidate edit for the real triage text (README Stage 0 / evaluation-framework Phase 0), but
-that is a separate PR, not part of this one.
+**Recommendation: provisional — AgentDescent as the candidate, not adopted.** n=20 held-out; DSPy scored higher;
+exact McNemar baseline vs AgentDescent p=0.0625, baseline vs DSPy p=0.031, AgentDescent vs DSPy p=1.0; and the cases
+were written by the trial author from handoff rows. AgentDescent's case is cost and reviewability (about 1/3 the wall
+time, 1/10 the calls, a four-line diff to a SKILL.md), not accuracy. **Gate adoption on a rerun with raw post text and a
+larger held-out set.** Never `apply` outside a PR with Tester and Reviewer. **Do not port the "default to CATALOG"
+line** into the real triage text without a SKIP-heavy (borderline-rich) set first.
 
 ## Skill choice
 
 pfy-mentat has no dedicated X intake triage SKILL.md. The written rules the daily intake applies are README.md
-"Stage 0 gate" and docs/evaluation-framework.md "Phase 0". `examples/agentdescent-trial/skill/SKILL.md` copies them
-verbatim plus a one-word output line; that is the "current skill". Pass/fail is exact match on CATALOG/SKIP.
+"Stage 0 gate" and docs/evaluation-framework.md "Phase 0". `examples/agentdescent-trial/skill/SKILL.md` is an **excerpt** of
+them (it omits the CATEGORIZATION.md pointer and the Phase 0 AI-company routing bullet; its own header wrongly says
+verbatim, kept byte-identical to what was scored; see `skill/README.md`) plus a one-word output line; that is the
+"current skill". Pass/fail is exact match on CATALOG/SKIP.
 
 ## Case set
 
@@ -34,25 +36,45 @@ with the verdict removed. Stratified 2/3 split, seed 230 -> `train.jsonl` (41), 
 cd ~/DEVELOP/pfy-mentat/tmp/agentdescent-trial
 uv venv tmp/.venv --python 3.12 && VIRTUAL_ENV=tmp/.venv uv pip install agentdescent==0.5.1 dspy optuna
 python3 examples/agentdescent-trial/build_cases.py
-python3 examples/agentdescent-trial/harness.py --stage all   # or baseline | evolve | dspy
+python3 examples/agentdescent-trial/harness.py --stage all   # or baseline | evolve | dspy; writes tmp/agentdescent-trial-run/
+python3 examples/agentdescent-trial/harness.py --promote     # only path into tracked results/ and skill/SKILL.evolved.md
+python3 -m unittest tests.test_agentdescent_trial_harness
 ```
 
+Runs write only under `tmp/agentdescent-trial-run/` (gitignored, `$TRIAL_OUT` overrides). Each stage writes
+`stage_<name>.json`, replaced wholesale, and `results.json` is rebuilt from the current run dir's stage files (no merge
+with older results). `--promote` refuses a run with errors. Exit codes: 0 ok, 1 a stage failed or timed out, 3 a
+watched real-HOME dir changed.
+
 Every child goes through `examples/x-intake-local/smoke.py` `run_isolated` (new session, killpg on timeout, stripped
-env, temp HOME under the worktree `tmp/`). bwrap is not used because `--unshare-net` would cut `localhost:11434`;
-the children get only `OPENAI_BASE_URL`, a dummy `OPENAI_API_KEY`, and the model name. AgentDescent uses
-`--store tmp/adstore`. The harness snapshots real `~/.agentdescent` before and after each invocation (absent both
-times), waits if Ollama has a different model loaded, and refuses to start a stage if host memory use is above 60 GiB.
+env, temp HOME under the worktree `tmp/`). **No bwrap**, because `--unshare-net` would cut `localhost:11434`, so **children have network egress** (only env and
+HOME are isolated). The children get only `OPENAI_BASE_URL`, a dummy `OPENAI_API_KEY`, and the model name. AgentDescent uses
+`--store tmp/adstore`. Around every stage, in a `finally` that also runs on failure and timeout, the harness fingerprints real
+`~/.agentdescent`, `~/.cache/agentdescent`, `~/.dspy_cache`, `~/.cache/dspy` and `~/.ollama` (sha256 for files up to
+1 MiB, size+mtime_ns above that, so model blobs aren't hashed) and exits 3 on any change. The recorded run used the
+earlier guard (`~/.agentdescent` names only, absent before and after); it was not rerun after the guard change, waits if Ollama has a different model loaded, and refuses to start a stage if host memory use is above 60 GiB.
 
 ## Issues hit (none blocking)
 
 - AgentDescent spec refs take factory kwargs as top-level keys (`{"ref": ..., "model": ...}`), not under `config`.
   `openai_compatible` works against Ollama's `/v1` with `reasoning_effort: "none"` passed through as a body field.
 - AgentDescent records tokens=0 from a JSON spec (usage needs a Python `Usage` object). Its `result.json`
-  `baseline_score` reads 0.0, which does not match our baseline run (0.70 held-out); not investigated.
+  `fusion_trials[0].baseline_score` = 0.0 is a placeholder written for an unranked fusion trial (`fusion.py` `_record`,
+  `ranked: false`), not a score. Its stop decision rests on `held_out_reward` 1.0 on its own internal split, which we
+  did not verify; it may rest on unreliable internal scoring. Call count 36 is in `results/agentdescent_result.json`.
 - AgentDescent stopped after round 1 because its internal held-out (30% of train) hit 1.0 >= target 0.98, so this
   trial does not exercise multi-round merging.
 - MIPROv2 needs `optuna`, which plain `dspy` does not pull in; first DSPy attempt failed on that.
 - Peak host memory 79 GiB (whole host, including Mark's processes) during the evolve invocation. No lock-up.
+
+## Tester FAIL @ cce6e2c fixed
+
+- B1: five-dir content guard in a `finally` (timeouts too), exit 3 on change, exit 1 on stage failure or timeout.
+- B2: runs go to gitignored `tmp/`, explicit `--promote`, no results merging.
+- Claims: 36 calls backed by `agentdescent_result.json`/`agentdescent_rounds.jsonl`; SKILL.md labelled an excerpt;
+  recommendation now provisional with McNemar p-values; baseline_score explained; relative paths in committed logs; no
+  bwrap / egress noted.
+- `tests/test_agentdescent_trial_harness.py`: each fix was reverted in turn and the tests went red.
 
 ## Next
 

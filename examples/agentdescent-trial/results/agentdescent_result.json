@@ -1,0 +1,78 @@
+{
+  "state": {
+    "value": "# X intake triage (baseline, as written in the repo today)\n\nSource: README.md \"Stage 0 gate\" and docs/evaluation-framework.md \"Phase 0: Triage & relevance gate\",\ncopied verbatim at origin/main 7b5107d. pfy-mentat has no separate triage SKILL.md; these two passages\nare the written rules the daily X intake applies.\n\n## Stage 0 gate\n\nItems must satisfy all of the following before catalog consideration:\n\n- Runnable self-hosted path under ~5 minutes on a clean Ubuntu or macOS system (or a documented one-liner), accepting text-based artifacts with a clear installation one-liner as satisfying this criterion.\n- Permissive open-source license suitable for embedding and modification, accepting standard attribution or usage riders as compliant unless explicit restrictions on those rights are stated.\n- Working hello-world or quickstart that demonstrates the core capability.\n- Open-source licensing and reproducibility inferred from standard technology stack indicators rather than requiring explicit confirmation in the initial description.\n\nRejections are logged with short, explicit reasons. There is no silent ignoring of candidates.\n\n## Phase 0: Triage & relevance gate\n\n- Local/self-hosted value, open source/reproducible, pipeline fit.\n- Default to CATALOG when candidate descriptions align with acceptance criteria, issuing SKIP only for explicitly stated disqualifiers.\n\n## Output\n\nAnswer with exactly one word: CATALOG (accept into the catalog) or SKIP (reject)."
+  },
+  "rendered": "# X intake triage (baseline, as written in the repo today)\n\nSource: README.md \"Stage 0 gate\" and docs/evaluation-framework.md \"Phase 0: Triage & relevance gate\",\ncopied verbatim at origin/main 7b5107d. pfy-mentat has no separate triage SKILL.md; these two passages\nare the written rules the daily X intake applies.\n\n## Stage 0 gate\n\nItems must satisfy all of the following before catalog consideration:\n\n- Runnable self-hosted path under ~5 minutes on a clean Ubuntu or macOS system (or a documented one-liner), accepting text-based artifacts with a clear installation one-liner as satisfying this criterion.\n- Permissive open-source license suitable for embedding and modification, accepting standard attribution or usage riders as compliant unless explicit restrictions on those rights are stated.\n- Working hello-world or quickstart that demonstrates the core capability.\n- Open-source licensing and reproducibility inferred from standard technology stack indicators rather than requiring explicit confirmation in the initial description.\n\nRejections are logged with short, explicit reasons. There is no silent ignoring of candidates.\n\n## Phase 0: Triage & relevance gate\n\n- Local/self-hosted value, open source/reproducible, pipeline fit.\n- Default to CATALOG when candidate descriptions align with acceptance criteria, issuing SKIP only for explicitly stated disqualifiers.\n\n## Output\n\nAnswer with exactly one word: CATALOG (accept into the catalog) or SKIP (reject).",
+  "final_reward": 1.0,
+  "error": null,
+  "history": [
+    {
+      "round": 0,
+      "held_out_reward": 1.0,
+      "n_items": 1,
+      "committed": 1,
+      "rejected": 0,
+      "reasons": {
+        "committed": 1
+      },
+      "elapsed_s": 201.0034556388855,
+      "rollouts": 4,
+      "calls": 36,
+      "tokens": 0,
+      "considered": 4,
+      "discarded_stale": 0,
+      "conflicts_dropped": 0,
+      "fused": 1
+    }
+  ],
+  "retired_workers": 0,
+  "forced_refreshes": 0,
+  "stragglers": 0,
+  "stop_reason": "target_reward",
+  "ledger_log": [
+    "cc79568 merge synth(w0:value:1+w1:value:1+w2:value:1+w3:value:1) -> x-intake-triage",
+    "925001b register x-intake-triage",
+    "cc97d46 genesis"
+  ],
+  "usage": {
+    "calls": 36,
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "seconds": 596.8186709880829,
+    "failures": 0
+  },
+  "wallclock": 201.0117700099945,
+  "rollouts": 4,
+  "rollout_seconds": 5.795198917388916,
+  "eval_seconds": 83.20248746871948,
+  "evals_skipped": 0,
+  "bounded_scans_cut": 0,
+  "merge_seconds": 71.83257365226746,
+  "merge_gate_seconds": 71.83256506919861,
+  "worker_starved_seconds": 0.0,
+  "stale_considered": 4,
+  "stale_discarded": 0,
+  "redispatched": 0,
+  "duplicates_dropped": 0,
+  "cas_conflicts": 0,
+  "cache_hits": 76,
+  "cache_misses": 24,
+  "sandbox_wait_s": 0.0,
+  "sandbox_setup_s": 0.0,
+  "sandboxes_created": 0,
+  "sandboxes_reused": 0,
+  "sandbox_failures": 0,
+  "fusion_trials": [
+    {
+      "artifact_id": "x-intake-triage",
+      "n_candidates": 4,
+      "best_single_score": 0.0,
+      "baseline_score": 0.0,
+      "fused_score": null,
+      "synthesized_score": null,
+      "winner": "synthesized",
+      "ranked": false,
+      "reason": ""
+    }
+  ]
+}
