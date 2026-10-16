@@ -181,12 +181,18 @@ def created_run_dir(existing):
 
 
 def dspy_stage():
-    out = TMPD / "dspy-out"; out.mkdir(parents=True, exist_ok=True)
+    out = RES / "dspy-out"  # inside the run dir, and cleared here so nothing stale is ever read
+    if out.exists():
+        shutil.rmtree(out)
+    out.mkdir(parents=True)
     p, wall, left = iso([str(VENV / "python"), str(HERE / "child.py"), "dspy", str(HERE / "skill/SKILL.md"),
                          str(HERE / "train.jsonl"), str(HERE / "heldout.jsonl"), str(out)], 4 * 3600)
     (RES / "dspy.log").write_text(rel(p.stdout[-20000:] + "\n--- stderr ---\n" + p.stderr[-12000:]))
     if p.returncode != 0:
         raise RuntimeError(f"dspy rc={p.returncode}: {p.stderr[-800:]}")
+    missing = [n for n in ("dspy_result.json", "dspy_program.json") if not (out / n).exists()]
+    if missing:
+        raise RuntimeError(f"dspy child exited 0 but wrote no {missing}")
     r = json.loads((out / "dspy_result.json").read_text()); r["child_wall_s"] = wall; r["temp_home_leftover"] = left
     shutil.copy2(out / "dspy_program.json", RES / "dspy_program.json")
     return r
@@ -213,7 +219,7 @@ STAGE_FILES = {
     "baseline": ["score_baseline.json"],
     "evolve": ["score_agentdescent.json", "agentdescent_spec.json", "agentdescent_plan.txt", "agentdescent_evolve.log",
                "agentdescent_show.json", "agentdescent_result.json", "agentdescent_rounds.jsonl", "SKILL.evolved.md"],
-    "dspy": ["dspy.log", "dspy_program.json"],
+    "dspy": ["dspy.log", "dspy_program.json", "dspy-out"],
 }
 INPUTS = ["skill/SKILL.md", "cases.jsonl", "train.jsonl", "heldout.jsonl", "harness.py", "child.py"]
 
@@ -272,8 +278,61 @@ def build_results():
     return R
 
 
+# Indirection so tests can inject faults at each filesystem step.
+_rename = os.rename
+_replace = os.replace
+_fault = lambda point: None  # tests set this to raise at a named point
+JOURNAL_NAME = ".promote-journal.json"
+
+
+def _paths():
+    parent = TRACKED_RES.parent
+    evolved = HERE / "skill/SKILL.evolved.md"
+    return parent, evolved, evolved.with_name(".SKILL.evolved.md.new"), parent / JOURNAL_NAME
+
+
+def _rollback(j):
+    """Put the pre-promote results/ and SKILL.evolved.md back, from the journal."""
+    parent, evolved, staged_skill, journal = _paths()
+    old, new = Path(j["old"]), Path(j["new"])
+    if old.exists():
+        if TRACKED_RES.exists():
+            shutil.rmtree(TRACKED_RES)
+        os.rename(old, TRACKED_RES)
+    bak = Path(j["skill_backup"]) if j.get("skill_backup") else None
+    if bak and bak.exists():
+        os.replace(bak, evolved)
+    elif not j.get("skill_backup") and evolved.exists() and j.get("skill_touched"):
+        evolved.unlink()
+    for x in (new, staged_skill):
+        if x.exists():
+            shutil.rmtree(x) if x.is_dir() else x.unlink()
+    journal.unlink(missing_ok=True)
+
+
+def recover():
+    """Run at promote start. Returns None when clean, else a reason to refuse."""
+    parent, evolved, staged_skill, journal = _paths()
+    if journal.exists():
+        j = json.loads(journal.read_text())
+        if j.get("state") == "committed":       # crash during cleanup: the new set is in place
+            for x in (Path(j["old"]), Path(j.get("skill_backup") or "/nonexistent")):
+                if x.exists():
+                    shutil.rmtree(x) if x.is_dir() else x.unlink()
+            journal.unlink()
+        else:                                     # crash mid-swap: restore the old set
+            _rollback(j)
+    for x in [*parent.glob(".results.new-*"), staged_skill, *evolved.parent.glob(".SKILL.evolved.md.bak-*")]:
+        if x.exists():
+            shutil.rmtree(x) if x.is_dir() else x.unlink()
+    olds = list(parent.glob(".results.old-*"))
+    if olds:
+        return f"found {[o.name for o in olds]} with no journal; restore or delete by hand (see the handoff)"
+    return None
+
+
 def promote():
-    """Accept only a COMPLETE current run, then replace tracked results/ (and SKILL.evolved.md) atomically."""
+    """Accept only a COMPLETE current run, then swap tracked results/ and SKILL.evolved.md in one journaled step."""
     if not current_run():
         print(f"refusing to promote: no current run in {RES} (missing run.json or inputs changed)", file=sys.stderr); return 1
     good, refused = matching_records()
@@ -286,30 +345,54 @@ def promote():
     bad = [st for st, d in good.items() if not isinstance(d.get("guard"), dict) or d["guard"].get("real_home_untouched") is not True]
     if bad:
         print(f"refusing to promote: real-HOME guard failed or missing for {bad}", file=sys.stderr); return 1
+    why = recover()
+    if why:
+        print(f"refusing to promote: {why}", file=sys.stderr); return 1
     R = build_results()
-    parent = TRACKED_RES.parent
-    new = Path(tempfile.mkdtemp(prefix=".results.new-", dir=parent))
+    parent, evolved, staged_skill, journal = _paths()
+    tag = os.urandom(4).hex()
+    new = parent / f".results.new-{tag}"; old = parent / f".results.old-{tag}"
+    bak = evolved.with_name(f".SKILL.evolved.md.bak-{tag}")
+    # 1. stage everything (results set + skill) without touching tracked files
+    new.mkdir()
+    for name in ["results.json", "run.json", *[f"stage_{st}.json" for st in STAGE_FILES],
+                 *[n for st in STAGE_FILES for n in STAGE_FILES[st] if n not in ("SKILL.evolved.md", "dspy-out")]]:
+        if (RES / name).exists():
+            shutil.copy2(RES / name, new / name)
+    produced = RES / "SKILL.evolved.md"
+    if produced.exists():
+        import difflib
+        base = (HERE / "skill/SKILL.md").read_text().splitlines(keepends=True)
+        (new / "agentdescent_vs_baseline.diff").write_text("".join(difflib.unified_diff(
+            base, produced.read_text().splitlines(keepends=True), "skill/SKILL.md", "skill/SKILL.evolved.md")))
+        shutil.copy2(produced, staged_skill)
+    j = {"state": "swapping", "old": str(old), "new": str(new),
+         "skill_backup": str(bak) if evolved.exists() else None, "skill_touched": False}
+    journal.write_text(json.dumps(j))
     try:
-        for name in ["results.json", "run.json", *[f"stage_{st}.json" for st in STAGE_FILES],
-                     *[n for st in STAGE_FILES for n in STAGE_FILES[st] if n != "SKILL.evolved.md"]]:
-            if (RES / name).exists():
-                shutil.copy2(RES / name, new / name)
-        evolved = HERE / "skill/SKILL.evolved.md"
-        if (RES / "SKILL.evolved.md").exists():
-            tmpf = evolved.with_name(".SKILL.evolved.md.new"); shutil.copy2(RES / "SKILL.evolved.md", tmpf)
-        old = parent / (".results.old-" + os.urandom(4).hex())
+        # 2. back up the skill, swap results/, swap the skill
+        if evolved.exists():
+            shutil.copy2(evolved, bak)
         if TRACKED_RES.exists():
-            os.rename(TRACKED_RES, old)
-        os.rename(new, TRACKED_RES)
-        if old.exists():
-            shutil.rmtree(old)
-        if (RES / "SKILL.evolved.md").exists():
-            os.replace(tmpf, evolved)
+            _rename(TRACKED_RES, old)
+        _fault("after_old_rename")
+        _rename(new, TRACKED_RES)
+        _fault("before_skill_replace")
+        j["skill_touched"] = True; journal.write_text(json.dumps(j))
+        if staged_skill.exists():
+            _replace(staged_skill, evolved)
         elif evolved.exists():
             evolved.unlink()
-    finally:
-        if new.exists():
-            shutil.rmtree(new)
+        _fault("before_commit")
+        j["state"] = "committed"; journal.write_text(json.dumps(j))
+    except BaseException as e:
+        _rollback(j)
+        print(f"promote failed and was rolled back: {type(e).__name__}: {e}", file=sys.stderr); return 1
+    # 3. cleanup (a crash here is finished by recover() on the next promote)
+    if old.exists():
+        shutil.rmtree(old)
+    bak.unlink(missing_ok=True)
+    journal.unlink(missing_ok=True)
     print(f"promoted complete run {R['run_id']} -> {TRACKED_RES}"); return 0
 
 
@@ -328,8 +411,11 @@ def main(argv=None):
     for st in stages:
         rec = {"stage": st, "run_id": rid, "inputs": inputs, "started": time.strftime("%Y-%m-%dT%H:%M:%S%z")}
         for name in [f"stage_{st}.json", *STAGE_FILES.get(st, [])]:  # never reuse this stage's old outputs
-            if (RES / name).exists():
-                (RES / name).unlink()
+            x = RES / name
+            if x.is_dir():
+                shutil.rmtree(x)
+            elif x.exists():
+                x.unlink()
         before = snap()
         mw = MemWatch(); mw.start()
         try:

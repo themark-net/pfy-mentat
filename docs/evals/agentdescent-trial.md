@@ -94,6 +94,29 @@ earlier guard (`~/.agentdescent` names only, absent before and after); it was no
 - `REPORT.md` moved from `results/` to `examples/agentdescent-trial/REPORT.md` so a promote can't delete it.
 - The committed `results/` set predates run ids and stage records; a fresh `--stage all` plus `--promote` would replace it.
 
+## Tester FAIL @ d915467 fixed
+
+- B5: DSPy writes to `<run dir>/dspy-out`, which is removed when the stage starts (and with the run dir on a new run id).
+  The stage fails if the child exits 0 without `dspy_result.json` and `dspy_program.json`.
+- B6: promote is **journaled, not atomic** (two directory renames plus a file replace cannot be one atomic step). Order:
+  stage the new results set in `.results.new-<tag>/` and the new skill in `skill/.SKILL.evolved.md.new`; write
+  `.promote-journal.json` (state `swapping`); back up `skill/SKILL.evolved.md` to `skill/.SKILL.evolved.md.bak-<tag>`;
+  rename `results/` -> `.results.old-<tag>/`; rename the new set -> `results/`; replace the skill; set state
+  `committed`; delete the old set, backup and journal. Any exception before `committed` rolls back to the old
+  `results/` and old `SKILL.evolved.md` and exits 1. Gitignored: `.results.new-*/`, `.results.old-*/`,
+  `.promote-journal.json`, `skill/.SKILL.evolved.md.new`, `skill/.SKILL.evolved.md.bak-*`.
+- **After a crash** (power loss, kill -9): the next `--promote` recovers first. A `swapping` journal is rolled back
+  (old `results/` and skill restored); a `committed` journal just finishes cleanup. Stray `.results.new-*` and staged
+  skill files are deleted. A `.results.old-*` with no journal is refused (exit 1): check it by hand, then either
+  `mv examples/agentdescent-trial/.results.old-<tag> examples/agentdescent-trial/results` (if `results/` is missing or
+  broken) or delete it. Between the two renames, `results/` is briefly absent; `git status` shows it until recovery.
+- Promote regenerates `results/agentdescent_vs_baseline.diff` (unified diff of `skill/SKILL.md` vs the promoted
+  evolved skill), so the file REPORT.md cites survives a promote.
+- Mutants: more than one new AgentDescent run dir is rejected; a guard flag that is truthy but not `True` is refused.
+- Reviewer nits: the committed `results/` set has no `run.json` or stage records; it comes from the first harness, so
+  any hashes it implies are historical until the rerun. `skill/SKILL.md`'s header no longer says verbatim, which also
+  means its hash differs from the scored prompt (see `skill/README.md`).
+
 ## Next
 
 1. Tester and Reviewer gate on this PR (harness, case set, results only; no catalog or stage changes).

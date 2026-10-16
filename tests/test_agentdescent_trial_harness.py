@@ -127,7 +127,7 @@ class RerunIsolation(Base):
         self.assertEqual(r.returncode, 0)
 
 
-class PromoteGuards(Base):
+class PromoteBase(Base):
     """Promote/run-mixing gates (Tester B1'/B2' @07bca20, B1''/B2'' @ac1c803). Tracked results/ starts NON-empty."""
 
     def setUp(self):
@@ -177,6 +177,7 @@ class PromoteGuards(Base):
     def tamper(self, st, fn):
         f = self.h.RES / f"stage_{st}.json"; d = json.loads(f.read_text()); fn(d); f.write_text(json.dumps(d))
 
+class PromoteGuards(PromoteBase):
     # --- complete run promotes and replaces the whole tracked set
     def test_complete_run_replaces_tracked_set(self):
         self.full(); self.assertEqual(self.h.main(["--stage", "all"]), 0)
@@ -308,6 +309,151 @@ class PromoteGuards(Base):
         self.full(); self.assertEqual(self.h.main(["--stage", "baseline"]), 0)
         self.assertFalse((self.h.RES / "stage_evolve.json").exists())
         self.assertFalse((self.h.RES / "agentdescent_rounds.jsonl").exists())
+
+
+class TransactionalPromote(PromoteBase):
+    """B5/B6 @ d915467 and the two surviving mutants."""
+
+    def complete(self):
+        self.full(); self.assertEqual(self.h.main(["--stage", "all"]), 0)
+
+    def leftovers(self):
+        return sorted(p.name for d in (self.inp, self.inp / "skill") for p in d.iterdir()
+                      if p.name.startswith((".results.", ".SKILL.evolved.md.", ".promote-journal")))
+
+    # --- B5: stale DSPy outputs
+    def test_b5_dspy_child_writing_nothing_fails_and_promote_refuses(self):
+        def child_ok(cmd, timeout):
+            out = Path(cmd[-1]); (out / "dspy_result.json").write_text(json.dumps({"accuracy": 1.0}))
+            (out / "dspy_program.json").write_text("{}")
+            return subprocess.CompletedProcess(cmd, 0, "", ""), 0.1, []
+        self.full(dspy=self.h.dspy_stage); self.h.iso = child_ok
+        self.assertEqual(self.h.main(["--stage", "all"]), 0)
+        (self.inp / "skill/SKILL.md").write_text((self.inp / "skill/SKILL.md").read_text() + "\nedited\n")
+        self.h.iso = lambda cmd, timeout: (subprocess.CompletedProcess(cmd, 0, "", ""), 0.1, [])
+        self.full(dspy=self.h.dspy_stage)
+        self.assertEqual(self.h.main(["--stage", "all"]), 1)
+        self.assertIn("wrote no", self.stage_rec("dspy")["error"])
+        self.refused("failed stages")
+
+    def test_b5_dspy_stale_out_cleared_even_without_new_run(self):
+        self.h.RES.mkdir(parents=True); out = self.h.RES / "dspy-out"; out.mkdir()
+        (out / "dspy_result.json").write_text("{}"); (out / "dspy_program.json").write_text("{}")
+        self.h.iso = lambda cmd, timeout: (subprocess.CompletedProcess(cmd, 0, "", ""), 0.1, [])
+        with self.assertRaises(RuntimeError):
+            self.h.dspy_stage()
+
+    def test_b5_dspy_out_is_inside_run_dir(self):
+        seen = []
+        def child(cmd, timeout):
+            seen.append(Path(cmd[-1])); return subprocess.CompletedProcess(cmd, 0, "", ""), 0.1, []
+        self.h.RES.mkdir(parents=True); self.h.iso = child
+        with self.assertRaises(RuntimeError):
+            self.h.dspy_stage()
+        self.assertEqual(seen[0].parent, self.h.RES)
+
+    # --- B6: faults at each step roll back
+    def fault_at(self, point=None, rename_n=None):
+        before = self.tracked_state()
+        if point:
+            def f(p):
+                if p == point:
+                    raise OSError(f"injected at {p}")
+            self.h._fault = f
+        if rename_n:
+            real, calls = self.h._rename, []
+            def r(a, b):
+                calls.append(1)
+                if len(calls) == rename_n:
+                    raise OSError(f"injected at rename {rename_n}")
+                return real(a, b)
+            self.h._rename = r
+        self.assertEqual(self.h.main(["--promote"]), 1)
+        self.assertEqual(self.tracked_state(), before)
+        self.assertEqual(self.leftovers(), [])
+
+    def test_b6_fault_at_first_rename(self):
+        self.complete(); self.fault_at(rename_n=1)
+
+    def test_b6_fault_at_second_rename(self):
+        self.complete(); self.fault_at(rename_n=2)
+
+    def test_b6_fault_between_renames(self):
+        self.complete(); self.fault_at("after_old_rename")
+
+    def test_b6_fault_before_skill_replace(self):
+        self.complete(); self.fault_at("before_skill_replace")
+
+    def test_b6_fault_before_commit(self):
+        self.complete(); self.fault_at("before_commit")
+
+    def test_b6_fault_at_skill_replace(self):
+        self.complete()
+        def boom(a, b):
+            raise OSError("injected at skill replace")
+        self.h._replace = boom
+        before = self.tracked_state()
+        self.assertEqual(self.h.main(["--promote"]), 1)
+        self.assertEqual(self.tracked_state(), before)
+
+    def test_b6_rollback_when_no_old_evolved(self):
+        (self.inp / "skill/SKILL.evolved.md").unlink()
+        self.complete(); self.fault_at("before_commit")
+        self.assertFalse((self.inp / "skill/SKILL.evolved.md").exists())
+
+    def test_b6_leftover_temp_files_cleaned_at_start(self):
+        self.complete()
+        (self.inp / ".results.new-dead").mkdir(); (self.inp / ".results.new-dead/x").write_text("1")
+        (self.inp / "skill/.SKILL.evolved.md.new").write_text("half")
+        self.assertEqual(self.h.main(["--promote"]), 0)
+        self.assertEqual(self.leftovers(), [])
+        self.assertEqual((self.inp / "skill/SKILL.evolved.md").read_text(), "evolve output")
+
+    def test_b6_crash_mid_swap_recovered_from_journal(self):
+        self.complete()
+        before = self.tracked_state()
+        old = self.inp / ".results.old-dead"
+        self.tracked.rename(old)                         # simulated crash right after the first rename
+        (self.inp / ".promote-journal.json").write_text(json.dumps(
+            {"state": "swapping", "old": str(old), "new": str(self.inp / ".results.new-dead"),
+             "skill_backup": None, "skill_touched": False}))
+        self.assertEqual(self.h.recover(), None)
+        self.assertEqual(self.tracked_state(), before)
+        self.assertEqual(self.leftovers(), [])
+
+    def test_b6_crash_after_commit_finishes_cleanup(self):
+        self.complete(); self.assertEqual(self.h.main(["--promote"]), 0)
+        after = self.tracked_state()
+        old = self.inp / ".results.old-dead"; old.mkdir()
+        (self.inp / ".promote-journal.json").write_text(json.dumps(
+            {"state": "committed", "old": str(old), "new": "x", "skill_backup": None}))
+        self.assertEqual(self.h.recover(), None)
+        self.assertEqual(self.tracked_state(), after); self.assertEqual(self.leftovers(), [])
+
+    def test_b6_orphan_old_without_journal_refused(self):
+        self.complete(); (self.inp / ".results.old-orphan").mkdir()
+        before = self.tracked_state()
+        self.assertEqual(self.h.main(["--promote"]), 1)
+        self.assertEqual(self.tracked_state(), before)
+
+    def test_diff_generated_on_promote(self):
+        self.complete(); self.assertEqual(self.h.main(["--promote"]), 0)
+        d = (self.tracked / "agentdescent_vs_baseline.diff").read_text()
+        self.assertIn("+evolve output", d)
+
+    # --- surviving mutants
+    def test_two_new_agentdescent_dirs_rejected(self):
+        store = Path(self.td.name, "store"); store.mkdir(); self.h.STORE = store
+        existing = set(store.glob("*")); (store / "a").mkdir(); (store / "b").mkdir()
+        with self.assertRaises(RuntimeError):
+            self.h.created_run_dir(existing)
+
+    def test_truthy_non_true_guard_refused(self):
+        for v in (1, "yes", [1]):
+            with self.subTest(v=v):
+                self.setUp(); self.complete()
+                self.tamper("evolve", lambda d: d["guard"].update(real_home_untouched=v))
+                self.refused("real-HOME guard")
 
 
 if __name__ == "__main__":
