@@ -105,3 +105,7 @@ pipelines/smoke/openqodex/
 # 117-118 receipts. Same rule: kolibri1/latest.json stays tracked.
 pipelines/smoke/kander/
 pipelines/smoke/moira/
+# 119-121 receipts. Same rule: kolibri1/latest.json stays tracked.
+pipelines/smoke/agentdescent/
+pipelines/smoke/kenfold/
+pipelines/smoke/tsa/
