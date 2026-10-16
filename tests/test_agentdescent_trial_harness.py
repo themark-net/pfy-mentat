@@ -207,6 +207,23 @@ class PromoteBase(Base):
             self.assertEqual(self.tracked_state(), expect)
 
 
+    def run_case(self, point, journal):
+        self.complete()
+        before = self.tracked_state()
+        self.crash_at(point)
+        j = self.inp / ".promote-journal.json"
+        if journal == "empty":
+            j.write_text("")
+        elif journal == "garbled":
+            j.write_bytes(b"\x00{\"state\": \"comm")
+        elif journal == "torn":                                 # a half-written 2nd (committed) write
+            j.write_text('{"state": "committed", "ta')
+        elif journal == "missing":
+            j.unlink(missing_ok=True)
+        self.assertTrue(self.leftovers() or point == "trashed")
+        return before
+
+
 class PromoteGuards(PromoteBase):
     # --- complete run promotes and replaces the whole tracked set
     def test_complete_run_replaces_tracked_set(self):
@@ -492,22 +509,6 @@ class CrashRecovery(PromoteBase):
     PRE_COMMIT = ["staged", "after_old_rename", "before_skill_replace", "before_commit"]
     POST_COMMIT = ["committed", "bak_moved", "trashed"]
 
-    def run_case(self, point, journal):
-        self.complete()
-        before = self.tracked_state()
-        self.crash_at(point)
-        j = self.inp / ".promote-journal.json"
-        if journal == "empty":
-            j.write_text("")
-        elif journal == "garbled":
-            j.write_bytes(b"\x00{\"state\": \"comm")
-        elif journal == "torn":                                 # a half-written 2nd (committed) write
-            j.write_text('{"state": "committed", "ta')
-        elif journal == "missing":
-            j.unlink(missing_ok=True)
-        self.assertTrue(self.leftovers() or point == "trashed")
-        return before
-
     REFUSE_AFTER = ["before_skill_replace", "before_commit", "committed", "bak_moved"]  # results/ present + old set
 
     def refuses_stale(self):
@@ -657,6 +658,86 @@ class StaleOldSet(PromoteBase):
         self.assertIn("could not recover promote leftovers (PermissionError", msg)
         self.assertIn("git checkout -- examples/agentdescent-trial/results", msg)
         self.assertNotIn("Traceback", msg)
+
+
+class ManualFix(PromoteBase):
+    """B9 @ bccac7a: the refusal's manual fix must keep results/ and SKILL.evolved.md from the same promote."""
+
+    def pair(self):
+        return ((self.tracked / "dspy.log").read_text() if (self.tracked / "dspy.log").exists() else None,
+                (self.inp / "skill/SKILL.evolved.md").read_text() if (self.inp / "skill/SKILL.evolved.md").exists() else None)
+
+    def follow(self, point, choice, no_old_skill=False):
+        if no_old_skill:
+            (self.inp / "skill/SKILL.evolved.md").unlink()
+        self.run_case(point, "missing")                          # killed, then the journal is lost
+        backups_before = self.leftovers()
+        self.h.msgs.clear()
+        self.assertEqual(self.h.main(["--promote"]), 1)
+        msg = " ".join(self.h.msgs)
+        self.assertFalse(any(m.startswith("recovery:") for m in self.h.msgs))
+        self.assertEqual(self.leftovers(), backups_before)      # nothing deleted while the swap may have started
+        import re
+        label = {"keep": "keep results/: ", "restore": "restore the old set: "}[choice]
+        m = re.search(re.escape(label) + r"`([^`]+)`", msg); self.assertIsNotNone(m, msg)
+        r = subprocess.run(["bash", "-ec", m.group(1)], cwd=self.inp, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        (self.inp / ".promote-journal.json").unlink(missing_ok=True)   # "Then rm -f .promote-journal.json"
+        old_skill = None if no_old_skill else "OLD EVOLVED"
+        want = ("dspy output", "evolve output") if choice == "keep" else ("OLD DSPY", old_skill)
+        self.assertEqual(self.pair(), want)                      # same run for results/ and the skill
+        self.assertEqual(self.leftovers(), [])
+        self.assertEqual(self.h.main(["--promote"]), 0)          # and a later promote works
+        self.assertEqual(self.pair(), ("dspy output", "evolve output"))
+
+    def test_kill_after_rename_2_keep(self):
+        self.follow("before_skill_replace", "keep")
+
+    def test_kill_after_rename_2_restore(self):
+        self.follow("before_skill_replace", "restore")
+
+    def test_kill_after_skill_replace_keep(self):
+        self.follow("before_commit", "keep")
+
+    def test_kill_after_skill_replace_restore(self):
+        self.follow("before_commit", "restore")
+
+    def test_no_skill_marker_restore_and_keep(self):
+        for point in ("before_skill_replace", "before_commit"):
+            for choice in ("keep", "restore"):
+                with self.subTest(point=point, choice=choice):
+                    self.setUp(); self.follow(point, choice, no_old_skill=True)
+
+    def test_backup_moved_into_old_set_restore(self):
+        self.follow("bak_moved", "restore")
+
+    def test_skill_leftovers_without_matching_new_dir_refused(self):
+        self.complete()
+        bak = self.inp / "skill/.SKILL.evolved.md.bak-zz"; bak.write_text("maybe needed")
+        staged = self.inp / "skill/.SKILL.evolved.md.new"; staged.write_text("staged")
+        (self.inp / ".results.new-other").mkdir()
+        self.h.msgs.clear()
+        self.assertEqual(self.h.main(["--promote"]), 1)
+        self.assertTrue(bak.exists() and staged.exists())
+        self.assertFalse(any(m.startswith("recovery:") for m in self.h.msgs))
+        self.assertTrue(any("swap may have started" in m and ".SKILL.evolved.md.bak-zz" in m for m in self.h.msgs))
+
+    def test_skill_leftovers_with_matching_new_dir_cleaned(self):
+        self.complete()
+        (self.inp / "skill/.SKILL.evolved.md.bak-aa").write_text("x"); (self.inp / ".results.new-aa").mkdir()
+        self.h.msgs.clear()
+        self.assertEqual(self.h.main(["--promote"]), 0)
+        self.assertTrue(any(m.startswith("recovery: removed skill backup") for m in self.h.msgs))
+
+    def test_forged_committed_with_results_missing_never_suggests_deleting_only_copy(self):
+        self.complete()
+        old = self.inp / ".results.old-real"; self.tracked.rename(old)
+        (self.inp / ".promote-journal.json").write_text(json.dumps({"state": "committed", "tag": "forged"}))
+        self.h.msgs.clear()
+        self.assertEqual(self.h.main(["--promote"]), 1)
+        msg = " ".join(self.h.msgs)
+        self.assertIn("only copy", msg); self.assertNotIn("rm -rf .results.old-real", msg)
+        self.assertNotIn("keep results/", msg); self.assertTrue(old.exists())
 
 
 if __name__ == "__main__":

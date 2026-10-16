@@ -317,7 +317,7 @@ def write_journal(state: str, tag: str):
 
 
 def read_journal():
-    """(state, tag). Missing -> (None, None); empty/garbled -> ("swapping", None); else the parsed state and tag."""
+    """(state, tag) from a readable journal; (None, None) when it is missing, empty or garbled (treated alike)."""
     _, _, _, journal = _paths()
     if not journal.exists():
         return None, None
@@ -327,7 +327,7 @@ def read_journal():
             return j["state"], j.get("tag")
     except (ValueError, OSError, UnicodeDecodeError):
         pass
-    return "swapping", None
+    return None, None
 
 
 def _rm(x: Path):
@@ -346,6 +346,36 @@ def _restore_skill(evolved: Path, candidates_bak, candidates_absent):
         evolved.unlink()       # there was no SKILL.evolved.md before this promote
 
 
+def _manual_fix(old: Path, sk_bak, sk_abs, staged: Path, why: str) -> str:
+    """Refusal text with literal commands (run from examples/agentdescent-trial/) that keep results/ and the skill
+    from the same promote."""
+    tag = old.name[len(".results.old-"):]
+    inner_bak, inner_abs = old / ".skill_backup", old / ".skill_absent"
+    bak = next((x for x in [*sk_bak, inner_bak] if x.exists()), None)
+    absent = next((x for x in [*sk_abs, inner_abs] if x.exists()), None)
+    rel = lambda x: str(x.relative_to(old.parent))
+    # keep results/ (the new set): finish the skill replace if it hadn't happened, then drop the backups and old set
+    keep = []
+    if staged.exists():
+        keep.append(f"mv {rel(staged)} skill/SKILL.evolved.md")
+    keep += [f"rm -f {rel(x)}" for x in [*sk_bak, *sk_abs]] + [f"rm -rf {old.name}"]
+    # restore the old set: put the old skill back (or remove it if there was none), then the old results
+    restore = []
+    if bak is not None:
+        restore.append(f"mv {rel(bak)} skill/SKILL.evolved.md")
+    elif absent is not None:
+        restore.append("rm -f skill/SKILL.evolved.md")
+    restore += [f"rm -f {rel(x)}" for x in [*sk_abs, *([staged] if staged.exists() else [])]]
+    restore += [f"rm -rf {rel(x)}" for x in (inner_bak, inner_abs) if x.exists() and x != bak]
+    restore += (["rm -rf results"] if TRACKED_RES.exists() else []) + [f"mv {old.name} results"]
+    msg = f"{why}; nothing changed. Manual fix, from examples/agentdescent-trial/: "
+    if TRACKED_RES.exists():
+        msg += f"keep results/: `{' && '.join(keep)}`; or "
+    else:
+        msg += f"results/ is missing and {old.name} (tag {tag}) is the only copy, so do not delete it; "
+    return msg + f"restore the old set: `{' && '.join(restore)}`. Then rm -f .promote-journal.json"
+
+
 def recover():
     """Run at the very top of --promote. Works from the files on disk; the journal only says roll forward or back.
 
@@ -354,6 +384,7 @@ def recover():
     parent, evolved, staged_skill, journal = _paths()
     try:
         olds = sorted(parent.glob(".results.old-*"))
+        news = sorted(parent.glob(".results.new-*"))
         sk_bak = sorted(evolved.parent.glob(".SKILL.evolved.md.bak-*"))
         sk_abs = sorted(evolved.parent.glob(".SKILL.evolved.md.absent-*"))
         state, jtag = read_journal()
@@ -362,18 +393,18 @@ def recover():
                     "right .results.old-* (or `git checkout -- examples/agentdescent-trial/results`) and delete the rest")
         old = olds[0] if olds else None
         tag_ok = old is not None and jtag is not None and old.name == f".results.old-{jtag}"
-        stale = (f"stale {old.name if old else ''} next to a valid results/ with no matching journal; nothing changed. "
-                 f"Inspect it, then `rm -rf examples/agentdescent-trial/{old.name if old else ''}` if results/ is right, "
-                 "or move results/ aside and `mv` the old set to results/")
         if old is not None and state == "committed":
             if not tag_ok:
-                return stale.replace("no matching journal", f"a committed journal for tag {jtag!r}")
+                return _manual_fix(old, sk_bak, sk_abs, staged_skill,
+                                   f"{old.name} with a committed journal for tag {jtag!r}")
             for x in [*(sk_bak + sk_abs), old]:
                 _rm(x)
             print(f"recovery: finished committed promote {jtag}, removed {old.name}")
         elif old is not None:
             if TRACKED_RES.exists() and not (state == "swapping" and tag_ok):
-                return stale   # never replace a valid results/ without a readable mid-swap journal for this old set
+                # never replace a valid results/ without a readable mid-swap journal for this old set
+                return _manual_fix(old, sk_bak, sk_abs, staged_skill,
+                                   f"stale {old.name} next to a valid results/ with no matching journal")
             _restore_skill(evolved, sk_bak + [old / ".skill_backup"], sk_abs + [old / ".skill_absent"])
             for x in (*sk_bak, *sk_abs, old / ".skill_backup", old / ".skill_absent"):
                 _rm(x)
@@ -381,11 +412,21 @@ def recover():
                 _rm(TRACKED_RES)
             os.rename(old, TRACKED_RES)
             print(f"recovery: rolled back interrupted promote, restored results/ from {old.name}")
-        elif sk_bak or sk_abs:
-            # results/ never moved, so the skill was not replaced; drop the backup
-            for x in sk_bak + sk_abs:
-                _rm(x)
-            print("recovery: removed skill backup from a promote interrupted before the swap")
+        else:
+            # no old set: skill backups/staged skill may be deleted only if a .results.new-<same tag> proves the swap
+            # never started
+            skill_left = [*sk_bak, *sk_abs, *([staged_skill] if staged_skill.exists() else [])]
+            tags = {x.name.rsplit("-", 1)[-1] for x in [*sk_bak, *sk_abs]}
+            proven = bool(news) and all(parent / f".results.new-{t}" in news for t in tags)
+            if skill_left and not proven:
+                return (f"skill promote leftovers {[str(x.relative_to(parent)) for x in skill_left]} with no matching "
+                        ".results.new-<tag>, so the swap may have started; nothing changed. Check that "
+                        "skill/SKILL.evolved.md matches results/ (results/agentdescent_vs_baseline.diff), then delete "
+                        "or `mv` those files by hand")
+            if skill_left:
+                for x in skill_left:
+                    _rm(x)
+                print("recovery: removed skill backup from a promote interrupted before the swap")
         for x in [*parent.glob(".results.new-*"), *parent.glob(".results.trash-*"), staged_skill,
                   journal.with_name(JOURNAL_NAME + ".tmp"), journal]:
             _rm(x)

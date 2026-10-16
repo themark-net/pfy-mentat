@@ -169,6 +169,29 @@ Minimal change to `recover()`; no new machinery.
   - The results-missing message and the OS-error message.
   - The crash-phase matrix updated to the new rule.
 
+## Tester FAIL @ bccac7a fixed (B9: manual fix ignored the skill)
+
+- **The refusal gives literal commands, run from `examples/agentdescent-trial/`, for each choice:**
+  - **keep `results/`:** `mv skill/.SKILL.evolved.md.new skill/SKILL.evolved.md` (only if the staged skill is still
+    there), then remove the skill backup or marker and `rm -rf .results.old-<tag>`.
+  - **restore the old set:** either `mv` the skill backup (`skill/.SKILL.evolved.md.bak-<tag>`, or `.skill_backup`
+    inside the old set after cleanup started) to `skill/SKILL.evolved.md`, or `rm -f skill/SKILL.evolved.md` if the
+    no-skill marker is present. Then remove the staged skill and `rm -rf results && mv .results.old-<tag> results`.
+  - **either way:** then `rm -f .promote-journal.json`.
+- **With no old set:** a skill backup, marker or staged skill is deleted only if a `.results.new-<same tag>` dir proves
+  the swap never started. Otherwise promote refuses, names the files, and prints no `recovery:` line.
+- **Forged committed journal with `results/` missing:** the message says the old set is the only copy and offers only
+  the restore commands.
+- **Journal reading:** a missing, empty or garbled journal now reads the same, `(None, None)`; the separate garbled
+  branch is gone.
+- **Tests:** a kill after rename 2 and a kill after the skill replace, with the journal deleted. For each, the test
+  follows the keep and the restore command from the message text literally, then checks that `results/` and the skill
+  come from the same run, nothing was deleted at refusal, and a later promote succeeds. Also covered:
+  - the no-skill-marker variants;
+  - a backup already moved into the old set;
+  - unproven and proven skill leftovers with no old set;
+  - the forged-committed message with `results/` missing.
+
 ## Next
 
 1. Tester and Reviewer gate on this PR (harness, case set, results only; no catalog or stage changes).
