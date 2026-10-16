@@ -19,11 +19,11 @@ were the baseline's bias to SKIP tools whose description does not state a licens
 
 ## Qualitative diff
 
-**AgentDescent** kept the file and added four lines (`results/agentdescent_vs_baseline.diff`; the committed copy is plain `diff` output from the recorded run, and `--promote` regenerates it as a unified diff from the promoted run):
+**AgentDescent** kept the file and changed four lines: 2 bullets extended, 1 added, 1 replaced (`results/agentdescent_vs_baseline.diff`; the committed copy is plain `diff` output from the recorded run, and `--promote` regenerates it as a unified diff from the promoted run):
 - the "runnable" bullet now accepts "text-based artifacts with a clear installation one-liner";
 - the license bullet accepts "standard attribution or usage riders ... unless explicit restrictions" (cass-memory style);
 - a new bullet: infer open-source/reproducibility from stack indicators instead of requiring explicit confirmation;
-- Phase 0: "Default to CATALOG when descriptions align ..., SKIP only for explicitly stated disqualifiers."
+- Phase 0 (replaces "Accept → Phase 1, Defer, or Reject."): "Default to CATALOG when descriptions align ..., SKIP only for explicitly stated disqualifiers."
 Small, readable and reviewable as a normal PR diff. **Do not port the "default to CATALOG" line into the real triage
 text** until it has been checked on a SKIP-heavy set: it moves the bias toward accept, and 11/11 held-out SKIPs here are
 mostly obvious (off-scope, NOASSERTION, macOS/Windows only) rather than borderline.

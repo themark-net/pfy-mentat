@@ -177,6 +177,36 @@ class PromoteBase(Base):
     def tamper(self, st, fn):
         f = self.h.RES / f"stage_{st}.json"; d = json.loads(f.read_text()); fn(d); f.write_text(json.dumps(d))
 
+    def complete(self):
+        self.full(); self.assertEqual(self.h.main(["--stage", "all"]), 0)
+
+    def leftovers(self):
+        return sorted(p.name for d in (self.inp, self.inp / "skill") for p in d.iterdir()
+                      if p.name.startswith((".results.", ".SKILL.evolved.md.", ".promote-journal")))
+
+    def crash_at(self, point):
+        def f(p):
+            if p == point:
+                raise self.h.Crash(p)
+        self.h._fault = f
+        with self.assertRaises(self.h.Crash):
+            self.h.main(["--promote"])
+        self.h._fault = lambda p: None
+
+    def incomplete_promote_recovers(self, expect, old_contents=None):
+        (self.h.RES / "stage_dspy.json").unlink()              # the run is now incomplete
+        self.h.msgs.clear()
+        rc = self.h.main(["--promote"])
+        self.assertEqual(rc, 1)
+        self.assertTrue(any("incomplete run" in m for m in self.h.msgs), self.h.msgs)   # recovered, then refused
+        self.assertFalse(any("Traceback" in m for m in self.h.msgs))
+        self.assertEqual(self.leftovers(), [])
+        if expect == "before_old_contents":
+            self.assertEqual({p.name for p in self.tracked.iterdir()}, old_contents)
+        else:
+            self.assertEqual(self.tracked_state(), expect)
+
+
 class PromoteGuards(PromoteBase):
     # --- complete run promotes and replaces the whole tracked set
     def test_complete_run_replaces_tracked_set(self):
@@ -430,11 +460,12 @@ class TransactionalPromote(PromoteBase):
         self.assertEqual(self.h.recover(), None)
         self.assertEqual(self.tracked_state(), after); self.assertEqual(self.leftovers(), [])
 
-    def test_b6_orphan_old_without_journal_refused(self):
-        self.complete(); (self.inp / ".results.old-orphan").mkdir()
-        before = self.tracked_state()
-        self.assertEqual(self.h.main(["--promote"]), 1)
-        self.assertEqual(self.tracked_state(), before)
+    def test_b6_orphan_old_without_journal_is_rolled_back(self):
+        self.complete()
+        names = {p.name for p in self.tracked.iterdir()}
+        old = self.inp / ".results.old-orphan"; self.tracked.rename(old)
+        (self.inp / "results").mkdir(); (self.inp / "results/half.json").write_text("new set")
+        self.incomplete_promote_recovers(expect="before_old_contents", old_contents=names)
 
     def test_diff_generated_on_promote(self):
         self.complete(); self.assertEqual(self.h.main(["--promote"]), 0)
@@ -454,6 +485,94 @@ class TransactionalPromote(PromoteBase):
                 self.setUp(); self.complete()
                 self.tamper("evolve", lambda d: d["guard"].update(real_home_untouched=v))
                 self.refused("real-HOME guard")
+
+
+class CrashRecovery(PromoteBase):
+    """B7 @ b826c43: kill at each phase, then a garbled/empty/torn journal, then a promote from an INCOMPLETE run."""
+
+    PRE_COMMIT = ["staged", "after_old_rename", "before_skill_replace", "before_commit"]
+    POST_COMMIT = ["committed", "bak_moved", "trashed"]
+
+    def run_case(self, point, journal):
+        self.complete()
+        before = self.tracked_state()
+        self.crash_at(point)
+        j = self.inp / ".promote-journal.json"
+        if journal == "empty":
+            j.write_text("")
+        elif journal == "garbled":
+            j.write_bytes(b"\x00{\"state\": \"comm")
+        elif journal == "torn":                                 # a half-written 2nd (committed) write
+            j.write_text('{"state": "committed", "ta')
+        elif journal == "missing":
+            j.unlink(missing_ok=True)
+        self.assertTrue(self.leftovers() or point == "trashed")
+        return before
+
+    def check(self, point, journal):
+        before = self.run_case(point, journal)
+        if point in self.POST_COMMIT and journal == "ok":
+            # roll forward: the promoted set stays
+            (self.h.RES / "stage_dspy.json").unlink()
+            self.assertEqual(self.h.main(["--promote"]), 1)
+            self.assertEqual((self.tracked / "dspy.log").read_text(), "dspy output")
+            self.assertEqual((self.inp / "skill/SKILL.evolved.md").read_text(), "evolve output")
+            self.assertEqual(self.leftovers(), [])
+        elif point == "trashed":
+            # old set already retired: whatever the journal says, the new set is consistent and stays
+            (self.h.RES / "stage_dspy.json").unlink()
+            self.assertEqual(self.h.main(["--promote"]), 1)
+            self.assertEqual((self.tracked / "dspy.log").read_text(), "dspy output")
+            self.assertEqual((self.inp / "skill/SKILL.evolved.md").read_text(), "evolve output")
+            self.assertEqual(self.leftovers(), [])
+        else:
+            self.incomplete_promote_recovers(before)
+
+    def test_every_phase_with_every_journal_state(self):
+        for point in self.PRE_COMMIT + self.POST_COMMIT:
+            for journal in ("ok", "empty", "garbled", "missing"):
+                with self.subTest(point=point, journal=journal):
+                    self.setUp(); self.check(point, journal)
+
+    def test_torn_second_write(self):
+        for point in ("before_commit", "committed"):
+            with self.subTest(point=point):
+                self.setUp(); before = self.run_case(point, "torn")
+                self.incomplete_promote_recovers(before)
+
+    def test_kill_after_rename_1_then_incomplete_promote(self):
+        before = self.run_case("after_old_rename", "ok")
+        self.assertFalse(self.tracked.exists())
+        self.incomplete_promote_recovers(before)
+
+    def test_kill_after_rename_2_then_incomplete_promote(self):
+        before = self.run_case("before_skill_replace", "ok")
+        self.assertEqual((self.tracked / "dspy.log").read_text(), "dspy output")
+        self.incomplete_promote_recovers(before)
+
+    def test_no_evolved_before_kill_after_skill_replace(self):
+        (self.inp / "skill/SKILL.evolved.md").unlink()
+        before = self.run_case("before_commit", "garbled")
+        self.incomplete_promote_recovers(before)
+        self.assertFalse((self.inp / "skill/SKILL.evolved.md").exists())
+
+    def test_journal_write_is_temp_fsync_rename(self):
+        calls = []
+        real_fsync, real_replace = os.fsync, os.replace
+        with mock.patch.object(self.h.os, "fsync", side_effect=lambda fd: (calls.append("fsync"), real_fsync(fd))), \
+             mock.patch.object(self.h.os, "replace", side_effect=lambda a, b: (calls.append(("replace", Path(a).name)), real_replace(a, b))):
+            self.h.write_journal("swapping", "t")
+        self.assertEqual(calls[0], "fsync")
+        self.assertEqual(calls[1], ("replace", ".promote-journal.json.tmp"))
+        self.assertEqual(calls[2], "fsync")          # the directory
+        self.assertEqual(json.loads((self.inp / ".promote-journal.json").read_text())["state"], "swapping")
+
+    def test_unreadable_state_gives_message_not_traceback(self):
+        self.complete()
+        (self.inp / ".results.old-a").mkdir(); (self.inp / ".results.old-b").mkdir()
+        self.h.msgs.clear()
+        self.assertEqual(self.h.main(["--promote"]), 1)
+        self.assertTrue(any("ambiguous promote leftovers" in m for m in self.h.msgs))
 
 
 if __name__ == "__main__":

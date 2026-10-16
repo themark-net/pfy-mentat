@@ -116,3 +116,6 @@ examples/agentdescent-trial/.results.old-*/
 examples/agentdescent-trial/.promote-journal.json
 examples/agentdescent-trial/skill/.SKILL.evolved.md.new
 examples/agentdescent-trial/skill/.SKILL.evolved.md.bak-*
+examples/agentdescent-trial/.results.trash-*/
+examples/agentdescent-trial/.promote-journal.json.tmp
+examples/agentdescent-trial/skill/.SKILL.evolved.md.absent-*

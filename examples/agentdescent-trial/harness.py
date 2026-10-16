@@ -285,54 +285,115 @@ _fault = lambda point: None  # tests set this to raise at a named point
 JOURNAL_NAME = ".promote-journal.json"
 
 
+class Crash(BaseException):
+    """Test hook: raised from _fault to simulate SIGKILL. promote re-raises it without rolling back."""
+
+
 def _paths():
     parent = TRACKED_RES.parent
     evolved = HERE / "skill/SKILL.evolved.md"
     return parent, evolved, evolved.with_name(".SKILL.evolved.md.new"), parent / JOURNAL_NAME
 
 
-def _rollback(j):
-    """Put the pre-promote results/ and SKILL.evolved.md back, from the journal."""
-    parent, evolved, staged_skill, journal = _paths()
-    old, new = Path(j["old"]), Path(j["new"])
-    if old.exists():
-        if TRACKED_RES.exists():
-            shutil.rmtree(TRACKED_RES)
-        os.rename(old, TRACKED_RES)
-    bak = Path(j["skill_backup"]) if j.get("skill_backup") else None
-    if bak and bak.exists():
-        os.replace(bak, evolved)
-    elif not j.get("skill_backup") and evolved.exists() and j.get("skill_touched"):
-        evolved.unlink()
-    for x in (new, staged_skill):
-        if x.exists():
-            shutil.rmtree(x) if x.is_dir() else x.unlink()
-    journal.unlink(missing_ok=True)
+def _fsync_dir(d: Path):
+    try:
+        fd = os.open(d, os.O_RDONLY)
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+    except OSError:
+        pass
+
+
+def write_journal(state: str, tag: str):
+    """Temp file, fsync, rename into place, fsync the dir: a reader sees the old or the new journal, never a torn one."""
+    parent, _, _, journal = _paths()
+    tmp = journal.with_name(JOURNAL_NAME + ".tmp")
+    with open(tmp, "w") as f:
+        f.write(json.dumps({"state": state, "tag": tag})); f.flush(); os.fsync(f.fileno())
+    os.replace(tmp, journal)
+    _fsync_dir(parent)
+
+
+def read_journal():
+    """'committed' only when the journal parses and says so; missing -> None; empty/garbled -> 'swapping'."""
+    _, _, _, journal = _paths()
+    if not journal.exists():
+        return None
+    try:
+        j = json.loads(journal.read_text())
+        return "committed" if isinstance(j, dict) and j.get("state") == "committed" else "swapping"
+    except (ValueError, OSError, UnicodeDecodeError):
+        return "swapping"
+
+
+def _rm(x: Path):
+    if x.is_dir() and not x.is_symlink():
+        shutil.rmtree(x)
+    elif x.exists() or x.is_symlink():
+        x.unlink()
+
+
+def _restore_skill(evolved: Path, candidates_bak, candidates_absent):
+    baks = [x for x in candidates_bak if x.exists()]
+    absent = [x for x in candidates_absent if x.exists()]
+    if baks:
+        os.replace(baks[0], evolved)
+    elif absent and evolved.exists():
+        evolved.unlink()       # there was no SKILL.evolved.md before this promote
 
 
 def recover():
-    """Run at promote start. Returns None when clean, else a reason to refuse."""
+    """Run at the very top of --promote. Works from the files on disk; the journal only says roll forward or back.
+
+    Returns None when clean (or recovered), else a message with the manual fix. Never raises for bad state.
+    """
     parent, evolved, staged_skill, journal = _paths()
-    if journal.exists():
-        j = json.loads(journal.read_text())
-        if j.get("state") == "committed":       # crash during cleanup: the new set is in place
-            for x in (Path(j["old"]), Path(j.get("skill_backup") or "/nonexistent")):
-                if x.exists():
-                    shutil.rmtree(x) if x.is_dir() else x.unlink()
-            journal.unlink()
-        else:                                     # crash mid-swap: restore the old set
-            _rollback(j)
-    for x in [*parent.glob(".results.new-*"), staged_skill, *evolved.parent.glob(".SKILL.evolved.md.bak-*")]:
-        if x.exists():
-            shutil.rmtree(x) if x.is_dir() else x.unlink()
-    olds = list(parent.glob(".results.old-*"))
-    if olds:
-        return f"found {[o.name for o in olds]} with no journal; restore or delete by hand (see the handoff)"
-    return None
+    try:
+        olds = sorted(parent.glob(".results.old-*"))
+        sk_bak = sorted(evolved.parent.glob(".SKILL.evolved.md.bak-*"))
+        sk_abs = sorted(evolved.parent.glob(".SKILL.evolved.md.absent-*"))
+        state = read_journal()
+        if len(olds) > 1 or len(sk_bak) + len(sk_abs) > 1:
+            return (f"ambiguous promote leftovers {[o.name for o in olds + sk_bak + sk_abs]}; restore results/ from the "
+                    "right .results.old-* (or `git checkout -- examples/agentdescent-trial/results`) and delete the rest")
+        old = olds[0] if olds else None
+        if state == "committed":
+            # roll forward: the new set is in place; just drop the old set and backups
+            for x in [*(sk_bak + sk_abs), *([old] if old else [])]:
+                _rm(x)
+        elif old is not None:
+            # mid-swap (or unreadable journal): restore the old set and the old skill
+            _restore_skill(evolved, sk_bak + [old / ".skill_backup"], sk_abs + [old / ".skill_absent"])
+            for x in (*sk_bak, *sk_abs, old / ".skill_backup", old / ".skill_absent"):
+                _rm(x)
+            if TRACKED_RES.exists():
+                _rm(TRACKED_RES)
+            os.rename(old, TRACKED_RES)
+        else:
+            # results/ never moved: the skill was not replaced either; drop any backup
+            for x in sk_bak + sk_abs:
+                _rm(x)
+        for x in [*parent.glob(".results.new-*"), *parent.glob(".results.trash-*"), staged_skill,
+                  journal.with_name(JOURNAL_NAME + ".tmp"), journal]:
+            _rm(x)
+        _fsync_dir(parent)
+        if not TRACKED_RES.exists():
+            return ("results/ is missing and no .results.old-* to restore it from; run "
+                    "`git checkout -- examples/agentdescent-trial/results`")
+        return None
+    except OSError as e:
+        return (f"could not recover promote leftovers ({type(e).__name__}: {e}); restore results/ by hand from "
+                ".results.old-* or `git checkout -- examples/agentdescent-trial/results`, then delete .results.* and "
+                ".promote-journal.json")
 
 
 def promote():
-    """Accept only a COMPLETE current run, then swap tracked results/ and SKILL.evolved.md in one journaled step."""
+    """Recover first, then accept only a COMPLETE current run, then a journaled swap (not atomic; see the handoff)."""
+    why = recover()
+    if why:
+        print(f"refusing to promote: {why}", file=sys.stderr); return 1
     if not current_run():
         print(f"refusing to promote: no current run in {RES} (missing run.json or inputs changed)", file=sys.stderr); return 1
     good, refused = matching_records()
@@ -345,54 +406,59 @@ def promote():
     bad = [st for st, d in good.items() if not isinstance(d.get("guard"), dict) or d["guard"].get("real_home_untouched") is not True]
     if bad:
         print(f"refusing to promote: real-HOME guard failed or missing for {bad}", file=sys.stderr); return 1
-    why = recover()
-    if why:
-        print(f"refusing to promote: {why}", file=sys.stderr); return 1
     R = build_results()
     parent, evolved, staged_skill, journal = _paths()
     tag = os.urandom(4).hex()
-    new = parent / f".results.new-{tag}"; old = parent / f".results.old-{tag}"
-    bak = evolved.with_name(f".SKILL.evolved.md.bak-{tag}")
-    # 1. stage everything (results set + skill) without touching tracked files
-    new.mkdir()
-    for name in ["results.json", "run.json", *[f"stage_{st}.json" for st in STAGE_FILES],
-                 *[n for st in STAGE_FILES for n in STAGE_FILES[st] if n not in ("SKILL.evolved.md", "dspy-out")]]:
-        if (RES / name).exists():
-            shutil.copy2(RES / name, new / name)
-    produced = RES / "SKILL.evolved.md"
-    if produced.exists():
-        import difflib
-        base = (HERE / "skill/SKILL.md").read_text().splitlines(keepends=True)
-        (new / "agentdescent_vs_baseline.diff").write_text("".join(difflib.unified_diff(
-            base, produced.read_text().splitlines(keepends=True), "skill/SKILL.md", "skill/SKILL.evolved.md")))
-        shutil.copy2(produced, staged_skill)
-    j = {"state": "swapping", "old": str(old), "new": str(new),
-         "skill_backup": str(bak) if evolved.exists() else None, "skill_touched": False}
-    journal.write_text(json.dumps(j))
+    new = parent / f".results.new-{tag}"; old = parent / f".results.old-{tag}"; trash = parent / f".results.trash-{tag}"
+    bak = evolved.with_name(f".SKILL.evolved.md.bak-{tag}"); absent = evolved.with_name(f".SKILL.evolved.md.absent-{tag}")
     try:
-        # 2. back up the skill, swap results/, swap the skill
+        # 1. stage everything (results set + skill) without touching tracked files
+        new.mkdir()
+        for name in ["results.json", "run.json", *[f"stage_{st}.json" for st in STAGE_FILES],
+                     *[n for st in STAGE_FILES for n in STAGE_FILES[st] if n not in ("SKILL.evolved.md", "dspy-out")]]:
+            if (RES / name).exists():
+                shutil.copy2(RES / name, new / name)
+        produced = RES / "SKILL.evolved.md"
+        if produced.exists():
+            import difflib
+            base = (HERE / "skill/SKILL.md").read_text().splitlines(keepends=True)
+            (new / "agentdescent_vs_baseline.diff").write_text("".join(difflib.unified_diff(
+                base, produced.read_text().splitlines(keepends=True), "skill/SKILL.md", "skill/SKILL.evolved.md")))
+            shutil.copy2(produced, staged_skill)
         if evolved.exists():
             shutil.copy2(evolved, bak)
-        if TRACKED_RES.exists():
-            _rename(TRACKED_RES, old)
+        else:
+            absent.write_text("")
+        write_journal("swapping", tag)
+        _fault("staged")
+        # 2. swap results/, then the skill
+        _rename(TRACKED_RES, old)
         _fault("after_old_rename")
         _rename(new, TRACKED_RES)
         _fault("before_skill_replace")
-        j["skill_touched"] = True; journal.write_text(json.dumps(j))
         if staged_skill.exists():
             _replace(staged_skill, evolved)
         elif evolved.exists():
             evolved.unlink()
         _fault("before_commit")
-        j["state"] = "committed"; journal.write_text(json.dumps(j))
+        write_journal("committed", tag)
+        _fault("committed")
+    except Crash:
+        raise
     except BaseException as e:
-        _rollback(j)
-        print(f"promote failed and was rolled back: {type(e).__name__}: {e}", file=sys.stderr); return 1
-    # 3. cleanup (a crash here is finished by recover() on the next promote)
-    if old.exists():
-        shutil.rmtree(old)
-    bak.unlink(missing_ok=True)
+        why = recover()  # journal is still 'swapping' (or absent): this rolls back from the files on disk
+        print(f"promote failed and was rolled back: {type(e).__name__}: {e}" + (f"; {why}" if why else ""), file=sys.stderr)
+        return 1
+    # 3. cleanup: move the skill backup into the old set, retire it with one rename, then delete
+    for x, name in ((bak, ".skill_backup"), (absent, ".skill_absent")):
+        if x.exists():
+            os.rename(x, old / name)
+    _fault("bak_moved")
+    os.rename(old, trash)
+    _fault("trashed")
+    shutil.rmtree(trash)
     journal.unlink(missing_ok=True)
+    _fsync_dir(parent)
     print(f"promoted complete run {R['run_id']} -> {TRACKED_RES}"); return 0
 
 

@@ -105,17 +105,45 @@ earlier guard (`~/.agentdescent` names only, absent before and after); it was no
   `committed`; delete the old set, backup and journal. Any exception before `committed` rolls back to the old
   `results/` and old `SKILL.evolved.md` and exits 1. Gitignored: `.results.new-*/`, `.results.old-*/`,
   `.promote-journal.json`, `skill/.SKILL.evolved.md.new`, `skill/.SKILL.evolved.md.bak-*`.
-- **After a crash** (power loss, kill -9): the next `--promote` recovers first. A `swapping` journal is rolled back
-  (old `results/` and skill restored); a `committed` journal just finishes cleanup. Stray `.results.new-*` and staged
-  skill files are deleted. A `.results.old-*` with no journal is refused (exit 1): check it by hand, then either
-  `mv examples/agentdescent-trial/.results.old-<tag> examples/agentdescent-trial/results` (if `results/` is missing or
-  broken) or delete it. Between the two renames, `results/` is briefly absent; `git status` shows it until recovery.
+- **After a crash**: superseded by the B7 section below (the recovery described here at b826c43 did not handle a torn journal).
 - Promote regenerates `results/agentdescent_vs_baseline.diff` (unified diff of `skill/SKILL.md` vs the promoted
   evolved skill), so the file REPORT.md cites survives a promote.
 - Mutants: more than one new AgentDescent run dir is rejected; a guard flag that is truthy but not `True` is refused.
 - Reviewer nits: the committed `results/` set has no `run.json` or stage records; it comes from the first harness, so
   any hashes it implies are historical until the rerun. `skill/SKILL.md`'s header no longer says verbatim, which also
   means its hash differs from the scored prompt (see `skill/README.md`).
+
+## Tester FAIL @ b826c43 fixed (B7: crash recovery)
+
+- The journal is written to `.promote-journal.json.tmp`, fsynced, renamed into place, and the directory is fsynced, so a
+  reader sees the previous journal or the new one, never a torn one. It only records `swapping` or `committed`.
+- Recovery runs at the **top** of `--promote`, before any run checks. So a promote from an incomplete or stale run
+  still recovers first, then refuses.
+- Recovery works from the files on disk. The journal only decides roll forward or roll back. A missing, empty, garbled
+  or torn journal counts as mid-swap:
+  - **`committed`** (parses and says so): keep the new `results/` and skill; delete the old set and backups.
+  - **otherwise, with a `.results.old-*` present**: restore the skill from `skill/.SKILL.evolved.md.bak-*` (or remove it
+    if `skill/.SKILL.evolved.md.absent-*` says there was none), also checking the copies moved into the old set during
+    cleanup; then put the old set back as `results/`.
+  - **otherwise, no old set**: `results/` never moved, so the skill wasn't replaced; drop the backups.
+  - Then delete `.results.new-*`, `.results.trash-*`, the staged skill and the journal.
+- Cleanup after `committed`: move the skill backup into the old set, rename the old set to `.results.trash-<tag>`
+  (one rename), then delete it. So the old set, with its matching skill backup, is either fully there or gone.
+- Bad state never shows a traceback. Promote exits 1 with a message and the manual fix:
+  - more than one old set or skill backup: restore `results/` from the right `.results.old-*` or
+    `git checkout -- examples/agentdescent-trial/results`, then delete the rest;
+  - `results/` missing with nothing to restore from: `git checkout -- examples/agentdescent-trial/results`;
+  - an OS error during recovery: restore by hand the same way, then delete `.results.*` and `.promote-journal.json`.
+- Tests:
+  - a simulated kill at each of the 7 phases, each with an ok, empty, garbled or missing journal, followed by a promote
+    from an incomplete run;
+  - a torn second (`committed`) write;
+  - a kill after rename 1 and after rename 2;
+  - no prior `SKILL.evolved.md`;
+  - the journal write order (fsync, rename, then dir fsync);
+  - ambiguous leftovers.
+  Each fix was reverted in turn and the tests went red.
+- REPORT wording: AgentDescent changed four lines (2 extended, 1 added, 1 replaced), not "added four lines".
 
 ## Next
 
