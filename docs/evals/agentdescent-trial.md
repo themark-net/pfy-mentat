@@ -145,6 +145,30 @@ earlier guard (`~/.agentdescent` names only, absent before and after); it was no
   Each fix was reverted in turn and the tests went red.
 - REPORT wording: AgentDescent changed four lines (2 extended, 1 added, 1 replaced), not "added four lines".
 
+## Tester FAIL @ c4904511 fixed (B8: stale old set)
+
+Minimal change to `recover()`; no new machinery.
+
+- **A `.results.old-*` replaces `results/` only when:**
+  - `results/` is missing; or
+  - a readable `swapping` journal names that old set's tag.
+
+  An empty, garbled or torn journal still counts as mid-swap, but only under those two conditions.
+- **Otherwise promote refuses (exit 1) and changes nothing.** It names the stale dir and gives the manual fix: inspect
+  it, then `rm -rf examples/agentdescent-trial/.results.old-<tag>` if `results/` is right, or move `results/` aside and
+  `mv` the old set into place. `results/` is never deleted in this case.
+- **A `committed` journal deletes the old set only if its tag matches.** A mismatched tag is refused the same way.
+- **Whenever recovery acts, it prints one `recovery: ...` line.**
+- **Consequence:** a crash after the second rename combined with a lost or garbled journal now refuses and needs the
+  manual fix, instead of guessing. With the fsynced journal, that needs outside corruption.
+- **Tests:**
+  - Tester's repro: a valid `results/` plus a stale old set with no journal, through both a complete and an incomplete
+    promote, in plain, absence-marker and stale-skill-backup variants. Every file is unchanged.
+  - A garbled journal and a swapping journal for another tag, each with a valid `results/`.
+  - A forged committed journal with a mismatched tag.
+  - The results-missing message and the OS-error message.
+  - The crash-phase matrix updated to the new rule.
+
 ## Next
 
 1. Tester and Reviewer gate on this PR (harness, case set, results only; no catalog or stage changes).

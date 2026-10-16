@@ -455,17 +455,16 @@ class TransactionalPromote(PromoteBase):
         self.complete(); self.assertEqual(self.h.main(["--promote"]), 0)
         after = self.tracked_state()
         old = self.inp / ".results.old-dead"; old.mkdir()
-        (self.inp / ".promote-journal.json").write_text(json.dumps(
-            {"state": "committed", "old": str(old), "new": "x", "skill_backup": None}))
+        (self.inp / ".promote-journal.json").write_text(json.dumps({"state": "committed", "tag": "dead"}))
         self.assertEqual(self.h.recover(), None)
         self.assertEqual(self.tracked_state(), after); self.assertEqual(self.leftovers(), [])
 
-    def test_b6_orphan_old_without_journal_is_rolled_back(self):
+    def test_b6_old_set_without_journal_restored_only_when_results_missing(self):
         self.complete()
         names = {p.name for p in self.tracked.iterdir()}
-        old = self.inp / ".results.old-orphan"; self.tracked.rename(old)
-        (self.inp / "results").mkdir(); (self.inp / "results/half.json").write_text("new set")
+        self.tracked.rename(self.inp / ".results.old-orphan")
         self.incomplete_promote_recovers(expect="before_old_contents", old_contents=names)
+        self.assertTrue(any(m.startswith("recovery: rolled back") for m in self.h.msgs), self.h.msgs)
 
     def test_diff_generated_on_promote(self):
         self.complete(); self.assertEqual(self.h.main(["--promote"]), 0)
@@ -509,9 +508,20 @@ class CrashRecovery(PromoteBase):
         self.assertTrue(self.leftovers() or point == "trashed")
         return before
 
+    REFUSE_AFTER = ["before_skill_replace", "before_commit", "committed", "bak_moved"]  # results/ present + old set
+
+    def refuses_stale(self):
+        state, left = self.tracked_state(), self.leftovers()
+        self.h.msgs.clear()
+        self.assertEqual(self.h.main(["--promote"]), 1)
+        self.assertTrue(any("stale .results.old-" in m for m in self.h.msgs), self.h.msgs)
+        self.assertEqual(self.tracked_state(), state); self.assertEqual(self.leftovers(), left)
+
     def check(self, point, journal):
         before = self.run_case(point, journal)
-        if point in self.POST_COMMIT and journal == "ok":
+        if journal != "ok" and point in self.REFUSE_AFTER:
+            self.refuses_stale()     # unreadable journal + valid-looking results/: never replace results/
+        elif point in self.POST_COMMIT and journal == "ok":
             # roll forward: the promoted set stays
             (self.h.RES / "stage_dspy.json").unlink()
             self.assertEqual(self.h.main(["--promote"]), 1)
@@ -537,8 +547,8 @@ class CrashRecovery(PromoteBase):
     def test_torn_second_write(self):
         for point in ("before_commit", "committed"):
             with self.subTest(point=point):
-                self.setUp(); before = self.run_case(point, "torn")
-                self.incomplete_promote_recovers(before)
+                self.setUp(); self.run_case(point, "torn")
+                self.refuses_stale()
 
     def test_kill_after_rename_1_then_incomplete_promote(self):
         before = self.run_case("after_old_rename", "ok")
@@ -552,7 +562,7 @@ class CrashRecovery(PromoteBase):
 
     def test_no_evolved_before_kill_after_skill_replace(self):
         (self.inp / "skill/SKILL.evolved.md").unlink()
-        before = self.run_case("before_commit", "garbled")
+        before = self.run_case("before_commit", "ok")
         self.incomplete_promote_recovers(before)
         self.assertFalse((self.inp / "skill/SKILL.evolved.md").exists())
 
@@ -573,6 +583,80 @@ class CrashRecovery(PromoteBase):
         self.h.msgs.clear()
         self.assertEqual(self.h.main(["--promote"]), 1)
         self.assertTrue(any("ambiguous promote leftovers" in m for m in self.h.msgs))
+
+
+class StaleOldSet(PromoteBase):
+    """B8 @ c4904511: a stale .results.old-* with no journal must never replace a valid results/."""
+
+    def stale(self, variant):
+        self.complete()
+        old = self.inp / ".results.old-stale"; old.mkdir(); (old / "results.json").write_text("STALE")
+        if variant == "absent_marker":
+            (self.inp / "skill/.SKILL.evolved.md.absent-stale").write_text("")
+        elif variant == "stale_bak":
+            (self.inp / "skill/.SKILL.evolved.md.bak-stale").write_text("STALE SKILL")
+        return {str(p.relative_to(self.inp)): p.read_bytes() for p in self.inp.rglob("*") if p.is_file()}
+
+    def assert_refused_unchanged(self, snap):
+        self.h.msgs.clear()
+        self.assertEqual(self.h.main(["--promote"]), 1)
+        msg = " ".join(self.h.msgs)
+        self.assertIn("stale .results.old-stale", msg); self.assertIn("rm -rf", msg)
+        self.assertFalse(any(m.startswith("recovery:") for m in self.h.msgs))
+        now = {str(p.relative_to(self.inp)): p.read_bytes() for p in self.inp.rglob("*") if p.is_file()}
+        self.assertEqual(now, snap)
+
+    def test_b8_repro_complete_and_incomplete_promote(self):
+        for variant in ("plain", "absent_marker", "stale_bak"):
+            for complete in (True, False):
+                with self.subTest(variant=variant, complete=complete):
+                    self.setUp(); snap = self.stale(variant)
+                    if not complete:
+                        (self.h.RES / "stage_dspy.json").unlink()
+                        snap = {k: v for k, v in snap.items() if not k.endswith("stage_dspy.json")}
+                    self.assertTrue((self.inp / "skill/SKILL.evolved.md").exists())
+                    self.assert_refused_unchanged(snap)
+
+    def test_b8_garbled_journal_with_valid_results_refused(self):
+        snap = self.stale("plain")
+        (self.inp / ".promote-journal.json").write_text("{garbled")
+        snap[".promote-journal.json"] = b"{garbled"
+        self.assert_refused_unchanged(snap)
+
+    def test_b8_swapping_journal_with_other_tag_refused(self):
+        snap = self.stale("plain")
+        j = json.dumps({"state": "swapping", "tag": "other"}).encode()
+        (self.inp / ".promote-journal.json").write_bytes(j); snap[".promote-journal.json"] = j
+        self.assert_refused_unchanged(snap)
+
+    def test_forged_committed_journal_mismatched_tag_refused(self):
+        snap = self.stale("plain")
+        j = json.dumps({"state": "committed", "tag": "forged"}).encode()
+        (self.inp / ".promote-journal.json").write_bytes(j); snap[".promote-journal.json"] = j
+        self.h.msgs.clear()
+        self.assertEqual(self.h.main(["--promote"]), 1)
+        self.assertTrue(any("committed journal for tag 'forged'" in m for m in self.h.msgs), self.h.msgs)
+        now = {str(p.relative_to(self.inp)): p.read_bytes() for p in self.inp.rglob("*") if p.is_file()}
+        self.assertEqual(now, snap)
+
+    def test_results_missing_message(self):
+        self.complete()
+        import shutil; shutil.rmtree(self.tracked)
+        self.h.msgs.clear()
+        self.assertEqual(self.h.main(["--promote"]), 1)
+        self.assertTrue(any("results/ is missing and no .results.old-*" in m and "git checkout" in m
+                            for m in self.h.msgs), self.h.msgs)
+
+    def test_os_error_message(self):
+        self.complete()
+        self.tracked.rename(self.inp / ".results.old-x")      # results/ missing -> recovery will rename
+        with mock.patch.object(self.h.os, "rename", side_effect=PermissionError("denied")):
+            self.h.msgs.clear()
+            self.assertEqual(self.h.main(["--promote"]), 1)
+        msg = " ".join(self.h.msgs)
+        self.assertIn("could not recover promote leftovers (PermissionError", msg)
+        self.assertIn("git checkout -- examples/agentdescent-trial/results", msg)
+        self.assertNotIn("Traceback", msg)
 
 
 if __name__ == "__main__":

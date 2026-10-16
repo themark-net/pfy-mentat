@@ -317,15 +317,17 @@ def write_journal(state: str, tag: str):
 
 
 def read_journal():
-    """'committed' only when the journal parses and says so; missing -> None; empty/garbled -> 'swapping'."""
+    """(state, tag). Missing -> (None, None); empty/garbled -> ("swapping", None); else the parsed state and tag."""
     _, _, _, journal = _paths()
     if not journal.exists():
-        return None
+        return None, None
     try:
         j = json.loads(journal.read_text())
-        return "committed" if isinstance(j, dict) and j.get("state") == "committed" else "swapping"
+        if isinstance(j, dict) and j.get("state") in ("swapping", "committed"):
+            return j["state"], j.get("tag")
     except (ValueError, OSError, UnicodeDecodeError):
-        return "swapping"
+        pass
+    return "swapping", None
 
 
 def _rm(x: Path):
@@ -354,27 +356,36 @@ def recover():
         olds = sorted(parent.glob(".results.old-*"))
         sk_bak = sorted(evolved.parent.glob(".SKILL.evolved.md.bak-*"))
         sk_abs = sorted(evolved.parent.glob(".SKILL.evolved.md.absent-*"))
-        state = read_journal()
+        state, jtag = read_journal()
         if len(olds) > 1 or len(sk_bak) + len(sk_abs) > 1:
             return (f"ambiguous promote leftovers {[o.name for o in olds + sk_bak + sk_abs]}; restore results/ from the "
                     "right .results.old-* (or `git checkout -- examples/agentdescent-trial/results`) and delete the rest")
         old = olds[0] if olds else None
-        if state == "committed":
-            # roll forward: the new set is in place; just drop the old set and backups
-            for x in [*(sk_bak + sk_abs), *([old] if old else [])]:
+        tag_ok = old is not None and jtag is not None and old.name == f".results.old-{jtag}"
+        stale = (f"stale {old.name if old else ''} next to a valid results/ with no matching journal; nothing changed. "
+                 f"Inspect it, then `rm -rf examples/agentdescent-trial/{old.name if old else ''}` if results/ is right, "
+                 "or move results/ aside and `mv` the old set to results/")
+        if old is not None and state == "committed":
+            if not tag_ok:
+                return stale.replace("no matching journal", f"a committed journal for tag {jtag!r}")
+            for x in [*(sk_bak + sk_abs), old]:
                 _rm(x)
+            print(f"recovery: finished committed promote {jtag}, removed {old.name}")
         elif old is not None:
-            # mid-swap (or unreadable journal): restore the old set and the old skill
+            if TRACKED_RES.exists() and not (state == "swapping" and tag_ok):
+                return stale   # never replace a valid results/ without a readable mid-swap journal for this old set
             _restore_skill(evolved, sk_bak + [old / ".skill_backup"], sk_abs + [old / ".skill_absent"])
             for x in (*sk_bak, *sk_abs, old / ".skill_backup", old / ".skill_absent"):
                 _rm(x)
             if TRACKED_RES.exists():
                 _rm(TRACKED_RES)
             os.rename(old, TRACKED_RES)
-        else:
-            # results/ never moved: the skill was not replaced either; drop any backup
+            print(f"recovery: rolled back interrupted promote, restored results/ from {old.name}")
+        elif sk_bak or sk_abs:
+            # results/ never moved, so the skill was not replaced; drop the backup
             for x in sk_bak + sk_abs:
                 _rm(x)
+            print("recovery: removed skill backup from a promote interrupted before the swap")
         for x in [*parent.glob(".results.new-*"), *parent.glob(".results.trash-*"), staged_skill,
                   journal.with_name(JOURNAL_NAME + ".tmp"), journal]:
             _rm(x)
