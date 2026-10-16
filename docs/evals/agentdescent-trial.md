@@ -1,7 +1,7 @@
 # Handoff: AgentDescent eval-auto trial (Entry 119), 2026-10-15
 
 Approved by Mark as an eval-auto trial on nimo. Branch `eval/agentdescent-trial` off origin/main `7b5107d`,
-worktree `~/DEVELOP/pfy-mentat/tmp/agentdescent-trial`. Results: [REPORT.md](../../examples/agentdescent-trial/results/REPORT.md),
+worktree `~/DEVELOP/pfy-mentat/tmp/agentdescent-trial`. Results: [REPORT.md](../../examples/agentdescent-trial/REPORT.md),
 [results.json](../../examples/agentdescent-trial/results/results.json).
 
 ## Result
@@ -81,6 +81,18 @@ earlier guard (`~/.agentdescent` names only, absent before and after); it was no
 - B1': each stage record keeps its guard result; `--promote` refuses (exit 1) if any matching stage's guard failed or is missing.
 - B2': `run.json` holds a run id plus SHA-256 of `skill/SKILL.md`, `cases.jsonl`, `train.jsonl`, `heldout.jsonl`; each stage record is stamped with both. `results.json` and `--promote` use only records matching the current run id and hashes (others listed under `refused_stale`); a single stage after an input change starts a new run id; `--stage all` clears the run dir first; promote copies only the files of matching, successful stages.
 - Timing: AgentDescent 201 s wall-clock, 596.8 s summed across workers.
+
+## Tester FAIL @ ac1c803 fixed
+
+- Any new run id (no run.json, or input hashes changed) clears the whole run dir before the stage runs. Each stage deletes
+  its own outputs and record when it starts. The AgentDescent run dir is the one this invocation created (set
+  difference of the store before/after, exactly one), never the newest by name.
+- `--promote` accepts only a COMPLETE run: baseline, evolve and dspy all present, matching run id and hashes, with a
+  result, no error, and `guard.real_home_untouched is True`. Otherwise exit 1 and tracked files are untouched. On success it
+  builds the new set in a temp dir next to `results/`, swaps it in by rename, and removes everything not produced by
+  this run (including a stale `skill/SKILL.evolved.md`). run.json hashes also cover `harness.py` and `child.py`.
+- `REPORT.md` moved from `results/` to `examples/agentdescent-trial/REPORT.md` so a promote can't delete it.
+- The committed `results/` set predates run ids and stage records; a fresh `--stage all` plus `--promote` would replace it.
 
 ## Next
 

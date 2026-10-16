@@ -15,7 +15,8 @@ def load(out: str, home: str):
         spec.loader.exec_module(h)
     h.wait_ollama = lambda log: []
     h.meminfo = lambda: {"MemTotal": 100, "MemAvailable": 90}
-    h.print = lambda *a, **k: None
+    h.msgs = []
+    h.print = lambda *a, **k: h.msgs.append(" ".join(map(str, a)))
     return h
 
 
@@ -127,7 +128,7 @@ class RerunIsolation(Base):
 
 
 class PromoteGuards(Base):
-    """B1'/B2' at 07bca20: promote must honour guards and refuse stale/mixed records."""
+    """Promote/run-mixing gates (Tester B1'/B2' @07bca20, B1''/B2'' @ac1c803). Tracked results/ starts NON-empty."""
 
     def setUp(self):
         super().setUp()
@@ -136,7 +137,16 @@ class PromoteGuards(Base):
         for n in self.h.INPUTS:
             shutil.copy2(HARNESS.parent / n, self.inp / n)
         self.tracked = self.inp / "results"; self.tracked.mkdir()
+        for n, body in (("results.json", "{\"old\": 1}"), ("agentdescent_result.json", "OLD AD"),
+                        ("agentdescent_rounds.jsonl", "OLD ROUNDS"), ("dspy.log", "OLD DSPY"), ("old_marker.txt", "OLD")):
+            (self.tracked / n).write_text(body)
+        (self.inp / "skill/SKILL.evolved.md").write_text("OLD EVOLVED")
         self.h.HERE = self.inp; self.h.TRACKED_RES = self.tracked
+
+    def tracked_state(self):
+        files = {str(f.relative_to(self.inp)): f.read_bytes() for f in self.inp.rglob("*")
+                 if f.is_file() and ("results" in f.parts or f.name == "SKILL.evolved.md")}
+        return files
 
     def writer(self, name, files, fail=False, touch_home=False):
         def stage():
@@ -149,55 +159,155 @@ class PromoteGuards(Base):
             return {"accuracy": 1.0, "stage": name}
         return stage
 
-    def stages(self, **fns):
+    def full(self, **over):
+        fns = dict(baseline=self.writer("baseline", ["score_baseline.json"]),
+                   evolve=self.writer("evolve", ["score_agentdescent.json", "agentdescent_result.json",
+                                                 "agentdescent_rounds.jsonl", "SKILL.evolved.md"]),
+                   dspy=self.writer("dspy", ["dspy.log", "dspy_program.json"]))
+        fns.update(over)
         self.h.STAGES.clear(); self.h.STAGES.update(fns)
 
-    def test_promote_refuses_when_guard_failed_on_successful_stage(self):
-        self.stages(baseline=self.writer("baseline", ["score_baseline.json"], touch_home=True))
-        self.assertEqual(self.h.main(["--stage", "baseline"]), 3)
-        rec = self.stage_rec()
-        self.assertNotIn("error", rec)
-        self.assertFalse(rec["guard"]["real_home_untouched"])
+    def refused(self, why):
+        before = self.tracked_state()
+        self.h.msgs.clear()
         self.assertNotEqual(self.h.main(["--promote"]), 0)
-        self.assertFalse((self.tracked / "score_baseline.json").exists())
-        self.assertFalse((self.tracked / "results.json").exists())
+        self.assertEqual(self.tracked_state(), before)
+        self.assertTrue(any(why in m for m in self.h.msgs), (why, self.h.msgs))
 
-    def _repro(self):
-        self.stages(baseline=self.writer("baseline", ["score_baseline.json"]),
-                    evolve=self.writer("evolve", ["score_agentdescent.json", "SKILL.evolved.md"]),
-                    dspy=self.writer("dspy", ["dspy.log"], fail=True))
+    def tamper(self, st, fn):
+        f = self.h.RES / f"stage_{st}.json"; d = json.loads(f.read_text()); fn(d); f.write_text(json.dumps(d))
+
+    # --- complete run promotes and replaces the whole tracked set
+    def test_complete_run_replaces_tracked_set(self):
+        self.full(); self.assertEqual(self.h.main(["--stage", "all"]), 0)
+        self.assertEqual(self.h.main(["--promote"]), 0)
+        self.assertFalse((self.tracked / "old_marker.txt").exists())
+        self.assertEqual((self.tracked / "dspy.log").read_text(), "dspy output")
+        self.assertEqual((self.inp / "skill/SKILL.evolved.md").read_text(), "evolve output")
+        self.assertEqual(sorted(p.name for p in self.inp.iterdir() if p.name.startswith(".results")), [])
+
+    # --- B1'': evolve rerun with no AgentDescent output leaves no old files behind
+    def test_b1pp_evolve_rerun_without_output_leaves_no_old_files(self):
+        self.full(); self.assertEqual(self.h.main(["--stage", "all"]), 0)
+        self.full(evolve=self.writer("evolve", ["score_agentdescent.json"]))
+        self.assertEqual(self.h.main(["--stage", "evolve"]), 0)
+        self.assertFalse((self.h.RES / "agentdescent_result.json").exists())
+        self.assertFalse((self.h.RES / "SKILL.evolved.md").exists())
+        self.assertEqual(self.h.main(["--promote"]), 0)
+        for n in ("agentdescent_result.json", "agentdescent_rounds.jsonl", "old_marker.txt"):
+            self.assertFalse((self.tracked / n).exists(), n)
+        self.assertFalse((self.inp / "skill/SKILL.evolved.md").exists())
+
+    def test_agentdescent_run_dir_is_the_one_created_not_newest_by_name(self):
+        store = Path(self.td.name, "store"); (store / "99999999-old").mkdir(parents=True)
+        self.h.STORE = store
+        existing = set(store.glob("*"))
+        with self.assertRaises(RuntimeError):
+            self.h.created_run_dir(existing)
+        (store / "00000000-new").mkdir()
+        self.assertEqual(self.h.created_run_dir(existing).name, "00000000-new")
+
+    def test_evolve_reads_the_run_dir_it_created(self):
+        store = Path(self.td.name, "store"); old = store / "99999999-old"; old.mkdir(parents=True)
+        (old / "result.json").write_text("OLD RESULT"); (old / "rounds.jsonl").write_text("OLD ROUNDS")
+        self.h.STORE = store; self.h.TMPD = Path(self.td.name, "wt-tmp"); self.h.TMPD.mkdir()
+        self.h.RES.mkdir(parents=True, exist_ok=True)
+
+        def fake_iso(cmd, timeout):
+            if "evolve" in cmd:
+                new = store / "00000000-new"; new.mkdir()
+                (new / "result.json").write_text("NEW RESULT"); (new / "rounds.jsonl").write_text("NEW ROUNDS")
+            out = json.dumps({"rendered": "evolved", "final_reward": 1.0}) if "show" in cmd else "{}"
+            return subprocess.CompletedProcess(cmd, 0, out, ""), 0.1, []
+        self.h.iso = fake_iso
+        r = self.h.evolve(lambda m: None)
+        self.assertEqual(r["run_id"], "00000000-new")
+        self.assertEqual((self.h.RES / "agentdescent_result.json").read_text(), "NEW RESULT")
+
+    # --- B2'': incomplete runs are refused, tracked untouched
+    def test_b2pp_baseline_only_promote_refused(self):
+        self.full(); self.h.STAGES.pop("evolve"); self.h.STAGES.pop("dspy")
+        self.assertEqual(self.h.main(["--stage", "all"]), 0)
+        self.refused("incomplete run")
+
+    def test_b2pp_after_input_edit_baseline_rerun_refused(self):
+        self.full(dspy=self.writer("dspy", ["dspy.log"], fail=True))
         self.assertEqual(self.h.main(["--stage", "all"]), 1)
         (self.inp / "skill/SKILL.md").write_text((self.inp / "skill/SKILL.md").read_text() + "\nedited\n")
         self.assertEqual(self.h.main(["--stage", "baseline"]), 0)
-
-    def test_repro_results_not_mixed_with_stale_records(self):
-        self._repro()
+        self.assertFalse((self.h.RES / "dspy.log").exists())          # new run id cleared the dir
+        self.assertFalse((self.h.RES / "stage_evolve.json").exists())
         R = json.loads((self.h.RES / "results.json").read_text())
         self.assertEqual(sorted(R["stages"]), ["baseline"])
-        self.assertEqual(R["errors"], {})
-        self.assertEqual(sorted(R["refused_stale"]), ["dspy", "evolve"])
+        self.refused("incomplete run")
 
-    def test_repro_promote_skips_failed_runs_logs(self):
-        self._repro()
-        self.assertEqual(self.h.main(["--promote"]), 0)
-        self.assertTrue((self.tracked / "score_baseline.json").exists())
-        self.assertFalse((self.tracked / "dspy.log").exists())
-        self.assertFalse((self.tracked / "score_agentdescent.json").exists())
-        self.assertFalse((self.inp / "skill/SKILL.evolved.md").exists())
+    # --- each overlapping check on its own
+    def test_failed_stage_refused(self):
+        self.full(dspy=self.writer("dspy", ["dspy.log"], fail=True))
+        self.assertEqual(self.h.main(["--stage", "all"]), 1)
+        self.refused("failed stages")
 
-    def test_stage_all_clears_run_dir(self):
-        self.h.RES.mkdir(parents=True, exist_ok=True)
-        (self.h.RES / "dspy.log").write_text("old")
-        self.stages(baseline=self.writer("baseline", ["score_baseline.json"]))
-        self.assertEqual(self.h.main(["--stage", "all"]), 0)
-        self.assertFalse((self.h.RES / "dspy.log").exists())
+    def test_guard_false_refused(self):
+        self.full(evolve=self.writer("evolve", ["score_agentdescent.json"], touch_home=True))
+        self.assertEqual(self.h.main(["--stage", "all"]), 3)
+        self.refused("real-HOME guard")
 
-    def test_promote_refuses_after_inputs_change(self):
-        self.stages(baseline=self.writer("baseline", ["score_baseline.json"]))
-        self.assertEqual(self.h.main(["--stage", "all"]), 0)
+    def test_missing_guard_field_refused(self):
+        self.full(); self.assertEqual(self.h.main(["--stage", "all"]), 0)
+        self.tamper("dspy", lambda d: d.pop("guard"))
+        self.refused("real-HOME guard")
+
+    def test_guard_field_without_flag_refused(self):
+        self.full(); self.assertEqual(self.h.main(["--stage", "all"]), 0)
+        self.tamper("dspy", lambda d: d["guard"].pop("real_home_untouched"))
+        self.refused("real-HOME guard")
+
+    def test_record_run_id_mismatch_refused(self):
+        self.full(); self.assertEqual(self.h.main(["--stage", "all"]), 0)
+        self.tamper("evolve", lambda d: d.update(run_id="other"))
+        self.refused("incomplete run")
+
+    def test_record_input_hash_mismatch_refused(self):
+        self.full(); self.assertEqual(self.h.main(["--stage", "all"]), 0)
+        self.tamper("baseline", lambda d: d["inputs"].update({"heldout.jsonl": "0" * 64}))
+        self.refused("incomplete run")
+
+    def test_input_change_after_run_refused(self):
+        self.full(); self.assertEqual(self.h.main(["--stage", "all"]), 0)
         (self.inp / "heldout.jsonl").write_text("{}\n")
-        self.assertNotEqual(self.h.main(["--promote"]), 0)
-        self.assertFalse((self.tracked / "score_baseline.json").exists())
+        self.refused("no current run")
+
+    def test_harness_or_child_change_after_run_refused(self):
+        for n in ("harness.py", "child.py"):
+            with self.subTest(n=n):
+                self.setUp()
+                self.full(); self.assertEqual(self.h.main(["--stage", "all"]), 0)
+                (self.inp / n).write_text((self.inp / n).read_text() + "\n# changed\n")
+                self.refused("no current run")
+
+    def test_missing_run_json_refused(self):
+        self.full(); self.assertEqual(self.h.main(["--stage", "all"]), 0)
+        (self.h.RES / "run.json").unlink()
+        self.refused("no current run")
+
+    def test_stage_record_missing_result_refused(self):
+        self.full(); self.assertEqual(self.h.main(["--stage", "all"]), 0)
+        self.tamper("baseline", lambda d: d.pop("result"))
+        self.refused("failed stages")
+
+    def test_stage_deletes_own_outputs_when_starting(self):
+        self.full(); self.assertEqual(self.h.main(["--stage", "all"]), 0)
+        self.full(dspy=self.writer("dspy", []))
+        self.assertEqual(self.h.main(["--stage", "dspy"]), 0)
+        self.assertFalse((self.h.RES / "dspy.log").exists())
+        self.assertTrue((self.h.RES / "score_baseline.json").exists())
+
+    def test_new_run_id_without_run_json_clears_dir(self):
+        self.h.RES.mkdir(parents=True); (self.h.RES / "stage_evolve.json").write_text("{}")
+        (self.h.RES / "agentdescent_rounds.jsonl").write_text("stale")
+        self.full(); self.assertEqual(self.h.main(["--stage", "baseline"]), 0)
+        self.assertFalse((self.h.RES / "stage_evolve.json").exists())
+        self.assertFalse((self.h.RES / "agentdescent_rounds.jsonl").exists())
 
 
 if __name__ == "__main__":

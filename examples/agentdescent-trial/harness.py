@@ -149,11 +149,12 @@ def evolve(log):
     (RES / "agentdescent_plan.txt").write_text(rel(p.stdout[-6000:] + p.stderr[-2000:]))
     if p.returncode != 0:
         raise RuntimeError(f"agentdescent plan rc={p.returncode}: {p.stderr[-800:]}")
+    existing = set(STORE.glob("*")) if STORE.exists() else set()
     p, wall, left = iso([ad, "--store", str(STORE), "--json", "evolve", str(spec)], 4 * 3600)
     (RES / "agentdescent_evolve.log").write_text(rel(p.stdout[-20000:] + "\n--- stderr ---\n" + p.stderr[-8000:]))
     if p.returncode != 0:
         raise RuntimeError(f"agentdescent evolve rc={p.returncode}: {p.stderr[-800:]}")
-    runs = sorted(STORE.glob("*")); run_id = runs[-1].name
+    run_id = created_run_dir(existing).name
     s, _, _ = iso([ad, "--store", str(STORE), "--json", "show", run_id, "--diff"], 300)
     show = json.loads(s.stdout)
     (RES / "agentdescent_show.json").write_text(rel(json.dumps(show, indent=1)))
@@ -169,6 +170,14 @@ def evolve(log):
             "stop_reason": show.get("stop_reason"), "usage": show.get("usage"),
             "baseline_skill_untouched": before_sha == after_sha, "tmp_target_changed":
             hashlib.sha256(target.read_bytes()).hexdigest() != before_sha}
+
+
+def created_run_dir(existing):
+    """The AgentDescent run dir this invocation created (never an older one picked by name)."""
+    new = sorted(set(STORE.glob("*")) - set(existing)) if STORE.exists() else []
+    if len(new) != 1:
+        raise RuntimeError(f"expected exactly one new AgentDescent run dir in {STORE}, found {len(new)}")
+    return new[0]
 
 
 def dspy_stage():
@@ -206,7 +215,7 @@ STAGE_FILES = {
                "agentdescent_show.json", "agentdescent_result.json", "agentdescent_rounds.jsonl", "SKILL.evolved.md"],
     "dspy": ["dspy.log", "dspy_program.json"],
 }
-INPUTS = ["skill/SKILL.md", "cases.jsonl", "train.jsonl", "heldout.jsonl"]
+INPUTS = ["skill/SKILL.md", "cases.jsonl", "train.jsonl", "heldout.jsonl", "harness.py", "child.py"]
 
 
 def input_hashes():
@@ -264,24 +273,44 @@ def build_results():
 
 
 def promote():
-    if not (RES / "results.json").exists() or not current_run():
-        print(f"nothing to promote in {RES} (no current run, or inputs changed)", file=sys.stderr); return 1
-    R = build_results()
-    good = matching_records()[0]
-    if not good:
-        print("refusing to promote: no stage records match the current run", file=sys.stderr); return 1
-    if R.get("errors"):
-        print(f"refusing to promote a run with errors: {sorted(R['errors'])}", file=sys.stderr); return 1
-    bad = [st for st, d in good.items() if not (d.get("guard") or {}).get("real_home_untouched")]
+    """Accept only a COMPLETE current run, then replace tracked results/ (and SKILL.evolved.md) atomically."""
+    if not current_run():
+        print(f"refusing to promote: no current run in {RES} (missing run.json or inputs changed)", file=sys.stderr); return 1
+    good, refused = matching_records()
+    missing = [st for st in STAGE_FILES if st not in good]
+    if missing:
+        print(f"refusing to promote an incomplete run: missing or stale {missing}", file=sys.stderr); return 1
+    errs = [st for st, d in good.items() if d.get("error") or "result" not in d]
+    if errs:
+        print(f"refusing to promote a run with failed stages: {errs}", file=sys.stderr); return 1
+    bad = [st for st, d in good.items() if not isinstance(d.get("guard"), dict) or d["guard"].get("real_home_untouched") is not True]
     if bad:
         print(f"refusing to promote: real-HOME guard failed or missing for {bad}", file=sys.stderr); return 1
-    shutil.copy2(RES / "results.json", TRACKED_RES / "results.json")
-    for st in good:
-        for name in STAGE_FILES[st]:
+    R = build_results()
+    parent = TRACKED_RES.parent
+    new = Path(tempfile.mkdtemp(prefix=".results.new-", dir=parent))
+    try:
+        for name in ["results.json", "run.json", *[f"stage_{st}.json" for st in STAGE_FILES],
+                     *[n for st in STAGE_FILES for n in STAGE_FILES[st] if n != "SKILL.evolved.md"]]:
             if (RES / name).exists():
-                dst = HERE / "skill/SKILL.evolved.md" if name == "SKILL.evolved.md" else TRACKED_RES / name
-                shutil.copy2(RES / name, dst)
-    print(f"promoted {sorted(good)} from run {R['run_id']} -> {TRACKED_RES}"); return 0
+                shutil.copy2(RES / name, new / name)
+        evolved = HERE / "skill/SKILL.evolved.md"
+        if (RES / "SKILL.evolved.md").exists():
+            tmpf = evolved.with_name(".SKILL.evolved.md.new"); shutil.copy2(RES / "SKILL.evolved.md", tmpf)
+        old = parent / (".results.old-" + os.urandom(4).hex())
+        if TRACKED_RES.exists():
+            os.rename(TRACKED_RES, old)
+        os.rename(new, TRACKED_RES)
+        if old.exists():
+            shutil.rmtree(old)
+        if (RES / "SKILL.evolved.md").exists():
+            os.replace(tmpf, evolved)
+        elif evolved.exists():
+            evolved.unlink()
+    finally:
+        if new.exists():
+            shutil.rmtree(new)
+    print(f"promoted complete run {R['run_id']} -> {TRACKED_RES}"); return 0
 
 
 def main(argv=None):
@@ -293,11 +322,14 @@ def main(argv=None):
     log = lambda m: print(time.strftime("%H:%M:%S"), m, flush=True)
     stages = list(STAGES) if a.stage == "all" else [a.stage]
     # --stage all starts clean; a single stage joins the current run only if the inputs are unchanged
-    rid = (current_run() if a.stage != "all" else None) or new_run(clear=a.stage == "all")
+    rid = (current_run() if a.stage != "all" else None) or new_run(clear=True)  # any new run id starts clean
     inputs = input_hashes()
     failed, home_changed = [], {}
     for st in stages:
         rec = {"stage": st, "run_id": rid, "inputs": inputs, "started": time.strftime("%Y-%m-%dT%H:%M:%S%z")}
+        for name in [f"stage_{st}.json", *STAGE_FILES.get(st, [])]:  # never reuse this stage's old outputs
+            if (RES / name).exists():
+                (RES / name).unlink()
         before = snap()
         mw = MemWatch(); mw.start()
         try:
