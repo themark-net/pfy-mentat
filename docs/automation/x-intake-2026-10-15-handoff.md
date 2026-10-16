@@ -51,6 +51,14 @@ What was checked on the Grok Bot box (all in `/tmp`, temp HOMEs, bubblewrap with
 
 SKIPPED: Llamatik (Kotlin on-device apps), Infisical (secrets platform, off our pipeline), Auto Runtime (source-available, not open), BrowserCode (browser sandbox for hosted coding CLIs), tuxevil-rotator (rotates provider accounts), Skill of Skills (directory), Brow and GhosttyEXTREME (macOS only), ClaudeWatch and pixtuoid (Claude Code session dashboards), CamouFlow (anti-detect browser profiles and proxies), Physical AI OS (robot hardware), fauxnix (Windows), the Roblox MCP bridge, dcc-mcp-core (creative-app control), squirrelscan (website SEO QA), ManimCat, Manor AI, pi-subagents (pi only), Zero to AI course, WordCraft/GridCraft office clones, OpenUI 1.0 (generative UI, off scope), Kling 4, Krea 3, Flux 3 Klein, Fish Audio Drama 3 TTS, the TaoMate LoRA, Topview 3D Builder (image/video/audio models), @ch3nweiii's Claude Code folder post, @_avichawla's GPU interview question, and opinion, news and health posts. @tom_doerr's face-recognition post was left to Mark's weekly tom_doerr automation. No new bookmarks since the last run.
 
+## Tester FAIL @ 6d6962b fixed (B1)
+
+- `smoke_119_121.py` now snapshots the real-HOME dirs each tool can write before the run and compares them in a `finally`, so `checks["real_home_untouched"]` is set on timeout too (the #295 kander pattern): agentdescent `~/.agentdescent` (default run store), tsa `~/.tsa` (sessions) and `~/.cache/tree-sitter-analyzer`, kenfold `~/.local/state/kenfold` (hook state) and `~/.cache/kenfold` (bench cache).
+- Partial checks are kept in the receipt on timeout, and a `compose down -v` timeout no longer overwrites an earlier failure reason (recorded as `down_reason`).
+- Kenfold is pinned to commit `dfc18f9f` as well as tag `v0.1.1` (a moved or local tag no longer passes).
+- New `tests/test_x_intake_smoke_119_121.py`: planted real-HOME writes FAIL, timeout keeps checks, down timeout keeps the reason, wrong pins / no docker / busy port exit 2, receipts gitignored.
+- Still open: postgres and the build base images are tag-pinned, not digest-pinned; the Kenfold happy path has still not run with real Docker.
+
 ## Locks respected
 
 Catalog 70-75 HOLD untouched. Nothing installed or downloaded on nimo. Mark's main checkout and stashes untouched; no pfy-mentat checkout was made (files read through the GitHub connector and raw URLs). No accounts, sign-ins, paid keys or spend. AgentDescent and TSA ran only on the Grok Bot box in `/tmp` with temp HOMEs; no model or agent CLI was started.
@@ -61,5 +69,5 @@ Catalog 70-75 HOLD untouched. Nothing installed or downloaded on nimo. Mark's ma
 |------|----------------|----------|
 | Entry numbers collide | Another branch also adds 119-121 | Renumber on rebase; entries are self-contained files |
 | Smoke in CI without prereqs | Exit 2 read as red | Not wired into CI or Make; exit 2 is the honest "can't run here" |
-| AgentDescent writes to the real HOME | `~/.agentdescent` appears on nimo | `--store` under `tmp/`; the smoke FAILs if its temp HOME is written |
+| AgentDescent writes to the real HOME | `~/.agentdescent` appears on nimo | `--store` under `tmp/`; the smoke snapshots the real `~/.agentdescent` and FAILs (`real_home_untouched`) if it changed, also on timeout, and FAILs if its temp HOME is written |
 | Kenfold smoke happy path untested | Fails the first time Docker is there | Treat the first nimo run as the real test; fix the smoke in a follow-up |

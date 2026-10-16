@@ -10,6 +10,10 @@ through `run_isolated` in smoke.py (fresh temp HOME, env limited to PATH/HOME/TE
 named below; nothing copied from this process, so no provider key is ever seen; a timeout SIGKILLs the process
 group). No smoke calls a model or starts an agent CLI.
 PFY_XINTAKE_TIMEOUT (float seconds, > 0) overrides the 600s per-command timeout.
+Real HOME: before each run the smoke snapshots the real-HOME dirs the tool writes by default (agentdescent
+~/.agentdescent, tsa ~/.tsa and ~/.cache/tree-sitter-analyzer, kenfold ~/.local/state/kenfold and ~/.cache/kenfold)
+and compares them in a finally, also on timeout: checks.real_home_untouched, and a change FAILs (exit 1). On a
+timeout the receipt keeps the partial checks; a `compose down -v` timeout never replaces an earlier failure reason.
 
   agentdescent  $AGENTDESCENT_BIN, then ~/DEVELOP/pfy-mentat/tmp/agentdescent/.venv/bin/agentdescent (a venv with
                 `pip install agentdescent==0.5.1`), then PATH. The package version, read with the python next to the
@@ -18,7 +22,8 @@ PFY_XINTAKE_TIMEOUT (float seconds, > 0) overrides the 600s per-command timeout.
                 that works: it must exit 0, print "held-out reward: 1.000" and learn rules.md -> 'COLUMN: amount',
                 and the demo skill on disk must still say 'COLUMN: id' (an evolved artifact only lands on `apply`).
   kenfold       $KENFOLD_DIR, then ~/DEVELOP/pfy-mentat/tmp/kenfold: a checkout of jeonjw85/kenfold at tag v0.1.1
-                ($KENFOLD_REF overrides; checked with `git describe --tags --exact-match`), holding compose.yaml.
+                ($KENFOLD_REF overrides; checked with `git describe --tags --exact-match`) and commit dfc18f9f ($KENFOLD_COMMIT
+                overrides, `skip` disables; checked with `git rev-parse HEAD`), holding compose.yaml.
                 Needs docker ($DOCKER_BIN, ~/DEVELOP/pfy-mentat/tmp/docker/docker, or PATH) with the compose plugin;
                 exit 2 without them, or if 127.0.0.1:7077 is already answering. Builds and starts only the postgres and
                 kenfold services as compose project "pfy-kenfold-smoke" (no Ollama, no reranker, update check off),
@@ -36,6 +41,7 @@ PFY_XINTAKE_TIMEOUT (float seconds, > 0) overrides the 600s per-command timeout.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import subprocess
@@ -50,6 +56,7 @@ from smoke import TMP, find_bin, pinned, run_isolated, timeout_reason, write
 
 AD_PIN = "0.5.1"
 KENFOLD_REF = "v0.1.1"
+KENFOLD_COMMIT = "dfc18f9f1a7be98c5af8c0e7e1cbf566c37d51af"
 TSA_PIN = "2.2.0"
 GIT_ID = {"GIT_AUTHOR_NAME": "pfy-smoke", "GIT_AUTHOR_EMAIL": "smoke@localhost",
           "GIT_COMMITTER_NAME": "pfy-smoke", "GIT_COMMITTER_EMAIL": "smoke@localhost"}
@@ -61,6 +68,46 @@ def tmo() -> float:
         return v if v > 0 else 600.0
     except ValueError:
         return 600.0
+
+
+# Real-HOME dirs each tool writes by default (read from upstream source): agentdescent's run store; tsa's
+# core/analysis_session.py sessions plus its cache; kenfold's internal/hook DefaultStateDir and internal/bench cache.
+WATCH = {"agentdescent": (".agentdescent",),
+         "tsa": (".tsa", ".cache/tree-sitter-analyzer"),
+         "kenfold": (".local/state/kenfold", ".cache/kenfold")}
+
+
+def tree_sig(p: Path) -> str | None:
+    if not p.exists():
+        return None
+    h = hashlib.sha256()
+    for f in sorted(p.rglob("*")):
+        try:
+            st = f.stat()
+            h.update(f"{f}:{st.st_size}:{st.st_mtime_ns}".encode())
+        except OSError:
+            pass
+    return h.hexdigest()
+
+
+def guarded(entry: str, body, r: dict) -> int:
+    """Run body(r, checks) with the real HOME watched. The finally runs on timeout too, so the receipt keeps the
+    partial checks and real_home_untouched (the #295 kander pattern)."""
+    real_home = Path.home()
+    before = {d: tree_sig(real_home / d) for d in WATCH[entry]}
+    checks: dict[str, bool] = {}
+    try:
+        code = body(r, checks)
+    finally:
+        after = {d: tree_sig(real_home / d) for d in WATCH[entry]}
+        checks["real_home_untouched"] = before == after
+        r["checks"] = checks
+    if code is not None:
+        if not checks["real_home_untouched"]:
+            r["reason"] = f"{r.get('reason', '')}; real HOME {', '.join('~/' + d for d in WATCH[entry])} changed"
+            return 1
+        return code
+    return finish(r, checks, r.pop("_ok_reason"))
 
 
 def iso(argv: list[str], tag: str, **kw) -> subprocess.CompletedProcess:
@@ -90,8 +137,11 @@ def smoke_agentdescent(r: dict) -> int:
     if not os.access(py, os.X_OK):
         r["reason"] = f"no python next to {b}, so the package version can't be checked"
         return 2
+    return guarded("agentdescent", lambda rr, checks: _agentdescent(rr, b, py, checks), r)
+
+
+def _agentdescent(r: dict, b: str, py: Path, checks: dict) -> int | None:
     want = pinned(r, "AGENTDESCENT_VERSION", AD_PIN)
-    checks: dict[str, bool] = {}
     with tempfile.TemporaryDirectory(prefix="pfy-agentdescent-") as td:
         home = Path(td, "home")
         home.mkdir()
@@ -113,8 +163,9 @@ def smoke_agentdescent(r: dict) -> int:
         rules = list(demo.rglob("references/rules.md"))
         checks["skill_on_disk_untouched"] = bool(rules) and "COLUMN: id" in rules[0].read_text()
         checks["home_untouched"] = not any(home.iterdir())
-    return finish(r, checks, "offline demo evolved the skill (reward 1.000) without a key or network; "
-                             "the original skill stayed untouched")
+    r["_ok_reason"] = ("offline demo evolved the skill (reward 1.000) without a key or network; "
+                       "the original skill stayed untouched")
+    return None
 
 
 def http(method: str, url: str, body: bytes | None = None, headers: dict | None = None) -> int:
@@ -143,14 +194,23 @@ def smoke_kenfold(r: dict) -> int:
     if http("GET", f"{base}/healthz") != 0:
         r["reason"] = "something is already listening on 127.0.0.1:7077 (compose.yaml hardcodes that port)"
         return 2
+    return guarded("kenfold", lambda rr, checks: _kenfold(rr, d, docker, want, base, checks), r)
+
+
+def _kenfold(r: dict, d: Path, docker: str, want: str, base: str, checks: dict) -> int | None:
     path = f"{Path(docker).parent}:/usr/bin:/bin"
-    checks: dict[str, bool] = {}
     with tempfile.TemporaryDirectory(prefix="pfy-kenfold-") as home:
         g = iso(["git", "-C", str(d), "describe", "--tags", "--exact-match"], "git describe", home=home,
                 extra=GIT_ID)
         r["ref"] = g.stdout.strip()
         if g.returncode != 0 or r["ref"] != want:
             r["reason"] = f"Kenfold checkout is not at {want} (got {r['ref'] or g.stderr.strip()[:120]!r})"
+            return 2
+        want_commit = pinned(r, "KENFOLD_COMMIT", KENFOLD_COMMIT, lower=True)
+        c = iso(["git", "-C", str(d), "rev-parse", "HEAD"], "git rev-parse", home=home, extra=GIT_ID)
+        r["commit"] = c.stdout.strip()
+        if want_commit != "skip" and (c.returncode != 0 or r["commit"] != want_commit):
+            r["reason"] = f"Kenfold checkout {r['commit'][:12] or '?'} is not commit {want_commit[:12]} (set $KENFOLD_COMMIT)"
             return 2
         extra = {"KENFOLD_UPDATE_CHECK": "false"}
         if os.environ.get("KENFOLD_DOCKER_HOST"):
@@ -190,8 +250,16 @@ def smoke_kenfold(r: dict) -> int:
             hc = dc("exec", "-T", "kenfold", "/usr/local/bin/kenfold", "healthcheck", tag="kenfold healthcheck")
             checks["container_healthcheck"] = hc.returncode == 0
         finally:
-            r["down_rc"] = dc("down", "-v", tag="docker compose down").returncode
-    return finish(r, checks, "postgres+kenfold came up at the pinned tag; probes 200 and /mcp refused a keyless call")
+            # a down timeout must not replace an earlier failure (up rc 1 or an up/exec timeout)
+            try:
+                r["down_rc"] = dc("down", "-v", tag="docker compose down").returncode
+            except TimeoutError as e:
+                r["down_rc"] = None
+                r["down_reason"] = str(e)
+        if r.get("down_reason"):
+            raise TimeoutError(r["down_reason"])
+    r["_ok_reason"] = "postgres+kenfold came up at the pinned tag and commit; probes 200 and /mcp refused a keyless call"
+    return None
 
 
 FIXTURE = {
@@ -214,8 +282,11 @@ def smoke_tsa(r: dict) -> int:
         r["reason"] = f"miswire-audit is not next to {b}"
         return 2
     r["bin"] = b
+    return guarded("tsa", lambda rr, checks: _tsa(rr, b, audit, checks), r)
+
+
+def _tsa(r: dict, b: str, audit: Path, checks: dict) -> int | None:
     want = pinned(r, "TSA_VERSION", TSA_PIN)
-    checks: dict[str, bool] = {}
     with tempfile.TemporaryDirectory(prefix="pfy-tsa-") as td:
         home, repo = Path(td, "home"), Path(td, "repo")
         home.mkdir()
@@ -243,7 +314,8 @@ def smoke_tsa(r: dict) -> int:
         checks["audit_exit_0"] = a.returncode == 0
         checks["audit_indexed_both_languages"] = "javascript:1" in out and "python:3" in out
         checks["tsa_miswires_0"] = "Tree-sitter Analyzer mis-wires 0" in out
-    return finish(r, checks, "structure query and cross-language mis-wire audit ran locally with no network")
+    r["_ok_reason"] = "structure query and cross-language mis-wire audit ran locally with no network"
+    return None
 
 
 def main() -> int:
@@ -257,6 +329,9 @@ def main() -> int:
         code = fn(receipt)
     except TimeoutError as e:
         receipt["reason"] = str(e)
+        receipt.pop("_ok_reason", None)
+        if receipt.get("checks", {}).get("real_home_untouched") is False:
+            receipt["reason"] += f"; real HOME {', '.join('~/' + d for d in WATCH[a.entry])} changed"
         code = 1
     return write(a.entry, receipt, code)
 

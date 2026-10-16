@@ -16,7 +16,7 @@
 
 | Risk | How it fails | Recovery |
 |------|----------------|----------|
-| Run store lands in the real HOME on nimo | `~/.agentdescent/runs` appears outside DEVELOP | Always pass `--store` (or `$AGENTDESCENT_HOME`) under `tmp/`; the smoke checks the temp HOME stays empty |
+| Run store lands in the real HOME on nimo | `~/.agentdescent/runs` appears outside DEVELOP | Always pass `--store` (or `$AGENTDESCENT_HOME`) under `tmp/`; the smoke snapshots the real `~/.agentdescent` before the run and compares it after (also on timeout), recording `real_home_untouched`; it also checks the temp HOME stays empty |
 | An evolved skill overfits the cases | Held-out reward looks good, real use gets worse | Keep a held-out split; review `show` diffs; `apply` only through a normal PR with Tester and Reviewer |
 | Agent CLI worker writes outside its sandbox | A Claude Code or Codex worker edits the repo | Use `openai_compatible` against a local endpoint first; run CLI workers only in a throwaway worktree |
 | Local model too weak as reflector | Rounds commit nothing | Record it as the eval result; try a bigger local model before any paid one |
