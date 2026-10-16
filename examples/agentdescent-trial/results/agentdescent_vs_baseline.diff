@@ -1,0 +1,17 @@
+11,12c11,12
+< - Runnable self-hosted path under ~5 minutes on a clean Ubuntu or macOS system (or a documented one-liner).
+< - Permissive open-source license suitable for embedding and modification.
+---
+> - Runnable self-hosted path under ~5 minutes on a clean Ubuntu or macOS system (or a documented one-liner), accepting text-based artifacts with a clear installation one-liner as satisfying this criterion.
+> - Permissive open-source license suitable for embedding and modification, accepting standard attribution or usage riders as compliant unless explicit restrictions on those rights are stated.
+13a14
+> - Open-source licensing and reproducibility inferred from standard technology stack indicators rather than requiring explicit confirmation in the initial description.
+20c21
+< - Accept → Phase 1, Defer, or Reject.
+---
+> - Default to CATALOG when candidate descriptions align with acceptance criteria, issuing SKIP only for explicitly stated disqualifiers.
+24c25
+< Answer with exactly one word: CATALOG (accept into the catalog) or SKIP (reject).
+---
+> Answer with exactly one word: CATALOG (accept into the catalog) or SKIP (reject).
+\ No newline at end of file

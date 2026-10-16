@@ -1,0 +1,102 @@
+{
+  "ok": true,
+  "spec": {
+    "kind": "text",
+    "target": "tmp/ad-target/SKILL.md",
+    "data": {
+      "path": "examples/agentdescent-trial/train.jsonl",
+      "prompt": "prompt",
+      "gold": "gold",
+      "id": "id"
+    },
+    "score": "exact",
+    "agent": {
+      "ref": "agentdescent.agents:openai_compatible",
+      "model": "qwen3.6:35b",
+      "default_base_url": "http://localhost:11434/v1",
+      "max_tokens": 16,
+      "temperature": 0,
+      "reasoning_effort": "none",
+      "timeout": 300.0
+    },
+    "reflect": {
+      "ref": "agentdescent.agents:openai_compatible",
+      "model": "qwen3.6:35b",
+      "default_base_url": "http://localhost:11434/v1",
+      "max_tokens": 12000,
+      "temperature": 0.6,
+      "stream": true,
+      "timeout": 1200.0
+    },
+    "name": "x-intake-triage",
+    "template": "{skill}\n\n{prompt}",
+    "layout": null,
+    "prompt_template": null,
+    "editable": [
+      "**"
+    ],
+    "frozen": [],
+    "max_files_per_diff": 2,
+    "entrypoint": [],
+    "setup_cmd": [],
+    "test_cmd": [
+      "python",
+      "-m",
+      "pytest",
+      "-q"
+    ],
+    "timeout": 120.0,
+    "host": null,
+    "env_passthrough": [],
+    "audit": null,
+    "policies": {},
+    "agg_config": {},
+    "evolve": {
+      "rounds": 6,
+      "n_workers": 4,
+      "seed": 230
+    },
+    "allow": [],
+    "version": 1
+  },
+  "tasks": 41,
+  "warnings": [],
+  "artifact_id": "x-intake-triage",
+  "evolve_kwargs": {
+    "artifact_id": "x-intake-triage",
+    "run": "function",
+    "propose": "method",
+    "strategy": "SingleSlot",
+    "blast_radius": 0.2,
+    "rounds": 6,
+    "held_out_frac": 0.3,
+    "patience": 3,
+    "target_reward": 0.98,
+    "n_workers": 4,
+    "seed": 230,
+    "max_concurrency": 4,
+    "policies": "Policies"
+  },
+  "estimate": {
+    "rounds": 6,
+    "n_workers": 4,
+    "tasks": 41,
+    "held_out_tasks": 12,
+    "calls_per_round": {
+      "rollouts": 4,
+      "proposals": 4,
+      "self_verify": 4,
+      "ranking": 24,
+      "gate": 12
+    },
+    "agent_calls_upper_bound": 288,
+    "assumptions": [
+      "every round runs to completion (target_reward / patience may stop it earlier)",
+      "one candidate reaches the gate per round",
+      "the evaluation cache serves repeated (candidate, task) pairs; counted as misses here",
+      "no per-call price known for this agent; pass usd_per_call to price it"
+    ],
+    "usd_upper_bound": null
+  },
+  "notes": []
+}

@@ -1,0 +1,36 @@
+{
+ "version": 1,
+ "kind": "text",
+ "name": "x-intake-triage",
+ "target": "tmp/ad-target/SKILL.md",
+ "data": {
+  "path": "examples/agentdescent-trial/train.jsonl",
+  "prompt": "prompt",
+  "gold": "gold",
+  "id": "id"
+ },
+ "score": "exact",
+ "agent": {
+  "ref": "agentdescent.agents:openai_compatible",
+  "model": "qwen3.6:35b",
+  "default_base_url": "http://localhost:11434/v1",
+  "max_tokens": 16,
+  "temperature": 0,
+  "reasoning_effort": "none",
+  "timeout": 300.0
+ },
+ "reflect": {
+  "ref": "agentdescent.agents:openai_compatible",
+  "model": "qwen3.6:35b",
+  "default_base_url": "http://localhost:11434/v1",
+  "max_tokens": 12000,
+  "temperature": 0.6,
+  "stream": true,
+  "timeout": 1200.0
+ },
+ "evolve": {
+  "rounds": 6,
+  "n_workers": 4,
+  "seed": 230
+ }
+}

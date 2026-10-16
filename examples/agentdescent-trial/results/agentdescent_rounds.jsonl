@@ -1,0 +1,1 @@
+{"round": 0, "held_out_reward": 1.0, "n_items": 1, "committed": 1, "rejected": 0, "reasons": {"committed": 1}, "elapsed_s": 201.0034556388855, "rollouts": 4, "calls": 36, "tokens": 0, "considered": 4, "discarded_stale": 0, "conflicts_dropped": 0, "fused": 1}

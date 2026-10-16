@@ -1,0 +1,134 @@
+{
+ "n": 20,
+ "correct": 14,
+ "wall_s": 13.3,
+ "tokens": {
+  "prompt": 5928,
+  "completion": 46
+ },
+ "per_case": [
+  {
+   "id": "118",
+   "gold": "CATALOG",
+   "out": "CATALOG",
+   "ok": true
+  },
+  {
+   "id": "107",
+   "gold": "CATALOG",
+   "out": "SKIP",
+   "ok": false
+  },
+  {
+   "id": "086",
+   "gold": "CATALOG",
+   "out": "CATALOG",
+   "ok": true
+  },
+  {
+   "id": "111",
+   "gold": "CATALOG",
+   "out": "SKIP",
+   "ok": false
+  },
+  {
+   "id": "115",
+   "gold": "CATALOG",
+   "out": "SKIP",
+   "ok": false
+  },
+  {
+   "id": "117",
+   "gold": "CATALOG",
+   "out": "CATALOG",
+   "ok": true
+  },
+  {
+   "id": "103",
+   "gold": "CATALOG",
+   "out": "SKIP",
+   "ok": false
+  },
+  {
+   "id": "097",
+   "gold": "CATALOG",
+   "out": "SKIP",
+   "ok": false
+  },
+  {
+   "id": "116",
+   "gold": "CATALOG",
+   "out": "SKIP",
+   "ok": false
+  },
+  {
+   "id": "s1015e",
+   "gold": "SKIP",
+   "out": "SKIP",
+   "ok": true
+  },
+  {
+   "id": "s1015l",
+   "gold": "SKIP",
+   "out": "SKIP",
+   "ok": true
+  },
+  {
+   "id": "s1015k",
+   "gold": "SKIP",
+   "out": "SKIP",
+   "ok": true
+  },
+  {
+   "id": "s1007a",
+   "gold": "SKIP",
+   "out": "SKIP",
+   "ok": true
+  },
+  {
+   "id": "s1014c",
+   "gold": "SKIP",
+   "out": "SKIP",
+   "ok": true
+  },
+  {
+   "id": "s1012c",
+   "gold": "SKIP",
+   "out": "SKIP",
+   "ok": true
+  },
+  {
+   "id": "s1012a",
+   "gold": "SKIP",
+   "out": "SKIP",
+   "ok": true
+  },
+  {
+   "id": "s1012b",
+   "gold": "SKIP",
+   "out": "SKIP",
+   "ok": true
+  },
+  {
+   "id": "s1015f",
+   "gold": "SKIP",
+   "out": "SKIP",
+   "ok": true
+  },
+  {
+   "id": "s1015n",
+   "gold": "SKIP",
+   "out": "SKIP",
+   "ok": true
+  },
+  {
+   "id": "s1014a",
+   "gold": "SKIP",
+   "out": "SKIP",
+   "ok": true
+  }
+ ],
+ "accuracy": 0.7,
+ "child_wall_s": 13.3,
+ "temp_home_leftover": []
+}

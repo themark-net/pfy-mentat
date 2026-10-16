@@ -109,3 +109,13 @@ pipelines/smoke/moira/
 pipelines/smoke/agentdescent/
 pipelines/smoke/kenfold/
 pipelines/smoke/tsa/
+
+# agentdescent-trial promote temp files
+examples/agentdescent-trial/.results.new-*/
+examples/agentdescent-trial/.results.old-*/
+examples/agentdescent-trial/.promote-journal.json
+examples/agentdescent-trial/skill/.SKILL.evolved.md.new
+examples/agentdescent-trial/skill/.SKILL.evolved.md.bak-*
+examples/agentdescent-trial/.results.trash-*/
+examples/agentdescent-trial/.promote-journal.json.tmp
+examples/agentdescent-trial/skill/.SKILL.evolved.md.absent-*
