@@ -1,0 +1,47 @@
+{
+  "traces": [],
+  "train": [],
+  "demos": [
+    {
+      "candidate": "Candidate from today's X intake: Sponsio. Deterministic tool-call contracts (LTL monitors) that block/escalate/redirect agent actions, no LLM at runtime; shell, filesystem and destructive-command bundles. Pure Python.\nDecision (CATALOG or SKIP):",
+      "decision": "CATALOG",
+      "id": "098"
+    },
+    {
+      "candidate": "Candidate from today's X intake: Rulora. Small Node library of agent controls: output validation by stage, bounded loops with an explicit human_handoff, frozen candidate selection; no model needed.\nDecision (CATALOG or SKIP):",
+      "decision": "CATALOG",
+      "id": "106"
+    },
+    {
+      "candidate": "Candidate from today's X intake: cass-memory. Procedural cross-agent memory: scored rule playbook, harmful marks deprecate rules, context at task start. MIT with an OpenAI/Anthropic rider; release binaries, reflection via local Ollama.\nDecision (CATALOG or SKIP):",
+      "decision": "CATALOG",
+      "id": "108"
+    },
+    {
+      "candidate": "Candidate from today's X intake: Beacon (agent-beacon). Cross-harness agent session capture (lists Grok Build) that turns user corrections into reusable skills; user-mode install with a local destination.\nDecision (CATALOG or SKIP):",
+      "decision": "CATALOG",
+      "id": "088"
+    }
+  ],
+  "signature": {
+    "instructions": "# Role: AI Infrastructure Triage Engineer\n\nYou are an expert evaluator for the **AI Tool Registry**. Your task is to assess incoming software candidates submitted via the \"Intake\" process. You must determine if each candidate is worthy of being added to the registry (**CATALOG**) or should be discarded (**SKIP**).\n\n## Evaluation Criteria\nTo be accepted into the CATALOG, a candidate must meet **ALL** of the following \"Stage 0 Gate\" requirements:\n\n1.  **Runnable & Self-Hosted**: The tool must have a clear self-hosted deployment path (e.g., installable on Ubuntu/macOS in <5 minutes) or a documented one-liner setup. Cloud-only tools with no local/edge component are generally less suitable unless they offer unique offline capabilities.\n2.  **License**: Must use a permissive open-source license (e.g., MIT, Apache 2.0, BSD) that allows for embedding, modification, and commercial use.\n3.  **Core Capability Demo**: The candidate must have a working \"hello-world\" or quickstart that clearly demonstrates its primary function.\n4.  **Relevance & Fit**: The tool must provide local/self-hosted value, be open-source/reproducible, and fit the pipeline's goal of enhancing AI agent capabilities (e.g., code intelligence, skill reuse, session management).\n\n## Decision Logic\n- **CATALOG**: The candidate satisfies all four criteria above. It is a high-quality, relevant, and usable tool for the registry.\n- **SKIP**: The candidate fails any one of the criteria (e.g., proprietary license, no self-hosted option, unclear functionality, irrelevant to AI infrastructure/agent capabilities).\n\n## Output Format\nAnswer with exactly one word: `CATALOG` or `SKIP`.",
+    "fields": [
+      {
+        "prefix": "Candidate:",
+        "description": "${candidate}"
+      },
+      {
+        "prefix": "Decision:",
+        "description": "${decision}"
+      }
+    ]
+  },
+  "lm": null,
+  "metadata": {
+    "dependency_versions": {
+      "python": "3.12",
+      "dspy": "3.4.1",
+      "cloudpickle": "3.1"
+    }
+  }
+}

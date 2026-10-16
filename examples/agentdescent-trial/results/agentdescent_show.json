@@ -1,0 +1,18 @@
+{
+ "run_id": "20261015-203401-2d43b4",
+ "state": "done",
+ "stop_reason": "target_reward",
+ "error": null,
+ "final_reward": 1.0,
+ "outcomes": {
+  "committed": 1
+ },
+ "rounds": 1,
+ "kind": "text",
+ "target": "/home/mark/DEVELOP/pfy-mentat/tmp/agentdescent-trial/tmp/ad-target/SKILL.md",
+ "rendered": "# X intake triage (baseline, as written in the repo today)\n\nSource: README.md \"Stage 0 gate\" and docs/evaluation-framework.md \"Phase 0: Triage & relevance gate\",\ncopied verbatim at origin/main 7b5107d. pfy-mentat has no separate triage SKILL.md; these two passages\nare the written rules the daily X intake applies.\n\n## Stage 0 gate\n\nItems must satisfy all of the following before catalog consideration:\n\n- Runnable self-hosted path under ~5 minutes on a clean Ubuntu or macOS system (or a documented one-liner), accepting text-based artifacts with a clear installation one-liner as satisfying this criterion.\n- Permissive open-source license suitable for embedding and modification, accepting standard attribution or usage riders as compliant unless explicit restrictions on those rights are stated.\n- Working hello-world or quickstart that demonstrates the core capability.\n- Open-source licensing and reproducibility inferred from standard technology stack indicators rather than requiring explicit confirmation in the initial description.\n\nRejections are logged with short, explicit reasons. There is no silent ignoring of candidates.\n\n## Phase 0: Triage & relevance gate\n\n- Local/self-hosted value, open source/reproducible, pipeline fit.\n- Default to CATALOG when candidate descriptions align with acceptance criteria, issuing SKIP only for explicitly stated disqualifiers.\n\n## Output\n\nAnswer with exactly one word: CATALOG (accept into the catalog) or SKIP (reject).",
+ "apply_plan": {
+  "would_write": "/home/mark/DEVELOP/pfy-mentat/tmp/agentdescent-trial/tmp/ad-target/SKILL.md",
+  "chars": 1472
+ }
+}

@@ -1,0 +1,520 @@
+{
+ "model": "qwen3.6:35b",
+ "base_url": "http://localhost:11434/v1",
+ "stages": {
+  "baseline": {
+   "n": 20,
+   "correct": 14,
+   "wall_s": 13.3,
+   "tokens": {
+    "prompt": 5928,
+    "completion": 46
+   },
+   "per_case": [
+    {
+     "id": "118",
+     "gold": "CATALOG",
+     "out": "CATALOG",
+     "ok": true
+    },
+    {
+     "id": "107",
+     "gold": "CATALOG",
+     "out": "SKIP",
+     "ok": false
+    },
+    {
+     "id": "086",
+     "gold": "CATALOG",
+     "out": "CATALOG",
+     "ok": true
+    },
+    {
+     "id": "111",
+     "gold": "CATALOG",
+     "out": "SKIP",
+     "ok": false
+    },
+    {
+     "id": "115",
+     "gold": "CATALOG",
+     "out": "SKIP",
+     "ok": false
+    },
+    {
+     "id": "117",
+     "gold": "CATALOG",
+     "out": "CATALOG",
+     "ok": true
+    },
+    {
+     "id": "103",
+     "gold": "CATALOG",
+     "out": "SKIP",
+     "ok": false
+    },
+    {
+     "id": "097",
+     "gold": "CATALOG",
+     "out": "SKIP",
+     "ok": false
+    },
+    {
+     "id": "116",
+     "gold": "CATALOG",
+     "out": "SKIP",
+     "ok": false
+    },
+    {
+     "id": "s1015e",
+     "gold": "SKIP",
+     "out": "SKIP",
+     "ok": true
+    },
+    {
+     "id": "s1015l",
+     "gold": "SKIP",
+     "out": "SKIP",
+     "ok": true
+    },
+    {
+     "id": "s1015k",
+     "gold": "SKIP",
+     "out": "SKIP",
+     "ok": true
+    },
+    {
+     "id": "s1007a",
+     "gold": "SKIP",
+     "out": "SKIP",
+     "ok": true
+    },
+    {
+     "id": "s1014c",
+     "gold": "SKIP",
+     "out": "SKIP",
+     "ok": true
+    },
+    {
+     "id": "s1012c",
+     "gold": "SKIP",
+     "out": "SKIP",
+     "ok": true
+    },
+    {
+     "id": "s1012a",
+     "gold": "SKIP",
+     "out": "SKIP",
+     "ok": true
+    },
+    {
+     "id": "s1012b",
+     "gold": "SKIP",
+     "out": "SKIP",
+     "ok": true
+    },
+    {
+     "id": "s1015f",
+     "gold": "SKIP",
+     "out": "SKIP",
+     "ok": true
+    },
+    {
+     "id": "s1015n",
+     "gold": "SKIP",
+     "out": "SKIP",
+     "ok": true
+    },
+    {
+     "id": "s1014a",
+     "gold": "SKIP",
+     "out": "SKIP",
+     "ok": true
+    }
+   ],
+   "accuracy": 0.7,
+   "child_wall_s": 13.3,
+   "temp_home_leftover": []
+  },
+  "agentdescent": {
+   "run_id": "20261015-203401-2d43b4",
+   "evolve_wall_s": 201.3,
+   "temp_home_leftover": [],
+   "final_reward_train_internal": 1.0,
+   "outcomes": {
+    "committed": 1
+   },
+   "stop_reason": "target_reward",
+   "usage": null,
+   "baseline_skill_untouched": true,
+   "tmp_target_changed": false,
+   "heldout": {
+    "n": 20,
+    "correct": 19,
+    "wall_s": 15.6,
+    "tokens": {
+     "prompt": 7268,
+     "completion": 56
+    },
+    "per_case": [
+     {
+      "id": "118",
+      "gold": "CATALOG",
+      "out": "CATALOG",
+      "ok": true
+     },
+     {
+      "id": "107",
+      "gold": "CATALOG",
+      "out": "CATALOG",
+      "ok": true
+     },
+     {
+      "id": "086",
+      "gold": "CATALOG",
+      "out": "CATALOG",
+      "ok": true
+     },
+     {
+      "id": "111",
+      "gold": "CATALOG",
+      "out": "CATALOG",
+      "ok": true
+     },
+     {
+      "id": "115",
+      "gold": "CATALOG",
+      "out": "CATALOG",
+      "ok": true
+     },
+     {
+      "id": "117",
+      "gold": "CATALOG",
+      "out": "CATALOG",
+      "ok": true
+     },
+     {
+      "id": "103",
+      "gold": "CATALOG",
+      "out": "CATALOG",
+      "ok": true
+     },
+     {
+      "id": "097",
+      "gold": "CATALOG",
+      "out": "SKIP",
+      "ok": false
+     },
+     {
+      "id": "116",
+      "gold": "CATALOG",
+      "out": "CATALOG",
+      "ok": true
+     },
+     {
+      "id": "s1015e",
+      "gold": "SKIP",
+      "out": "SKIP",
+      "ok": true
+     },
+     {
+      "id": "s1015l",
+      "gold": "SKIP",
+      "out": "SKIP",
+      "ok": true
+     },
+     {
+      "id": "s1015k",
+      "gold": "SKIP",
+      "out": "SKIP",
+      "ok": true
+     },
+     {
+      "id": "s1007a",
+      "gold": "SKIP",
+      "out": "SKIP",
+      "ok": true
+     },
+     {
+      "id": "s1014c",
+      "gold": "SKIP",
+      "out": "SKIP",
+      "ok": true
+     },
+     {
+      "id": "s1012c",
+      "gold": "SKIP",
+      "out": "SKIP",
+      "ok": true
+     },
+     {
+      "id": "s1012a",
+      "gold": "SKIP",
+      "out": "SKIP",
+      "ok": true
+     },
+     {
+      "id": "s1012b",
+      "gold": "SKIP",
+      "out": "SKIP",
+      "ok": true
+     },
+     {
+      "id": "s1015f",
+      "gold": "SKIP",
+      "out": "SKIP",
+      "ok": true
+     },
+     {
+      "id": "s1015n",
+      "gold": "SKIP",
+      "out": "SKIP",
+      "ok": true
+     },
+     {
+      "id": "s1014a",
+      "gold": "SKIP",
+      "out": "SKIP",
+      "ok": true
+     }
+    ],
+    "accuracy": 0.95,
+    "child_wall_s": 15.6,
+    "temp_home_leftover": []
+   }
+  },
+  "dspy": {
+   "n": 20,
+   "correct": 20,
+   "optimize_wall_s": 685.9,
+   "eval_wall_s": 34.2,
+   "tokens_all_calls": {
+    "prompt": 331630,
+    "completion": 6157
+   },
+   "lm_calls": 388,
+   "per_case": [
+    {
+     "id": "118",
+     "gold": "CATALOG",
+     "out": "CATALOG",
+     "ok": true
+    },
+    {
+     "id": "107",
+     "gold": "CATALOG",
+     "out": "CATALOG",
+     "ok": true
+    },
+    {
+     "id": "086",
+     "gold": "CATALOG",
+     "out": "CATALOG",
+     "ok": true
+    },
+    {
+     "id": "111",
+     "gold": "CATALOG",
+     "out": "CATALOG",
+     "ok": true
+    },
+    {
+     "id": "115",
+     "gold": "CATALOG",
+     "out": "CATALOG",
+     "ok": true
+    },
+    {
+     "id": "117",
+     "gold": "CATALOG",
+     "out": "CATALOG",
+     "ok": true
+    },
+    {
+     "id": "103",
+     "gold": "CATALOG",
+     "out": "CATALOG",
+     "ok": true
+    },
+    {
+     "id": "097",
+     "gold": "CATALOG",
+     "out": "CATALOG",
+     "ok": true
+    },
+    {
+     "id": "116",
+     "gold": "CATALOG",
+     "out": "CATALOG",
+     "ok": true
+    },
+    {
+     "id": "s1015e",
+     "gold": "SKIP",
+     "out": "SKIP",
+     "ok": true
+    },
+    {
+     "id": "s1015l",
+     "gold": "SKIP",
+     "out": "SKIP",
+     "ok": true
+    },
+    {
+     "id": "s1015k",
+     "gold": "SKIP",
+     "out": "SKIP",
+     "ok": true
+    },
+    {
+     "id": "s1007a",
+     "gold": "SKIP",
+     "out": "SKIP",
+     "ok": true
+    },
+    {
+     "id": "s1014c",
+     "gold": "SKIP",
+     "out": "SKIP",
+     "ok": true
+    },
+    {
+     "id": "s1012c",
+     "gold": "SKIP",
+     "out": "SKIP",
+     "ok": true
+    },
+    {
+     "id": "s1012a",
+     "gold": "SKIP",
+     "out": "SKIP",
+     "ok": true
+    },
+    {
+     "id": "s1012b",
+     "gold": "SKIP",
+     "out": "SKIP",
+     "ok": true
+    },
+    {
+     "id": "s1015f",
+     "gold": "SKIP",
+     "out": "SKIP",
+     "ok": true
+    },
+    {
+     "id": "s1015n",
+     "gold": "SKIP",
+     "out": "SKIP",
+     "ok": true
+    },
+    {
+     "id": "s1014a",
+     "gold": "SKIP",
+     "out": "SKIP",
+     "ok": true
+    }
+   ],
+   "accuracy": 1.0,
+   "tuned_instructions": "# Role: AI Infrastructure Triage Engineer\n\nYou are an expert evaluator for the **AI Tool Registry**. Your task is to assess incoming software candidates submitted via the \"Intake\" process. You must determine if each candidate is worthy of being added to the registry (**CATALOG**) or should be discarded (**SKIP**).\n\n## Evaluation Criteria\nTo be accepted into the CATALOG, a candidate must meet **ALL** of the following \"Stage 0 Gate\" requirements:\n\n1.  **Runnable & Self-Hosted**: The tool must have a clear self-hosted deployment path (e.g., installable on Ubuntu/macOS in <5 minutes) or a documented one-liner setup. Cloud-only tools with no local/edge component are generally less suitable unless they offer unique offline capabilities.\n2.  **License**: Must use a permissive open-source license (e.g., MIT, Apache 2.0, BSD) that allows for embedding, modification, and commercial use.\n3.  **Core Capability Demo**: The candidate must have a working \"hello-world\" or quickstart that clearly demonstrates its primary function.\n4.  **Relevance & Fit**: The tool must provide local/self-hosted value, be open-source/reproducible, and fit the pipeline's goal of enhancing AI agent capabilities (e.g., code intelligence, skill reuse, session management).\n\n## Decision Logic\n- **CATALOG**: The candidate satisfies all four criteria above. It is a high-quality, relevant, and usable tool for the registry.\n- **SKIP**: The candidate fails any one of the criteria (e.g., proprietary license, no self-hosted option, unclear functionality, irrelevant to AI infrastructure/agent capabilities).\n\n## Output Format\nAnswer with exactly one word: `CATALOG` or `SKIP`.",
+   "n_demos": 4,
+   "child_wall_s": 721.9,
+   "temp_home_leftover": []
+  }
+ },
+ "ollama_ps_at_start": {
+  "baseline": [
+   "qwen3.6:35b"
+  ],
+  "evolve": [
+   "qwen3.6:35b"
+  ],
+  "dspy": []
+ },
+ "real_home_agentdescent": [
+  {
+   "before": {
+    "exists": false
+   },
+   "after": {
+    "exists": false
+   },
+   "untouched": true
+  },
+  {
+   "before": {
+    "exists": false
+   },
+   "after": {
+    "exists": false
+   },
+   "untouched": true
+  },
+  {
+   "before": {
+    "exists": false
+   },
+   "after": {
+    "exists": false
+   },
+   "untouched": true
+  },
+  {
+   "before": {
+    "exists": false
+   },
+   "after": {
+    "exists": false
+   },
+   "untouched": true
+  },
+  {
+   "before": {
+    "exists": false
+   },
+   "after": {
+    "exists": false
+   },
+   "untouched": true
+  }
+ ],
+ "memory": [
+  {
+   "min_MemAvailable_GiB": 49,
+   "max_used_GiB": 58,
+   "cap_GiB": 85
+  },
+  {
+   "min_MemAvailable_GiB": 49,
+   "max_used_GiB": 58,
+   "cap_GiB": 85
+  },
+  {
+   "min_MemAvailable_GiB": 47,
+   "max_used_GiB": 60,
+   "cap_GiB": 85
+  },
+  {
+   "min_MemAvailable_GiB": 28,
+   "max_used_GiB": 79,
+   "cap_GiB": 85
+  },
+  {
+   "min_MemAvailable_GiB": 45,
+   "max_used_GiB": 62,
+   "cap_GiB": 85
+  }
+ ],
+ "notes": [
+  "first attempt failed: MIPROv2 needs optuna (not pulled by plain dspy); installed in the worktree venv and reran",
+  "evolve first attempt failed at `plan` (ref config must be top-level keys, not under 'config'); fixed and reran. memory[] has one row per harness invocation (5: baseline, evolve-fail, evolve, dspy-fail, dspy).",
+  "AgentDescent reported tokens=0: its openai_compatible counts usage only when a Usage object is passed in code, which a JSON spec cannot do. 36 model calls recorded.",
+  "max_used_GiB is whole-host usage including Mark's other processes; peak 79 GiB during the evolve invocation, under the 85 GiB cap. nimo did not lock up."
+ ],
+ "summary": {
+  "heldout_n": 20,
+  "baseline": 0.7,
+  "agentdescent": 0.95,
+  "dspy": 1.0
+ }
+}
