@@ -107,4 +107,21 @@ drops `DOCKER_HOST` and the temp HOME hides `~/.docker` contexts, so compose tal
 nimo with a non-default socket (e.g. rootless Docker) set `MOIRA_DOCKER_HOST=unix:///run/user/$(id -u)/docker.sock`.
 `compose down -v` always runs, so named volumes do not survive. `PFY_XINTAKE_TIMEOUT` overrides the 600s per-command timeout.
 
+Entries 119-121 (`smoke_119_121.py`):
+
+```sh
+python3 examples/x-intake-local/smoke_119_121.py --entry agentdescent  # pinned 0.5.1, offline demo only, no model call
+python3 examples/x-intake-local/smoke_119_121.py --entry kenfold       # needs docker compose and a v0.1.1 checkout
+python3 examples/x-intake-local/smoke_119_121.py --entry tsa           # pinned 2.2.0, temp fixture repo, no network
+```
+
+AgentDescent looks up `$AGENTDESCENT_BIN`, then `tmp/agentdescent/.venv/bin/agentdescent`, then PATH, and reads the
+package version with the python next to it. Tree-sitter Analyzer looks up `$TSA_BIN`, then
+`tmp/tree-sitter-analyzer/.venv/bin/tree-sitter-analyzer`, then PATH, with `miswire-audit` beside it. Both run under
+bwrap with no network when it works, with `--store` and the fixture repo inside the temp dir. Kenfold looks up
+`$KENFOLD_DIR` or `tmp/kenfold` (a git checkout at the pinned tag) and `$DOCKER_BIN`, `tmp/docker/docker` or PATH;
+its compose calls skip bwrap (they need the docker socket), bring up only postgres and kenfold with the update
+check off, and always end with `compose down -v`. It exits 2 if `127.0.0.1:7077` is already in use. For a
+non-default socket set `KENFOLD_DOCKER_HOST`. `PFY_XINTAKE_TIMEOUT` overrides the 600s per-command timeout.
+
 Not wired into CI or Make.
