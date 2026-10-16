@@ -7,7 +7,7 @@ worktree `~/DEVELOP/pfy-mentat/tmp/agentdescent-trial`. Results: [REPORT.md](../
 ## Result
 
 Held-out accuracy (20 cases): **baseline 0.70, AgentDescent 0.95, DSPy MIPROv2-light 1.00**.
-AgentDescent: 201 s, 36 calls. DSPy: 686 s, 388 calls, ~338k tokens.
+AgentDescent: 201 s wall-clock (596.8 s summed across workers), 36 calls. DSPy: 686 s, 388 calls, ~338k tokens.
 
 **Recommendation: provisional — AgentDescent as the candidate, not adopted.** n=20 held-out; DSPy scored higher;
 exact McNemar baseline vs AgentDescent p=0.0625, baseline vs DSPy p=0.031, AgentDescent vs DSPy p=1.0; and the cases
@@ -75,6 +75,12 @@ earlier guard (`~/.agentdescent` names only, absent before and after); it was no
   recommendation now provisional with McNemar p-values; baseline_score explained; relative paths in committed logs; no
   bwrap / egress noted.
 - `tests/test_agentdescent_trial_harness.py`: each fix was reverted in turn and the tests went red.
+
+## Tester FAIL @ 07bca20 fixed
+
+- B1': each stage record keeps its guard result; `--promote` refuses (exit 1) if any matching stage's guard failed or is missing.
+- B2': `run.json` holds a run id plus SHA-256 of `skill/SKILL.md`, `cases.jsonl`, `train.jsonl`, `heldout.jsonl`; each stage record is stamped with both. `results.json` and `--promote` use only records matching the current run id and hashes (others listed under `refused_stale`); a single stage after an input change starts a new run id; `--stage all` clears the run dir first; promote copies only the files of matching, successful stages.
+- Timing: AgentDescent 201 s wall-clock, 596.8 s summed across workers.
 
 ## Next
 

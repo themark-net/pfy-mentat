@@ -126,5 +126,79 @@ class RerunIsolation(Base):
         self.assertEqual(r.returncode, 0)
 
 
+class PromoteGuards(Base):
+    """B1'/B2' at 07bca20: promote must honour guards and refuse stale/mixed records."""
+
+    def setUp(self):
+        super().setUp()
+        import shutil
+        self.inp = Path(self.td.name, "inputs"); (self.inp / "skill").mkdir(parents=True)
+        for n in self.h.INPUTS:
+            shutil.copy2(HARNESS.parent / n, self.inp / n)
+        self.tracked = self.inp / "results"; self.tracked.mkdir()
+        self.h.HERE = self.inp; self.h.TRACKED_RES = self.tracked
+
+    def writer(self, name, files, fail=False, touch_home=False):
+        def stage():
+            for f in files:
+                (self.h.RES / f).write_text(f"{name} output")
+            if touch_home:
+                (self.home / ".agentdescent").mkdir(exist_ok=True)
+            if fail:
+                raise RuntimeError(f"{name} failed")
+            return {"accuracy": 1.0, "stage": name}
+        return stage
+
+    def stages(self, **fns):
+        self.h.STAGES.clear(); self.h.STAGES.update(fns)
+
+    def test_promote_refuses_when_guard_failed_on_successful_stage(self):
+        self.stages(baseline=self.writer("baseline", ["score_baseline.json"], touch_home=True))
+        self.assertEqual(self.h.main(["--stage", "baseline"]), 3)
+        rec = self.stage_rec()
+        self.assertNotIn("error", rec)
+        self.assertFalse(rec["guard"]["real_home_untouched"])
+        self.assertNotEqual(self.h.main(["--promote"]), 0)
+        self.assertFalse((self.tracked / "score_baseline.json").exists())
+        self.assertFalse((self.tracked / "results.json").exists())
+
+    def _repro(self):
+        self.stages(baseline=self.writer("baseline", ["score_baseline.json"]),
+                    evolve=self.writer("evolve", ["score_agentdescent.json", "SKILL.evolved.md"]),
+                    dspy=self.writer("dspy", ["dspy.log"], fail=True))
+        self.assertEqual(self.h.main(["--stage", "all"]), 1)
+        (self.inp / "skill/SKILL.md").write_text((self.inp / "skill/SKILL.md").read_text() + "\nedited\n")
+        self.assertEqual(self.h.main(["--stage", "baseline"]), 0)
+
+    def test_repro_results_not_mixed_with_stale_records(self):
+        self._repro()
+        R = json.loads((self.h.RES / "results.json").read_text())
+        self.assertEqual(sorted(R["stages"]), ["baseline"])
+        self.assertEqual(R["errors"], {})
+        self.assertEqual(sorted(R["refused_stale"]), ["dspy", "evolve"])
+
+    def test_repro_promote_skips_failed_runs_logs(self):
+        self._repro()
+        self.assertEqual(self.h.main(["--promote"]), 0)
+        self.assertTrue((self.tracked / "score_baseline.json").exists())
+        self.assertFalse((self.tracked / "dspy.log").exists())
+        self.assertFalse((self.tracked / "score_agentdescent.json").exists())
+        self.assertFalse((self.inp / "skill/SKILL.evolved.md").exists())
+
+    def test_stage_all_clears_run_dir(self):
+        self.h.RES.mkdir(parents=True, exist_ok=True)
+        (self.h.RES / "dspy.log").write_text("old")
+        self.stages(baseline=self.writer("baseline", ["score_baseline.json"]))
+        self.assertEqual(self.h.main(["--stage", "all"]), 0)
+        self.assertFalse((self.h.RES / "dspy.log").exists())
+
+    def test_promote_refuses_after_inputs_change(self):
+        self.stages(baseline=self.writer("baseline", ["score_baseline.json"]))
+        self.assertEqual(self.h.main(["--stage", "all"]), 0)
+        (self.inp / "heldout.jsonl").write_text("{}\n")
+        self.assertNotEqual(self.h.main(["--promote"]), 0)
+        self.assertFalse((self.tracked / "score_baseline.json").exists())
+
+
 if __name__ == "__main__":
     unittest.main()

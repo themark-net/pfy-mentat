@@ -9,7 +9,7 @@ seed 230: train 41 (19 CATALOG / 22 SKIP), held-out 20 (9 CATALOG / 11 SKIP). Cl
 | Variant | Held-out accuracy | Errors | Tuning wall time | Tuning model calls | Tuning tokens | Held-out eval |
 |---|---|---|---|---|---|---|
 | Baseline (repo text today) | **0.70** (14/20) | 6 CATALOG→SKIP (097, 103, 107, 111, 115, 116) | – | – | – | 13 s, 5.9k prompt tok |
-| AgentDescent 0.5.1 (`kind: text`, 6 rounds × 4 workers max) | **0.95** (19/20) | 097 Foremerge → SKIP | 201 s (stopped after round 1: internal held-out reward 1.0 ≥ target 0.98) | 36 (`agentdescent_result.json` `usage.calls`, `agentdescent_rounds.jsonl`) | not reported (0; see notes) | 16 s, 7.3k prompt tok |
+| AgentDescent 0.5.1 (`kind: text`, 6 rounds × 4 workers max) | **0.95** (19/20) | 097 Foremerge → SKIP | 201 s wall-clock (596.8 s summed across the 4 workers; stopped after round 1: internal held-out reward 1.0 ≥ target 0.98) | 36 (`agentdescent_result.json` `usage.calls`, `agentdescent_rounds.jsonl`) | not reported (0; see notes) | 16 s, 7.3k prompt tok |
 | DSPy 3.4.1 MIPROv2 `auto="light"` | **1.00** (20/20) | none | 686 s | 388 (incl. 20 eval) | 332k prompt + 6.2k completion | 34 s |
 
 Exact McNemar on the 20 paired held-out cases: baseline vs AgentDescent p=0.0625 (5 discordant, all in its favour),
