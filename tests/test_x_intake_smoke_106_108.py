@@ -17,7 +17,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "examples" / "x-intake-local"))
+from smoke import PAID_KEYS  # noqa: E402
 from smoke_106_108 import CM_V050_SHA256  # noqa: E402
+
+DUMMY_PAID = "pfy-test-dummy"
 
 OTHER_SHA = "0123456789abcdef" * 4
 REAL_NODE = shutil.which("node") or ""
@@ -378,6 +381,41 @@ exit 1
             self.assertTrue(probe.is_file(), blob)
             self.assertNotIn("Traceback", proc.stderr, blob)
             self._assert_child_dirs_under_its_home(probe.read_text(encoding="utf-8"), home)
+
+    def test_node_version_uses_clean_env(self) -> None:
+        # Fail: `node --version` inherits PAID_KEYS or the parent HOME.
+        # Recover: the version probe runs, its HOME is a fresh temp dir, and no paid name or dummy value is present.
+        stub = "#!/bin/sh\nif [ \"$1\" = --version ]; then env > \"$PFY_NODE_VER_OUT\"; echo v22.0.0; exit 0; fi\nexit 0\n"
+        with tempfile.TemporaryDirectory(prefix="pfy-xintake-nodever-") as td:
+            root = Path(td)
+            home = root / "home"
+            home.mkdir()
+            pkg = root / "rulora" / "node_modules" / "@rulora" / "core"
+            pkg.mkdir(parents=True)
+            (pkg / "package.json").write_text('{"version": "0.1.0-alpha.4"}\n', encoding="utf-8")
+            node = root / "node"
+            _write_exe(node, stub)
+            probe = root / "node.env"
+            env = self._base_env(home)
+            for key in PAID_KEYS:
+                env[key] = DUMMY_PAID
+            env["PFY_NODE_VER_OUT"] = str(probe)
+            env["PFY_SMOKE_RECEIPT_DIR"] = str(root / "receipts")
+            env["RULORA_DIR"] = str(root / "rulora")
+            env["RULORA_NODE"] = str(node)
+            proc = self._run("rulora", env)
+            self.assertTrue(probe.is_file(), proc.stdout + proc.stderr)
+            dump = probe.read_text(encoding="utf-8")
+            leaked = sorted(
+                {line.split("=", 1)[0] for line in dump.splitlines() if line.split("=", 1)[0] in PAID_KEYS}
+            )
+            self.assertEqual(leaked, [], f"node --version received paid keys {leaked}")
+            self.assertFalse(DUMMY_PAID in dump, "node --version received the dummy paid value")
+            homes = [line.split("=", 1)[1] for line in dump.splitlines() if line.startswith("HOME=")]
+            self.assertEqual(len(homes), 1, "node --version env dump has no HOME")
+            self.assertNotEqual(os.path.normpath(homes[0]), os.path.normpath(str(home)))
+            self.assertTrue(homes[0].startswith(os.path.normpath(tempfile.gettempdir()) + os.sep), homes[0])
+            self.assertNotIn("Traceback", proc.stderr)
 
 
 if __name__ == "__main__":

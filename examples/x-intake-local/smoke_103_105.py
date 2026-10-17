@@ -117,7 +117,10 @@ class FakeOpenAI(BaseHTTPRequestHandler):
 
 def node_major(node: str) -> int:
     try:
-        out = run([node, "--version"], timeout=30).stdout.strip()
+        with tempfile.TemporaryDirectory(prefix="pfy-node-ver-") as home:
+            out = subprocess.run(
+                [node, "--version"], capture_output=True, text=True, timeout=30, env=clean_env(home),
+            ).stdout.strip()
         return int(out.lstrip("v").split(".")[0])
     except (OSError, ValueError, subprocess.TimeoutExpired):
         return 0

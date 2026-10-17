@@ -18,7 +18,10 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "examples" / "x-intake-local"))
+from smoke import PAID_KEYS  # noqa: E402
 from smoke_103_105 import GRAPHJIN_V3216_SHA256  # noqa: E402
+
+DUMMY_PAID = "pfy-test-dummy"
 import smoke_103_105  # noqa: E402
 
 OTHER_SHA = "0123456789abcdef" * 4
@@ -164,6 +167,43 @@ class XIntakeSmoke103105Tests(unittest.TestCase):
             self.assertEqual(receipt.get("reason"), "graphjin did not come up (read_only)")
             self.assertTrue(held, "serve.log was not opened")
             self.assertTrue(held[-1].closed)
+
+    def test_node_version_uses_clean_env(self) -> None:
+        # Fail: `node --version` inherits PAID_KEYS or the parent HOME.
+        # Recover: the version probe runs, its HOME is a fresh temp dir, and no paid name or dummy value is present.
+        stub = "#!/bin/sh\nif [ \"$1\" = --version ]; then env > \"$PFY_NODE_VER_OUT\"; echo v22.0.0; exit 0; fi\nexit 0\n"
+        with tempfile.TemporaryDirectory(prefix="pfy-xintake-nodever-") as td:
+            root = Path(td)
+            home = root / "home"
+            home.mkdir()
+            node = root / "node"
+            _write_exe(node, stub)
+            binary = root / "bugpatrol"
+            _write_exe(binary, "#!/bin/sh\nexit 0\n")
+            probe = root / "node.env"
+            env = self._base_env(home)
+            for key in PAID_KEYS:
+                env[key] = DUMMY_PAID
+            env["PFY_NODE_VER_OUT"] = str(probe)
+            env["PFY_SMOKE_RECEIPT_DIR"] = str(root / "receipts")
+            env["BUGPATROL_BIN"] = str(binary)
+            env["BUGPATROL_NODE"] = str(node)
+            proc = subprocess.run(
+                ["python3", "examples/x-intake-local/smoke_103_105.py", "--entry", "bugpatrol"],
+                cwd=str(ROOT), env=env, capture_output=True, text=True, timeout=60,
+            )
+            self.assertTrue(probe.is_file(), proc.stdout + proc.stderr)
+            dump = probe.read_text(encoding="utf-8")
+            leaked = sorted(
+                {line.split("=", 1)[0] for line in dump.splitlines() if line.split("=", 1)[0] in PAID_KEYS}
+            )
+            self.assertEqual(leaked, [], f"node --version received paid keys {leaked}")
+            self.assertFalse(DUMMY_PAID in dump, "node --version received the dummy paid value")
+            homes = [line.split("=", 1)[1] for line in dump.splitlines() if line.startswith("HOME=")]
+            self.assertEqual(len(homes), 1, "node --version env dump has no HOME")
+            self.assertNotEqual(os.path.normpath(homes[0]), os.path.normpath(str(home)))
+            self.assertTrue(homes[0].startswith(os.path.normpath(tempfile.gettempdir()) + os.sep), homes[0])
+            self.assertNotIn("Traceback", proc.stderr)
 
 
 if __name__ == "__main__":
