@@ -49,7 +49,7 @@ import tempfile
 import time
 from pathlib import Path
 
-from smoke import PAID_KEYS, TMP, find_bin, pinned, run, timeout_reason, write
+from smoke import TMP, find_bin, node_version_env, pinned, run, scrub_env, timeout_reason, write
 
 # cass-memory v0.5.0 release asset cass-memory-linux-x64 (matches upstream cass-memory-linux-x64.sha256)
 CM_V050_SHA256 = "06e1563881f8bb1225cf7036068252ef210f242704a27f8ce32518b822181bd7"
@@ -75,7 +75,7 @@ def sha256_file(path: str) -> str:
 
 
 def clean_env(home: str, **extra: str) -> dict:
-    env = {k: v for k, v in os.environ.items() if k not in PAID_KEYS}
+    env = scrub_env(os.environ)
     env.update(HOME=home, NO_COLOR="1",
                XDG_CONFIG_HOME=os.path.join(home, ".config"),
                XDG_CACHE_HOME=os.path.join(home, ".cache"),
@@ -89,7 +89,7 @@ def node_major(node: str) -> int:
     try:
         with tempfile.TemporaryDirectory(prefix="pfy-node-ver-") as home:
             out = subprocess.run(
-                [node, "--version"], capture_output=True, text=True, timeout=30, env=clean_env(home),
+                [node, "--version"], capture_output=True, text=True, timeout=30, env=node_version_env(home),
             ).stdout.strip()
         return int(out.lstrip("v").split(".")[0])
     except (OSError, ValueError, subprocess.TimeoutExpired):

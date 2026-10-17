@@ -46,7 +46,7 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from smoke import PAID_KEYS, TMP, find_bin, pinned, run, timeout_reason, write
+from smoke import TMP, find_bin, node_version_env, pinned, run, scrub_env, timeout_reason, write
 
 # graphjin_3.21.6_linux_amd64.tar.gz -> `graphjin` binary (tarball sha256 checked against upstream checksums.txt)
 GRAPHJIN_V3216_SHA256 = "e6f0fd88f99b07e8036ba7db76f24f0fceab697935559d154e823b5951f46805"
@@ -77,7 +77,7 @@ def free_port() -> int:
 
 
 def clean_env(home: str, **extra: str) -> dict:
-    env = {k: v for k, v in os.environ.items() if k not in PAID_KEYS}
+    env = scrub_env(os.environ)
     env.update(HOME=home, **extra)
     return env
 
@@ -119,7 +119,7 @@ def node_major(node: str) -> int:
     try:
         with tempfile.TemporaryDirectory(prefix="pfy-node-ver-") as home:
             out = subprocess.run(
-                [node, "--version"], capture_output=True, text=True, timeout=30, env=clean_env(home),
+                [node, "--version"], capture_output=True, text=True, timeout=30, env=node_version_env(home),
             ).stdout.strip()
         return int(out.lstrip("v").split(".")[0])
     except (OSError, ValueError, subprocess.TimeoutExpired):

@@ -8,6 +8,7 @@ import builtins
 import gc
 import json
 import os
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -171,20 +172,20 @@ class XIntakeSmoke103105Tests(unittest.TestCase):
     def test_node_version_uses_clean_env(self) -> None:
         # Fail: `node --version` inherits PAID_KEYS or the parent HOME.
         # Recover: the version probe runs, its HOME is a fresh temp dir, and no paid name or dummy value is present.
-        stub = "#!/bin/sh\nif [ \"$1\" = --version ]; then env > \"$PFY_NODE_VER_OUT\"; echo v22.0.0; exit 0; fi\nexit 0\n"
         with tempfile.TemporaryDirectory(prefix="pfy-xintake-nodever-") as td:
             root = Path(td)
             home = root / "home"
             home.mkdir()
+            probe = root / "node.env"
             node = root / "node"
-            _write_exe(node, stub)
+            _write_exe(node, "#!/bin/sh\nif [ \"$1\" = --version ]; then env > %s; echo v22.0.0; exit 0; fi\nexit 0\n" % shlex.quote(str(probe)))
             binary = root / "bugpatrol"
             _write_exe(binary, "#!/bin/sh\nexit 0\n")
-            probe = root / "node.env"
             env = self._base_env(home)
             for key in PAID_KEYS:
                 env[key] = DUMMY_PAID
-            env["PFY_NODE_VER_OUT"] = str(probe)
+            for key in ("GH_TOKEN", "GITHUB_TOKEN", "NPM_TOKEN", "FOO_API_KEY"):
+                env[key] = DUMMY_PAID
             env["PFY_SMOKE_RECEIPT_DIR"] = str(root / "receipts")
             env["BUGPATROL_BIN"] = str(binary)
             env["BUGPATROL_NODE"] = str(node)
@@ -199,6 +200,11 @@ class XIntakeSmoke103105Tests(unittest.TestCase):
             )
             self.assertEqual(leaked, [], f"node --version received paid keys {leaked}")
             self.assertFalse(DUMMY_PAID in dump, "node --version received the dummy paid value")
+            names = {line.split("=", 1)[0] for line in dump.splitlines()}
+            secret_names = [key for key in ("GH_TOKEN", "GITHUB_TOKEN", "NPM_TOKEN", "FOO_API_KEY") if key in names]
+            self.assertEqual(secret_names, [], f"node --version received secret names {secret_names}")
+            self.assertIn("PATH", names)
+            self.assertTrue(any(line.startswith("PATH=") and line.split("=", 1)[1] for line in dump.splitlines()))
             homes = [line.split("=", 1)[1] for line in dump.splitlines() if line.startswith("HOME=")]
             self.assertEqual(len(homes), 1, "node --version env dump has no HOME")
             self.assertNotEqual(os.path.normpath(homes[0]), os.path.normpath(str(home)))

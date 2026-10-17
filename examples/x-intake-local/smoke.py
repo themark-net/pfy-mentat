@@ -23,6 +23,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import platform
 import shutil
 import signal
@@ -43,6 +44,21 @@ PAID_KEYS = ("OPENROUTER_API_KEY", "AI_GATEWAY_API_KEY", "OPENAI_API_KEY", "ANTH
              "OLLAMA_BASE_URL", "BUGPATROL_MODEL_ENDPOINT", "BUGPATROL_MODEL_NAME",
              "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "AWS_PROFILE",
              "HAR_PORTAL_TOKEN", "CASS_PATH", "NOTION_API_KEY", "GITHUB_TOKEN", "GH_TOKEN")
+# Names stripped on top of PAID_KEYS. Covers GH_TOKEN, GITHUB_TOKEN, GH_ENTERPRISE_TOKEN, GITHUB_PAT,
+# NPM_TOKEN, and HF_TOKEN.
+SECRET_ENV_RE = re.compile(r"(TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIALS?|_API_KEY|_PAT)$", re.IGNORECASE)
+
+
+def scrub_env(env: dict) -> dict:
+    """Parent env minus paid-provider keys and token-like names."""
+    return {k: v for k, v in env.items() if k not in PAID_KEYS and SECRET_ENV_RE.search(k) is None}
+
+
+def node_version_env(home: str) -> dict[str, str]:
+    """Allowlist for `node --version`: PATH, LANG, LC_ALL, TMPDIR, and the temp HOME."""
+    env = {key: os.environ[key] for key in ("PATH", "LANG", "LC_ALL", "TMPDIR") if os.environ.get(key)}
+    env["HOME"] = home
+    return env
 
 
 def write(entry: str, receipt: dict, code: int) -> int:
