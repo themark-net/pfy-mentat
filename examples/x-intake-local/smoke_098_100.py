@@ -9,7 +9,7 @@ Never installs or downloads anything; every scratch file goes to a fresh tempfil
 
 PFY_XINTAKE_TIMEOUT (float seconds, must be > 0) overrides the sponsio, opensteps, and repoharness tool
 timeouts. Empty or invalid keeps the defaults: 120s sponsio and repoharness, 60s opensteps hooks. Git keeps the
-parent env. Sponsio and repoharness tool subprocesses get a fresh temp HOME, as opensteps hooks already do.
+parent env. Sponsio, opensteps hooks, and repoharness drop PAID_KEYS and get a fresh temp HOME.
 
   sponsio      $SPONSIO_PY or ~/DEVELOP/pfy-mentat/tmp/sponsio/.venv/bin/python with `sponsio` importable.
                Arms the bundled sponsio:capability/shell pack in enforce mode and expects `ls -la` allowed while
@@ -38,10 +38,17 @@ import tempfile
 import time
 from pathlib import Path
 
-from smoke import TMP, find_bin, pinned, run, timeout_reason, write
+from smoke import PAID_KEYS, TMP, find_bin, pinned, run, timeout_reason, write
 
 # harness-linux-x64 published checksum for release harness-v0.1.10
 HARNESS_V010_SHA256 = "68b6a51e40cd8e229f1f056c2aa5ea93de7934f746dcf8dd38e3b7d9dd4ee397"
+
+
+def tool_env(home: str, **extra: str) -> dict[str, str]:
+    """Parent env minus PAID_KEYS. Git does not use this; tool children do."""
+    env = {k: v for k, v in os.environ.items() if k not in PAID_KEYS}
+    env.update(HOME=home, **extra)
+    return env
 
 
 def xintake_timeout(default: float) -> float:
@@ -96,7 +103,7 @@ def smoke_sponsio(r: dict) -> int:
     with tempfile.TemporaryDirectory(prefix="pfy-sponsio-") as d, tempfile.TemporaryDirectory(prefix="pfy-sponsio-home-") as home:
         Path(d, "sponsio.yaml").write_text(
             f'agents:\n  smoke:\n    workspace: "{d}"\n    include:\n      - sponsio:capability/shell\n')
-        env = dict(os.environ, HOME=home)
+        env = tool_env(home)
         try:
             p = subprocess.run([py, "-c", SPONSIO_PROBE], cwd=d, capture_output=True, text=True,
                                timeout=xintake_timeout(120), env=env)
@@ -143,7 +150,7 @@ def smoke_opensteps(r: dict) -> int:
             return 2
     start, stop = os.path.join(d, "hooks/session-start.sh"), os.path.join(d, "hooks/stop-report.sh")
     with tempfile.TemporaryDirectory(prefix="pfy-opensteps-") as w, tempfile.TemporaryDirectory(prefix="pfy-os-home-") as h:
-        env = dict(os.environ, HOME=h, OPEN_STEPS_COOLDOWN="0")
+        env = tool_env(h, OPEN_STEPS_COOLDOWN="0")
         env.pop("OPEN_STEPS_DISABLE", None)
         g = ["git", "-c", "user.email=smoke@localhost", "-c", "user.name=smoke"]
         run(["git", "init", "-q"], cwd=w)
@@ -212,7 +219,7 @@ def smoke_repoharness(r: dict) -> int:
 
     ours = "# pfy-owned AGENTS.md router (smoke)\n"
     with tempfile.TemporaryDirectory(prefix="pfy-harness-") as d, tempfile.TemporaryDirectory(prefix="pfy-harness-home-") as home:
-        env = dict(os.environ, HOME=home)
+        env = tool_env(home)
 
         def hj(args: list[str], cwd: str) -> dict | None:
             try:
