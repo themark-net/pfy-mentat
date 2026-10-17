@@ -16,6 +16,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+_RECEIPTS: Path | None = None
 ALLOW = {"HOME", "PATH", "TERM", "LANG", "NO_COLOR"}
 # Fake values only. A child that still sees the parent env fails the test.
 SENTINELS = {
@@ -125,6 +126,9 @@ def _parent_env(home: Path) -> dict[str, str]:
     ):
         env.pop(key, None)
     env.update(SENTINELS)
+    if _RECEIPTS is None:
+        raise RuntimeError("PFY_SMOKE_RECEIPT_DIR is unset")
+    env["PFY_SMOKE_RECEIPT_DIR"] = str(_RECEIPTS)
     return env
 
 
@@ -136,7 +140,7 @@ def _run(entry: str, env: dict[str, str]) -> subprocess.CompletedProcess[str]:
 
 
 def _receipt(entry: str) -> dict:
-    path = ROOT / "pipelines" / "smoke" / entry / "latest.json"
+    path = Path(_RECEIPTS) / entry / "latest.json"
     return json.loads(path.read_text(encoding="utf-8"))
 
 
@@ -150,6 +154,16 @@ def _seen(text: str) -> dict[str, str]:
 
 
 class XIntakeSmoke112114Tests(unittest.TestCase):
+    def setUp(self) -> None:
+        global _RECEIPTS
+        self._receipt_tmp = tempfile.TemporaryDirectory(prefix="pfy-xintake-112-receipts-")
+        self.addCleanup(self._receipt_tmp.cleanup)
+        _RECEIPTS = Path(self._receipt_tmp.name)
+
+    def tearDown(self) -> None:
+        global _RECEIPTS
+        _RECEIPTS = None
+
     def test_node_version_and_git_rev_parse_do_not_see_parent_sentinels(self) -> None:
         # Fail: node --version or sloptrim's git rev-parse inherits the parent env, so a planted
         # key is visible or HOME is still the parent HOME.
