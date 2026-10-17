@@ -4,6 +4,7 @@ Parent HOME is a temp dir this test owns so a stub cannot touch the operator's r
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
@@ -236,6 +237,53 @@ class XIntakeSmoke112114Tests(unittest.TestCase):
             receipt = _receipt("overtime")
             self.assertIn("real HOME ~/overtime was created or changed", receipt.get("reason") or "", blob)
             self.assertEqual(left, [], "a forked tool grandchild outlived the smoke timeout")
+
+    def test_overtime_timeout_reason_is_shared_text(self) -> None:
+        # Fail: a timed-out `new` that leaves ~/overtime alone records "timeout after <s>s: <cmd>".
+        # Recover: exit 1 and the receipt reason is exactly "overtime timeout".
+        with tempfile.TemporaryDirectory(prefix="pfy-xintake-112-to-") as td:
+            root = Path(td)
+            home = root / "home"
+            home.mkdir()
+            ot = _overtime_tree(root / "overtime-pkg")
+            node = root / "node-stub"
+            _write_exe(node, "#!/bin/sh\nif [ \"$1\" = --version ]; then echo v22.19.0; exit 0; fi\nsleep 30\n")
+            env = _parent_env(home)
+            env["OVERTIME_DIR"] = str(ot)
+            env["OVERTIME_NODE"] = str(node)
+            env["PFY_XINTAKE_TIMEOUT"] = "0.4"
+            proc = _run("overtime", env)
+            blob = proc.stdout + proc.stderr
+            self.assertNotIn("Traceback", proc.stderr, blob)
+            self.assertEqual(proc.returncode, 1, blob)
+            self.assertFalse((home / "overtime").exists(), blob)
+            self.assertEqual(_receipt("overtime").get("reason"), "overtime timeout", blob)
+
+    def test_festival_timeout_reason_is_shared_text(self) -> None:
+        # Fail: a timed-out fest --version records "timeout after <s>s: <cmd>" from main().
+        # Recover: exit 1 and the receipt reason is exactly "festival timeout".
+        with tempfile.TemporaryDirectory(prefix="pfy-xintake-112-fest-") as td:
+            root = Path(td)
+            home = root / "home"
+            home.mkdir()
+            body = "#!/bin/sh\nsleep 30\n"
+            fest, camp = root / "fest", root / "camp"
+            _write_exe(fest, body)
+            _write_exe(camp, body)
+
+            def digest(path: Path) -> str:
+                return hashlib.sha256(path.read_bytes()).hexdigest()
+
+            env = _parent_env(home)
+            env["FEST_BIN"] = str(fest)
+            env["FEST_SHA256"] = digest(fest)
+            env["CAMP_SHA256"] = digest(camp)
+            env["PFY_XINTAKE_TIMEOUT"] = "0.4"
+            proc = _run("festival", env)
+            blob = proc.stdout + proc.stderr
+            self.assertNotIn("Traceback", proc.stderr, blob)
+            self.assertEqual(proc.returncode, 1, blob)
+            self.assertEqual(_receipt("festival").get("reason"), "festival timeout", blob)
 
     def test_bwrap_probe_drops_paid_keys_and_uses_temp_home(self) -> None:
         # Fail: bwrap_prefix's `bwrap ... true` inherits the parent env, so a planted paid key

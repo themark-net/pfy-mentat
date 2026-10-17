@@ -137,7 +137,9 @@ sleep 60
             self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
             self.assertNotIn("Traceback", p.stderr)
             receipt = json.loads((ROOT / "pipelines/smoke/openqodex/latest.json").read_text(encoding="utf-8"))
-            self.assertIn("timeout", receipt["reason"])
+            # Fail: the receipt uses its own "timeout after <s>s: <cmd>" sentence.
+            # Recover: the reason is the shared timeout_reason text for this entry.
+            self.assertEqual(receipt["reason"], "openqodex timeout", p.stdout + p.stderr)
             self.assertEqual(left, [], "a forked tool grandchild outlived the smoke timeout")
 
     def test_openqodex_home_outside_temp_area_exits_2(self) -> None:
