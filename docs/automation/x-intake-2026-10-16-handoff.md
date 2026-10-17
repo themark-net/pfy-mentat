@@ -22,7 +22,7 @@ On nimo each `python3 examples/x-intake-local/smoke_122_124.py --entry llmrouter
 
 Receipts go to `pipelines/smoke/<entry>/latest.json` (gitignored).
 
-What was checked on the Grok Bot box (all in `/tmp`, temp HOMEs, bubblewrap with no network where it applies): llmrouter PASS (classifier: simple query and code, both confident; `demo` exit 0 with its table; HOME empty); squadra PASS (init, two seats, one task; `doctor` integrity passed with `assign-T1` pending; `status` showed the task; repo clean; HOME empty). Negative paths: no binary or no checkout gives exit 2 for both; `$LLMROUTER_VERSION=9.9` and `$SQUADRA_VERSION=1.0.0` give 2; `PFY_XINTAKE_TIMEOUT=0.001` gives exit 1 with "python version timeout". harnessrouter: no docker gives 2. The harnessrouter happy path has **not** run anywhere (no Docker on the box); its endpoint path and the 401/403 expectation come from the README and may need a fix on first run. `python3 -m py_compile` is clean. `scripts/catalog_check.py` and the unit tests were not run in this slice (no checkout on the box); Tester should run them on the PR head.
+What was checked on the Grok Bot box (all in `/tmp`, temp HOMEs, bubblewrap with no network where it applies): llmrouter PASS (classifier: simple query and code, both confident; `demo` exit 0 with its table; HOME empty); squadra PASS (init, two seats, one task; `doctor` integrity passed with `assign-T1` pending; `status` showed the task; repo clean; HOME empty). Negative paths: no binary or no checkout gives exit 2 for both; `$LLMROUTER_VERSION=9.9` and `$SQUADRA_VERSION=1.0.0` give 2; `PFY_XINTAKE_TIMEOUT=0.001` gives exit 1 with "python version timeout". harnessrouter: no docker gives 2. The harnessrouter happy path has **not** run anywhere (no Docker on the box); its endpoint path and the 401/403 expectation come from the README and may need a fix on first run. `python3 -m py_compile` is clean. `scripts/catalog_check.py` and the unit tests were not run in the first slice; after the Tester fix (below) both were run on nimo in a worktree.
 
 ## Findings worth knowing
 
@@ -51,6 +51,13 @@ What was checked on the Grok Bot box (all in `/tmp`, temp HOMEs, bubblewrap with
 
 SKIPPED: q-agent-harness (no license), Chainloop (SDLC governance platform, heavy), Open Agent Connector, Cindy, Dodaios, Ankole, Dust, GenAssist, TomoriBot (agent clients and platforms off our stack), Index-1.9B (older small model), SGLang (already in TOOLS.md), OpenCode (already cataloged), oneDNN and tt-metal (hardware libraries not aimed at Strix Halo), dsh-plugin-guide (DeepSeek Harness plugins), Reverse Engineering Assistant, PersonaForge, explainroo, Langchain.rb, PolyglotMind, RikkaHub, MockServer, LandPPT, TrendRadar, OpenBiliClaw, Awesome MCP Servers (directory), MOSS Image and its 8-step finetune, the MiniMax H3 character-swap LoRA (image models), Nebula promos, robotics funding, GPU price notes, and news or opinion posts. @tom_doerr's how-to-train-your-gpt guide was left to Mark's weekly tom_doerr automation. One new bookmark (a vibe-coding launch checklist) is opinion, no tool.
 
+## Tester FAIL @ 5a68459 fixed (B1)
+
+- `smoke_122_124.py` now snapshots the real-HOME dirs before llmrouter and squadra run anything and compares them in a `finally` (the smoke_119_121 `watched()` pattern), so `checks["real_home_untouched"]` is recorded and any change FAILs, also on timeout and with bwrap unavailable. Watched dirs, from upstream code: `~/.llm-router` (llm-router state dir and every hook's fallback), `~/.local/state/squadra` (selftest folder) and `~/.cache/squadra` (usage cache). Squadra's other HOME reads (`~/.claude`, `~/.codex`, the plugin store) are only used by `usage`/`plugin` commands, which the smoke does not run.
+- harnessrouter: exits 2 and removes nothing if a `pfy-hr-smoke` container or volume already exists; `volume rm` still runs after a `docker rm` timeout; a cleanup timeout no longer replaces an earlier failure reason (kept as `cleanup_reason`); `$HR_IMAGE` overriding the digest prints a WARN.
+- New `tests/test_x_intake_smoke_122_124.py` (stub programs only).
+- Still not run: the HarnessRouter happy path (no Docker on the box; nimo Docker unconfirmed), and the real llm-router/Squadra smokes on nimo (prereqs not staged there). SIGTERM to the smoke still leaves the container behind.
+
 ## Locks respected
 
 Catalog 70-75 HOLD untouched. Nothing installed or downloaded on nimo. Mark's main checkout and stashes untouched; no pfy-mentat checkout was made (files read through the GitHub connector and raw URLs). No accounts, sign-ins, paid keys or spend. llm-router and Squadra ran only on the Grok Bot box in `/tmp` with temp HOMEs; no model or agent CLI was started.
@@ -61,5 +68,5 @@ Catalog 70-75 HOLD untouched. Nothing installed or downloaded on nimo. Mark's ma
 |------|----------------|----------|
 | Entry numbers collide | Another branch also adds 122-124 | Renumber on rebase; entries are self-contained files |
 | Smoke in CI without prereqs | Exit 2 read as red | Not wired into CI or Make; exit 2 is the honest "can't run here" |
-| llm-router or Squadra writes to the real HOME | `~/.llm-router` or `~/.local/state/squadra` appears on nimo | The smokes FAIL if their temp HOME is written; trials use `--root` and temp HOMEs |
+| llm-router or Squadra writes to the real HOME | `~/.llm-router` or `~/.local/state/squadra` appears on nimo | The smokes snapshot the real `~/.llm-router`, `~/.local/state/squadra` and `~/.cache/squadra` and FAIL (`real_home_untouched`) on any change, also after a timeout and when bwrap is unavailable; they also FAIL if their temp HOME is written. Trials use `--root` and temp HOMEs |
 | HarnessRouter smoke happy path untested | Fails the first time Docker is there | Treat the first run as the real test; fix the smoke in a follow-up |

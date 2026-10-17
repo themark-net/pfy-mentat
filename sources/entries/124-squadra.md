@@ -16,7 +16,7 @@
 
 | Risk | How it fails | Recovery |
 |------|----------------|----------|
-| Registry lands in the real HOME | `~/.local/state/squadra` appears on nimo | Always pass `--root` under `tmp/`; the smoke FAILs if its temp HOME is written |
+| Registry lands in the real HOME | `~/.local/state/squadra` appears on nimo | Always pass `--root` under `tmp/`; the smoke snapshots the real `~/.local/state/squadra` and `~/.cache/squadra` and FAILs if they change (also after a timeout and without bwrap), and FAILs if its temp HOME is written |
 | Two records of truth (GitHub and Squadra) | Gate state drifts | Trial only on one Build session; GitHub stays the gate of record |
 | Python older than 3.12 on the runner | Smoke exits 2 | Use a newer python from a venv under `tmp/` |
 | Upstream moves fast (3.x releases weekly) | Pin goes stale | Bump the pin deliberately after re-running the smoke |

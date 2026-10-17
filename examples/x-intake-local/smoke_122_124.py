@@ -10,6 +10,9 @@ through `run_isolated` in smoke.py (fresh temp HOME, env limited to PATH/HOME/TE
 named below; nothing copied from this process, so no provider key is ever seen; a timeout SIGKILLs the process
 group). No smoke calls a model, adds a provider key or starts an agent CLI.
 PFY_XINTAKE_TIMEOUT (float seconds, > 0) overrides the 600s per-command timeout.
+Real HOME: llmrouter and squadra snapshot the real-HOME dirs the tool writes by default (~/.llm-router;
+~/.local/state/squadra and ~/.cache/squadra) and compare them in a finally, also on timeout:
+checks.real_home_untouched, and any change FAILs (exit 1), even when bwrap is unavailable.
 
   llmrouter      $LLMROUTER_BIN, then ~/DEVELOP/pfy-mentat/tmp/llm-router/.venv/bin/llm-router (a venv with
                  `pip install llm-routing==15.4.0`), then PATH. The package version, read with the python next to
@@ -20,8 +23,8 @@ PFY_XINTAKE_TIMEOUT (float seconds, > 0) overrides the 600s per-command timeout.
                  empty (no ~/.llm-router written). `install` is never run, so no host config or hook is touched.
   harnessrouter  Needs docker ($DOCKER_BIN, ~/DEVELOP/pfy-mentat/tmp/docker/docker, or PATH); exit 2 without it, or
                  if 127.0.0.1:$HR_SMOKE_PORT (default 3917) already answers. Runs the image pinned by digest
-                 ($HR_IMAGE overrides) as container "pfy-hr-smoke" with volume "pfy-hr-smoke" bound to that loopback
-                 port only, waits for the Console to answer (< 500), then POST /api/harness/v1/responses with no key
+                 ($HR_IMAGE overrides, with a WARN) as container "pfy-hr-smoke" with volume "pfy-hr-smoke" bound to that loopback
+                 port only (exit 2, removing nothing, if that container or volume already exists), waits for the Console to answer (< 500), then POST /api/harness/v1/responses with no key
                  must be refused (401 or 403). Always removes the container and the volume after. No provider key,
                  no CE API key, no task. For a non-default socket set $HR_DOCKER_HOST.
   squadra        $SQUADRA_DIR, then ~/DEVELOP/pfy-mentat/tmp/squadra: a checkout of dagoSte/squadra at tag v3.10.1
@@ -34,6 +37,7 @@ PFY_XINTAKE_TIMEOUT (float seconds, > 0) overrides the 600s per-command timeout.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import shutil
@@ -60,6 +64,46 @@ def tmo() -> float:
         return v if v > 0 else 600.0
     except ValueError:
         return 600.0
+
+
+# Real-HOME dirs each tool writes by default (read from upstream source): llm-router's state dir (paths.py
+# llm_router_home, every hook's fallback ~/.llm-router); Squadra's selftest folder (selftest.py
+# ~/.local/state/squadra) and usage cache (usage_cache.py ~/.cache/squadra). HarnessRouter runs in Docker only.
+WATCH = {"llmrouter": (".llm-router",),
+         "squadra": (".local/state/squadra", ".cache/squadra")}
+
+
+def tree_sig(p: Path) -> str | None:
+    if not p.exists():
+        return None
+    h = hashlib.sha256()
+    for f in sorted(p.rglob("*")):
+        try:
+            st = f.stat()
+            h.update(f"{f}:{st.st_size}:{st.st_mtime_ns}".encode())
+        except OSError:
+            pass
+    return h.hexdigest()
+
+
+def watched(entry: str, body, r: dict) -> int:
+    """Run body(r, checks) with the real HOME watched. The finally runs on timeout too, so the receipt keeps the
+    partial checks and real_home_untouched (the smoke_119_121 pattern); any change FAILs."""
+    real_home = Path.home()
+    before = {d: tree_sig(real_home / d) for d in WATCH[entry]}
+    checks: dict[str, bool] = {}
+    try:
+        code = body(r, checks)
+    finally:
+        after = {d: tree_sig(real_home / d) for d in WATCH[entry]}
+        checks["real_home_untouched"] = before == after
+        r["checks"] = checks
+    if code is not None:
+        if not checks["real_home_untouched"]:
+            r["reason"] = f"{r.get('reason', '')}; real HOME {', '.join('~/' + d for d in WATCH[entry])} changed"
+            return 1
+        return code
+    return finish(r, checks, r.pop("_ok_reason"))
 
 
 def iso(argv: list[str], tag: str, **kw) -> subprocess.CompletedProcess:
@@ -102,8 +146,11 @@ def smoke_llmrouter(r: dict) -> int:
     if not os.access(py, os.X_OK):
         r["reason"] = f"no python next to {b}, so the package version can't be checked"
         return 2
+    return watched("llmrouter", lambda rr, checks: _llmrouter(rr, b, py, checks), r)
+
+
+def _llmrouter(r: dict, b: str, py: Path, checks: dict) -> int | None:
     want = pinned(r, "LLMROUTER_VERSION", LR_PIN)
-    checks: dict[str, bool] = {}
     with tempfile.TemporaryDirectory(prefix="pfy-llmrouter-") as td:
         home = Path(td, "home")
         home.mkdir()
@@ -130,7 +177,9 @@ def smoke_llmrouter(r: dict) -> int:
         checks["demo_exit_0"] = d.returncode == 0
         checks["demo_prints_table"] = "Complexity" in out and "Model" in out
         checks["home_untouched"] = not any(home.iterdir())
-    return finish(r, checks, "offline classifier and demo ran with no key or network; nothing written to HOME")
+    r["_ok_reason"] = ("offline classifier and demo ran with no key or network; temp HOME stayed empty and the real "
+                       "~/.llm-router was unchanged")
+    return None
 
 
 def http(method: str, url: str, body: bytes | None = None, headers: dict | None = None) -> int:
@@ -149,7 +198,7 @@ def smoke_harnessrouter(r: dict) -> int:
     if not docker:
         r["reason"] = "docker is not available (HarnessRouter CE ships only as a Docker image)"
         return 2
-    image = os.environ.get("HR_IMAGE") or HR_IMAGE
+    image = pinned(r, "HR_IMAGE", HR_IMAGE)  # WARNs on stderr when $HR_IMAGE overrides the digest
     r["image"] = image
     try:
         port = int(os.environ.get("HR_SMOKE_PORT", "3917"))
@@ -174,6 +223,13 @@ def smoke_harnessrouter(r: dict) -> int:
         if dk("version", "--format", "{{.Server.Version}}", tag="docker version").returncode != 0:
             r["reason"] = "the docker daemon is not reachable"
             return 2
+        # never adopt or delete someone else's container or volume
+        if dk("container", "inspect", "pfy-hr-smoke", tag="docker container inspect").returncode == 0:
+            r["reason"] = "a container named pfy-hr-smoke already exists; remove it yourself (nothing was removed)"
+            return 2
+        if dk("volume", "inspect", "pfy-hr-smoke", tag="docker volume inspect").returncode == 0:
+            r["reason"] = "a volume named pfy-hr-smoke already exists; remove it yourself (nothing was removed)"
+            return 2
         try:
             up = dk("run", "-d", "--name", "pfy-hr-smoke", "-p", f"127.0.0.1:{port}:3000",
                     "-v", "pfy-hr-smoke:/data", image, tag="docker run")
@@ -195,8 +251,18 @@ def smoke_harnessrouter(r: dict) -> int:
             r["responses_status_no_key"] = nk
             checks["api_refuses_no_key"] = nk in (401, 403)
         finally:
-            r["rm_rc"] = dk("rm", "-f", "pfy-hr-smoke", tag="docker rm").returncode
-            r["volume_rm_rc"] = dk("volume", "rm", "-f", "pfy-hr-smoke", tag="docker volume rm").returncode
+            r["checks"] = checks  # partial checks survive a timeout
+            # each cleanup step runs even if the one before timed out; a cleanup timeout never replaces an
+            # earlier failure reason (it is kept in cleanup_reason)
+            for key, args, tag in (("rm_rc", ("rm", "-f", "pfy-hr-smoke"), "docker rm"),
+                                   ("volume_rm_rc", ("volume", "rm", "-f", "pfy-hr-smoke"), "docker volume rm")):
+                try:
+                    r[key] = dk(*args, tag=tag).returncode
+                except TimeoutError as e:
+                    r[key] = None
+                    r.setdefault("cleanup_reason", str(e))
+        if r.get("cleanup_reason"):
+            raise TimeoutError(r["cleanup_reason"])
     return finish(r, checks, "pinned CE image came up on loopback and refused a keyless API call; removed after")
 
 
@@ -212,8 +278,11 @@ def smoke_squadra(r: dict) -> int:
     if not py or not git:
         r["reason"] = "python3 or git not found in /usr/local/bin:/usr/bin:/bin"
         return 2
+    return watched("squadra", lambda rr, checks: _squadra(rr, script, py, git, checks), r)
+
+
+def _squadra(r: dict, script: Path, py: str, git: str, checks: dict) -> int | None:
     want = pinned(r, "SQUADRA_VERSION", SQ_PIN)
-    checks: dict[str, bool] = {}
     with tempfile.TemporaryDirectory(prefix="pfy-squadra-") as td:
         home, proj, reg = Path(td, "home"), Path(td, "proj"), Path(td, "reg")
         home.mkdir()
@@ -252,7 +321,7 @@ def smoke_squadra(r: dict) -> int:
             checks[f"{name}_exit_0"] = s.returncode == 0
             if s.returncode != 0:
                 r[f"{name}_tail"] = (s.stdout + s.stderr).strip().splitlines()[-4:]
-                return finish(r, checks, "")
+                return None
         doc = iso(sq + ["doctor"] + root, "squadra doctor", **kw)
         try:
             dj = json.loads(doc.stdout)
@@ -266,7 +335,9 @@ def smoke_squadra(r: dict) -> int:
         cl = iso([git, "-C", str(proj), "status", "--porcelain"], "git status", **kw)
         checks["project_repo_clean"] = cl.returncode == 0 and cl.stdout.strip() == ""
         checks["home_untouched"] = not any(home.iterdir())
-    return finish(r, checks, "registry, two seats and a task recorded locally; integrity passed; repo and HOME untouched")
+    r["_ok_reason"] = ("registry, two seats and a task recorded locally; integrity passed; project repo clean, temp "
+                       "HOME empty, real ~/.local/state/squadra and ~/.cache/squadra unchanged")
+    return None
 
 
 def main() -> int:
@@ -279,7 +350,10 @@ def main() -> int:
     try:
         code = fn(receipt)
     except TimeoutError as e:
+        receipt.pop("_ok_reason", None)
         receipt["reason"] = str(e)
+        if receipt.get("checks", {}).get("real_home_untouched") is False:
+            receipt["reason"] += f"; real HOME {', '.join('~/' + d for d in WATCH.get(a.entry, ()))} changed"
         code = 1
     return write(a.entry, receipt, code)
 
