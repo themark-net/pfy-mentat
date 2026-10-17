@@ -212,8 +212,8 @@ def smoke_overtime(r: dict) -> int:
                 try:
                     p = sh(ot + ["daemon", "stop"], home=home_s, path=path)
                     steps.append({"daemon_stop": p.returncode})
-                except subprocess.TimeoutExpired:
-                    steps.append({"daemon_stop": timeout_reason("overtime daemon stop")})
+                except subprocess.TimeoutExpired as e:
+                    steps.append({"daemon_stop": timeout_reason("overtime daemon stop", float(e.timeout))})
                 time.sleep(1)
             lock = home / "overtime/overtimed.lock"
             alive = False
@@ -234,7 +234,7 @@ def smoke_overtime(r: dict) -> int:
         r["reason"] = "real HOME ~/overtime was created or changed"
         return 1
     if timed_out is not None:
-        r["reason"] = timeout_reason("overtime")
+        r["reason"] = timeout_reason("overtime", float(timed_out.timeout))
         return 1
     r["reason"] = "agent created, listed, budget/protect set and shown, no session run, daemon stopped, real HOME untouched"
     return 0
@@ -375,8 +375,8 @@ def main() -> int:
     fn = {"overtime": smoke_overtime, "festival": smoke_festival, "sloptrim": smoke_sloptrim}[a.entry]
     try:
         code = fn(receipt)
-    except subprocess.TimeoutExpired:
-        receipt["reason"] = timeout_reason(a.entry)
+    except subprocess.TimeoutExpired as e:
+        receipt["reason"] = timeout_reason(a.entry, float(e.timeout))
         code = 1
     return write(a.entry, receipt, code)
 

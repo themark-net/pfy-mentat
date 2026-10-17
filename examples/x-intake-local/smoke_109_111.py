@@ -114,8 +114,9 @@ def call(cmd: list[str], cwd: str, env: dict, r: dict, tag: str, timeout: float 
     """Run cmd in its own session; on timeout SIGKILL the whole process group, not just the direct child."""
     proc = subprocess.Popen(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env,
                             start_new_session=True)
+    limit = xintake_timeout(timeout)
     try:
-        out, err = proc.communicate(timeout=xintake_timeout(timeout))
+        out, err = proc.communicate(timeout=limit)
     except subprocess.TimeoutExpired:
         try:
             os.killpg(proc.pid, signal.SIGKILL)
@@ -126,7 +127,7 @@ def call(cmd: list[str], cwd: str, env: dict, r: dict, tag: str, timeout: float 
         except subprocess.TimeoutExpired:  # a descendant that left the group still holds the pipes
             proc.kill()
             proc.wait()
-        r["reason"] = timeout_reason(tag)
+        r["reason"] = timeout_reason(tag, limit)
         return None
     return subprocess.CompletedProcess(cmd, proc.returncode, out, err)
 

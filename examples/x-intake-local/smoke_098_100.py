@@ -104,11 +104,12 @@ def smoke_sponsio(r: dict) -> int:
         Path(d, "sponsio.yaml").write_text(
             f'agents:\n  smoke:\n    workspace: "{d}"\n    include:\n      - sponsio:capability/shell\n')
         env = tool_env(home)
+        limit = xintake_timeout(120)
         try:
             p = subprocess.run([py, "-c", SPONSIO_PROBE], cwd=d, capture_output=True, text=True,
-                               timeout=xintake_timeout(120), env=env)
+                               timeout=limit, env=env)
         except subprocess.TimeoutExpired:
-            r["reason"] = timeout_reason("sponsio probe")
+            r["reason"] = timeout_reason("sponsio probe", limit)
             return 1
     line = next((ln for ln in p.stdout.splitlines() if ln.startswith("PFY_JSON ")), None)
     if not line:
@@ -160,11 +161,12 @@ def smoke_opensteps(r: dict) -> int:
         payload = json.dumps({"session_id": "pfy-smoke-1", "cwd": w})
 
         def hook(path: str) -> subprocess.CompletedProcess | None:
+            limit = xintake_timeout(60)
             try:
                 return subprocess.run(["bash", path], cwd=w, input=payload, capture_output=True, text=True,
-                                      timeout=xintake_timeout(60), env=env)
+                                      timeout=limit, env=env)
             except subprocess.TimeoutExpired:
-                r["reason"] = timeout_reason("opensteps hook")
+                r["reason"] = timeout_reason("opensteps hook", limit)
                 return None
 
         started = hook(start)
@@ -223,10 +225,11 @@ def smoke_repoharness(r: dict) -> int:
 
         def hj(args: list[str], cwd: str) -> dict | None:
             try:
+                limit = xintake_timeout(120)
                 p = subprocess.run([b] + args + ["--json"], cwd=cwd, capture_output=True, text=True,
-                                   timeout=xintake_timeout(120), env=env)
+                                   timeout=limit, env=env)
             except subprocess.TimeoutExpired:
-                r["reason"] = timeout_reason("repoharness")
+                r["reason"] = timeout_reason("repoharness", limit)
                 return None
             try:
                 return json.loads(p.stdout)

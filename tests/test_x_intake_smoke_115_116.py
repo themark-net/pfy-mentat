@@ -158,7 +158,7 @@ sleep 60
             receipt = _receipt("openqodex")
             # Fail: the receipt uses its own "timeout after <s>s: <cmd>" sentence.
             # Recover: the reason is the shared timeout_reason text for this entry.
-            self.assertEqual(receipt["reason"], "openqodex timeout", p.stdout + p.stderr)
+            self.assertEqual(receipt["reason"], "openqodex timeout after 1s", p.stdout + p.stderr)
             self.assertEqual(left, [], "a forked tool grandchild outlived the smoke timeout")
 
     def test_openqodex_home_outside_temp_area_exits_2(self) -> None:

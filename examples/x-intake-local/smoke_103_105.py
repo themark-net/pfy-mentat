@@ -173,11 +173,12 @@ def smoke_bugpatrol(r: dict) -> int:
                             PATH=os.path.dirname(node) + os.pathsep + os.environ.get("PATH", ""))
 
             def explore() -> subprocess.CompletedProcess | None:
+                limit = xintake_timeout(120)
                 try:
                     return subprocess.run([node, js, "explore", "--steps", "2"], cwd=d, capture_output=True,
-                                          text=True, timeout=xintake_timeout(120), env=env)
+                                          text=True, timeout=limit, env=env)
                 except subprocess.TimeoutExpired:
-                    r["reason"] = timeout_reason("bugpatrol explore")
+                    r["reason"] = timeout_reason("bugpatrol explore", limit)
                     return None
 
             Path(d, ".bugpatrol/bugpatrol.yml").write_text(cfg(False))

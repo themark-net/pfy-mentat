@@ -305,8 +305,8 @@ def main() -> int:
     fn = {"openqodex": smoke_openqodex, "assay": smoke_assay}[a.entry]
     try:
         code = fn(receipt)
-    except subprocess.TimeoutExpired:
-        receipt["reason"] = timeout_reason(a.entry)
+    except subprocess.TimeoutExpired as e:
+        receipt["reason"] = timeout_reason(a.entry, float(e.timeout))
         code = 1
     return write(a.entry, receipt, code)
 

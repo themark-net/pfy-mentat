@@ -167,9 +167,9 @@ def kernel_at_least(major: int, minor: int) -> bool:
         return False
 
 
-def timeout_reason(tag: str) -> str:
+def timeout_reason(step: str, seconds: float) -> str:
     """The only timeout reason text an x-intake smoke records."""
-    return f"{tag} timeout"
+    return f"{step} timeout after {seconds:g}s"
 
 
 def pinned(r: dict, var: str, pin: str, lower: bool = False) -> str:
@@ -245,7 +245,7 @@ def smoke_sandlock(r: dict) -> int:
         try:
             p = run(cmd, timeout=60)
         except subprocess.TimeoutExpired:
-            r["reason"] = timeout_reason("sandlock run")
+            r["reason"] = timeout_reason("sandlock run", 60)
             return 1
         r["output"] = (p.stdout + p.stderr)[-600:]
         allowed, leaked = (ok / "a").exists(), (no / "b").exists()

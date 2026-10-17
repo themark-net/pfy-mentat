@@ -239,8 +239,8 @@ class XIntakeSmoke098100Tests(unittest.TestCase):
                     self.assertEqual(got.get("pin"), HARNESS_V010_SHA256, blob)
 
     def test_b_sponsio_timeout_reason_is_exact(self) -> None:
-        # Fail: the probe timeout is a traceback, or the reason is not exactly "sponsio probe timeout".
-        # Recover: exit 1, no traceback, receipt reason is that string.
+        # Fail: the probe timeout is a traceback, or the reason omits the step or the seconds.
+        # Recover: exit 1, no traceback, receipt reason is "sponsio probe timeout after 0.2s".
         with tempfile.TemporaryDirectory(prefix="pfy-xintake-sp-") as td:
             root = Path(td)
             home = root / "home"
@@ -254,7 +254,7 @@ class XIntakeSmoke098100Tests(unittest.TestCase):
             blob = proc.stdout + proc.stderr
             self.assertEqual(proc.returncode, 1, blob)
             self.assertNotIn("Traceback", proc.stderr)
-            self.assertEqual(self._receipt("sponsio").get("reason"), "sponsio probe timeout", blob)
+            self.assertEqual(self._receipt("sponsio").get("reason"), "sponsio probe timeout after 0.2s", blob)
 
     def _paid_parent_env(self, home: Path) -> dict[str, str]:
         env = self._base_env(home)

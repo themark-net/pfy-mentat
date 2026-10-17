@@ -113,8 +113,8 @@ def guarded(entry: str, body, r: dict) -> int:
 def iso(argv: list[str], tag: str, **kw) -> subprocess.CompletedProcess:
     try:
         return run_isolated(argv, timeout=tmo(), **kw)
-    except subprocess.TimeoutExpired:
-        raise TimeoutError(timeout_reason(tag))
+    except subprocess.TimeoutExpired as e:
+        raise TimeoutError(timeout_reason(tag, float(e.timeout)))
 
 
 def finish(r: dict, checks: dict, ok_reason: str) -> int:

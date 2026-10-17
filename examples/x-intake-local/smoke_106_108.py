@@ -105,9 +105,10 @@ def find_node(env_var: str, tmp_rel: str, minimum: int) -> str | None:
 
 def call(cmd: list[str], cwd: str, env: dict, r: dict, tag: str) -> subprocess.CompletedProcess | None:
     try:
-        return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=xintake_timeout(120), env=env)
+        limit = xintake_timeout(120)
+        return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=limit, env=env)
     except subprocess.TimeoutExpired:
-        r["reason"] = timeout_reason(tag)
+        r["reason"] = timeout_reason(tag, limit)
         return None
 
 
