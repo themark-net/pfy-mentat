@@ -85,3 +85,6 @@ Exit: DONE. Item 1 was not skipped.
   2. overtime still PASSes "daemon stopped" when `daemon stop` times out and no `overtimed.lock` exists (this predates the PR);
   3. other smoke tests still write ignored receipts into the repo's `pipelines/smoke` (103_111_receipts writes 9, 117_118 writes 2, 098_100 and 119_121 write 3 each);
   4. the smolvm evidence check also accepts a guest-stdout `Caching image <16hex>` line. Anchoring evidence to stderr `Pulling image <ref>` would close that (low risk; the guest runs the smoke's own script).
+- After Build: normal merge of origin/main `7b6054a` (#302, catalog 125-127) as `1cb2e1c`, no conflicts. Full suite on nimo at the merge: Ran 379 tests in 115.438s OK (skipped=4). catalog_check PASS, no_encoded_payloads PASS.
+- Independent re-check of the mutants on nimo (bytecode off, restored afterwards): M21 -> test_g FAILED; M19a -> test_a, b, d, f, i FAILED; M26 -> 103 graphjin, 106 cassmemory, 109 test_i, 098 test_f FAILED; M28 -> 103 graphjin and 106 cassmemory FAILED. Unmutated: 42 tests OK.
+- Note: Python `splitlines()` also splits on `\r`, so for upstream's redraw stream the recorded `image_evidence` is the first segment, `Pulling image <ref>...`, not `... done.`. The check (needle = `Pulling image <ref>`) is the same either way.
