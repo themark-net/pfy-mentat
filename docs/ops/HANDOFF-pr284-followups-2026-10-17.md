@@ -5,7 +5,8 @@ Exit: DONE.
 Branch: `build/pr284-followups`
 Base: `origin/main` `0d574f0649ccfe5bdd5d5384786c74173fb6e41e`
 Code head (item 12): `faa62e6`
-Final head: the tip of `build/pr284-followups` after this handoff commit (parent `faa62e6`).
+Handoff commit: `4c673ac579a2e5bff3188f26aa415ec15151cffa`
+Final head: the stamp commit whose parent is `4c673ac` (this line is the only change in that commit).
 Compare: https://github.com/themark-net/pfy-mentat/compare/main...build/pr284-followups
 No pull request.
 

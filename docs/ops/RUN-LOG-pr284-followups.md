@@ -65,4 +65,4 @@ Every distinct `run:` step of `.github/workflows/eval-structural.yml`, once (the
 ## Exit
 
 STOPPED_EXIT: none. Exit: DONE. Skip streak 0. No STOP file. Wall clock from 2026-10-17T12:24:43-07:00, finished the same afternoon, under the 6h cap.
-Code head: faa62e6. The docs commit that adds the handoff is the branch tip; its SHA is written in the handoff.
+Code head: faa62e6. Handoff commit: 4c673ac. The stamp commit (child of 4c673ac) is the branch tip.
