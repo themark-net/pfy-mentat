@@ -23,7 +23,9 @@ created or modified. The receipt records which mode ran (`containment`).
            (no --net, no mounts) must print a marker, report a guest kernel different from the host's, and not
            see a host sentinel file; the sentinel must be unchanged afterwards and the real HOME's
            ~/.cache/smolvm and ~/.local/share/smolvm must not be created or modified. The image is pulled from
-           Docker Hub by the host ($SMOLVM_IMAGE overrides `alpine`). SMOLVM_CHECKPOINT=1 adds checkpoint and
+           Docker Hub by the host ($SMOLVM_IMAGE overrides `alpine`). The receipt records that ref as `image` and
+           `image_digest` (the first `sha256:` plus 64 hex digits in the run output). A passing run with no
+           digest FAILs. SMOLVM_CHECKPOINT=1 adds checkpoint and
            rewind: write gen1 in a persistent machine, `machine checkpoint`, write gen2, `machine create --from`
            the checkpoint, and the restored machine must read gen1 while the source reads gen2; both machines
            are deleted afterwards. Never uses the curl | bash installer.
@@ -54,6 +56,7 @@ import hashlib
 import json
 import os
 import platform
+import re
 import shutil
 import signal
 import subprocess
@@ -214,8 +217,14 @@ def smoke_smolvm(r: dict) -> int:
             return 1
         lines = p.stdout.splitlines()
         r["run_rc"], r["run_stdout"] = p.returncode, lines[-10:]
+        found = re.search(r"sha256:[0-9a-fA-F]{64}", (p.stdout or "") + "\n" + (p.stderr or ""))
+        if found:
+            r["image_digest"] = found.group(0).lower()
         if p.returncode != 0 or "pfy-smolvm-ok" not in lines:
             r["reason"] = f"`machine run` failed (exit {p.returncode}): {(p.stdout + p.stderr)[-400:]}"
+            return 1
+        if "image_digest" not in r:
+            r["reason"] = "machine run did not report an image digest (sha256 and 64 hex)"
             return 1
         guest_kernel = lines[lines.index("pfy-smolvm-ok") + 1] if lines.index("pfy-smolvm-ok") + 1 < len(lines) else ""
         r["guest_kernel"], r["host_kernel"] = guest_kernel, platform.release()

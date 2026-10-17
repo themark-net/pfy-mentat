@@ -5,6 +5,7 @@ Receipts go to PFY_SMOKE_RECEIPT_DIR, never pipelines/smoke in the repo.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
@@ -246,6 +247,58 @@ class XIntakeSmoke109111Tests(unittest.TestCase):
             self.assertIn("--unshare-pid", text)
             self.assertNotIn(str(stub), text, "tool command was still wrapped after the probe failed")
             self._assert_repo_smoke_unchanged(before)
+
+    def test_smolvm_receipt_records_image_ref_and_digest(self) -> None:
+        # Fail: machine run's receipt omits the image ref or the sha256 the tool printed.
+        # Recover: image is alpine unless $SMOLVM_IMAGE is set, and image_digest is that sha256.
+        # Without /dev/kvm the smoke exits 2 before machine run, so this host cannot show the field.
+        if not (os.path.exists("/dev/kvm") and os.access("/dev/kvm", os.R_OK | os.W_OK)):
+            self.skipTest("/dev/kvm is not read/write, so machine run is not reached")
+        alpine = "sha256:" + ("ab" * 32)
+        pinned = "sha256:" + ("cd" * 32)
+        stub_body = (
+            "#!/usr/bin/env python3\n"
+            "import sys\n"
+            "args = sys.argv[1:]\n"
+            "if args[:2] == ['machine', 'run']:\n"
+            "    image = args[args.index('--image') + 1]\n"
+            "    digest = %r if image == 'alpine' else %r\n"
+            "    sys.stderr.write('resolved ' + image + '@' + digest + '\\n')\n"
+            "    print('pfy-smolvm-ok')\n"
+            "    print('6.6.0-guest')\n"
+            "    print('host-hidden')\n"
+            "    raise SystemExit(0)\n"
+            "sys.stderr.write('unhandled\\n')\n"
+            "raise SystemExit(2)\n"
+        ) % (alpine, pinned)
+        with tempfile.TemporaryDirectory(prefix="pfy-xintake-smolvm-") as td:
+            root = Path(td)
+            home = root / "home"
+            home.mkdir()
+            stub = root / "smolvm"
+            _write_exe(stub, stub_body)
+            digest = hashlib.sha256(stub.read_bytes()).hexdigest()
+            for override, expect_image, expect_digest in (
+                (None, "alpine", alpine),
+                ("alpine:3.19", "alpine:3.19", pinned),
+            ):
+                with self.subTest(image=expect_image):
+                    receipts = root / ("receipts-" + expect_image.replace(":", "-"))
+                    env = {k: v for k, v in os.environ.items() if not k.startswith("SMOLVM_")}
+                    env.update(HOME=str(home), SMOLVM_BIN=str(stub), SMOLVM_SHA256=digest,
+                               PFY_SMOKE_RECEIPT_DIR=str(receipts))
+                    if override:
+                        env["SMOLVM_IMAGE"] = override
+                    before = _smoke_tree_sig()
+                    proc = subprocess.run(
+                        [sys.executable, "examples/x-intake-local/smoke_109_111.py", "--entry", "smolvm"],
+                        cwd=str(ROOT), env=env, capture_output=True, text=True, timeout=60,
+                    )
+                    self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+                    receipt = json.loads((receipts / "smolvm" / "latest.json").read_text(encoding="utf-8"))
+                    self.assertEqual(receipt.get("image"), expect_image)
+                    self.assertEqual(receipt.get("image_digest"), expect_digest)
+                    self._assert_repo_smoke_unchanged(before)
 
 
 if __name__ == "__main__":
