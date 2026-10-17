@@ -103,7 +103,7 @@ def watched(entry: str, body, r: dict) -> int:
             r["reason"] = f"{r.get('reason', '')}; real HOME {', '.join('~/' + d for d in WATCH[entry])} changed"
             return 1
         return code
-    return finish(r, checks, r.pop("_ok_reason"))
+    return finish(r, checks, r.pop("_ok_reason", ""))  # a step that failed early never set it
 
 
 def iso(argv: list[str], tag: str, **kw) -> subprocess.CompletedProcess:
@@ -354,6 +354,10 @@ def main() -> int:
         receipt["reason"] = str(e)
         if receipt.get("checks", {}).get("real_home_untouched") is False:
             receipt["reason"] += f"; real HOME {', '.join('~/' + d for d in WATCH.get(a.entry, ()))} changed"
+        code = 1
+    except Exception as e:  # any other crash still writes a FAIL receipt (checks were saved by watched()'s finally)
+        receipt.pop("_ok_reason", None)
+        receipt["reason"] = f"unexpected {type(e).__name__}: {e}"
         code = 1
     return write(a.entry, receipt, code)
 

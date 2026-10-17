@@ -167,6 +167,26 @@ def _squadra_py(version: str, plant: Path | None) -> str:
     return "\n".join(lines)
 
 
+def _squadra_failing_py(step: str) -> str:
+    """Prints 3.10.1 for --version and exits 3 on the named step (init, agent_coordinator, agent_builder, task)."""
+    return "\n".join([
+        "import sys",
+        "args = sys.argv[1:]",
+        "cmd = args[0] if args else ''",
+        "if cmd == '--version':",
+        "    print('3.10.1')",
+        "    raise SystemExit(0)",
+        "step = cmd",
+        "if cmd == 'agent':",
+        "    step = 'agent_' + args[args.index('--role') + 1]",
+        f"if step == {step!r}:",
+        "    print('boom', file=sys.stderr)",
+        "    raise SystemExit(3)",
+        "raise SystemExit(0)",
+        "",
+    ])
+
+
 def _squadra_tree(root: Path, body: str) -> Path:
     script = root / "scripts" / "squadra.py"
     script.parent.mkdir(parents=True, exist_ok=True)
@@ -278,6 +298,29 @@ class XIntakeSmoke122124Tests(unittest.TestCase):
             self.assertEqual(proc.returncode, 2, proc.stdout + proc.stderr)
             _no_tb(self, proc)
             self.assertIn("0.0.1", _receipt("squadra")["reason"])
+
+    def test_squadra_failed_step_writes_fresh_fail_receipt(self) -> None:
+        _skip_unless_py312(self)
+        receipt = ROOT / "pipelines/smoke/squadra/latest.json"
+        for step in ("init", "agent_coordinator", "agent_builder", "task"):
+            with self.subTest(step=step), tempfile.TemporaryDirectory(prefix="pfy-xintake-124-") as td:
+                home = Path(td, "home")
+                home.mkdir()
+                empty = Path(td, "emptybin")
+                empty.mkdir()
+                receipt.parent.mkdir(parents=True, exist_ok=True)
+                receipt.write_text(json.dumps({"entry": "squadra", "verdict": "PASS", "reason": "stale"}),
+                                   encoding="utf-8")
+                repo = _squadra_tree(Path(td, "squadra"), _squadra_failing_py(step))
+                proc = _run("squadra", _env(home, PATH=str(empty), SQUADRA_DIR=str(repo)))
+                self.assertEqual(proc.returncode, 1, proc.stdout + proc.stderr)
+                _no_tb(self, proc)
+                got = _receipt("squadra")
+                self.assertEqual(got["verdict"], "FAIL", got)
+                self.assertNotEqual(got.get("reason"), "stale", got)
+                self.assertIs(got["checks"][f"{step}_exit_0"], False, got)
+                self.assertIs(got["checks"]["real_home_untouched"], True, got)
+                self.assertIn(f"{step}_exit_0", got["reason"], got)
 
     def test_squadra_real_home_write_fails(self) -> None:
         _skip_unless_py312(self)
