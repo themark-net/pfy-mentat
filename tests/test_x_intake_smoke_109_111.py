@@ -20,8 +20,20 @@ ROOT = Path(__file__).resolve().parents[1]
 SMOLVM_PIN = "alpine:3.22@sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8"
 SMOLVM_PIN_DIGEST = "sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8"
 
-# Upstream smolvm v1.26.1 text: pull on stderr, cache line on stdout, no resolved @sha256 line.
-# PFY_SMOLVM_STUB_MODE=no-evidence prints neither. guest-blob also echoes a guest sha256.
+# Upstream smolvm v1.26.1 (093852e8), checked in source:
+# A plain `machine run --image <ref>` calls pull_with_progress on every run
+# (src/cli/machine.rs:2010), not only the first. pull_with_progress
+# (src/cli/mod.rs:172-214) writes stderr only, in order:
+#   1. eprint!("Pulling image {ref}...") with no newline
+#   2. progress redraws "\rPulling image {ref}... [" + 20 chars of =/>/space + "] {pct}%"
+#   3. optionally "\rPulling image {ref}... [====================] 100% — syncing..."
+#   4. eprintln!("\rPulling image {ref}... done." + 30 spaces)
+# "Caching image <16hex> (one-time; reused on later runs)" and
+# "Using cached image <16hex> (host cache hit; no pull)" are stdout from
+# ensure_init_layer (machine.rs:1068/1082), gated by init or --oci-cache
+# (machine.rs:1570). The smoke's plain command never prints them.
+# PFY_SMOLVM_STUB_MODE=no-evidence prints neither. guest-blob also echoes a
+# guest sha256. wrong-ref names alpine:3.21@sha256: + 64 a's instead of --image.
 SMOLVM_STUB = r'''#!/usr/bin/env python3
 import os, sys
 from pathlib import Path
@@ -34,9 +46,24 @@ mode = os.environ.get("PFY_SMOLVM_STUB_MODE", "")
 count_path = Path(__file__).resolve().parent / "smolvm-runs"
 n = int(count_path.read_text() or "0") + 1 if count_path.exists() else 1
 count_path.write_text(str(n))
-if mode != "no-evidence":
+
+def pull(ref):
+    err = sys.stderr
+    err.write("Pulling image " + ref + "...")
+    err.write("\rPulling image " + ref + "... [=====>              ] 25%")
+    err.write("\rPulling image " + ref + "... [===========>        ] 60%")
+    err.write("\rPulling image " + ref + "... [====================] 100% — syncing...")
+    err.write("\rPulling image " + ref + "... done." + (" " * 30) + "\n")
+    err.flush()
+
+if mode == "no-evidence":
+    pass
+elif mode == "wrong-ref":
+    pull("alpine:3.21@sha256:" + ("a" * 64))
+else:
+    pull(image)
+if "--oci-cache" in args and mode != "no-evidence":
     if n == 1:
-        sys.stderr.write("Pulling image " + image + "... done.\n")
         print("Caching image 0123456789abcdef (one-time; reused on later runs)")
     else:
         print("Using cached image 0123456789abcdef (host cache hit; no pull)")
@@ -317,7 +344,9 @@ class XIntakeSmoke109111Tests(unittest.TestCase):
             self.assertEqual(receipt.get("image"), SMOLVM_PIN, blob)
             self.assertEqual(receipt.get("image_digest"), SMOLVM_PIN_DIGEST, blob)
             self.assertEqual(receipt.get("image_digest_source"), "pin", blob)
-            self.assertTrue(receipt.get("image_evidence"), blob)
+            # Opening eprint: splitlines() breaks on \r and the helper returns the first hit.
+            # The "... done." redraw is later in the same upstream sequence. See the decisions log.
+            self.assertEqual(receipt.get("image_evidence"), "Pulling image " + SMOLVM_PIN + "...", blob)
             self.assertIn(str(Path(td) / "kvm"), receipt.get("kvm_path") or "", blob)
             self.assertEqual(receipt.get("reason"), "ok: guest kernel 6.6.0-guest, host file hidden", blob)
 
@@ -360,19 +389,63 @@ class XIntakeSmoke109111Tests(unittest.TestCase):
                 blob,
             )
 
-    def test_f_smolvm_second_run_records_cached_image(self) -> None:
+    def test_f_smolvm_plain_runs_pull_every_time(self) -> None:
+        # Fail: a second plain run is treated as a cache hit and drops the pull line.
+        # Recover: upstream pulls on every plain run, so both receipts record the pull line.
+        expected = "Pulling image " + SMOLVM_PIN + "..."
         with tempfile.TemporaryDirectory(prefix="pfy-xintake-smolvm-") as td:
             root = Path(td)
             first, first_receipt = self._run_smolvm(root)
             self.assertEqual(first.returncode, 0, first.stdout + first.stderr)
-            self.assertIn("Caching image", first_receipt.get("image_evidence") or "")
+            self.assertEqual(first_receipt.get("image_evidence"), expected)
             proc, receipt = self._run_smolvm(root)
             blob = proc.stdout + proc.stderr
             self.assertEqual(proc.returncode, 0, blob)
-            self.assertTrue(
-                (receipt.get("image_evidence") or "").startswith("Using cached image 0123456789abcdef"),
+            self.assertEqual(receipt.get("image_evidence"), expected, blob)
+
+    def test_g_smolvm_wrong_ref_exits_1(self) -> None:
+        # Fail: any "Pulling image " line counts, so a different ref still passes (M21).
+        # Recover: exit 1 with the missing-evidence reason when the pull names another ref.
+        with tempfile.TemporaryDirectory(prefix="pfy-xintake-smolvm-") as td:
+            proc, receipt = self._run_smolvm(Path(td), mode="wrong-ref")
+            blob = proc.stdout + proc.stderr
+            self.assertEqual(proc.returncode, 1, blob)
+            self.assertEqual(
+                receipt.get("reason"),
+                "smolvm did not report pulling or caching the pinned image",
                 blob,
             )
+            self.assertNotIn("Traceback", proc.stderr, blob)
+
+    def test_h_oci_cache_stdout_branch(self) -> None:
+        # Fail: smolvm_image_evidence ignores stdout cache lines (M19b).
+        # Recover: --oci-cache prints Caching on the first run and Using cached later,
+        # and the helper returns those lines. Direct call is the one allowed here.
+        import importlib.util
+        local = ROOT / "examples" / "x-intake-local"
+        if str(local) not in sys.path:
+            sys.path.insert(0, str(local))
+        spec = importlib.util.spec_from_file_location(
+            "smoke_109_111_evidence", local / "smoke_109_111.py",
+        )
+        module = importlib.util.module_from_spec(spec)
+        assert spec.loader is not None
+        spec.loader.exec_module(module)
+        evidence = module.smolvm_image_evidence
+        with tempfile.TemporaryDirectory(prefix="pfy-xintake-smolvm-oci-") as td:
+            stub = Path(td) / "smolvm"
+            _write_exe(stub, SMOLVM_STUB)
+            seen = []
+            for _ in range(2):
+                proc = subprocess.run(
+                    [str(stub), "machine", "run", "--oci-cache", "--image", SMOLVM_PIN, "--", "true"],
+                    capture_output=True, text=True, timeout=30,
+                )
+                self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+                self.assertNotIn("Pulling image", proc.stdout)
+                seen.append(evidence(proc.stdout, proc.stderr, SMOLVM_PIN))
+        self.assertEqual(seen[0], "Caching image 0123456789abcdef (one-time; reused on later runs)")
+        self.assertEqual(seen[1], "Using cached image 0123456789abcdef (host cache hit; no pull)")
 
 
 if __name__ == "__main__":
