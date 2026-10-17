@@ -52,7 +52,7 @@ import tempfile
 import time
 from pathlib import Path
 
-from smoke import TMP, run_isolated, write
+from smoke import TMP, run_isolated, timeout_reason, write
 
 OVERTIME_PIN = "0.5.3"
 # festival v0.3.20 festival-0.3.20-linux-x86_64.tar.gz (tarball sha256
@@ -213,7 +213,7 @@ def smoke_overtime(r: dict) -> int:
                     p = sh(ot + ["daemon", "stop"], home=home_s, path=path)
                     steps.append({"daemon_stop": p.returncode})
                 except subprocess.TimeoutExpired:
-                    steps.append({"daemon_stop": "timeout"})
+                    steps.append({"daemon_stop": timeout_reason("overtime daemon stop")})
                 time.sleep(1)
             lock = home / "overtime/overtimed.lock"
             alive = False
@@ -234,8 +234,7 @@ def smoke_overtime(r: dict) -> int:
         r["reason"] = "real HOME ~/overtime was created or changed"
         return 1
     if timed_out is not None:
-        cmd = timed_out.cmd[:3] if isinstance(timed_out.cmd, list) else timed_out.cmd
-        r["reason"] = f"timeout after {timed_out.timeout}s: {cmd}"
+        r["reason"] = timeout_reason("overtime")
         return 1
     r["reason"] = "agent created, listed, budget/protect set and shown, no session run, daemon stopped, real HOME untouched"
     return 0
@@ -376,8 +375,8 @@ def main() -> int:
     fn = {"overtime": smoke_overtime, "festival": smoke_festival, "sloptrim": smoke_sloptrim}[a.entry]
     try:
         code = fn(receipt)
-    except subprocess.TimeoutExpired as e:
-        receipt["reason"] = f"timeout after {e.timeout}s: {e.cmd[:3] if isinstance(e.cmd, list) else e.cmd}"
+    except subprocess.TimeoutExpired:
+        receipt["reason"] = timeout_reason(a.entry)
         code = 1
     return write(a.entry, receipt, code)
 
