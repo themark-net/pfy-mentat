@@ -173,13 +173,22 @@ def timeout_reason(tag: str) -> str:
 
 
 def pinned(r: dict, var: str, pin: str, lower: bool = False) -> str:
-    """$var when set (recorded as source env, with a stderr WARN), else the pin; recorded in r["expected"]."""
+    """$var when set (source env), else the pin (source pin). WARN only when the override differs.
+
+    SHA variables (lower=True, or a name ending in SHA256) compare case-insensitively.
+    Recorded at r["expected"][var] = {value, source, pin}.
+    """
     raw = (os.environ.get(var) or "").strip()
-    raw = raw.lower() if lower else raw
-    r.setdefault("expected", {})[var] = {"value": raw or pin, "source": "env" if raw else "pin", "pin": pin}
+    if lower:
+        raw = raw.lower()
+    value = raw or pin
+    r.setdefault("expected", {})[var] = {"value": value, "source": "env" if raw else "pin", "pin": pin}
     if raw:
-        print(f"WARN: ${var}={raw} overrides the pinned {pin}", file=sys.stderr)
-    return raw or pin
+        sha = lower or var.upper().endswith("SHA256")
+        same = raw.lower() == pin.lower() if sha else raw == pin
+        if not same:
+            print(f"WARN: ${var}={raw} overrides the pinned {pin}", file=sys.stderr)
+    return value
 
 
 def smoke_qwen38flash(r: dict) -> int:

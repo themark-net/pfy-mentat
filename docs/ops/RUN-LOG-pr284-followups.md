@@ -1,0 +1,44 @@
+# RUN-LOG pr284-followups
+
+Start: 2026-10-17T12:24:43-07:00
+Worktree: /home/mark/DEVELOP/pfy-mentat/tmp/pr284-followups
+Branch: build/pr284-followups
+Base: origin/main 0d574f0649ccfe5bdd5d5384786c74173fb6e41e (HEAD was 3b7439e, the drop-in)
+Compare: https://github.com/themark-net/pfy-mentat/compare/main...build/pr284-followups
+Remote note: origin/build/orch-fixes-1011-recheck is 0d574f0 plus docs and d78aa15 (timeout_reason in smoke_112_114.py and smoke_115_116.py, plus tests). Not merged. Do not undo those lines.
+
+## Plan
+
+Overview: Close the twelve X-intake smoke follow-ups that are still open on origin/main 0d574f0. Verify each item first. Change only the gap. One commit per item that changes files. Push only build/pr284-followups. No pull request.
+
+Phases:
+- item-1-sha-warn | examples/x-intake-local/smoke.py, tests/test_x_intake_smoke_098_100.py, tests/test_x_intake_smoke_103_105.py, tests/test_x_intake_smoke_106_108.py | HARNESS_SHA256, GRAPHJIN_SHA256, CM_SHA256 receipts keep expected value/source/pin; WARN only when the env override differs from the pin (sha compare is case-insensitive); equal override prints no WARN. Real stub smokes. Mutation: drop the equality check and the equal-pin test goes red. | none | general
+- item-2-timeout-text | examples/x-intake-local/smoke_112_114.py, smoke_115_116.py, examples/x-intake-local/README.md, tests for 112 and 098 | Every recorded timeout reason is timeout_reason(tag), including 112-124. README says the same text. Sponsio test drives PFY_XINTAKE_TIMEOUT and goes red if the text changes. Keep d78aa15's approach. | none | general
+- item-3-stage-a | docs/automation/agent-substrate-2026-10-08-handoff.md | Each Stage A spec-edit block runs against a temp spec under /tmp and the JSON matches. Commands do not depend on cwd. | none | general
+- item-4-handoff-counts | docs/automation/x-intake-2026-10-11-handoff.md, maybe x-intake-2026-10-10-handoff.md | Rerun unittest at a5c0362 and fb3beb5 in throwaway /tmp worktrees and fix only a wrong "190 tests" sentence. | none | general
+- item-5-gitignore | .gitignore, tests | 103-111 receipt dirs stay ignored, kolibri1/latest.json stays tracked, a test runs each 103-111 smoke into pipelines/smoke and git status --porcelain pipelines/smoke is empty. | none | general
+- item-6-graphjin-log | examples/x-intake-local/smoke_103_105.py, tests/test_x_intake_smoke_103_105.py | serve.log closed on Popen raise, early server exit, and the normal path; tail read after flush; no ResourceWarning under -W error::ResourceWarning. | item-1 (same test file; land after) | general
+- item-7-xdg | examples/x-intake-local/smoke_106_108.py, tests/test_x_intake_smoke_106_108.py | har FAILs when the work dir is outside the temp HOME; rulora, har, and cass-memory children get the four XDG/npm paths under that HOME. | item-1 | general
+- item-8-tmp-cleanup | tests/test_pfylib_tmp_cleanup.py and any leaking test | Full-suite before/after diff of /tmp/pfylib-* and the smoke/launcher prefixes is empty. | later items, run the diff after they land | general
+- item-9-paid-keys | examples/x-intake-local/smoke_098_100.py, tests/test_x_intake_smoke_098_100.py | Child env for sponsio, opensteps, and repoharness uses smoke.PAID_KEYS. Dummy values never arrive. | item-1 | general
+- item-10-node-env | smoke_103_105.py, smoke_106_108.py, their tests | node --version uses the stripped child env (no PAID_KEYS, temp HOME). Mutation: pass os.environ and the test goes red. | item-7 | general
+- item-11-109-tests | tests/test_x_intake_smoke_109_111.py, smoke_109_111.py only if the behavior is missing | Temp receipt dir via PFY_SMOKE_RECEIPT_DIR; no-bwrap fallback asserted; --unshare-pid asserted, including when unsupported. pipelines/smoke unchanged after the module. | none | general
+- item-12-smolvm-digest | smoke_109_111.py, tests, sources/entries/109-smolvm.md, 2026-10-11 handoff | Receipt records image ref and resolved digest. Live nimo run only if the binary and /dev/kvm are already usable; otherwise BLOCKED for the live part. | item-11 if the same files change; sequence after it | general
+- handoff | docs/ops/HANDOFF-pr284-followups-2026-10-17.md, this log | Final head, counts, per-item status, mutation notes, local CI, decisions, exit. | all items | general
+
+Risks:
+- Red base beyond test_hedge test_detector_runs_offline stops the run.
+- A full suite inside another full suite would load the host. The cleanup test covers the leaking modules; one full-suite before/after diff is recorded in this log, not nested.
+- origin/fix/x-intake-122-124-followups is not an ancestor. Main already has PFY_SMOKE_RECEIPT_DIR and the content-hash watch. Do not port that branch.
+- Item 4 worktrees live only under /tmp and are removed. Never touch other worktrees under ~/DEVELOP/pfy-mentat/tmp.
+
+## Baseline
+
+`python3 -m unittest discover -s tests -t .` started on the unmodified tree (350 `def test_` methods at 3b7439e).
+Result: Ran 350 tests in 45.371s OK (skipped=4) exit 0.
+The known box-only `tests.test_hedge.DetectorTests.test_detector_runs_offline` did not fail on this host.
+No red base.
+
+## Items
+
+- item-1-sha-warn | DONE | tests: before the fix, the three equal-pin tests FAILED (failures=6) because WARN printed when the env value equalled the pin. After the fix, the pin/mismatch/equal set Ran 9 tests OK. Mutation (WARN on every env value, equality check removed) made the three equal tests FAILED (failures=6); restored, Ran 3 tests OK. | files: smoke.py + 3 test modules | err: none

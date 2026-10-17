@@ -70,6 +70,7 @@ class XIntakeSmoke103105Tests(unittest.TestCase):
             self.assertFalse(marker.exists(), "graphjin stub was executed")
             self.assertNotIn("Traceback", proc.stderr)
             got = (self._receipt().get("expected") or {}).get("GRAPHJIN_SHA256") or {}
+            self.assertEqual(got.get("pin"), GRAPHJIN_V3216_SHA256, blob)
             if override is None:
                 self.assertNotIn("WARN:", proc.stderr)
                 self.assertEqual(got.get("source"), "pin", blob)
@@ -85,6 +86,31 @@ class XIntakeSmoke103105Tests(unittest.TestCase):
 
     def test_graphjin_sha_env_warns_records_override_and_does_not_exec(self) -> None:
         self._graphjin_sha(OTHER_SHA)
+
+    def test_graphjin_sha_env_equal_to_pin_does_not_warn(self) -> None:
+        # Fail: an env value equal to the pin (any hex case) still prints WARN.
+        # Recover: exit 2, no exec, source env, value is the pin, stderr has no WARN.
+        for override in (GRAPHJIN_V3216_SHA256, GRAPHJIN_V3216_SHA256.upper()):
+            with self.subTest(override=override[:12]):
+                with tempfile.TemporaryDirectory(prefix="pfy-xintake-gj-eq-") as td:
+                    root = Path(td)
+                    home = root / "home"
+                    home.mkdir()
+                    marker = root / "executed-marker"
+                    stub = root / "graphjin"
+                    _write_exe(stub, "#!/bin/sh\ntouch %s\n" % marker)
+                    env = self._base_env(home)
+                    env["GRAPHJIN_BIN"] = str(stub)
+                    env["GRAPHJIN_SHA256"] = override
+                    proc = self._run(env)
+                    blob = proc.stdout + proc.stderr
+                    self.assertEqual(proc.returncode, 2, blob)
+                    self.assertFalse(marker.exists(), "graphjin stub was executed")
+                    self.assertNotIn("WARN:", proc.stderr, blob)
+                    got = (self._receipt().get("expected") or {}).get("GRAPHJIN_SHA256") or {}
+                    self.assertEqual(got.get("source"), "env", blob)
+                    self.assertEqual(got.get("value"), GRAPHJIN_V3216_SHA256, blob)
+                    self.assertEqual(got.get("pin"), GRAPHJIN_V3216_SHA256, blob)
 
     def test_graphjin_world_closes_log_when_popen_raises(self) -> None:
         # Fail: Popen raises after serve.log is opened and the handle stays open.

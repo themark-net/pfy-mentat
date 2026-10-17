@@ -192,6 +192,7 @@ class XIntakeSmoke098100Tests(unittest.TestCase):
             self.assertFalse(marker.exists(), "harness stub was executed")
             self.assertNotIn("Traceback", proc.stderr)
             got = (self._receipt("repoharness").get("expected") or {}).get("HARNESS_SHA256") or {}
+            self.assertEqual(got.get("pin"), HARNESS_V010_SHA256, blob)
             if override is None:
                 self.assertNotIn("WARN:", proc.stderr)
                 self.assertEqual(got.get("source"), "pin", blob)
@@ -207,6 +208,31 @@ class XIntakeSmoke098100Tests(unittest.TestCase):
 
     def test_d_repoharness_sha_env_warns_records_override_and_does_not_exec(self) -> None:
         self._repoharness_sha(OTHER_SHA)
+
+    def test_d_repoharness_sha_env_equal_to_pin_does_not_warn(self) -> None:
+        # Fail: an env value equal to the pin (any hex case) still prints WARN.
+        # Recover: exit 2, no exec, source env, value is the pin, stderr has no WARN.
+        for override in (HARNESS_V010_SHA256, HARNESS_V010_SHA256.upper()):
+            with self.subTest(override=override[:12]):
+                with tempfile.TemporaryDirectory(prefix="pfy-xintake-pin-eq-") as td:
+                    root = Path(td)
+                    home = root / "home"
+                    home.mkdir()
+                    marker = root / "executed-marker"
+                    stub = root / "harness"
+                    _write_exe(stub, "#!/bin/sh\ntouch %s\n" % marker)
+                    env = self._base_env(home)
+                    env["HARNESS_BIN"] = str(stub)
+                    env["HARNESS_SHA256"] = override
+                    proc = self._run("repoharness", env)
+                    blob = proc.stdout + proc.stderr
+                    self.assertEqual(proc.returncode, 2, blob)
+                    self.assertFalse(marker.exists(), "harness stub was executed")
+                    self.assertNotIn("WARN:", proc.stderr, blob)
+                    got = (self._receipt("repoharness").get("expected") or {}).get("HARNESS_SHA256") or {}
+                    self.assertEqual(got.get("source"), "env", blob)
+                    self.assertEqual(got.get("value"), HARNESS_V010_SHA256, blob)
+                    self.assertEqual(got.get("pin"), HARNESS_V010_SHA256, blob)
 
     def test_b_sponsio_timeout_reason_is_exact(self) -> None:
         # Fail: the probe timeout is a traceback, or the reason is not exactly "sponsio probe timeout".
