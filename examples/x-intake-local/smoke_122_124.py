@@ -11,7 +11,7 @@ named below; nothing copied from this process, so no provider key is ever seen; 
 group). No smoke calls a model, adds a provider key or starts an agent CLI.
 PFY_XINTAKE_TIMEOUT (float seconds, > 0) overrides the 600s per-command timeout.
 Real HOME: llmrouter and squadra snapshot the real-HOME dirs the tool writes by default (~/.llm-router;
-~/.local/state/squadra and ~/.cache/squadra) and compare them in a finally, also on timeout:
+~/.local/state/squadra, ~/.cache/squadra and ~/.squadra; content-hashed) and compare them in a finally, also on timeout:
 checks.real_home_untouched, and any change FAILs (exit 1), even when bwrap is unavailable.
 
   llmrouter      $LLMROUTER_BIN, then ~/DEVELOP/pfy-mentat/tmp/llm-router/.venv/bin/llm-router (a venv with
@@ -70,7 +70,7 @@ def tmo() -> float:
 # llm_router_home, every hook's fallback ~/.llm-router); Squadra's selftest folder (selftest.py
 # ~/.local/state/squadra) and usage cache (usage_cache.py ~/.cache/squadra). HarnessRouter runs in Docker only.
 WATCH = {"llmrouter": (".llm-router",),
-         "squadra": (".local/state/squadra", ".cache/squadra")}
+         "squadra": (".local/state/squadra", ".cache/squadra", ".squadra")}  # .squadra: plugin store
 
 
 def tree_sig(p: Path) -> str | None:
@@ -78,11 +78,18 @@ def tree_sig(p: Path) -> str | None:
         return None
     h = hashlib.sha256()
     for f in sorted(p.rglob("*")):
+        # content hash, not mtime: a same-size in-place edit that restores mtime still changes the signature
         try:
-            st = f.stat()
-            h.update(f"{f}:{st.st_size}:{st.st_mtime_ns}".encode())
+            if f.is_file():
+                fh = hashlib.sha256()
+                with f.open("rb") as fp:  # streamed in 1 MiB chunks, so a huge file doesn't load into RAM
+                    for chunk in iter(lambda: fp.read(1 << 20), b""):
+                        fh.update(chunk)
+                h.update(f"{f}:{f.stat().st_size}:{fh.hexdigest()}\n".encode())
+            else:
+                h.update(f"{f}:dir\n".encode())
         except OSError:
-            pass
+            h.update(f"{f}:unreadable\n".encode())
     return h.hexdigest()
 
 
@@ -261,8 +268,12 @@ def smoke_harnessrouter(r: dict) -> int:
                 except TimeoutError as e:
                     r[key] = None
                     r.setdefault("cleanup_reason", str(e))
+        # a non-zero rm or volume rm is a FAIL too, not only a timeout (cleanup_reason keeps the timeout text);
+        # finish() only writes the "removed after" PASS reason when every check, cleanup_ok included, is true
+        checks["cleanup_ok"] = r.get("rm_rc") == 0 and r.get("volume_rm_rc") == 0
         if r.get("cleanup_reason"):
-            raise TimeoutError(r["cleanup_reason"])
+            # a FAIL, but as a check: the happy-path reason (failed checks) is kept, not replaced by the timeout
+            checks["cleanup_ok"] = False
     return finish(r, checks, "pinned CE image came up on loopback and refused a keyless API call; removed after")
 
 
@@ -358,6 +369,8 @@ def main() -> int:
     except Exception as e:  # any other crash still writes a FAIL receipt (checks were saved by watched()'s finally)
         receipt.pop("_ok_reason", None)
         receipt["reason"] = f"unexpected {type(e).__name__}: {e}"
+        if receipt.get("checks", {}).get("real_home_untouched") is False:
+            receipt["reason"] += f"; real HOME {', '.join('~/' + d for d in WATCH.get(a.entry, ()))} changed"
         code = 1
     return write(a.entry, receipt, code)
 

@@ -48,7 +48,8 @@ PAID_KEYS = ("OPENROUTER_API_KEY", "AI_GATEWAY_API_KEY", "OPENAI_API_KEY", "ANTH
 def write(entry: str, receipt: dict, code: int) -> int:
     receipt["exit_code"] = code
     receipt["verdict"] = {0: "PASS", 1: "FAIL", 2: "FAIL_CANNOT_RUN_HERE"}[code]
-    out = ROOT / "pipelines/smoke" / entry / "latest.json"
+    # $PFY_SMOKE_RECEIPT_DIR lets tests write receipts outside the repo (never over a real run's latest.json)
+    out = Path(os.environ.get("PFY_SMOKE_RECEIPT_DIR") or ROOT / "pipelines/smoke") / entry / "latest.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(receipt, indent=2, ensure_ascii=False) + "\n")
     print(json.dumps({k: receipt.get(k) for k in ("verdict", "reason")}, ensure_ascii=False))
