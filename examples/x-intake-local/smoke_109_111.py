@@ -6,7 +6,7 @@ Usage: python3 examples/x-intake-local/smoke_109_111.py --entry smolvm|brigade|r
 Same contract and receipts as smoke.py next to it (whose helpers it reuses): exit 0 = PASS, 1 = the tool ran but
 the check failed, 2 = can't run here (prereq missing; reason recorded). Writes pipelines/smoke/<entry>/latest.json.
 Never installs anything; every scratch file goes to a fresh tempfile directory that is removed. Tool subprocesses
-get a fresh temp HOME and an env with paid provider keys stripped. No smoke calls a model.
+get a fresh temp HOME and an env scrubbed of paid provider keys and token-like names. No smoke calls a model.
 PFY_XINTAKE_TIMEOUT (float seconds, > 0) overrides the per-command tool timeouts (default 120s; 300s for smolvm
 commands that may pull an image); empty or invalid keeps the default.
 
@@ -70,7 +70,7 @@ import time
 import uuid
 from pathlib import Path
 
-from smoke import PAID_KEYS, TMP, find_bin, pinned, run, timeout_reason, write
+from smoke import TMP, find_bin, pinned, run, scrub_env, timeout_reason, write
 
 # smolvm v1.26.1 smolvm-1.26.1-linux-x86_64.tar.gz: smolvm-bin (matches the tarball's own checksums.txt; the tarball
 # itself is sha256 bcae519f7dad3cead2deaa0362a42a1ad7bffce73ea7a28161dea6822c559654 in the release checksums.sha256)
@@ -105,7 +105,7 @@ def sha256_file(path: str) -> str:
 
 
 def clean_env(home: str, **extra: str) -> dict:
-    env = {k: v for k, v in os.environ.items() if k not in PAID_KEYS and not k.startswith(DROP_PREFIXES)}
+    env = {k: v for k, v in scrub_env(os.environ).items() if not k.startswith(DROP_PREFIXES)}
     env.update(HOME=home, NO_COLOR="1", **extra)
     return env
 

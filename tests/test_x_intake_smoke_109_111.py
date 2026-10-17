@@ -46,6 +46,7 @@ mode = os.environ.get("PFY_SMOLVM_STUB_MODE", "")
 count_path = Path(__file__).resolve().parent / "smolvm-runs"
 n = int(count_path.read_text() or "0") + 1 if count_path.exists() else 1
 count_path.write_text(str(n))
+(Path(__file__).resolve().parent / "smolvm-env-names").write_text("\n".join(sorted(os.environ)) + "\n")
 
 def pull(ref):
     err = sys.stderr
@@ -305,7 +306,8 @@ class XIntakeSmoke109111Tests(unittest.TestCase):
             self.assertNotIn(str(stub), text, "tool command was still wrapped after the probe failed")
             self._assert_repo_smoke_unchanged(before)
 
-    def _run_smolvm(self, root: Path, *, image: str | None = None, mode: str | None = None):
+    def _run_smolvm(self, root: Path, *, image: str | None = None, mode: str | None = None,
+                    plant: dict[str, str] | None = None):
         # Fail: the smoke needs /dev/kvm, or it trusts a sha256 printed by the guest.
         # Recover: PFY_SMOLVM_KVM_PATH is a temp file, and the digest is the pinned ref.
         home = root / "home"
@@ -326,6 +328,8 @@ class XIntakeSmoke109111Tests(unittest.TestCase):
             env["SMOLVM_IMAGE"] = image
         if mode:
             env["PFY_SMOLVM_STUB_MODE"] = mode
+        if plant:
+            env.update(plant)
         before = _smoke_tree_sig()
         proc = subprocess.run(
             [sys.executable, "examples/x-intake-local/smoke_109_111.py", "--entry", "smolvm"],
@@ -446,6 +450,24 @@ class XIntakeSmoke109111Tests(unittest.TestCase):
                 seen.append(evidence(proc.stdout, proc.stderr, SMOLVM_PIN))
         self.assertEqual(seen[0], "Caching image 0123456789abcdef (one-time; reused on later runs)")
         self.assertEqual(seen[1], "Using cached image 0123456789abcdef (host cache hit; no pull)")
+
+    def test_i_smolvm_child_drops_secret_shaped_env(self) -> None:
+        # Fail: clean_env keeps secret-shaped names that are not in PAID_KEYS.
+        # Recover: the smolvm child runs, those names are absent, and PATH is present.
+        secret_names = (
+            "NPM_TOKEN", "GITHUB_PAT", "GH_ENTERPRISE_TOKEN", "HF_TOKEN",
+            "FOO_API_KEY", "DB_PASSWORD", "MY_SECRET", "AWS_CREDENTIALS",
+        )
+        with tempfile.TemporaryDirectory(prefix="pfy-xintake-smolvm-env-") as td:
+            root = Path(td)
+            proc, _receipt = self._run_smolvm(root, plant={key: "pfy-test-dummy" for key in secret_names})
+            blob = proc.stdout + proc.stderr
+            self.assertEqual(proc.returncode, 0, blob)
+            seen = (root / "smolvm-env-names").read_text(encoding="utf-8").splitlines()
+            self.assertFalse(any("=" in line for line in seen), "env dump included values")
+            leaked = [key for key in secret_names if key in seen]
+            self.assertEqual(leaked, [], f"smolvm child saw secret names {leaked}")
+            self.assertIn("PATH", seen)
 
 
 if __name__ == "__main__":

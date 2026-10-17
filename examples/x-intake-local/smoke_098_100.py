@@ -9,7 +9,7 @@ Never installs or downloads anything; every scratch file goes to a fresh tempfil
 
 PFY_XINTAKE_TIMEOUT (float seconds, must be > 0) overrides the sponsio, opensteps, and repoharness tool
 timeouts. Empty or invalid keeps the defaults: 120s sponsio and repoharness, 60s opensteps hooks. Git keeps the
-parent env. Sponsio, opensteps hooks, and repoharness drop PAID_KEYS and get a fresh temp HOME.
+parent env. Sponsio, opensteps hooks, and repoharness drop paid-provider keys and token-like names and get a fresh temp HOME.
 
   sponsio      $SPONSIO_PY or ~/DEVELOP/pfy-mentat/tmp/sponsio/.venv/bin/python with `sponsio` importable.
                Arms the bundled sponsio:capability/shell pack in enforce mode and expects `ls -la` allowed while
@@ -38,15 +38,15 @@ import tempfile
 import time
 from pathlib import Path
 
-from smoke import PAID_KEYS, TMP, find_bin, pinned, run, timeout_reason, write
+from smoke import TMP, find_bin, pinned, run, scrub_env, timeout_reason, write
 
 # harness-linux-x64 published checksum for release harness-v0.1.10
 HARNESS_V010_SHA256 = "68b6a51e40cd8e229f1f056c2aa5ea93de7934f746dcf8dd38e3b7d9dd4ee397"
 
 
 def tool_env(home: str, **extra: str) -> dict[str, str]:
-    """Parent env minus PAID_KEYS. Git does not use this; tool children do."""
-    env = {k: v for k, v in os.environ.items() if k not in PAID_KEYS}
+    """Parent env minus paid-provider keys and token-like names. Git does not use this; tool children do."""
+    env = scrub_env(os.environ)
     env.update(HOME=home, **extra)
     return env
 
