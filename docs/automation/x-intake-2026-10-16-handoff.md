@@ -58,6 +58,16 @@ SKIPPED: q-agent-harness (no license), Chainloop (SDLC governance platform, heav
 - New `tests/test_x_intake_smoke_122_124.py` (stub programs only).
 - Still not run: the HarnessRouter happy path (no Docker on the box; nimo Docker unconfirmed), and the real llm-router/Squadra smokes on nimo (prereqs not staged there). SIGTERM to the smoke still leaves the container behind.
 
+## Follow-ups to #298 (Tester's non-blocking F1-F6)
+
+- `watched()` hashes file contents (path, size, sha256) instead of size+mtime, so a same-size in-place edit that restores mtime still FAILs.
+- `~/.squadra` (plugin store) is watched too, next to `~/.local/state/squadra` and `~/.cache/squadra`.
+- harnessrouter: a cleanup timeout after the happy path is recorded as `checks.cleanup_ok = false` plus `cleanup_reason`; the reason stays "failed checks: ..." instead of becoming "docker rm timeout".
+- The catch-all reason adds "real HOME ... changed" when `real_home_untouched` is false.
+- `smoke.write()` honours `$PFY_SMOKE_RECEIPT_DIR`; the 122-124 tests point it at a temp dir, so they no longer overwrite a real run's `pipelines/smoke/<entry>/latest.json`.
+- New tests: catch-all (exit 1, and kills the exit-0 mutant), `~/.cache/squadra` write, `~/.squadra` write, in-place edit, cleanup timeout after the happy path. The existing-volume test sets `PFY_XINTAKE_TIMEOUT=2`, so its mutant fails in seconds, not at the 90 s subprocess timeout.
+- Not changed here: `smoke_119_121.py` has the same mtime-based `tree_sig`, and its tests (and the older x-intake tests) still write receipts into the repo; both are easy follow-ups using the same helper. The harnessrouter happy path and SIGTERM cleanup (F7) are still open.
+
 ## Locks respected
 
 Catalog 70-75 HOLD untouched. Nothing installed or downloaded on nimo. Mark's main checkout and stashes untouched; no pfy-mentat checkout was made (files read through the GitHub connector and raw URLs). No accounts, sign-ins, paid keys or spend. llm-router and Squadra ran only on the Grok Bot box in `/tmp` with temp HOMEs; no model or agent CLI was started.

@@ -24,6 +24,15 @@ CLASSIFY_JSON = (
     '{"query":{"task":"query","complexity":"simple","confident":true},'
     '"code":{"task":"code","complexity":"complex","confident":true}}'
 )
+# receipts go to a temp dir ($PFY_SMOKE_RECEIPT_DIR), never over a real run's pipelines/smoke/<entry>/latest.json
+_RECEIPTS = tempfile.TemporaryDirectory(prefix="pfy-xintake-122-receipts-")
+RECEIPT_DIR = Path(_RECEIPTS.name)
+
+
+def tearDownModule() -> None:
+    _RECEIPTS.cleanup()
+
+
 DOCTOR_JSON = '{"integrity":"passed","pending_ack":["assign-T1"],"events":1}'
 
 
@@ -39,6 +48,7 @@ def _env(home: Path, **extra: str) -> dict[str, str]:
     for key in list(env):
         if key.startswith(("LLMROUTER_", "SQUADRA_", "HR_", "DOCKER_")) or key == "PFY_XINTAKE_TIMEOUT":
             env.pop(key, None)
+    env["PFY_SMOKE_RECEIPT_DIR"] = str(RECEIPT_DIR)
     env.update(extra)
     return env
 
@@ -51,7 +61,7 @@ def _run(entry: str, env: dict[str, str]) -> subprocess.CompletedProcess[str]:
 
 
 def _receipt(entry: str) -> dict:
-    return json.loads((ROOT / f"pipelines/smoke/{entry}/latest.json").read_text(encoding="utf-8"))
+    return json.loads((RECEIPT_DIR / entry / "latest.json").read_text(encoding="utf-8"))
 
 
 def _no_tb(case: unittest.TestCase, proc: subprocess.CompletedProcess[str]) -> None:
@@ -187,6 +197,32 @@ def _squadra_failing_py(step: str) -> str:
     ])
 
 
+def _squadra_custom(on_init: str = "", doctor: str = DOCTOR_JSON) -> str:
+    """A passing Squadra stub; `on_init` is Python run during `init`, `doctor` is what `doctor` prints."""
+    body = "\n".join("    " + ln for ln in on_init.splitlines()) or "    pass"
+    return "\n".join([
+        "import os, sys",
+        "from pathlib import Path",
+        "args = sys.argv[1:]",
+        "cmd = args[0] if args else ''",
+        "if cmd == '--version':",
+        "    print('3.10.1')",
+        "    raise SystemExit(0)",
+        "if cmd == 'init':",
+        body,
+        "if cmd == 'doctor':",
+        f"    print({doctor!r})",
+        "if cmd == 'status':",
+        "    print('pfy smoke task')",
+        "raise SystemExit(0)",
+        "",
+    ])
+
+
+def _plant(path: Path) -> str:
+    return f"p = Path({str(path)!r})\np.parent.mkdir(parents=True, exist_ok=True)\np.write_text('planted\\n')"
+
+
 def _squadra_tree(root: Path, body: str) -> Path:
     script = root / "scripts" / "squadra.py"
     script.parent.mkdir(parents=True, exist_ok=True)
@@ -301,7 +337,7 @@ class XIntakeSmoke122124Tests(unittest.TestCase):
 
     def test_squadra_failed_step_writes_fresh_fail_receipt(self) -> None:
         _skip_unless_py312(self)
-        receipt = ROOT / "pipelines/smoke/squadra/latest.json"
+        receipt = RECEIPT_DIR / "squadra/latest.json"
         for step in ("init", "agent_coordinator", "agent_builder", "task"):
             with self.subTest(step=step), tempfile.TemporaryDirectory(prefix="pfy-xintake-124-") as td:
                 home = Path(td, "home")
@@ -372,8 +408,8 @@ class XIntakeSmoke122124Tests(unittest.TestCase):
                 '  *" container inspect "*) exit 1 ;;\n'
                 '  *" volume inspect "*) exit 0 ;;\n',
             )
-            proc = _run("harnessrouter", _env(
-                home, DOCKER_BIN=str(docker), HR_SMOKE_PORT=str(_free_port())))
+            proc = _run("harnessrouter", _env(  # short timeout: a missing volume check fails fast, not at 90 s
+                home, DOCKER_BIN=str(docker), HR_SMOKE_PORT=str(_free_port()), PFY_XINTAKE_TIMEOUT="2"))
             self.assertEqual(proc.returncode, 2, proc.stdout + proc.stderr)
             _no_tb(self, proc)
             self.assertIn("volume", _receipt("harnessrouter")["reason"])
@@ -413,6 +449,109 @@ class XIntakeSmoke122124Tests(unittest.TestCase):
             receipt = _receipt("harnessrouter")
             self.assertEqual(receipt["reason"], "docker run failed")
             self.assertTrue(receipt.get("cleanup_reason"))
+            self.assertIn("volume rm", _calls(calls))
+
+    # ---- follow-ups to #298 ----
+    def _squadra(self, td: str, home: Path, body: str, **extra: str) -> tuple[subprocess.CompletedProcess, dict]:
+        empty = Path(td, "emptybin")
+        empty.mkdir(exist_ok=True)
+        repo = _squadra_tree(Path(td, "squadra"), body)
+        proc = _run("squadra", _env(home, PATH=str(empty), SQUADRA_DIR=str(repo), **extra))
+        _no_tb(self, proc)
+        return proc, _receipt("squadra")
+
+    def test_squadra_clean_stub_passes(self) -> None:
+        _skip_unless_py312(self)
+        with tempfile.TemporaryDirectory(prefix="pfy-xintake-124-") as td:
+            home = Path(td, "home")
+            home.mkdir()
+            proc, got = self._squadra(td, home, _squadra_custom())
+            self.assertEqual(proc.returncode, 0, got)
+            self.assertIs(got["checks"]["real_home_untouched"], True)
+
+    def test_squadra_unexpected_exception_fails(self) -> None:
+        _skip_unless_py312(self)
+        with tempfile.TemporaryDirectory(prefix="pfy-xintake-124-") as td:
+            home = Path(td, "home")
+            home.mkdir()
+            (RECEIPT_DIR / "squadra").mkdir(parents=True, exist_ok=True)
+            (RECEIPT_DIR / "squadra/latest.json").write_text('{"verdict": "PASS", "reason": "stale"}')
+            # doctor printing a JSON list makes dj.get raise AttributeError: only the catch-all handles it
+            proc, got = self._squadra(td, home, _squadra_custom(doctor="[]"))
+            self.assertEqual(proc.returncode, 1, got)
+            self.assertEqual(got["verdict"], "FAIL")
+            self.assertIn("unexpected AttributeError", got["reason"])
+            self.assertIs(got["checks"]["real_home_untouched"], True)
+
+    def test_squadra_unexpected_exception_names_real_home(self) -> None:
+        _skip_unless_py312(self)
+        with tempfile.TemporaryDirectory(prefix="pfy-xintake-124-") as td:
+            home = Path(td, "home")
+            home.mkdir()
+            body = _squadra_custom(on_init=_plant(home / ".local/state/squadra/x"), doctor="[]")
+            proc, got = self._squadra(td, home, body)
+            self.assertEqual(proc.returncode, 1, got)
+            self.assertIs(got["checks"]["real_home_untouched"], False)
+            self.assertIn("unexpected AttributeError", got["reason"])
+            self.assertIn("real HOME", got["reason"])
+
+    def test_squadra_cache_write_fails(self) -> None:
+        _skip_unless_py312(self)
+        with tempfile.TemporaryDirectory(prefix="pfy-xintake-124-") as td:
+            home = Path(td, "home")
+            home.mkdir()
+            proc, got = self._squadra(td, home, _squadra_custom(on_init=_plant(home / ".cache/squadra/usage-v1/x")))
+            self.assertEqual(proc.returncode, 1, got)
+            self.assertIs(got["checks"]["real_home_untouched"], False)
+
+    def test_squadra_plugin_store_write_fails(self) -> None:
+        _skip_unless_py312(self)
+        with tempfile.TemporaryDirectory(prefix="pfy-xintake-124-") as td:
+            home = Path(td, "home")
+            home.mkdir()
+            proc, got = self._squadra(td, home, _squadra_custom(on_init=_plant(home / ".squadra/plugins/x")))
+            self.assertEqual(proc.returncode, 1, got)
+            self.assertIs(got["checks"]["real_home_untouched"], False)
+
+    def test_squadra_in_place_edit_fails(self) -> None:
+        _skip_unless_py312(self)
+        with tempfile.TemporaryDirectory(prefix="pfy-xintake-124-") as td:
+            home = Path(td, "home")
+            existing = home / ".local/state/squadra/state.json"
+            existing.parent.mkdir(parents=True)
+            existing.write_text("aaaa\n")
+            # same size, mtime restored: only a content hash sees it
+            edit = (f"p = Path({str(existing)!r})\nst = p.stat()\np.write_text('bbbb\\n')\n"
+                    "os.utime(p, ns=(st.st_atime_ns, st.st_mtime_ns))")
+            proc, got = self._squadra(td, home, _squadra_custom(on_init=edit))
+            self.assertEqual(existing.read_text(), "bbbb\n")
+            self.assertEqual(proc.returncode, 1, got)
+            self.assertIs(got["checks"]["real_home_untouched"], False)
+
+    def test_harnessrouter_cleanup_timeout_keeps_happy_path_reason(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="pfy-xintake-123-") as td:
+            home = Path(td, "home")
+            home.mkdir()
+            calls, docker = Path(td, "calls"), Path(td, "docker")
+            # run succeeds but nothing listens, so the probes fail; then `docker rm` times out
+            _docker_stub(
+                docker, calls,
+                '  *" version "*) exit 0 ;;\n'
+                '  *" container inspect "*) exit 1 ;;\n'
+                '  *" volume inspect "*) exit 1 ;;\n'
+                '  *" volume rm "*) exit 0 ;;\n'
+                '  *" rm "*) sleep 30 ;;\n'
+                '  *" run "*) exit 0 ;;\n',
+            )
+            proc = _run("harnessrouter", _env(
+                home, DOCKER_BIN=str(docker), HR_SMOKE_PORT=str(_free_port()), PFY_XINTAKE_TIMEOUT="2"))
+            self.assertEqual(proc.returncode, 1, proc.stdout + proc.stderr)
+            _no_tb(self, proc)
+            got = _receipt("harnessrouter")
+            self.assertTrue(got["reason"].startswith("failed checks:"), got["reason"])
+            self.assertIn("console_answers", got["reason"])
+            self.assertEqual(got.get("cleanup_reason"), "docker rm timeout")
+            self.assertIs(got["checks"]["cleanup_ok"], False)
             self.assertIn("volume rm", _calls(calls))
 
 
