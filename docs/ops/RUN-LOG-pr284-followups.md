@@ -107,4 +107,22 @@ No red base.
 - item-2-receipt-dir | DONE | tests: 112 and 115 modules Ran 12 tests in 11.569s OK. Snapshot test Ran 1 test OK. RED: drop PFY_SMOKE_RECEIPT_DIR from 112 _parent_env -> test_both_modules_leave_pipelines_smoke_unchanged FAILED (failures=1, file snapshot changed). Restored, Ran 1 test OK. | files: test_x_intake_smoke_112_114.py, test_x_intake_smoke_115_116.py, test_x_intake_smoke_112_115_receipts.py | err: none | commit d2d9d1f
 - item-3-timeout-step | DONE | tests: sponsio, overtime, festival, daemon-stop, openqodex, harnessrouter cleanup, brigade timeout, 117 module, agentdescent timeout OK. RED: timeout_reason ignores step -> sponsio, overtime, and openqodex FAILED (failures=3). Restored, those 3 OK. Grep of examples/x-intake-local for a hand-written timeout sentence: only the helper return and the README. | files: smoke.py and every caller, README, four test modules | err: none | commit 85e499a
 - item-4-scrub-env | DONE | tests: tests.test_x_intake_smoke_103_105 and tests.test_x_intake_smoke_106_108 Ran 16 tests in 2.192s OK. RED: pass os.environ-derived env (dict(os.environ, HOME=home)) without scrub_env / node_version_env -> test_node_version_uses_clean_env in 103 and 106 FAILED (failures=2). Restored, those 2 OK in 0.627s. | files: smoke.py, smoke_103_105.py, smoke_106_108.py, two test modules | err: none | commit 209d411
-- item-5-handoff-counts | DONE | tests: none (docs only). skipped=4 lines in the handoff now name nimo. This run's nimo baseline is Ran 367 tests in 101.620s OK (skipped=4). Tester's box at 31bc2f0 saw skipped=6 because of KVM and toolchain. The nimo final full-suite count is written in the Fix round 1 handoff section after that suite. | files: HANDOFF-pr284-followups-2026-10-17.md | err: none
+- item-5-handoff-counts | DONE | tests: none (docs only). skipped=4 lines in the handoff now name nimo. This run's nimo baseline is Ran 367 tests in 101.620s OK (skipped=4). Tester's box at 31bc2f0 saw skipped=6 because of KVM and toolchain. The nimo final full-suite count is written in the Fix round 1 handoff section after that suite. | files: HANDOFF-pr284-followups-2026-10-17.md | err: none | commit 537892a
+
+## Fix round 1 finish
+
+Full suite on nimo, after item 5, host free of the runner: `python3 -m unittest discover -s tests -t .`
+Result: Ran 373 tests in 113.832s OK (skipped=4) exit 0.
+
+Local CI, each distinct `run:` step once. All RC 0 after the structural rerun.
+- structural first attempt RC 1: pfylib_unittests FAILED (failures=1, skipped=4) on test_module_run_leaves_no_new_tmp_dirs while the self-hosted runner was also running unittest. Discarded.
+- structural rerun, host free: STRUCTURAL EVAL PASS. Embedded suite Ran 373 tests in 113.526s OK (skipped=4). RC 0.
+- golden, gab selftest, jev selftest, launch-wizard selftest, jev cua-s1-forms, catalog_dashboard, catalog_check, smoke_contract_lint, check_no_encoded_payloads selftest and check, pfy toolset matrix, pfy toolset plan jev, pfy hedge decide, launcher file checks, pfy help: RC 0.
+- Restored pipelines/eval/golden.latest.md (timestamp) and pipelines/catalog/dashboard.latest.md (regenerated). structural.latest.md is gitignored.
+
+## Fix round 1 exit
+
+STOPPED_EXIT: none. Exit: DONE. Skip streak 0. No STOP file. Item 1 not skipped.
+Wall clock from 2026-10-17T14:15:23-07:00. Finished the same afternoon, under the 55 minute finish line.
+Live smolvm: BLOCKED (binary absent at ~/DEVELOP/pfy-mentat/tmp/smolvm/smolvm). /dev/kvm is read/write. Nothing downloaded.
+Final head: the docs: fix1 handoff commit, parent 537892a.

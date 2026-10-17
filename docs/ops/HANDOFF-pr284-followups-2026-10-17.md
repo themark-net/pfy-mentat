@@ -16,6 +16,7 @@ No pull request.
 - After item 8 (full suite on nimo, before/after `/tmp` diff empty): Ran 360 tests in 97.942s OK (skipped=4).
 - Final local CI unittest on nimo: Ran 367 tests in 101.586s OK (skipped=4), exit 0.
 - Fix round 1 baseline on nimo, at `b7cdb77`: Ran 367 tests in 101.620s OK (skipped=4), exit 0.
+- Fix round 1 final full suite on nimo: Ran 373 tests in 113.832s OK (skipped=4), exit 0.
 - Tester's box, review of `31bc2f0`: skipped=6 because of KVM and toolchain.
 
 ## Items
@@ -50,3 +51,19 @@ Restored `pipelines/eval/golden.latest.md` (timestamp only) and `pipelines/catal
 ## Exit that fired
 
 Goal met: every item DONE or DONE with the live part BLOCKED, as the drop-in allows for item 12. Not stop-file, not 3-skips, not time-cap, not red-base.
+
+## Fix round 1 after Tester FAIL @ 31bc2f0
+
+Exit: DONE. Item 1 was not skipped.
+
+- 1 smolvm pin | DONE | `f3dfc9d` | `tests.test_x_intake_smoke_109_111` (a–f). RED: output digest -> `test_d_smolvm_guest_sha_is_not_the_digest` FAILED. RED: drop pin check -> `test_c_smolvm_unpinned_env_exits_2` FAILED. RED: drop evidence FAIL -> `test_e_smolvm_missing_evidence_exits_1` FAILED. Live BLOCKED (smolvm not installed on nimo).
+- 2 receipts | DONE | `d2d9d1f` | 112, 115, `test_both_modules_leave_pipelines_smoke_unchanged`. RED: drop `PFY_SMOKE_RECEIPT_DIR` from 112 -> snapshot FAILED.
+- 3 timeout step | DONE | `85e499a` | `test_b_sponsio_timeout_reason_is_exact`, `test_overtime_timeout_reason_is_shared_text`, `test_timeout_kills_stub_grandchild`. RED: `timeout_reason` ignores step -> those three FAILED.
+- 4 scrub env | DONE | `209d411` | `test_node_version_uses_clean_env` in 103 and 106. RED: `os.environ`-derived env without `scrub_env` -> both FAILED.
+- 5 handoff counts | DONE | `537892a` | Docs only. `skipped=4` lines name nimo. Tester's box skipped=6 because of KVM and toolchain.
+- nimo baseline at `b7cdb77`: Ran 367 tests in 101.620s OK (skipped=4), exit 0.
+- nimo final: Ran 373 tests in 113.832s OK (skipped=4), exit 0.
+- Local CI on nimo: structural (rerun), golden, gab selftest, jev selftest, launch-wizard selftest, jev cua-s1-forms, catalog_check, catalog_dashboard, smoke_contract_lint, payload selftest and check, toolset matrix, toolset plan jev, hedge decide, launcher checks, `./pfy help`: RC 0. Structural's suite: Ran 373 tests OK (skipped=4). The first structural run overlapped the self-hosted runner and is discarded. Restored `golden.latest.md` and `dashboard.latest.md`.
+- Live smolvm: BLOCKED (smolvm not installed on nimo). `/dev/kvm` is read/write. Nothing downloaded.
+- Exit that fired: DONE (goal met). Not stop-file, not time-cap, not red-base.
+- Final head: the `docs: fix1 handoff` commit on `build/pr284-followups` (parent `537892a`).
