@@ -1,0 +1,11 @@
+# Autonomous decisions — orch-fixes-1011-recheck — 2026-10-17
+
+One line per choice. Format: choice | alternatives | why.
+
+- Verify all 8 items in this worktree, sequentially, lead-owned. Spawn only the project-map agent. | One sub-agent per item, in extra worktrees, in parallel. | The owner allows only this worktree, forbids other worktrees under tmp/, and forbids parallel full-suite runs. Items 1, 2, and 7 share the smoke scripts.
+- Treat item 4 as met when the 2026-10-05 through 2026-10-11 x-intake handoffs still say `git add -f` and `docs/ops/HANDOFF-orch-decisions-1009-2026-10-09.md` still notes the temp atg pin worktree was removed. Leave the 2026-10-12, 2026-10-14, 2026-10-15, and 2026-10-16 handoffs unchanged even though they do not use that exact phrase. | Add `git add -f` to every later handoff. | The DoD is "both doc edits present". Rewriting later handoffs is follow-up work, and `docs/build-dropins/pr284-followups.md` is the next run.
+- Item 2 repair calls `timeout_reason(entry)` so the receipt reason is `overtime timeout`, `festival timeout`, or `openqodex timeout`. | Keep `timeout after <seconds>s: <cmd>`, or use argv0 (that is `bwrap` when festival is wrapped). | The DoD requires the shared `timeout_reason` format. The entry name does not change when bubblewrap is absent.
+- Leave `steps[].daemon_stop = "timeout"` in the overtime smoke as a step status, not a receipt `reason`. | Route that step string through `timeout_reason` too. | The DoD names the receipt `reason` field. That step is not the reason text.
+- Prove the Stage A spec edits by running the two `python3` blocks against a temp `config.json`. Do not run the `runsc` / `unshare` block. | Run the whole Stage A command list, including runsc. | The DoD is the spec-edit blocks. This run installs nothing and does not fetch runsc.
+- Do not add a TODO row for this recheck. | Add a done row to `docs/TODO.md`. | TODO is the product queue. These eight items are already on main. The run log and handoff are the record.
+- Restore `pipelines/eval/golden.latest.md` and `pipelines/catalog/dashboard.latest.md` after local CI. | Commit the regenerated files. | The golden diff is only the timestamp. The dashboard diff is the July full-catalog snapshot versus today's slim `tools.json`. Neither file is part of an item.
