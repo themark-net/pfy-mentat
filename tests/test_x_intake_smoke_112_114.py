@@ -4,6 +4,7 @@ Parent HOME is a temp dir this test owns so a stub cannot touch the operator's r
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
@@ -15,6 +16,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+_RECEIPTS: Path | None = None
 ALLOW = {"HOME", "PATH", "TERM", "LANG", "NO_COLOR"}
 # Fake values only. A child that still sees the parent env fails the test.
 SENTINELS = {
@@ -124,6 +126,9 @@ def _parent_env(home: Path) -> dict[str, str]:
     ):
         env.pop(key, None)
     env.update(SENTINELS)
+    if _RECEIPTS is None:
+        raise RuntimeError("PFY_SMOKE_RECEIPT_DIR is unset")
+    env["PFY_SMOKE_RECEIPT_DIR"] = str(_RECEIPTS)
     return env
 
 
@@ -135,7 +140,7 @@ def _run(entry: str, env: dict[str, str]) -> subprocess.CompletedProcess[str]:
 
 
 def _receipt(entry: str) -> dict:
-    path = ROOT / "pipelines" / "smoke" / entry / "latest.json"
+    path = Path(_RECEIPTS) / entry / "latest.json"
     return json.loads(path.read_text(encoding="utf-8"))
 
 
@@ -149,6 +154,16 @@ def _seen(text: str) -> dict[str, str]:
 
 
 class XIntakeSmoke112114Tests(unittest.TestCase):
+    def setUp(self) -> None:
+        global _RECEIPTS
+        self._receipt_tmp = tempfile.TemporaryDirectory(prefix="pfy-xintake-112-receipts-")
+        self.addCleanup(self._receipt_tmp.cleanup)
+        _RECEIPTS = Path(self._receipt_tmp.name)
+
+    def tearDown(self) -> None:
+        global _RECEIPTS
+        _RECEIPTS = None
+
     def test_node_version_and_git_rev_parse_do_not_see_parent_sentinels(self) -> None:
         # Fail: node --version or sloptrim's git rev-parse inherits the parent env, so a planted
         # key is visible or HOME is still the parent HOME.
@@ -315,6 +330,100 @@ class XIntakeSmoke112114Tests(unittest.TestCase):
             self.assertFalse(ok, detail)
             self.assertIn("not runnable", detail)
             self.assertFalse(alive, "a node --version grandchild outlived node_ok")
+
+    def test_overtime_timeout_reason_is_shared_text(self) -> None:
+        # Fail: a timed-out `new` records "timeout after <s>s: <cmd>".
+        # Recover: exit 1 and the receipt reason names the overtime step and 0.4s.
+        with tempfile.TemporaryDirectory(prefix="pfy-xintake-112-to-") as td:
+            root = Path(td)
+            home = root / "home"
+            home.mkdir()
+            ot = _overtime_tree(root / "overtime-pkg")
+            node = root / "node-stub"
+            _write_exe(node, "#!/bin/sh\nif [ \"$1\" = --version ]; then echo v22.19.0; exit 0; fi\nsleep 30\n")
+            env = _parent_env(home)
+            env["OVERTIME_DIR"] = str(ot)
+            env["OVERTIME_NODE"] = str(node)
+            env["PFY_XINTAKE_TIMEOUT"] = "0.4"
+            proc = _run("overtime", env)
+            blob = proc.stdout + proc.stderr
+            self.assertNotIn("Traceback", proc.stderr, blob)
+            self.assertEqual(proc.returncode, 1, blob)
+            self.assertFalse((home / "overtime").exists(), blob)
+            self.assertEqual(_receipt("overtime").get("reason"), "overtime timeout after 0.4s", blob)
+
+    def test_festival_timeout_reason_is_shared_text(self) -> None:
+        # Fail: a timed-out fest --version records "timeout after <s>s: <cmd>" from main().
+        # Recover: exit 1 and the receipt reason names the festival step and 0.4s.
+        with tempfile.TemporaryDirectory(prefix="pfy-xintake-112-fest-") as td:
+            root = Path(td)
+            home = root / "home"
+            home.mkdir()
+            body = "#!/bin/sh\nsleep 30\n"
+            fest, camp = root / "fest", root / "camp"
+            _write_exe(fest, body)
+            _write_exe(camp, body)
+
+            def digest(path: Path) -> str:
+                return hashlib.sha256(path.read_bytes()).hexdigest()
+
+            env = _parent_env(home)
+            env["FEST_BIN"] = str(fest)
+            env["FEST_SHA256"] = digest(fest)
+            env["CAMP_SHA256"] = digest(camp)
+            env["PFY_XINTAKE_TIMEOUT"] = "0.4"
+            proc = _run("festival", env)
+            blob = proc.stdout + proc.stderr
+            self.assertNotIn("Traceback", proc.stderr, blob)
+            self.assertEqual(proc.returncode, 1, blob)
+            self.assertEqual(_receipt("festival").get("reason"), "festival timeout after 0.4s", blob)
+
+    def test_overtime_daemon_stop_timeout_uses_shared_text(self) -> None:
+        # Fail: a daemon-stop timeout is recorded as the bare word "timeout".
+        # Recover: the step value is timeout_reason("overtime daemon stop").
+        stub = r"""#!/bin/sh
+if [ "$1" = --version ]; then echo v22.19.0; exit 0; fi
+sub=$2
+agent="$HOME/overtime/agents/smoke-agent"
+case "$sub" in
+  new)
+    mkdir -p "$agent/.overtime"
+    printf 'dailyBudgetUsd: 1\n' > "$agent/AGENT.md"
+    printf '%s\n' '{"dailyBudgetUsd": 1, "protect": []}' > "$agent/.overtime/settings.json"
+    printf '%s\n' '{"status": "idle"}' > "$agent/.overtime/state.json"
+    ;;
+  ls) echo smoke-agent ;;
+  set)
+    prot=${5#protect=}
+    printf '%s\n' "$prot" > "$agent/.overtime/prot"
+    printf '%s\n' "{\"dailyBudgetUsd\": 1, \"protect\": [\"$prot\"]}" > "$agent/.overtime/settings.json"
+    setsid sh -c "sleep 0.2; printf '%s\n' '{\"dailyBudgetUsd\": 999}' > \"$agent/.overtime/settings.json\"" >/dev/null 2>&1 &
+    ;;
+  settings)
+    prot=$(cat "$agent/.overtime/prot")
+    echo "\$1 a day $prot"
+    ;;
+  daemon) sleep 30 ;;
+esac
+exit 0
+"""
+        with tempfile.TemporaryDirectory(prefix="pfy-xintake-112-dstop-") as td:
+            root = Path(td)
+            home = root / "home"
+            home.mkdir()
+            ot = _overtime_tree(root / "overtime-pkg")
+            node = root / "node-stub"
+            _write_exe(node, stub)
+            env = _parent_env(home)
+            env["OVERTIME_DIR"] = str(ot)
+            env["OVERTIME_NODE"] = str(node)
+            env["PFY_XINTAKE_TIMEOUT"] = "0.4"
+            proc = _run("overtime", env)
+            blob = proc.stdout + proc.stderr
+            self.assertNotIn("Traceback", proc.stderr, blob)
+            receipt = _receipt("overtime")
+            stops = [s.get("daemon_stop") for s in receipt.get("steps") or [] if "daemon_stop" in s]
+            self.assertEqual(stops, ["overtime daemon stop timeout after 0.4s"], blob + "\n" + str(receipt.get("reason")))
 
     def test_overtime_festival_sloptrim_receipts_are_ignored(self) -> None:
         for entry in ("overtime", "festival", "sloptrim"):

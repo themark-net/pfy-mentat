@@ -550,7 +550,7 @@ class XIntakeSmoke122124Tests(unittest.TestCase):
             got = _receipt("harnessrouter")
             self.assertTrue(got["reason"].startswith("failed checks:"), got["reason"])
             self.assertIn("console_answers", got["reason"])
-            self.assertEqual(got.get("cleanup_reason"), "docker rm timeout")
+            self.assertEqual(got.get("cleanup_reason"), "docker rm timeout after 2s")
             self.assertIs(got["checks"]["cleanup_ok"], False)
             self.assertIn("volume rm", _calls(calls))
 

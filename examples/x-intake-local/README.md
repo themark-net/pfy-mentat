@@ -69,6 +69,8 @@ times out. A timeout SIGKILLs the command's process group, so a forked grandchil
 (exit 2 otherwise). `PFY_XINTAKE_TIMEOUT` overrides the 120s per-command timeout and, when it is smaller than 10s, the
 `node --version` probe.
 
+A recorded timeout reason is only `timeout_reason(step, seconds)` from `smoke.py`, the text `{step} timeout after {seconds}s` (for example `sponsio probe timeout after 0.2s`, `overtime timeout after 0.4s`, `openqodex timeout after 1s`). The overtime daemon-stop step uses the same helper (`overtime daemon stop timeout after 0.4s` when that step's limit is 0.4s). Smokes do not write a second timeout sentence.
+
 New smokes must start every subprocess with `run_isolated` in `smoke.py` and with nothing else. Not `subprocess`,
 not `os.system`, and not the older `run` helper (that one stays for Entries 095-097). `run_isolated` builds a clean
 environment and does not copy the parent process's variables. It sets `HOME` to the temp directory the caller

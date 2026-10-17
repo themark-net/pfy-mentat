@@ -46,7 +46,7 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from smoke import PAID_KEYS, TMP, find_bin, pinned, run, timeout_reason, write
+from smoke import TMP, find_bin, node_version_env, pinned, run, scrub_env, timeout_reason, write
 
 # graphjin_3.21.6_linux_amd64.tar.gz -> `graphjin` binary (tarball sha256 checked against upstream checksums.txt)
 GRAPHJIN_V3216_SHA256 = "e6f0fd88f99b07e8036ba7db76f24f0fceab697935559d154e823b5951f46805"
@@ -77,7 +77,7 @@ def free_port() -> int:
 
 
 def clean_env(home: str, **extra: str) -> dict:
-    env = {k: v for k, v in os.environ.items() if k not in PAID_KEYS}
+    env = scrub_env(os.environ)
     env.update(HOME=home, **extra)
     return env
 
@@ -117,7 +117,10 @@ class FakeOpenAI(BaseHTTPRequestHandler):
 
 def node_major(node: str) -> int:
     try:
-        out = run([node, "--version"], timeout=30).stdout.strip()
+        with tempfile.TemporaryDirectory(prefix="pfy-node-ver-") as home:
+            out = subprocess.run(
+                [node, "--version"], capture_output=True, text=True, timeout=30, env=node_version_env(home),
+            ).stdout.strip()
         return int(out.lstrip("v").split(".")[0])
     except (OSError, ValueError, subprocess.TimeoutExpired):
         return 0
@@ -170,11 +173,12 @@ def smoke_bugpatrol(r: dict) -> int:
                             PATH=os.path.dirname(node) + os.pathsep + os.environ.get("PATH", ""))
 
             def explore() -> subprocess.CompletedProcess | None:
+                limit = xintake_timeout(120)
                 try:
                     return subprocess.run([node, js, "explore", "--steps", "2"], cwd=d, capture_output=True,
-                                          text=True, timeout=xintake_timeout(120), env=env)
+                                          text=True, timeout=limit, env=env)
                 except subprocess.TimeoutExpired:
-                    r["reason"] = timeout_reason("bugpatrol explore")
+                    r["reason"] = timeout_reason("bugpatrol explore", limit)
                     return None
 
             Path(d, ".bugpatrol/bugpatrol.yml").write_text(cfg(False))

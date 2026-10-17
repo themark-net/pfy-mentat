@@ -19,7 +19,7 @@ A lighter local path worth an eval. The whole Substrate stack on minikube is pla
 
 Environment: Grok Bot box, kernel 6.12, cgroup v2, uid 1000, no sudo. runsc `release-20260824.0-120-g727c8c389c36` extracted from `https://storage.googleapis.com/gvisor/releases/nightly/2026-09-02/x86_64/gvisor.tar.zstd` (sha256 `d547d81401461fd1c679c5c4fa0a6c2b8ef7dc3c22ce23c9e25dcc4c69cfd06f`, the same pin as Substrate's `manifests/ate-install/sandboxconfig-gvisor.yaml`) into `/tmp/runsc-smoke`.
 
-Bundle: `runsc spec -- <cmd>`, then the two command blocks under Commands that set `root.path=/` read-only and `terminal=false` (spec edit root path read-only, then spec edit process.terminal false).
+Bundle: the Commands blocks below. Each one sets `STAGE_A` and takes the spec path from that variable, so a copy-paste does not depend on the shell's current directory. Generate the spec, then set `root.path=/` read-only, then set `process.terminal` false.
 
 | Step | Result |
 |------|--------|
@@ -29,18 +29,24 @@ Bundle: `runsc spec -- <cmd>`, then the two command blocks under Commands that s
 | Same cycle inside `unshare -Urm --propagation private` (no `--rootless`) | Works. Shell counter checkpointed at tick 6, restored and continued at tick 7; restore about 110 ms |
 | 512 MiB Python process (random bytes), same userns path | Checkpoint 0.76 s, image 516 MB (`checkpoint.img`, `pages.img`, `pages_meta.img`), process killed, restore 0.21 s, counting resumed with the same in-memory values |
 
-Commands, for repeating it in Stage A:
+Commands, for repeating it in Stage A. Each block defaults `STAGE_A` to `~/DEVELOP/pfy-mentat/tmp/runsc-stage-a` and `RUNSC` to `runsc` on `PATH`. The spec file is `$STAGE_A/b/config.json`. None of these blocks use the shell's current directory.
+
+Generate the bundle spec. `true` stands in for the workload; put the real argv after `--`:
 
 ```bash
-mkdir b && ./runsc spec -bundle b -- <cmd>
+STAGE_A="${STAGE_A:-$HOME/DEVELOP/pfy-mentat/tmp/runsc-stage-a}"
+RUNSC="${RUNSC:-runsc}"
+mkdir -p "$STAGE_A/b"
+"$RUNSC" spec -bundle "$STAGE_A/b" -- true
 ```
 
 Spec edit root path read-only:
 
 ```bash
-python3 - <<'PY'
-import json
-path = "b/config.json"
+STAGE_A="${STAGE_A:-$HOME/DEVELOP/pfy-mentat/tmp/runsc-stage-a}"
+python3 - "$STAGE_A/b/config.json" <<'PY'
+import json, sys
+path = sys.argv[1]
 with open(path) as fh:
     cfg = json.load(fh)
 cfg["root"]["path"] = "/"
@@ -54,9 +60,10 @@ PY
 Spec edit process.terminal false:
 
 ```bash
-python3 - <<'PY'
-import json
-path = "b/config.json"
+STAGE_A="${STAGE_A:-$HOME/DEVELOP/pfy-mentat/tmp/runsc-stage-a}"
+python3 - "$STAGE_A/b/config.json" <<'PY'
+import json, sys
+path = sys.argv[1]
 with open(path) as fh:
     cfg = json.load(fh)
 cfg["process"]["terminal"] = False
@@ -66,13 +73,24 @@ with open(path, "w") as fh:
 PY
 ```
 
+Run, checkpoint, and restore. This needs `unshare` and a real `runsc`. Logs and the image stay under `STAGE_A`:
+
 ```bash
-R="./runsc --network=none --ignore-cgroups --root=$PWD/state"
+STAGE_A="${STAGE_A:-$HOME/DEVELOP/pfy-mentat/tmp/runsc-stage-a}"
+RUNSC="${RUNSC:-runsc}"
+mkdir -p "$STAGE_A/state" "$STAGE_A/img"
 unshare -Urm --propagation private bash -c "
-  $R run -detach -bundle b c1 > out1.log 2>&1
-  sleep 3; $R checkpoint -image-path $PWD/img c1; $R delete -force c1
-  $R restore -detach -image-path $PWD/img -bundle b c2 > out2.log 2>&1
-  sleep 2; head -3 out2.log; $R kill c2 KILL; $R delete -force c2"
+  set -e
+  R=\"$RUNSC --network=none --ignore-cgroups --root=$STAGE_A/state\"
+  \$R run -detach -bundle $STAGE_A/b c1 > $STAGE_A/out1.log 2>&1
+  sleep 3
+  \$R checkpoint -image-path $STAGE_A/img c1
+  \$R delete -force c1
+  \$R restore -detach -image-path $STAGE_A/img -bundle $STAGE_A/b c2 > $STAGE_A/out2.log 2>&1
+  sleep 2
+  head -3 $STAGE_A/out2.log
+  \$R kill c2 KILL
+  \$R delete -force c2"
 ```
 
 ## Recommended next steps (not started)

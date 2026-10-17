@@ -23,6 +23,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import platform
 import shutil
 import signal
@@ -43,6 +44,21 @@ PAID_KEYS = ("OPENROUTER_API_KEY", "AI_GATEWAY_API_KEY", "OPENAI_API_KEY", "ANTH
              "OLLAMA_BASE_URL", "BUGPATROL_MODEL_ENDPOINT", "BUGPATROL_MODEL_NAME",
              "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "AWS_PROFILE",
              "HAR_PORTAL_TOKEN", "CASS_PATH", "NOTION_API_KEY", "GITHUB_TOKEN", "GH_TOKEN")
+# Names stripped on top of PAID_KEYS. Covers GH_TOKEN, GITHUB_TOKEN, GH_ENTERPRISE_TOKEN, GITHUB_PAT,
+# NPM_TOKEN, and HF_TOKEN.
+SECRET_ENV_RE = re.compile(r"(TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIALS?|_API_KEY|_PAT)$", re.IGNORECASE)
+
+
+def scrub_env(env: dict) -> dict:
+    """Parent env minus paid-provider keys and token-like names."""
+    return {k: v for k, v in env.items() if k not in PAID_KEYS and SECRET_ENV_RE.search(k) is None}
+
+
+def node_version_env(home: str) -> dict[str, str]:
+    """Allowlist for `node --version`: PATH, LANG, LC_ALL, TMPDIR, and the temp HOME."""
+    env = {key: os.environ[key] for key in ("PATH", "LANG", "LC_ALL", "TMPDIR") if os.environ.get(key)}
+    env["HOME"] = home
+    return env
 
 
 def write(entry: str, receipt: dict, code: int) -> int:
@@ -167,19 +183,28 @@ def kernel_at_least(major: int, minor: int) -> bool:
         return False
 
 
-def timeout_reason(tag: str) -> str:
+def timeout_reason(step: str, seconds: float) -> str:
     """The only timeout reason text an x-intake smoke records."""
-    return f"{tag} timeout"
+    return f"{step} timeout after {seconds:g}s"
 
 
 def pinned(r: dict, var: str, pin: str, lower: bool = False) -> str:
-    """$var when set (recorded as source env, with a stderr WARN), else the pin; recorded in r["expected"]."""
+    """$var when set (source env), else the pin (source pin). WARN only when the override differs.
+
+    SHA variables (lower=True, or a name ending in SHA256) compare case-insensitively.
+    Recorded at r["expected"][var] = {value, source, pin}.
+    """
     raw = (os.environ.get(var) or "").strip()
-    raw = raw.lower() if lower else raw
-    r.setdefault("expected", {})[var] = {"value": raw or pin, "source": "env" if raw else "pin", "pin": pin}
+    if lower:
+        raw = raw.lower()
+    value = raw or pin
+    r.setdefault("expected", {})[var] = {"value": value, "source": "env" if raw else "pin", "pin": pin}
     if raw:
-        print(f"WARN: ${var}={raw} overrides the pinned {pin}", file=sys.stderr)
-    return raw or pin
+        sha = lower or var.upper().endswith("SHA256")
+        same = raw.lower() == pin.lower() if sha else raw == pin
+        if not same:
+            print(f"WARN: ${var}={raw} overrides the pinned {pin}", file=sys.stderr)
+    return value
 
 
 def smoke_qwen38flash(r: dict) -> int:
@@ -236,7 +261,7 @@ def smoke_sandlock(r: dict) -> int:
         try:
             p = run(cmd, timeout=60)
         except subprocess.TimeoutExpired:
-            r["reason"] = timeout_reason("sandlock run")
+            r["reason"] = timeout_reason("sandlock run", 60)
             return 1
         r["output"] = (p.stdout + p.stderr)[-600:]
         allowed, leaked = (ok / "a").exists(), (no / "b").exists()

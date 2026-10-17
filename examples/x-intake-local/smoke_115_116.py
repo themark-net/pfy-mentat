@@ -47,7 +47,7 @@ import tempfile
 import time
 from pathlib import Path
 
-from smoke import TMP, run_isolated, write
+from smoke import TMP, run_isolated, timeout_reason, write
 
 OPENQODEX_PIN = "0.12.0"
 ASSAY_PIN = "0.3.0"
@@ -306,7 +306,7 @@ def main() -> int:
     try:
         code = fn(receipt)
     except subprocess.TimeoutExpired as e:
-        receipt["reason"] = f"timeout after {e.timeout}s: {e.cmd[:3] if isinstance(e.cmd, list) else e.cmd}"
+        receipt["reason"] = timeout_reason(a.entry, float(e.timeout))
         code = 1
     return write(a.entry, receipt, code)
 

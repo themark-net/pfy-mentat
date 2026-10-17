@@ -6,7 +6,7 @@ Usage: python3 examples/x-intake-local/smoke_109_111.py --entry smolvm|brigade|r
 Same contract and receipts as smoke.py next to it (whose helpers it reuses): exit 0 = PASS, 1 = the tool ran but
 the check failed, 2 = can't run here (prereq missing; reason recorded). Writes pipelines/smoke/<entry>/latest.json.
 Never installs anything; every scratch file goes to a fresh tempfile directory that is removed. Tool subprocesses
-get a fresh temp HOME and an env with paid provider keys stripped. No smoke calls a model.
+get a fresh temp HOME and an env scrubbed of paid provider keys and token-like names. No smoke calls a model.
 PFY_XINTAKE_TIMEOUT (float seconds, > 0) overrides the per-command tool timeouts (default 120s; 300s for smolvm
 commands that may pull an image); empty or invalid keeps the default.
 
@@ -19,11 +19,17 @@ created or modified. The receipt records which mode ran (`containment`).
   smolvm   $SMOLVM_BIN, then ~/DEVELOP/pfy-mentat/tmp/smolvm/smolvm (the wrapper script from the v1.26.1
            smolvm-1.26.1-linux-x86_64.tar.gz release, unpacked as-is), then PATH. The `smolvm-bin` next to the
            wrapper is pinned by sha256 ($SMOLVM_SHA256 overrides); a mismatch exits 2 without exec. Exits 2 if
-           /dev/kvm is missing or not read/write for this user. In a temp HOME: `machine run --image alpine`
-           (no --net, no mounts) must print a marker, report a guest kernel different from the host's, and not
-           see a host sentinel file; the sentinel must be unchanged afterwards and the real HOME's
-           ~/.cache/smolvm and ~/.local/share/smolvm must not be created or modified. The image is pulled from
-           Docker Hub by the host ($SMOLVM_IMAGE overrides `alpine`). SMOLVM_CHECKPOINT=1 adds checkpoint and
+           /dev/kvm is missing or not read/write for this user ($PFY_SMOLVM_KVM_PATH overrides that path).
+           In a temp HOME: `machine run --image <digest-pinned ref>` (no --net, no mounts) must print a marker,
+           report a guest kernel different from the host's, and not see a host sentinel file; the sentinel must
+           be unchanged afterwards and the real HOME's ~/.cache/smolvm and ~/.local/share/smolvm must not be
+           created or modified. The ref is SMOLVM_IMAGE_PIN unless $SMOLVM_IMAGE is itself digest-pinned
+           (`name@sha256:<64 hex>`); anything else exits 2 before the KVM check. The receipt records `image`,
+           `image_digest` (the sha256 part of that ref) and `image_digest_source` (`pin` or `env`). A digest is
+           never taken from tool or guest output. After `machine run` succeeds, stderr must contain
+           `Pulling image <ref>` or stdout must have a `Using cached image` / `Caching image` line; that line
+           is `image_evidence`, and missing evidence FAILs. A passing run sets a short `reason`.
+           SMOLVM_CHECKPOINT=1 adds checkpoint and
            rewind: write gen1 in a persistent machine, `machine checkpoint`, write gen2, `machine create --from`
            the checkpoint, and the restored machine must read gen1 while the source reads gen2; both machines
            are deleted afterwards. Never uses the curl | bash installer.
@@ -54,6 +60,7 @@ import hashlib
 import json
 import os
 import platform
+import re
 import shutil
 import signal
 import subprocess
@@ -63,11 +70,15 @@ import time
 import uuid
 from pathlib import Path
 
-from smoke import PAID_KEYS, TMP, find_bin, pinned, run, timeout_reason, write
+from smoke import TMP, find_bin, pinned, run, scrub_env, timeout_reason, write
 
 # smolvm v1.26.1 smolvm-1.26.1-linux-x86_64.tar.gz: smolvm-bin (matches the tarball's own checksums.txt; the tarball
 # itself is sha256 bcae519f7dad3cead2deaa0362a42a1ad7bffce73ea7a28161dea6822c559654 in the release checksums.sha256)
 SMOLVM_V1261_BIN_SHA256 = "62ed0353d664c2d6d78bd87ecf3213c64464003f51cb58506b87b187b1a6494a"
+# alpine 3.22 multi-arch index digest, resolved 2026-10-17 from registry-1.docker.io.
+SMOLVM_IMAGE_PIN = "alpine:3.22@sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8"
+_PINNED_IMAGE_REF = re.compile(r"@sha256:[0-9a-f]{64}$", re.IGNORECASE)
+_IMAGE_CACHE_LINE = re.compile(r"^(Using cached|Caching) image [0-9a-f]{16}\b")
 # runx cli-v0.9.1 runx-0.9.1-x86_64-unknown-linux-musl.tar.gz: the `runx` binary inside (the tarball itself is
 # sha256 59eee2af81d24d0f8ba2416e2bac55d147ed93693e6a41ffe7c2cfd5cba98cc7, matching the upstream .sha256 asset)
 RUNX_V091_SHA256 = "e0c0627882c2ce7a4e8cfb20cf4896a4aa371db0e13c95c8b86fa31276388b60"
@@ -94,7 +105,7 @@ def sha256_file(path: str) -> str:
 
 
 def clean_env(home: str, **extra: str) -> dict:
-    env = {k: v for k, v in os.environ.items() if k not in PAID_KEYS and not k.startswith(DROP_PREFIXES)}
+    env = {k: v for k, v in scrub_env(os.environ).items() if not k.startswith(DROP_PREFIXES)}
     env.update(HOME=home, NO_COLOR="1", **extra)
     return env
 
@@ -103,8 +114,9 @@ def call(cmd: list[str], cwd: str, env: dict, r: dict, tag: str, timeout: float 
     """Run cmd in its own session; on timeout SIGKILL the whole process group, not just the direct child."""
     proc = subprocess.Popen(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env,
                             start_new_session=True)
+    limit = xintake_timeout(timeout)
     try:
-        out, err = proc.communicate(timeout=xintake_timeout(timeout))
+        out, err = proc.communicate(timeout=limit)
     except subprocess.TimeoutExpired:
         try:
             os.killpg(proc.pid, signal.SIGKILL)
@@ -115,7 +127,7 @@ def call(cmd: list[str], cwd: str, env: dict, r: dict, tag: str, timeout: float 
         except subprocess.TimeoutExpired:  # a descendant that left the group still holds the pipes
             proc.kill()
             proc.wait()
-        r["reason"] = timeout_reason(tag)
+        r["reason"] = timeout_reason(tag, limit)
         return None
     return subprocess.CompletedProcess(cmd, proc.returncode, out, err)
 
@@ -166,9 +178,42 @@ def bwrap_prefix(writable: list[str]) -> list[str] | None:
     return base
 
 
+def smolvm_image(r: dict) -> str | None:
+    """Digest-pinned ref. Records image, image_digest, image_digest_source. None means exit 2."""
+    raw = (os.environ.get("SMOLVM_IMAGE") or "").strip()
+    if raw:
+        if not _PINNED_IMAGE_REF.search(raw):
+            r["reason"] = "SMOLVM_IMAGE must be digest-pinned (name@sha256:<64 hex>)"
+            return None
+        image, source = raw.lower(), "env"
+    else:
+        image, source = SMOLVM_IMAGE_PIN, "pin"
+    r["image"] = image
+    r["image_digest"] = image.split("@", 1)[1]
+    r["image_digest_source"] = source
+    return image
+
+
+def smolvm_image_evidence(stdout: str, stderr: str, image: str) -> str | None:
+    """Cache line from stdout, else the pull line from stderr. Not a digest from the output."""
+    for raw_line in stdout.splitlines():
+        line = raw_line.split("\r")[-1].strip()
+        if _IMAGE_CACHE_LINE.match(line):
+            return line
+    needle = "Pulling image " + image
+    for raw_line in stderr.splitlines():
+        line = raw_line.split("\r")[-1].strip()
+        if needle in line:
+            return line
+    return None
+
+
 # ---------------------------------------------------------------- smolvm
 
 def smoke_smolvm(r: dict) -> int:
+    image = smolvm_image(r)
+    if image is None:
+        return 2
     b = find_bin("SMOLVM_BIN", "smolvm/smolvm", "smolvm")
     r["bin"] = b
     if not b:
@@ -188,16 +233,15 @@ def smoke_smolvm(r: dict) -> int:
     if digest != expect:
         r["reason"] = f"sha256 mismatch: {os.path.basename(payload)} is {digest}, expected {expect}"
         return 2
-    kvm = "/dev/kvm"
+    kvm = os.environ.get("PFY_SMOLVM_KVM_PATH") or "/dev/kvm"
+    r["kvm_path"] = kvm
     r["kvm_present"] = os.path.exists(kvm)
     r["kvm_rw"] = r["kvm_present"] and os.access(kvm, os.R_OK | os.W_OK)
     if not r["kvm_rw"]:
-        r["reason"] = ("no /dev/kvm" if not r["kvm_present"] else
-                       "/dev/kvm is not read/write for this user (smolvm needs KVM; on Linux that is usually the "
+        r["reason"] = ("no " + kvm if not r["kvm_present"] else
+                       kvm + " is not read/write for this user (smolvm needs KVM; on Linux that is usually the "
                        "`kvm` group, a system change that needs Mark's approval on nimo)")
         return 2
-    image = (os.environ.get("SMOLVM_IMAGE") or "").strip() or "alpine"
-    r["image"] = image
     real_home = Path.home()
     watched = [real_home / ".cache/smolvm", real_home / ".local/share/smolvm"]
     before = state_snapshot(watched)
@@ -217,6 +261,11 @@ def smoke_smolvm(r: dict) -> int:
         if p.returncode != 0 or "pfy-smolvm-ok" not in lines:
             r["reason"] = f"`machine run` failed (exit {p.returncode}): {(p.stdout + p.stderr)[-400:]}"
             return 1
+        evidence = smolvm_image_evidence(p.stdout or "", p.stderr or "", image)
+        if not evidence:
+            r["reason"] = "smolvm did not report pulling or caching the pinned image"
+            return 1
+        r["image_evidence"] = evidence
         guest_kernel = lines[lines.index("pfy-smolvm-ok") + 1] if lines.index("pfy-smolvm-ok") + 1 < len(lines) else ""
         r["guest_kernel"], r["host_kernel"] = guest_kernel, platform.release()
         if not guest_kernel or guest_kernel == platform.release():
@@ -238,6 +287,7 @@ def smoke_smolvm(r: dict) -> int:
     if before != after:
         r["reason"] = f"smolvm state written into the real HOME: {after}"
         return 1
+    r["reason"] = f"ok: guest kernel {guest_kernel}, host file hidden"
     return 0
 
 

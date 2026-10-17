@@ -5,8 +5,10 @@ Har is `node <realpath(HAR_BIN)>`; HAR_NODE is a stub that prints v22.0.0 and HA
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -16,7 +18,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "examples" / "x-intake-local"))
+from smoke import PAID_KEYS  # noqa: E402
 from smoke_106_108 import CM_V050_SHA256  # noqa: E402
+
+DUMMY_PAID = "pfy-test-dummy"
 
 OTHER_SHA = "0123456789abcdef" * 4
 REAL_NODE = shutil.which("node") or ""
@@ -91,6 +96,7 @@ class XIntakeSmoke106108Tests(unittest.TestCase):
             self.assertFalse(marker.exists(), "cm stub was executed")
             self.assertNotIn("Traceback", proc.stderr)
             got = (self._receipt("cassmemory").get("expected") or {}).get("CM_SHA256") or {}
+            self.assertEqual(got.get("pin"), CM_V050_SHA256, blob)
             if override is None:
                 self.assertNotIn("WARN:", proc.stderr)
                 self.assertEqual(got.get("source"), "pin", blob)
@@ -106,6 +112,31 @@ class XIntakeSmoke106108Tests(unittest.TestCase):
 
     def test_cassmemory_sha_env_warns_records_override_and_does_not_exec(self) -> None:
         self._cm_sha(OTHER_SHA)
+
+    def test_cassmemory_sha_env_equal_to_pin_does_not_warn(self) -> None:
+        # Fail: an env value equal to the pin (any hex case) still prints WARN.
+        # Recover: exit 2, no exec, source env, value is the pin, stderr has no WARN.
+        for override in (CM_V050_SHA256, CM_V050_SHA256.upper()):
+            with self.subTest(override=override[:12]):
+                with tempfile.TemporaryDirectory(prefix="pfy-xintake-cm-eq-") as td:
+                    root = Path(td)
+                    home = root / "home"
+                    home.mkdir()
+                    marker = root / "executed-marker"
+                    stub = root / "cm"
+                    _write_exe(stub, "#!/bin/sh\ntouch %s\n" % marker)
+                    env = self._base_env(home)
+                    env["CM_BIN"] = str(stub)
+                    env["CM_SHA256"] = override
+                    proc = self._run("cassmemory", env)
+                    blob = proc.stdout + proc.stderr
+                    self.assertEqual(proc.returncode, 2, blob)
+                    self.assertFalse(marker.exists(), "cm stub was executed")
+                    self.assertNotIn("WARN:", proc.stderr, blob)
+                    got = (self._receipt("cassmemory").get("expected") or {}).get("CM_SHA256") or {}
+                    self.assertEqual(got.get("source"), "env", blob)
+                    self.assertEqual(got.get("value"), CM_V050_SHA256, blob)
+                    self.assertEqual(got.get("pin"), CM_V050_SHA256, blob)
 
     def _har_bins(self, root: Path, js: str) -> dict[str, str]:
         node = root / "node-stub"
@@ -280,6 +311,158 @@ done(3, 'unexpected ' + args.join(' '));
             self.assertEqual(proc.returncode, 1, blob + "\n" + json.dumps(receipt))
             self.assertNotIn("Traceback", proc.stderr)
             self.assertIn(".har/otel-hooks", receipt.get("reason") or "", blob)
+
+    def _assert_child_dirs_under_its_home(self, text: str, parent_home: Path) -> None:
+        env = {}
+        cwd = ""
+        for line in text.splitlines():
+            if line.startswith("cwd="):
+                cwd = line.split("=", 1)[1]
+            elif "=" in line:
+                key, value = line.split("=", 1)
+                env[key] = value
+        seen = Path(env["HOME"]).resolve()
+        self.assertNotEqual(seen, parent_home.resolve(), env)
+        self.assertTrue(cwd, text)
+        self.assertTrue(Path(cwd).is_absolute(), cwd)
+        for key in ("XDG_CONFIG_HOME", "XDG_CACHE_HOME", "XDG_DATA_HOME", "npm_config_cache"):
+            got = Path(env[key]).resolve()
+            self.assertTrue(got.is_relative_to(seen), f"{key}={env[key]} HOME={env['HOME']}")
+
+    def test_rulora_child_env_dirs_are_under_temp_home(self) -> None:
+        # Fail: the rulora node probe inherits the parent HOME or XDG/npm paths outside its HOME.
+        # Recover: HOME is a fresh temp dir and the four dirs sit under that HOME.
+        stub = """#!/bin/sh
+if [ "$1" = --version ]; then echo v22.0.0; exit 0; fi
+{ env; echo "cwd=$(pwd)"; } > "$PFY_PROBE_OUT"
+exit 0
+"""
+        with tempfile.TemporaryDirectory(prefix="pfy-xintake-rulora-env-") as td:
+            root = Path(td)
+            home = root / "home"
+            home.mkdir()
+            pkg = root / "rulora" / "node_modules" / "@rulora" / "core"
+            pkg.mkdir(parents=True)
+            (pkg / "package.json").write_text('{"version": "0.1.0-alpha.4"}\n', encoding="utf-8")
+            node = root / "node"
+            _write_exe(node, stub)
+            probe = root / "probe.txt"
+            env = self._base_env(home)
+            env["PFY_PROBE_OUT"] = str(probe)
+            env["RULORA_DIR"] = str(root / "rulora")
+            env["RULORA_NODE"] = str(node)
+            proc = self._run("rulora", env)
+            blob = proc.stdout + proc.stderr
+            self.assertTrue(probe.is_file(), blob)
+            self.assertNotIn("Traceback", proc.stderr, blob)
+            self._assert_child_dirs_under_its_home(probe.read_text(encoding="utf-8"), home)
+
+    def test_cassmemory_child_env_dirs_are_under_temp_home(self) -> None:
+        # Fail: the cm child inherits the parent HOME or XDG/npm paths outside its HOME.
+        # Recover: HOME is a fresh temp dir and the four dirs sit under that HOME.
+        stub = """#!/bin/sh
+{ env; echo "cwd=$(pwd)"; } > "$PFY_PROBE_OUT"
+echo '{"success": false}'
+exit 1
+"""
+        with tempfile.TemporaryDirectory(prefix="pfy-xintake-cm-env-") as td:
+            root = Path(td)
+            home = root / "home"
+            home.mkdir()
+            binary = root / "cm"
+            _write_exe(binary, stub)
+            digest = hashlib.sha256(binary.read_bytes()).hexdigest()
+            probe = root / "probe.txt"
+            env = self._base_env(home)
+            env["PFY_PROBE_OUT"] = str(probe)
+            env["CM_BIN"] = str(binary)
+            env["CM_SHA256"] = digest
+            proc = self._run("cassmemory", env)
+            blob = proc.stdout + proc.stderr
+            self.assertTrue(probe.is_file(), blob)
+            self.assertNotIn("Traceback", proc.stderr, blob)
+            self._assert_child_dirs_under_its_home(probe.read_text(encoding="utf-8"), home)
+
+    def test_node_version_uses_clean_env(self) -> None:
+        # Fail: `node --version` inherits PAID_KEYS or the parent HOME.
+        # Recover: the version probe runs, its HOME is a fresh temp dir, and no paid name or dummy value is present.
+        with tempfile.TemporaryDirectory(prefix="pfy-xintake-nodever-") as td:
+            root = Path(td)
+            home = root / "home"
+            home.mkdir()
+            pkg = root / "rulora" / "node_modules" / "@rulora" / "core"
+            pkg.mkdir(parents=True)
+            (pkg / "package.json").write_text('{"version": "0.1.0-alpha.4"}\n', encoding="utf-8")
+            probe = root / "node.env"
+            node = root / "node"
+            _write_exe(node, "#!/bin/sh\nif [ \"$1\" = --version ]; then env > %s; echo v22.0.0; exit 0; fi\nexit 0\n" % shlex.quote(str(probe)))
+            env = self._base_env(home)
+            for key in PAID_KEYS:
+                env[key] = DUMMY_PAID
+            for key in ("GH_TOKEN", "GITHUB_TOKEN", "NPM_TOKEN", "FOO_API_KEY"):
+                env[key] = DUMMY_PAID
+            env["PFY_SMOKE_RECEIPT_DIR"] = str(root / "receipts")
+            env["RULORA_DIR"] = str(root / "rulora")
+            env["RULORA_NODE"] = str(node)
+            proc = self._run("rulora", env)
+            self.assertTrue(probe.is_file(), proc.stdout + proc.stderr)
+            dump = probe.read_text(encoding="utf-8")
+            leaked = sorted(
+                {line.split("=", 1)[0] for line in dump.splitlines() if line.split("=", 1)[0] in PAID_KEYS}
+            )
+            self.assertEqual(leaked, [], f"node --version received paid keys {leaked}")
+            self.assertFalse(DUMMY_PAID in dump, "node --version received the dummy paid value")
+            names = {line.split("=", 1)[0] for line in dump.splitlines()}
+            secret_names = [key for key in ("GH_TOKEN", "GITHUB_TOKEN", "NPM_TOKEN", "FOO_API_KEY") if key in names]
+            self.assertEqual(secret_names, [], f"node --version received secret names {secret_names}")
+            self.assertIn("PATH", names)
+            self.assertTrue(any(line.startswith("PATH=") and line.split("=", 1)[1] for line in dump.splitlines()))
+            homes = [line.split("=", 1)[1] for line in dump.splitlines() if line.startswith("HOME=")]
+            self.assertEqual(len(homes), 1, "node --version env dump has no HOME")
+            self.assertNotEqual(os.path.normpath(homes[0]), os.path.normpath(str(home)))
+            self.assertTrue(homes[0].startswith(os.path.normpath(tempfile.gettempdir()) + os.sep), homes[0])
+            self.assertNotIn("Traceback", proc.stderr)
+
+    def test_cassmemory_child_drops_secret_shaped_env(self) -> None:
+        # Fail: the cm child keeps secret-shaped names (M26) or GITHUB_PAT (M28).
+        # Recover: those names are absent, PATH is present, and HOME is a fresh temp dir.
+        secret_names = (
+            "NPM_TOKEN", "GITHUB_PAT", "GH_ENTERPRISE_TOKEN", "HF_TOKEN",
+            "FOO_API_KEY", "DB_PASSWORD", "MY_SECRET", "AWS_CREDENTIALS",
+        )
+        stub_body = """#!/usr/bin/env python3
+import os
+from pathlib import Path
+here = Path(__file__).resolve().parent
+(here / "cm-env-names").write_text("\\n".join(sorted(os.environ)) + "\\n")
+(here / "cm-home-value").write_text(os.environ.get("HOME", ""))
+raise SystemExit(1)
+"""
+        with tempfile.TemporaryDirectory(prefix="pfy-xintake-cm-envscrub-") as td:
+            root = Path(td)
+            home = root / "home"
+            home.mkdir()
+            stub = root / "cm"
+            _write_exe(stub, stub_body)
+            env = self._base_env(home)
+            env["CM_BIN"] = str(stub)
+            env["CM_SHA256"] = hashlib.sha256(stub.read_bytes()).hexdigest()
+            env["PFY_SMOKE_RECEIPT_DIR"] = str(root / "receipts")
+            for key in secret_names:
+                env[key] = DUMMY_PAID
+            proc = self._run("cassmemory", env)
+            blob = proc.stdout + proc.stderr
+            names_path = root / "cm-env-names"
+            self.assertTrue(names_path.is_file(), blob)
+            seen = names_path.read_text(encoding="utf-8").splitlines()
+            self.assertFalse(any("=" in line for line in seen), "env dump included values")
+            leaked = [key for key in secret_names if key in seen]
+            self.assertEqual(leaked, [], f"cm child saw secret names {leaked}")
+            self.assertIn("PATH", seen)
+            home_value = (root / "cm-home-value").read_text(encoding="utf-8").strip()
+            self.assertNotEqual(os.path.normpath(home_value), os.path.normpath(str(home)))
+            self.assertTrue(home_value.startswith(os.path.normpath(tempfile.gettempdir()) + os.sep), home_value)
+            self.assertNotIn("Traceback", proc.stderr)
 
 
 if __name__ == "__main__":

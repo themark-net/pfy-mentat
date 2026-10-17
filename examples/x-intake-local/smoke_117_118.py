@@ -126,8 +126,8 @@ def _kander_board(r: dict, b: str, want_v: str, checks: dict) -> int:
             try:
                 return run_isolated(argv, home=str(home), cwd=str(repo), timeout=tmo(), extra=extra,
                                     bwrap_writable=[td])
-            except subprocess.TimeoutExpired:
-                raise TimeoutError(timeout_reason(tag))
+            except subprocess.TimeoutExpired as e:
+                raise TimeoutError(timeout_reason(tag, float(e.timeout)))
 
         def k(*args: str) -> subprocess.CompletedProcess:
             return run([b, "--lang", "en", *args], f"kander {args[0]}")
@@ -231,8 +231,8 @@ def smoke_moira(r: dict) -> int:
             try:
                 return run_isolated([docker, "compose", "-p", "pfy-moira-smoke", *args], home=home, cwd=str(d),
                                     timeout=tmo(), path=path, extra=extra, bwrap_writable=None)
-            except subprocess.TimeoutExpired:
-                raise TimeoutError(timeout_reason(tag))
+            except subprocess.TimeoutExpired as e:
+                raise TimeoutError(timeout_reason(tag, float(e.timeout)))
 
         if dc("version", tag="docker compose version").returncode != 0:
             r["reason"] = "the docker compose plugin is not available"

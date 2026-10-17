@@ -16,6 +16,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+_RECEIPTS: Path | None = None
 
 # Values are fake. Their names and values must not appear in any tool child's environment.
 SENTINELS = {
@@ -50,7 +51,15 @@ def _parent_env(home: Path, **extra: str) -> dict[str, str]:
             env.pop(key, None)
     env.update(SENTINELS)
     env.update(extra)
+    if _RECEIPTS is None:
+        raise RuntimeError("PFY_SMOKE_RECEIPT_DIR is unset")
+    env["PFY_SMOKE_RECEIPT_DIR"] = str(_RECEIPTS)
     return env
+
+
+def _receipt(entry: str) -> dict:
+    path = Path(_RECEIPTS) / entry / "latest.json"
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def _run(entry: str, env: dict[str, str]) -> subprocess.CompletedProcess[str]:
@@ -78,6 +87,16 @@ def _assert_child_clean(case: unittest.TestCase, probe: Path, parent_home: Path)
 
 
 class XIntakeSmoke115116Tests(unittest.TestCase):
+    def setUp(self) -> None:
+        global _RECEIPTS
+        self._receipt_tmp = tempfile.TemporaryDirectory(prefix="pfy-xintake-115-receipts-")
+        self.addCleanup(self._receipt_tmp.cleanup)
+        _RECEIPTS = Path(self._receipt_tmp.name)
+
+    def tearDown(self) -> None:
+        global _RECEIPTS
+        _RECEIPTS = None
+
     def test_version_probes_drop_planted_keys(self) -> None:
         with tempfile.TemporaryDirectory(prefix="pfy-xintake-115-") as td:
             home = Path(td, "operator-home")
@@ -136,8 +155,10 @@ sleep 60
                     pass
             self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
             self.assertNotIn("Traceback", p.stderr)
-            receipt = json.loads((ROOT / "pipelines/smoke/openqodex/latest.json").read_text(encoding="utf-8"))
-            self.assertIn("timeout", receipt["reason"])
+            receipt = _receipt("openqodex")
+            # Fail: the receipt uses its own "timeout after <s>s: <cmd>" sentence.
+            # Recover: the reason is the shared timeout_reason text for this entry.
+            self.assertEqual(receipt["reason"], "openqodex timeout after 1s", p.stdout + p.stderr)
             self.assertEqual(left, [], "a forked tool grandchild outlived the smoke timeout")
 
     def test_openqodex_home_outside_temp_area_exits_2(self) -> None:
