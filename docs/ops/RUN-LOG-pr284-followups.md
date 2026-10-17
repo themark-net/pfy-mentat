@@ -126,3 +126,53 @@ STOPPED_EXIT: none. Exit: DONE. Skip streak 0. No STOP file. Item 1 not skipped.
 Wall clock from 2026-10-17T14:15:23-07:00. Finished the same afternoon, under the 55 minute finish line.
 Live smolvm: BLOCKED (binary absent at ~/DEVELOP/pfy-mentat/tmp/smolvm/smolvm). /dev/kvm is read/write. Nothing downloaded.
 Final head: the docs: fix1 handoff commit, parent 537892a.
+
+## Fix round 2
+
+Overview: Tester FAIL at c4bee82 is one test-only blocker (smolvm stub does not match upstream pull text) plus two env-scrub follow-ups. Lead implements in this worktree, one commit and push per item. Head at start is 38b11a3 (drop-in on top of c4bee82). Host nimo. Live smolvm binary absent.
+
+Start: 2026-10-17T15:29:38-07:00. No new item after 30 minutes. Finish by about 40 minutes. Backstop 45.
+
+Phases:
+- baseline | tests/ | `python3 -m unittest discover -s tests -t .` OK on the unmodified tree, expect 373 skipped=4 | none | general
+- item-1-smolvm-stub | tests/test_x_intake_smoke_109_111.py only | module green; RED M19a, M21, M19b logged; cache lines only under --oci-cache | baseline | general
+- item-2-tool-env-tests | tests/test_x_intake_smoke_103_105.py, tests/test_x_intake_smoke_106_108.py | both new tests green; RED M26 and M28 logged | baseline | general
+- item-3-scrub-helpers | examples/x-intake-local/smoke_109_111.py, smoke_098_100.py, tests/test_x_intake_smoke_109_111.py, tests/test_x_intake_smoke_098_100.py | new env tests green; two PAID_KEYS-only mutants RED | item-1 (same test file) | general
+- finish | docs/ops handoff + run log, local CI | full suite + eval-structural run steps recorded; handoff committed and pushed | items 1-3 | general
+
+Risks:
+- Shared worktree and git checkout mutants: no parallel implementers. project-map writes only .project-map/.
+- Baseline red: stop BLOCKED red-base, no items.
+- Item 1 skipped: still do items 2-3 and lead the handoff with ITEM 1 SKIPPED.
+- Time cap: commit and push after every item; start no new item after 30 minutes.
+- Do not change smoke_109_111.py smolvm image code in item 1. Do not download smolvm. Do not open a PR.
+
+## Fix round 2 baseline
+
+`python3 -m unittest discover -s tests -t .` on nimo, unmodified tree at 38b11a3 (parent c4bee82).
+Result: Ran 373 tests in 113.543s OK (skipped=4) exit 0.
+No red base.
+
+## Fix round 2 items
+
+- item-1-smolvm-stub | DONE | tests: tests.test_x_intake_smoke_109_111 Ran 12 tests in 3.131s OK. RED: M19a return None before needle -> test_a_smolvm_default_pin, test_b_smolvm_env_override_is_pinned, test_d_smolvm_guest_sha_is_not_the_digest, test_f_smolvm_plain_runs_pull_every_time FAILED (failures=4). Restored, Ran 12 OK. RED: M21 needle = "Pulling image " -> test_g_smolvm_wrong_ref_exits_1 FAILED (failures=1). Restored, Ran 12 OK. RED: M19b stdout loop disabled -> test_h_oci_cache_stdout_branch FAILED (failures=1). Restored, Ran 12 OK. Production smoke_109_111.py clean after each restore. Grep: Caching/Using cached prints are only inside `if "--oci-cache" in args` (tests/test_x_intake_smoke_109_111.py:66-70). (a) and (f) assert the opening eprint `Pulling image <pin>...` because splitlines breaks on CR; the `... done.` equality was skipped (decisions log). | files: tests/test_x_intake_smoke_109_111.py | err: none | commit 910e8e1
+- item-2-tool-env-tests | DONE | tests: tests.test_x_intake_smoke_103_105 and tests.test_x_intake_smoke_106_108 Ran 18 tests in 2.871s OK. Tool children: graphjin (103) and cm (106). RED: M26 scrub_env keeps secret-shaped names -> test_graphjin_child_drops_secret_shaped_env and test_cassmemory_child_drops_secret_shaped_env FAILED (failures=2). Restored, Ran 18 OK. RED: M28 drop |_PAT -> both new tests FAILED on GITHUB_PAT (failures=2, full modules). Restored, Ran 18 OK. smoke.py clean after each restore. | files: the two test modules | err: none | commit 82d2b1c
+- item-3-scrub-helpers | DONE | tests: tests.test_x_intake_smoke_109_111 and tests.test_x_intake_smoke_098_100 Ran 24 tests in 4.700s OK. RED: 109 clean_env back to PAID_KEYS-only -> test_i_smolvm_child_drops_secret_shaped_env FAILED (failures=1). Restored, Ran 13 OK. RED: 098 tool_env back to PAID_KEYS-only -> test_f_sponsio_child_drops_secret_shaped_env FAILED (failures=1). Restored, Ran 24 OK. | files: smoke_109_111.py, smoke_098_100.py, two test modules | err: none | commit afcb366
+
+## Fix round 2 finish
+
+Full suite on nimo, after item 3. Two earlier runs (15:44 and 15:48) failed only `test_module_run_leaves_no_new_tmp_dirs` while the self-hosted runner was also running unittest. Discarded. Quiet rerun at 15:53:39, host free of discover: `python3 -m unittest discover -s tests -t .`
+Result: Ran 379 tests in 116.156s OK (skipped=4) exit 0.
+
+Local CI, each distinct `run:` step. All RC 0.
+- structural, host free after the quiet suite: STRUCTURAL EVAL PASS. Embedded suite Ran 379 tests in 115.605s OK (skipped=4). RC 0. Wrote pipelines/eval/structural.latest.md (gitignored).
+- golden, gab selftest, jev selftest, launch-wizard selftest, jev cua-s1-forms, catalog_check, catalog_dashboard, smoke_contract_lint, check_no_encoded_payloads selftest and check, pfy toolset matrix, pfy toolset plan jev, pfy hedge decide, launcher file checks, pfy help: RC 0.
+- The workflow's extra `python3 -m unittest discover` is the same command as the finish suite. It was not started a third time while the runner was queued. The finish suite and structural's embedded suite are the two recorded runs.
+- Restored pipelines/eval/golden.latest.md and pipelines/catalog/dashboard.latest.md. git status after that showed only the run log and the decisions file.
+
+## Fix round 2 exit
+
+STOPPED_EXIT: none. Exit: DONE. Skip streak 0. No STOP file. Item 1 not skipped.
+Wall clock from 2026-10-17T15:29:38-07:00. Finish suite and structural were green before 16:00, under the 40 minute line.
+Live smolvm: BLOCKED (binary absent at ~/DEVELOP/pfy-mentat/tmp/smolvm/smolvm). Nothing downloaded.
+Final head: the docs: fix2 handoff commit, parent afcb366.

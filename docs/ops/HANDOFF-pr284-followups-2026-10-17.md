@@ -67,3 +67,21 @@ Exit: DONE. Item 1 was not skipped.
 - Live smolvm: BLOCKED (smolvm not installed on nimo). `/dev/kvm` is read/write. Nothing downloaded.
 - Exit that fired: DONE (goal met). Not stop-file, not time-cap, not red-base.
 - Final head: the `docs: fix1 handoff` commit on `build/pr284-followups` (parent `537892a`).
+
+## Fix round 2 after Tester FAIL @ c4bee82
+
+Exit: DONE. Item 1 was not skipped.
+
+- 1 smolvm stub | DONE | `910e8e1` | `test_a_smolvm_default_pin`, `test_f_smolvm_plain_runs_pull_every_time`, `test_g_smolvm_wrong_ref_exits_1`, `test_h_oci_cache_stdout_branch` (b–e kept). RED: M19a -> a, b, d, f FAILED. RED: M21 -> g FAILED. RED: M19b -> h FAILED. (a) and (f) assert `Pulling image <pin>...` (opening eprint). `... done.` skipped: splitlines breaks on CR (decisions log).
+- 2 tool-child scrub | DONE | `82d2b1c` | `test_graphjin_child_drops_secret_shaped_env`, `test_cassmemory_child_drops_secret_shaped_env`. RED: M26 -> both FAILED. RED: M28 -> both FAILED on GITHUB_PAT.
+- 3 scrub helpers | DONE | `afcb366` | `test_i_smolvm_child_drops_secret_shaped_env`, `test_f_sponsio_child_drops_secret_shaped_env`. RED: 109 PAID_KEYS-only -> test_i FAILED. RED: 098 PAID_KEYS-only -> test_f FAILED.
+- nimo baseline at `38b11a3`: Ran 373 tests in 113.543s OK (skipped=4), exit 0.
+- nimo final: Ran 379 tests in 116.156s OK (skipped=4), exit 0. Two earlier runs failed only `test_module_run_leaves_no_new_tmp_dirs` while the self-hosted runner was also in unittest; discarded.
+- Local CI on nimo: structural (host free) STRUCTURAL EVAL PASS, embedded suite Ran 379 OK (skipped=4). golden, gab, jev selftest, launch-wizard, jev cua-s1-forms, catalog_check, catalog_dashboard, smoke_contract_lint, payload selftest and check, toolset matrix, toolset plan jev, hedge decide, launcher checks, `./pfy help`: RC 0. Restored `golden.latest.md` and `dashboard.latest.md`.
+- Live smolvm: BLOCKED (not installed on nimo). `~/DEVELOP/pfy-mentat/tmp/smolvm/smolvm` absent. Nothing downloaded.
+- Exit that fired: DONE (goal met). Not stop-file, not time-cap, not red-base.
+- Deferred follow-ups (not done in this PR):
+  1. timeouts in 112 overtime main, festival and 115 openqodex name the entry, not the sub-step (`new`, …);
+  2. overtime still PASSes "daemon stopped" when `daemon stop` times out and no `overtimed.lock` exists (this predates the PR);
+  3. other smoke tests still write ignored receipts into the repo's `pipelines/smoke` (103_111_receipts writes 9, 117_118 writes 2, 098_100 and 119_121 write 3 each);
+  4. the smolvm evidence check also accepts a guest-stdout `Caching image <16hex>` line. Anchoring evidence to stderr `Pulling image <ref>` would close that (low risk; the guest runs the smoke's own script).
