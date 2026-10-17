@@ -9,7 +9,7 @@ Verify-and-repair of the eight orch-fixes-1011 items on current main. One real g
 - Base: `origin/main` `0d574f0649ccfe5bdd5d5384786c74173fb6e41e` (fetch showed no newer main commits)
 - Drop-in: `b0e0b98` `docs: orch-fixes-1011 drop-in, re-checked against main 0d574f0`
 - Item 2: `d78aa1599dcf18af782d80aa44feca371f5ed007` `smoke: item 2 timeout reasons use timeout_reason`
-- Final head: the commit that adds this handoff, the run log, and the decisions file. That commit is the branch tip.
+- Final head: `2ccee09998b0aa9964b880fc304d12b712007be2` (this handoff, the run log, and the decisions file). A later commit only inserts this SHA. `git rev-parse HEAD` on the branch is that later commit.
 - Compare: https://github.com/themark-net/pfy-mentat/compare/main...build/orch-fixes-1011-recheck
 
 ## Exit
