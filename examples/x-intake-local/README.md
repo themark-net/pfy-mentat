@@ -124,4 +124,21 @@ its compose calls skip bwrap (they need the docker socket), bring up only postgr
 check off, and always end with `compose down -v`. It exits 2 if `127.0.0.1:7077` is already in use. For a
 non-default socket set `KENFOLD_DOCKER_HOST`. `PFY_XINTAKE_TIMEOUT` overrides the 600s per-command timeout.
 
+Entries 122-124 (`smoke_122_124.py`):
+
+```sh
+python3 examples/x-intake-local/smoke_122_124.py --entry llmrouter      # pinned 15.4.0, offline classifier + demo, no model call
+python3 examples/x-intake-local/smoke_122_124.py --entry harnessrouter  # needs docker; digest-pinned CE image on loopback
+python3 examples/x-intake-local/smoke_122_124.py --entry squadra        # v3.10.1 checkout, temp git repo + registry
+```
+
+llm-router looks up `$LLMROUTER_BIN`, then `tmp/llm-router/.venv/bin/llm-router`, then PATH, and reads the package
+version with the python next to it; it never runs `install`, so no host hook or config is written. Squadra looks up
+`$SQUADRA_DIR` or `tmp/squadra` (a checkout at the pinned tag) and needs python3 >= 3.12; its registry and fixture repo
+stay in the temp dir. Both run under bwrap with no network when it works and FAIL if their temp HOME is written.
+HarnessRouter looks up `$DOCKER_BIN`, `tmp/docker/docker` or PATH; its docker calls skip bwrap (they need the docker
+socket), bind only `127.0.0.1:$HR_SMOKE_PORT` (default 3917), add no provider key, and always remove the container
+and its volume. For a non-default socket set `HR_DOCKER_HOST`. `PFY_XINTAKE_TIMEOUT` overrides the 600s per-command
+timeout.
+
 Not wired into CI or Make.

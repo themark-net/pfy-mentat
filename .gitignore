@@ -109,6 +109,9 @@ pipelines/smoke/moira/
 pipelines/smoke/agentdescent/
 pipelines/smoke/kenfold/
 pipelines/smoke/tsa/
+pipelines/smoke/llmrouter/
+pipelines/smoke/harnessrouter/
+pipelines/smoke/squadra/
 
 # agentdescent-trial promote temp files
 examples/agentdescent-trial/.results.new-*/
