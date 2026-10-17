@@ -5,12 +5,14 @@ Parent HOME is a temp dir this test owns so a stub cannot touch the operator's r
 from __future__ import annotations
 
 import builtins
+import gc
 import json
 import os
 import subprocess
 import sys
 import tempfile
 import unittest
+import warnings
 from pathlib import Path
 from unittest.mock import patch
 
@@ -125,11 +127,43 @@ class XIntakeSmoke103105Tests(unittest.TestCase):
                 held.append(fh)
             return fh
 
-        with patch("subprocess.Popen", side_effect=OSError("popen failed")), patch("builtins.open", tracking_open):
-            with self.assertRaises(OSError):
-                smoke_103_105.graphjin_world("dummy-graphjin", False, False, {}, "read_only")
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", ResourceWarning)
+            with patch("subprocess.Popen", side_effect=OSError("popen failed")), patch("builtins.open", tracking_open):
+                with self.assertRaises(OSError):
+                    smoke_103_105.graphjin_world("dummy-graphjin", False, False, {}, "read_only")
+            gc.collect()
         self.assertTrue(held, "serve.log was not opened")
         self.assertTrue(held[-1].closed)
+
+    def test_graphjin_world_early_exit_records_log_tail_and_closes(self) -> None:
+        # Fail: the server exits before /health and the serve.log handle leaks, or the receipt
+        # has no log tail. Recover: the tail contains what the server wrote, and the handle is closed.
+        held: list = []
+        real_open = builtins.open
+
+        def tracking_open(*args, **kwargs):
+            fh = real_open(*args, **kwargs)
+            target = args[0] if args else kwargs.get("file", "")
+            if str(target).endswith("serve.log"):
+                held.append(fh)
+            return fh
+
+        with tempfile.TemporaryDirectory(prefix="pfy-xintake-gj-exit-") as td:
+            stub = Path(td) / "graphjin"
+            stub.write_text("#!/bin/sh\necho pfy-serve-log-tail\nexit 1\n", encoding="utf-8")
+            stub.chmod(0o755)
+            receipt: dict = {}
+            with warnings.catch_warnings():
+                warnings.simplefilter("error", ResourceWarning)
+                with patch("builtins.open", tracking_open):
+                    got = smoke_103_105.graphjin_world(str(stub), True, False, receipt, "read_only")
+                gc.collect()
+            self.assertIsNone(got)
+            self.assertIn("pfy-serve-log-tail", receipt.get("read_only_log") or "")
+            self.assertEqual(receipt.get("reason"), "graphjin did not come up (read_only)")
+            self.assertTrue(held, "serve.log was not opened")
+            self.assertTrue(held[-1].closed)
 
 
 if __name__ == "__main__":
