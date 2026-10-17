@@ -81,7 +81,11 @@ def tree_sig(p: Path) -> str | None:
         # content hash, not mtime: a same-size in-place edit that restores mtime still changes the signature
         try:
             if f.is_file():
-                h.update(f"{f}:{f.stat().st_size}:{hashlib.sha256(f.read_bytes()).hexdigest()}\n".encode())
+                fh = hashlib.sha256()
+                with f.open("rb") as fp:  # streamed in 1 MiB chunks, so a huge file doesn't load into RAM
+                    for chunk in iter(lambda: fp.read(1 << 20), b""):
+                        fh.update(chunk)
+                h.update(f"{f}:{f.stat().st_size}:{fh.hexdigest()}\n".encode())
             else:
                 h.update(f"{f}:dir\n".encode())
         except OSError:
@@ -264,6 +268,9 @@ def smoke_harnessrouter(r: dict) -> int:
                 except TimeoutError as e:
                     r[key] = None
                     r.setdefault("cleanup_reason", str(e))
+        # a non-zero rm or volume rm is a FAIL too, not only a timeout (cleanup_reason keeps the timeout text);
+        # finish() only writes the "removed after" PASS reason when every check, cleanup_ok included, is true
+        checks["cleanup_ok"] = r.get("rm_rc") == 0 and r.get("volume_rm_rc") == 0
         if r.get("cleanup_reason"):
             # a FAIL, but as a check: the happy-path reason (failed checks) is kept, not replaced by the timeout
             checks["cleanup_ok"] = False

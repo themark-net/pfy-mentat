@@ -554,6 +554,95 @@ class XIntakeSmoke122124Tests(unittest.TestCase):
             self.assertIs(got["checks"]["cleanup_ok"], False)
             self.assertIn("volume rm", _calls(calls))
 
+    def _hr_cleanup_rc(self, rm_rc: int, vol_rc: int) -> tuple[subprocess.CompletedProcess, dict]:
+        """Happy path served by a local HTTP stub (console 200, keyless API 401); only the cleanup rc varies."""
+        import http.server
+        import threading
+
+        class H(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):  # noqa: N802
+                self.send_response(200)
+                self.end_headers()
+
+            def do_POST(self):  # noqa: N802
+                self.send_response(401)
+                self.end_headers()
+
+            def log_message(self, *a):
+                pass
+
+        port = _free_port()
+        with tempfile.TemporaryDirectory(prefix="pfy-xintake-123-") as td:
+            home = Path(td, "home")
+            home.mkdir()
+            calls, docker = Path(td, "calls"), Path(td, "docker")
+            # the server starts when `docker run` is called, so the pre-run "port busy" probe sees nothing
+            go = Path(td, "go")
+            _docker_stub(
+                docker, calls,
+                '  *" version "*) exit 0 ;;\n'
+                '  *" container inspect "*) exit 1 ;;\n'
+                '  *" volume inspect "*) exit 1 ;;\n'
+                f'  *" volume rm "*) exit {vol_rc} ;;\n'
+                f'  *" rm "*) exit {rm_rc} ;;\n'
+                f'  *" run "*) touch {shlex.quote(str(go))}; sleep 1; exit 0 ;;\n',
+            )
+            servers: list = []
+
+            def serve() -> None:  # bind only after `docker run`, so the pre-run probe gets a refused connection
+                import time
+                while not go.exists():
+                    time.sleep(0.05)
+                servers.append(http.server.ThreadingHTTPServer(("127.0.0.1", port), H))
+                servers[0].serve_forever()
+
+            threading.Thread(target=serve, daemon=True).start()
+            try:
+                proc = _run("harnessrouter", _env(
+                    home, DOCKER_BIN=str(docker), HR_SMOKE_PORT=str(port), PFY_XINTAKE_TIMEOUT="10"))
+            finally:
+                for s in servers:
+                    s.shutdown()
+                    s.server_close()
+            _no_tb(self, proc)
+            return proc, _receipt("harnessrouter")
+
+    def test_harnessrouter_clean_cleanup_passes(self) -> None:
+        proc, got = self._hr_cleanup_rc(0, 0)
+        self.assertEqual(proc.returncode, 0, got)
+        self.assertIn("removed after", got["reason"])
+
+    def test_harnessrouter_rm_nonzero_fails(self) -> None:
+        proc, got = self._hr_cleanup_rc(1, 0)
+        self.assertEqual(proc.returncode, 1, got)
+        self.assertIs(got["checks"]["cleanup_ok"], False)
+        self.assertIn("cleanup_ok", got["reason"])
+        self.assertNotIn("removed after", got["reason"])
+
+    def test_harnessrouter_volume_rm_nonzero_fails(self) -> None:
+        proc, got = self._hr_cleanup_rc(0, 1)
+        self.assertEqual(proc.returncode, 1, got)
+        self.assertIs(got["checks"]["cleanup_ok"], False)
+        self.assertIn("cleanup_ok", got["reason"])
+        self.assertNotIn("removed after", got["reason"])
+
+    def test_tree_sig_streams_file_contents(self) -> None:
+        import importlib
+        from unittest import mock
+        sys.path.insert(0, str(ROOT / "examples/x-intake-local"))
+        try:
+            mod = importlib.import_module("smoke_122_124")
+        finally:
+            sys.path.pop(0)
+        with tempfile.TemporaryDirectory(prefix="pfy-xintake-sig-") as td:
+            f = Path(td, "big.bin")
+            f.write_bytes(b"a" * (3 << 20))
+            # whole-file reads are what blew RSS up to the file size; the hash must not use them
+            with mock.patch.object(Path, "read_bytes", side_effect=AssertionError("read_bytes used")):
+                before = mod.tree_sig(Path(td))
+            f.write_bytes(b"a" * ((3 << 20) - 1) + b"b")
+            self.assertNotEqual(before, mod.tree_sig(Path(td)))
+
 
 if __name__ == "__main__":
     unittest.main()
