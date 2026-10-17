@@ -66,3 +66,41 @@ Every distinct `run:` step of `.github/workflows/eval-structural.yml`, once (the
 
 STOPPED_EXIT: none. Exit: DONE. Skip streak 0. No STOP file. Wall clock from 2026-10-17T12:24:43-07:00, finished the same afternoon, under the 6h cap.
 Code head: faa62e6. Handoff commit: 4c673ac. The stamp commit (child of 4c673ac) is the branch tip.
+
+## Fix round 1
+
+Start: 2026-10-17T14:15:23-07:00
+Host: nimo
+Worktree: /home/mark/DEVELOP/pfy-mentat/tmp/pr284-followups
+Branch: build/pr284-followups
+Head at start: b7cdb77 (drop-in on 31bc2f0). Base stays origin/main 0d574f0. No merge, no rebase.
+Remote: origin/build/pr284-followups is b7cdb77. No other branch already solved the pinned-ref digest.
+
+Overview: Tester FAILED at 31bc2f0 on the smolvm image digest (blocker) plus four follow-ups. Fix each item on this worktree, prove RED with the named mutation, one commit and one push per item, then record counts and the handoff.
+
+Phases:
+- baseline | tests/ | `python3 -m unittest discover -s tests -t .` on the unmodified tree. Record Ran/OK/skips. Red base stops the run. | none | general
+- item-1-smolvm-pin | examples/x-intake-local/smoke_109_111.py, tests/test_x_intake_smoke_109_111.py, sources/entries/109-smolvm.md | Digest comes from the pinned ref (default alpine 3.22 index, or a digest-pinned $SMOLVM_IMAGE). Evidence is Pulling image or a cache line. PFY_SMOLVM_KVM_PATH lets tests reach machine run. Tests a-f green. Mutations: output digest -> (d) red; drop pin check -> (c) red; drop evidence FAIL -> (e) red. Live run only if the binary exists. | baseline | general
+- item-2-receipt-dir | tests/test_x_intake_smoke_112_114.py, tests/test_x_intake_smoke_115_116.py | Every smoke run uses PFY_SMOKE_RECEIPT_DIR. gitignore checks do not leave files. A snapshot of `git status --porcelain --ignored pipelines/smoke` is unchanged after both modules. Mutation: drop the env from one test -> snapshot red. | item-1 | general
+- item-3-timeout-step | examples/x-intake-local/smoke.py and every timeout_reason caller, README, the asserting tests | timeout_reason(step, seconds) returns `{step} timeout after {seconds:g}s`. Sponsio plus one 112 and one 115 test assert step and seconds. Mutation: ignore step -> those tests red. | item-2 | general
+- item-4-scrub-env | examples/x-intake-local/smoke.py, smoke_103_105.py, smoke_106_108.py, their tests | scrub_env drops PAID_KEYS and SECRET_ENV_RE. node --version gets PATH, LANG, LC_ALL, TMPDIR, and the temp HOME. Stub node sees none of the dummy tokens. Mutation: clean_env from os.environ without scrub_env -> red. | item-3 | general
+- item-5-handoff-counts | docs/ops/HANDOFF-pr284-followups-2026-10-17.md | skipped=4 lines name nimo. Tester skipped=6 (KVM and toolchain) is stated. No code change. | item-4 | general
+- finish | this log, the handoff, AUTONOMOUS-DECISIONS | Final suite, local CI run: steps, handoff section, commit `docs: fix1 handoff`, push. | all items | general
+
+Risks:
+- Baseline red stops before item 1 (BLOCKED: red-base).
+- One full suite at a time. Item tests are single modules.
+- Mutations are restored before any commit. A mutated tree is never pushed.
+- Live smolvm stays BLOCKED when ~/DEVELOP/pfy-mentat/tmp/smolvm/smolvm is absent. Nothing is downloaded.
+- Wall clock: no new item after 15:00 local (45 minutes from 14:15:23). Finish by about 15:10. Commit and push after every item.
+- Phases share this one worktree and smoke.py, so they run in order here. No extra worktree.
+
+## Fix round 1 baseline
+
+`python3 -m unittest discover -s tests -t .` on nimo, unmodified tree at b7cdb77.
+Result: Ran 367 tests in 101.620s OK (skipped=4) exit 0.
+No red base.
+
+## Fix round 1 items
+
+- item-1-smolvm-pin | DONE code+test / BLOCKED live | tests: tests.test_x_intake_smoke_109_111 Ran 10 tests in 3.055s OK. RED: record digest from output again -> test_d_smolvm_guest_sha_is_not_the_digest FAILED (failures=1). RED: drop the pinned-ref check -> test_c_smolvm_unpinned_env_exits_2 FAILED (failures=1, IndexError on an unpinned ref). RED: remove the evidence FAIL -> test_e_smolvm_missing_evidence_exits_1 FAILED (failures=1). Each restored and that test OK. Live: ~/DEVELOP/pfy-mentat/tmp/smolvm/smolvm absent, so the nimo machine run was not started. /dev/kvm is read/write. Nothing downloaded. | files: smoke_109_111.py, test_x_intake_smoke_109_111.py, 109-smolvm.md | err: none

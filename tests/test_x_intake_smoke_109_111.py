@@ -17,6 +17,36 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+SMOLVM_PIN = "alpine:3.22@sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8"
+SMOLVM_PIN_DIGEST = "sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8"
+
+# Upstream smolvm v1.26.1 text: pull on stderr, cache line on stdout, no resolved @sha256 line.
+# PFY_SMOLVM_STUB_MODE=no-evidence prints neither. guest-blob also echoes a guest sha256.
+SMOLVM_STUB = r'''#!/usr/bin/env python3
+import os, sys
+from pathlib import Path
+args = sys.argv[1:]
+if args[:2] != ["machine", "run"]:
+    sys.stderr.write("unhandled\n")
+    raise SystemExit(2)
+image = args[args.index("--image") + 1]
+mode = os.environ.get("PFY_SMOLVM_STUB_MODE", "")
+count_path = Path(__file__).resolve().parent / "smolvm-runs"
+n = int(count_path.read_text() or "0") + 1 if count_path.exists() else 1
+count_path.write_text(str(n))
+if mode != "no-evidence":
+    if n == 1:
+        sys.stderr.write("Pulling image " + image + "... done.\n")
+        print("Caching image 0123456789abcdef (one-time; reused on later runs)")
+    else:
+        print("Using cached image 0123456789abcdef (host cache hit; no pull)")
+print("pfy-smolvm-ok")
+print("6.6.0-guest")
+if mode == "guest-blob":
+    print("blob sha256:" + ("e" * 64))
+print("host-hidden")
+raise SystemExit(0)
+'''
 
 # `--version` records whether GROK_API_KEY reached it; any other command forks a sleeping child and sleeps.
 # Fail: a paid key reached the tool, or the forked child outlived the timeout (only the direct child was killed).
@@ -248,57 +278,101 @@ class XIntakeSmoke109111Tests(unittest.TestCase):
             self.assertNotIn(str(stub), text, "tool command was still wrapped after the probe failed")
             self._assert_repo_smoke_unchanged(before)
 
-    def test_smolvm_receipt_records_image_ref_and_digest(self) -> None:
-        # Fail: machine run's receipt omits the image ref or the sha256 the tool printed.
-        # Recover: image is alpine unless $SMOLVM_IMAGE is set, and image_digest is that sha256.
-        # Without /dev/kvm the smoke exits 2 before machine run, so this host cannot show the field.
-        if not (os.path.exists("/dev/kvm") and os.access("/dev/kvm", os.R_OK | os.W_OK)):
-            self.skipTest("/dev/kvm is not read/write, so machine run is not reached")
-        alpine = "sha256:" + ("ab" * 32)
-        pinned = "sha256:" + ("cd" * 32)
-        stub_body = (
-            "#!/usr/bin/env python3\n"
-            "import sys\n"
-            "args = sys.argv[1:]\n"
-            "if args[:2] == ['machine', 'run']:\n"
-            "    image = args[args.index('--image') + 1]\n"
-            "    digest = %r if image == 'alpine' else %r\n"
-            "    sys.stderr.write('resolved ' + image + '@' + digest + '\\n')\n"
-            "    print('pfy-smolvm-ok')\n"
-            "    print('6.6.0-guest')\n"
-            "    print('host-hidden')\n"
-            "    raise SystemExit(0)\n"
-            "sys.stderr.write('unhandled\\n')\n"
-            "raise SystemExit(2)\n"
-        ) % (alpine, pinned)
+    def _run_smolvm(self, root: Path, *, image: str | None = None, mode: str | None = None):
+        # Fail: the smoke needs /dev/kvm, or it trusts a sha256 printed by the guest.
+        # Recover: PFY_SMOLVM_KVM_PATH is a temp file, and the digest is the pinned ref.
+        home = root / "home"
+        home.mkdir(exist_ok=True)
+        kvm = root / "kvm"
+        kvm.write_text("")
+        kvm.chmod(0o600)
+        stub = root / "smolvm"
+        if not stub.exists():
+            _write_exe(stub, SMOLVM_STUB)
+        digest = hashlib.sha256(stub.read_bytes()).hexdigest()
+        receipts = root / "receipts"
+        env = {k: v for k, v in os.environ.items() if not k.startswith("SMOLVM_")}
+        env.update(HOME=str(home), SMOLVM_BIN=str(stub), SMOLVM_SHA256=digest,
+                   PFY_SMOKE_RECEIPT_DIR=str(receipts), PFY_SMOLVM_KVM_PATH=str(kvm))
+        env.pop("PFY_SMOLVM_STUB_MODE", None)
+        if image is not None:
+            env["SMOLVM_IMAGE"] = image
+        if mode:
+            env["PFY_SMOLVM_STUB_MODE"] = mode
+        before = _smoke_tree_sig()
+        proc = subprocess.run(
+            [sys.executable, "examples/x-intake-local/smoke_109_111.py", "--entry", "smolvm"],
+            cwd=str(ROOT), env=env, capture_output=True, text=True, timeout=60,
+        )
+        path = receipts / "smolvm" / "latest.json"
+        receipt = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
+        self._assert_repo_smoke_unchanged(before)
+        return proc, receipt
+
+    def test_a_smolvm_default_pin(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="pfy-xintake-smolvm-") as td:
+            proc, receipt = self._run_smolvm(Path(td))
+            blob = proc.stdout + proc.stderr
+            self.assertEqual(proc.returncode, 0, blob)
+            self.assertEqual(receipt.get("image"), SMOLVM_PIN, blob)
+            self.assertEqual(receipt.get("image_digest"), SMOLVM_PIN_DIGEST, blob)
+            self.assertEqual(receipt.get("image_digest_source"), "pin", blob)
+            self.assertTrue(receipt.get("image_evidence"), blob)
+            self.assertIn(str(Path(td) / "kvm"), receipt.get("kvm_path") or "", blob)
+            self.assertEqual(receipt.get("reason"), "ok: guest kernel 6.6.0-guest, host file hidden", blob)
+
+    def test_b_smolvm_env_override_is_pinned(self) -> None:
+        override = "Example.com/alpine:3.19@SHA256:" + ("CD" * 32)
+        with tempfile.TemporaryDirectory(prefix="pfy-xintake-smolvm-") as td:
+            proc, receipt = self._run_smolvm(Path(td), image=override)
+            blob = proc.stdout + proc.stderr
+            self.assertEqual(proc.returncode, 0, blob)
+            self.assertEqual(receipt.get("image"), override.lower(), blob)
+            self.assertEqual(receipt.get("image_digest"), "sha256:" + ("cd" * 32), blob)
+            self.assertEqual(receipt.get("image_digest_source"), "env", blob)
+
+    def test_c_smolvm_unpinned_env_exits_2(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="pfy-xintake-smolvm-") as td:
+            proc, receipt = self._run_smolvm(Path(td), image="alpine")
+            blob = proc.stdout + proc.stderr
+            self.assertEqual(proc.returncode, 2, blob)
+            self.assertIn("digest-pinned", receipt.get("reason") or "", blob)
+            self.assertNotIn("Traceback", proc.stderr, blob)
+
+    def test_d_smolvm_guest_sha_is_not_the_digest(self) -> None:
+        guest = "sha256:" + ("e" * 64)
+        with tempfile.TemporaryDirectory(prefix="pfy-xintake-smolvm-") as td:
+            proc, receipt = self._run_smolvm(Path(td), mode="guest-blob")
+            blob = proc.stdout + proc.stderr
+            self.assertEqual(proc.returncode, 0, blob)
+            self.assertEqual(receipt.get("image_digest"), SMOLVM_PIN_DIGEST, blob)
+            self.assertNotEqual(receipt.get("image_digest"), guest, blob)
+            self.assertNotIn(guest, json.dumps({k: receipt.get(k) for k in ("image_digest", "image")}))
+
+    def test_e_smolvm_missing_evidence_exits_1(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="pfy-xintake-smolvm-") as td:
+            proc, receipt = self._run_smolvm(Path(td), mode="no-evidence")
+            blob = proc.stdout + proc.stderr
+            self.assertEqual(proc.returncode, 1, blob)
+            self.assertEqual(
+                receipt.get("reason"),
+                "smolvm did not report pulling or caching the pinned image",
+                blob,
+            )
+
+    def test_f_smolvm_second_run_records_cached_image(self) -> None:
         with tempfile.TemporaryDirectory(prefix="pfy-xintake-smolvm-") as td:
             root = Path(td)
-            home = root / "home"
-            home.mkdir()
-            stub = root / "smolvm"
-            _write_exe(stub, stub_body)
-            digest = hashlib.sha256(stub.read_bytes()).hexdigest()
-            for override, expect_image, expect_digest in (
-                (None, "alpine", alpine),
-                ("alpine:3.19", "alpine:3.19", pinned),
-            ):
-                with self.subTest(image=expect_image):
-                    receipts = root / ("receipts-" + expect_image.replace(":", "-"))
-                    env = {k: v for k, v in os.environ.items() if not k.startswith("SMOLVM_")}
-                    env.update(HOME=str(home), SMOLVM_BIN=str(stub), SMOLVM_SHA256=digest,
-                               PFY_SMOKE_RECEIPT_DIR=str(receipts))
-                    if override:
-                        env["SMOLVM_IMAGE"] = override
-                    before = _smoke_tree_sig()
-                    proc = subprocess.run(
-                        [sys.executable, "examples/x-intake-local/smoke_109_111.py", "--entry", "smolvm"],
-                        cwd=str(ROOT), env=env, capture_output=True, text=True, timeout=60,
-                    )
-                    self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
-                    receipt = json.loads((receipts / "smolvm" / "latest.json").read_text(encoding="utf-8"))
-                    self.assertEqual(receipt.get("image"), expect_image)
-                    self.assertEqual(receipt.get("image_digest"), expect_digest)
-                    self._assert_repo_smoke_unchanged(before)
+            first, first_receipt = self._run_smolvm(root)
+            self.assertEqual(first.returncode, 0, first.stdout + first.stderr)
+            self.assertIn("Caching image", first_receipt.get("image_evidence") or "")
+            proc, receipt = self._run_smolvm(root)
+            blob = proc.stdout + proc.stderr
+            self.assertEqual(proc.returncode, 0, blob)
+            self.assertTrue(
+                (receipt.get("image_evidence") or "").startswith("Using cached image 0123456789abcdef"),
+                blob,
+            )
 
 
 if __name__ == "__main__":
