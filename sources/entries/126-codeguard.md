@@ -1,6 +1,6 @@
 ### Entry 126: Project CodeGuard (CoSAI) — model-agnostic secure-coding rules for coding agents, plus a SARIF reviewer agent
 
-- **URL**: https://github.com/cosai-oasis/project-codeguard (**CC-BY-4.0**, Markdown rules plus Python translators; about 353 stars at this read; release v1.5.0; checked at commit `41160d549809`, 2026-10-12). Moved from https://github.com/project-codeguard/rules after Cisco donated it to the Coalition for Secure AI.
+- **URL**: https://github.com/cosai-oasis/project-codeguard (**CC-BY-4.0**, Markdown rules plus Python translators; about 353 stars at this read; checked at main commit `41160d54980b`, 2026-10-12, two commits after the v1.5.0 tag (tag commit `5bfe8f9`)). Supersedes https://github.com/project-codeguard/rules (still live) after Cisco donated the project to the Coalition for Secure AI.
 - **Date**: 2026-10-17 (dev-skills investigation)
 - **Source / Poster**: web search during the dev-skills investigation; Cisco announcement https://blogs.cisco.com/ai/announcing-new-framework-securing-ai-generated-code
 - **Summary / Key Claims** (upstream README and site): secure-by-default rules used at plan, generate and review time. 23 core rules (crypto, input validation and injection, authn/authz, sessions, file handling and uploads, logging, data storage, privacy, supply chain, XML and serialization, MCP security, safe C functions, hardcoded credentials) plus 85 OWASP-cheat-sheet rules. Translators emit `.cursor/rules`, `.agents/rules`, OpenCode, Copilot and a Claude Code plugin. A read-only `codeguard-reviewer` agent scans a repo against the rules and writes SARIF 2.1.0.
@@ -18,6 +18,6 @@
 | False confidence | Rules are web-centric; desktop/systems bugs pass | Keep it a Reviewer reference; systems rules come from the pfy skill |
 | Context cost | Always-on rules eat local-model context | Glob-scoped rules only, or reviewer-time only |
 | Attribution | Rule text reused without credit | CC-BY-4.0: credit CoSAI and link the release when quoting |
-| Repo move churn | Old `project-codeguard/rules` links break | Use the cosai-oasis URL and a pinned tag |
+| Two live repos | The superseded `project-codeguard/rules` repo drifts from the CoSAI one | Use the cosai-oasis URL and a pinned commit or tag |
 
 - **Status**: Cataloged I0. Read on the Grok Bot box; not installed on nimo.

@@ -5,14 +5,14 @@ Why: Mark asked whether bots and Build can pick up skill sets that stop "rookie"
 | Entry | Pack | License | Take |
 |------|------|---------|------|
 | 125 | [trailofbits/skills](https://github.com/trailofbits/skills) @ `5c99c03` | **CC-BY-SA-4.0** | **Port 7 skills** as a `[skills].paths` snapshot: property-based-testing, semgrep-rule-creator, variant-analysis, sharp-edges, differential-review, fp-check, testing-handbook-skills/atheris. Edited text must stay CC-BY-SA with attribution |
-| 126 | [cosai-oasis/project-codeguard](https://github.com/cosai-oasis/project-codeguard) @ `41160d5` (v1.5.0) | CC-BY-4.0 | Reviewer reference only. Web-centric; nothing on temp-file IPC, PID locks or AF_UNIX |
+| 126 | [cosai-oasis/project-codeguard](https://github.com/cosai-oasis/project-codeguard) @ `41160d54980b` (main, two commits after the v1.5.0 tag `5bfe8f9`) | CC-BY-4.0 | Reviewer reference only. Web-centric; nothing on temp-file IPC, PID locks or AF_UNIX |
 | 127 | [cloudflare/security-audit-skill](https://github.com/cloudflare/security-audit-skill) @ `c1c8a8c` | MIT | Local-IPC companion is a Reviewer reference now; full 6-phase audit before a desktop release |
 
 Files: `sources/entries/125-trailofbits-skills.md`, `126-codeguard.md`, `127-cloudflare-security-audit-skill.md`, and this handoff. No TOOLS.md rows, no `data/tools.json` rows, no smoke scripts, no skills installed.
 
 ## What was checked (Grok Bot box, shallow clones)
 
-- ToB: 44 plugins in the marketplace; the 7 port candidates have valid frontmatter (`name` equals folder). No skill covers PID locks, temp-file IPC or pid reuse.
+- ToB: 44 plugins in the marketplace; the 7 port candidates have valid frontmatter (`name` equals folder). General TOCTOU guidance exists (rust-review `toctou-finder.md`, sharp-edges `lang-c.md`), but nothing on PID locks, temp-file IPC or PID reuse.
 - CodeGuard: 23 core and 85 OWASP rule files; `skills/codeguard/SKILL.md` frontmatter valid; the grep for systems topics found none.
 - Cloudflare: validator tests 65/65 pass on Node 20.19.2. `DESKTOP-MOBILE-AND-LOCAL-IPC.md` covers IPC peer auth, world-writable socket paths and local-file TOCTOU.
 - Key finding from the investigation: bandit, ruff `S` and semgrep `p/python`+`p/secrets` produced 0 hits on the leasegrid PR #74 blockers, while 7 project-specific Semgrep rules hit 6 of 11 blocker lines. These packs help **write** such rules and tests; they don't replace them.
@@ -24,7 +24,7 @@ Files: `sources/entries/125-trailofbits-skills.md`, `126-codeguard.md`, `127-clo
 
 ## Recommended next steps (not started)
 
-1. Port the 7 ToB skills to `bootstrap/grok-cli/skills-external/trailofbits/` with LICENSE, PORT.md (Task → `/agent-loops`) and a frontmatter smoke; add the path to `manifest.json` and `[skills].paths`.
+1. Port the 7 ToB skills to `bootstrap/grok-cli/skills-external/trailofbits/` as a byte-identical snapshot with the LICENSE text or URI, ToB credit, upstream URL, pinned SHA `5c99c03fb8a9` and upstream notices; a separate pfy-authored PORT.md (Task → `/agent-loops`); and a frontmatter smoke. Any edited ToB file must be marked as adapted CC-BY-SA material; add the path to `manifest.json` and `[skills].paths`.
 2. Add a first-party `systems-safety` skill to `bootstrap/grok-cli/skills/` once the leasegrid version has survived a gate round.
 3. Try one Cloudflare guidance-mode review of leasegrid-c's `--join` handoff after the v0.1.7 fixes, to see if it would have found the `/tmp` socket.
 
@@ -36,6 +36,6 @@ Docs only. Nothing installed on nimo from these packs. Mark's main checkout and 
 
 | Risk | How it fails | Recovery |
 |------|----------------|----------|
-| Share-alike text in pfy-owned skills | Someone pastes ToB text into a first-party skill | Ports stay in `skills-external/trailofbits/` with LICENSE; Reviewer checks |
+| Share-alike text in pfy-owned skills, or missing notices | Someone pastes ToB text into a first-party skill, or commits the snapshot without LICENSE/credit/SHA | Snapshot stays byte-identical in `skills-external/trailofbits/` with LICENSE (or URI), credit, URL, SHA and notices; Reviewer checks |
 | Treating packs as the fix | Rules load, but leasegrid-class bugs still ship | The Semgrep gate and proof-of-RED in the leasegrid drop-in are the real gate |
 | Stale pins | Upstream renames skills | Pins recorded per entry; refresh deliberately |
