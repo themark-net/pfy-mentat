@@ -5,6 +5,7 @@ Har is `node <realpath(HAR_BIN)>`; HAR_NODE is a stub that prints v22.0.0 and HA
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
@@ -306,6 +307,77 @@ done(3, 'unexpected ' + args.join(' '));
             self.assertEqual(proc.returncode, 1, blob + "\n" + json.dumps(receipt))
             self.assertNotIn("Traceback", proc.stderr)
             self.assertIn(".har/otel-hooks", receipt.get("reason") or "", blob)
+
+    def _assert_child_dirs_under_its_home(self, text: str, parent_home: Path) -> None:
+        env = {}
+        cwd = ""
+        for line in text.splitlines():
+            if line.startswith("cwd="):
+                cwd = line.split("=", 1)[1]
+            elif "=" in line:
+                key, value = line.split("=", 1)
+                env[key] = value
+        seen = Path(env["HOME"]).resolve()
+        self.assertNotEqual(seen, parent_home.resolve(), env)
+        self.assertTrue(cwd, text)
+        self.assertTrue(Path(cwd).is_absolute(), cwd)
+        for key in ("XDG_CONFIG_HOME", "XDG_CACHE_HOME", "XDG_DATA_HOME", "npm_config_cache"):
+            got = Path(env[key]).resolve()
+            self.assertTrue(got.is_relative_to(seen), f"{key}={env[key]} HOME={env['HOME']}")
+
+    def test_rulora_child_env_dirs_are_under_temp_home(self) -> None:
+        # Fail: the rulora node probe inherits the parent HOME or XDG/npm paths outside its HOME.
+        # Recover: HOME is a fresh temp dir and the four dirs sit under that HOME.
+        stub = """#!/bin/sh
+if [ "$1" = --version ]; then echo v22.0.0; exit 0; fi
+{ env; echo "cwd=$(pwd)"; } > "$PFY_PROBE_OUT"
+exit 0
+"""
+        with tempfile.TemporaryDirectory(prefix="pfy-xintake-rulora-env-") as td:
+            root = Path(td)
+            home = root / "home"
+            home.mkdir()
+            pkg = root / "rulora" / "node_modules" / "@rulora" / "core"
+            pkg.mkdir(parents=True)
+            (pkg / "package.json").write_text('{"version": "0.1.0-alpha.4"}\n', encoding="utf-8")
+            node = root / "node"
+            _write_exe(node, stub)
+            probe = root / "probe.txt"
+            env = self._base_env(home)
+            env["PFY_PROBE_OUT"] = str(probe)
+            env["RULORA_DIR"] = str(root / "rulora")
+            env["RULORA_NODE"] = str(node)
+            proc = self._run("rulora", env)
+            blob = proc.stdout + proc.stderr
+            self.assertTrue(probe.is_file(), blob)
+            self.assertNotIn("Traceback", proc.stderr, blob)
+            self._assert_child_dirs_under_its_home(probe.read_text(encoding="utf-8"), home)
+
+    def test_cassmemory_child_env_dirs_are_under_temp_home(self) -> None:
+        # Fail: the cm child inherits the parent HOME or XDG/npm paths outside its HOME.
+        # Recover: HOME is a fresh temp dir and the four dirs sit under that HOME.
+        stub = """#!/bin/sh
+{ env; echo "cwd=$(pwd)"; } > "$PFY_PROBE_OUT"
+echo '{"success": false}'
+exit 1
+"""
+        with tempfile.TemporaryDirectory(prefix="pfy-xintake-cm-env-") as td:
+            root = Path(td)
+            home = root / "home"
+            home.mkdir()
+            binary = root / "cm"
+            _write_exe(binary, stub)
+            digest = hashlib.sha256(binary.read_bytes()).hexdigest()
+            probe = root / "probe.txt"
+            env = self._base_env(home)
+            env["PFY_PROBE_OUT"] = str(probe)
+            env["CM_BIN"] = str(binary)
+            env["CM_SHA256"] = digest
+            proc = self._run("cassmemory", env)
+            blob = proc.stdout + proc.stderr
+            self.assertTrue(probe.is_file(), blob)
+            self.assertNotIn("Traceback", proc.stderr, blob)
+            self._assert_child_dirs_under_its_home(probe.read_text(encoding="utf-8"), home)
 
 
 if __name__ == "__main__":
