@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import builtins
 import gc
+import hashlib
 import json
 import os
 import shlex
@@ -209,6 +210,47 @@ class XIntakeSmoke103105Tests(unittest.TestCase):
             self.assertEqual(len(homes), 1, "node --version env dump has no HOME")
             self.assertNotEqual(os.path.normpath(homes[0]), os.path.normpath(str(home)))
             self.assertTrue(homes[0].startswith(os.path.normpath(tempfile.gettempdir()) + os.sep), homes[0])
+            self.assertNotIn("Traceback", proc.stderr)
+
+    def test_graphjin_child_drops_secret_shaped_env(self) -> None:
+        # Fail: the graphjin child keeps secret-shaped names (M26) or GITHUB_PAT (M28).
+        # Recover: those names are absent, PATH is present, and HOME is a fresh temp dir.
+        secret_names = (
+            "NPM_TOKEN", "GITHUB_PAT", "GH_ENTERPRISE_TOKEN", "HF_TOKEN",
+            "FOO_API_KEY", "DB_PASSWORD", "MY_SECRET", "AWS_CREDENTIALS",
+        )
+        stub_body = """#!/usr/bin/env python3
+import os
+from pathlib import Path
+here = Path(__file__).resolve().parent
+(here / "graphjin-env-names").write_text("\\n".join(sorted(os.environ)) + "\\n")
+(here / "graphjin-home-value").write_text(os.environ.get("HOME", ""))
+raise SystemExit(1)
+"""
+        with tempfile.TemporaryDirectory(prefix="pfy-xintake-gj-env-") as td:
+            root = Path(td)
+            home = root / "home"
+            home.mkdir()
+            stub = root / "graphjin"
+            _write_exe(stub, stub_body)
+            env = self._base_env(home)
+            env["GRAPHJIN_BIN"] = str(stub)
+            env["GRAPHJIN_SHA256"] = hashlib.sha256(stub.read_bytes()).hexdigest()
+            env["PFY_SMOKE_RECEIPT_DIR"] = str(root / "receipts")
+            for key in secret_names:
+                env[key] = DUMMY_PAID
+            proc = self._run(env)
+            blob = proc.stdout + proc.stderr
+            names_path = root / "graphjin-env-names"
+            self.assertTrue(names_path.is_file(), blob)
+            seen = names_path.read_text(encoding="utf-8").splitlines()
+            self.assertFalse(any("=" in line for line in seen), "env dump included values")
+            leaked = [key for key in secret_names if key in seen]
+            self.assertEqual(leaked, [], f"graphjin child saw secret names {leaked}")
+            self.assertIn("PATH", seen)
+            home_value = (root / "graphjin-home-value").read_text(encoding="utf-8").strip()
+            self.assertNotEqual(os.path.normpath(home_value), os.path.normpath(str(home)))
+            self.assertTrue(home_value.startswith(os.path.normpath(tempfile.gettempdir()) + os.sep), home_value)
             self.assertNotIn("Traceback", proc.stderr)
 
 
