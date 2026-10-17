@@ -12,9 +12,11 @@ No pull request.
 
 ## Counts
 
-- Baseline, before any item edit: Ran 350 tests in 45.371s OK (skipped=4), exit 0. `tests.test_hedge.DetectorTests.test_detector_runs_offline` did not fail here.
-- After item 8 (full suite, before/after `/tmp` diff empty): Ran 360 tests in 97.942s OK (skipped=4).
-- Final local CI unittest: Ran 367 tests in 101.586s OK (skipped=4), exit 0.
+- Baseline, before any item edit, on nimo: Ran 350 tests in 45.371s OK (skipped=4), exit 0. `tests.test_hedge.DetectorTests.test_detector_runs_offline` did not fail here.
+- After item 8 (full suite on nimo, before/after `/tmp` diff empty): Ran 360 tests in 97.942s OK (skipped=4).
+- Final local CI unittest on nimo: Ran 367 tests in 101.586s OK (skipped=4), exit 0.
+- Fix round 1 baseline on nimo, at `b7cdb77`: Ran 367 tests in 101.620s OK (skipped=4), exit 0.
+- Tester's box, review of `31bc2f0`: skipped=6 because of KVM and toolchain.
 
 ## Items
 
@@ -23,7 +25,7 @@ No pull request.
 | 1 SHA WARN | DONE | `8029a82` | WARN only when a sha override differs (case-insensitive). Mutation: drop the equality check, equal-pin tests red. |
 | 2 timeout text | DONE | `2d51881` | Every recorded reason is `timeout_reason(tag)`. Sponsio test drives `PFY_XINTAKE_TIMEOUT`. Mutation of the helper text went red. |
 | 3 Stage A commands | DONE | `9e4061f` | Blocks use `$STAGE_A` and `$RUNSC`. Checked with a stub runsc under `/tmp`. |
-| 4 handoff counts | DONE | `ca4dc7e` | a5c0362 rerun: Ran 191 tests in 5.479s OK (skipped=4). fb3beb5 rerun: Ran 190 tests in 3.953s OK (skipped=4), 2026-10-10 sentence kept. |
+| 4 handoff counts | DONE | `ca4dc7e` | a5c0362 rerun on nimo: Ran 191 tests in 5.479s OK (skipped=4). fb3beb5 rerun on nimo: Ran 190 tests in 3.953s OK (skipped=4), 2026-10-10 sentence kept. |
 | 5 gitignore 103-111 | DONE | `598c602` | Dirs already ignored. New test. Mutation of the smolvm ignore line showed `?? pipelines/smoke/smolvm/`. kolibri1 stays tracked. |
 | 6 graphjin log | DONE | `12733a3` | Closes already in `graphjin_world`. Tests lock Popen-raise and early-exit under ResourceWarning. Mutation of each `log.close()` went red. |
 | 7 XDG and work dir | DONE | `11511a5` | `clean_env` already set the four dirs. New rulora and cass tests. Har outside-HOME test already on main. Mutation: drop the four dirs, KeyError. |
