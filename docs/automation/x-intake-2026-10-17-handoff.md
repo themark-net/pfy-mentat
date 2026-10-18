@@ -8,7 +8,7 @@ Daily X intake routine, window 2026-10-17 00:34Z to 2026-10-18 00:36Z (Mark's bo
 | 129 | [OpenLore](https://github.com/clay-good/OpenLore) (MIT, TS, 3.3.1) | Local code graph: `orient(task)` for the code a task touches, plus a deterministic breaking-change verdict that names each consumer | Yes, but Node ^22.19 and a ~1.7 GB npm prefix under `tmp/`. Smoke PASS on the Grok Bot box |
 | 130 | [hal0](https://github.com/Hal0ai/hal0) (Apache-2.0, v1.4.0) | Inference appliance built first for Strix Halo (ROCm, Vulkan, NPU); published benchmarks on our exact hardware | **Catalog only**: `sudo` installer, `/etc/hal0`, systemd and podman are nimo system changes that need Mark |
 
-Files: `sources/entries/128-harness-score.md`, `129-openlore.md`, `130-hal0.md`, `examples/x-intake-local/smoke_128_130.py` (imports `TMP`, `find_bin`, `pinned`, `run_isolated`, `timeout_reason` and `write` from `smoke.py` and `tree_sig` from `smoke_122_124.py`; every child goes through `run_isolated`), `tests/test_x_intake_smoke_128_130.py` (22 stub-based tests), a paragraph in `examples/x-intake-local/README.md`, `.gitignore` lines for `pipelines/smoke/{harnessscore,openlore}/`, and this handoff. No TOOLS.md rows, no `data/tools.json` rows, no stage cards, no Make target. Box receipts are not committed.
+Files: `sources/entries/128-harness-score.md`, `129-openlore.md`, `130-hal0.md`, `examples/x-intake-local/smoke_128_130.py` (imports `TMP`, `find_bin`, `pinned`, `run_isolated`, `timeout_reason` and `write` from `smoke.py` and `tree_sig` from `smoke_122_124.py` for the fixture check; the real-HOME check uses its own stricter `home_sig`; every child goes through `run_isolated`), `tests/test_x_intake_smoke_128_130.py` (42 stub-based tests), a paragraph in `examples/x-intake-local/README.md`, `.gitignore` lines for `pipelines/smoke/{harnessscore,openlore}/`, and this handoff. No TOOLS.md rows, no `data/tools.json` rows, no stage cards, no Make target. Box receipts are not committed.
 
 Written by the routine through the GitHub connector rather than `./pfy build -p`: docs plus one stdlib script, nimo not needed.
 
@@ -21,7 +21,29 @@ On nimo each `python3 examples/x-intake-local/smoke_128_130.py --entry harnesssc
 
 Receipts go to `pipelines/smoke/<entry>/latest.json` (gitignored).
 
-What was checked on the Grok Bot box (all in `/tmp`, temp HOMEs, bubblewrap with no network): harnessscore PASS with Node 20.19.2 and 22.20.0; openlore PASS with Node 22.20.0 and exit 2 with Node 20. Negative paths: missing package dir gives 2; `$HARNESS_SCORE_VERSION=9.9` and `$OPENLORE_VERSION=1.0` give 2; `PFY_XINTAKE_TIMEOUT=0.001` gives exit 1 with "node version timeout after 0.001s". `python3 -m unittest tests/test_x_intake_smoke_128_130.py`: 22 pass; hand mutants (real-HOME check off, gate check off, consumer check off, pin check off, repo-status check off, temp-HOME check off, fixture check off) each turn at least one test red. `scripts/catalog_check.py` and the full suite were not run (no checkout on the box); Tester should run them on the PR head.
+What was checked on the Grok Bot box (all in `/tmp`, temp HOMEs, bubblewrap with no network): harnessscore PASS with Node 20.19.2 and 22.20.0; openlore PASS with Node 22.20.0 and exit 2 with Node 20. Negative paths: missing package dir gives 2; `$HARNESS_SCORE_VERSION=9.9` and `$OPENLORE_VERSION=1.0` give 2; `PFY_XINTAKE_TIMEOUT=0.001` gives exit 1 with "node version timeout after 0.001s". Round 1 (`346d323`): 22 stub tests; Reviewer PASS (full suite 401 OK, `catalog_check.py` PASS, both real runs PASS); Tester FAIL on B1 below.
+
+## Round 2: Tester B1 fix (on top of `346d323`)
+
+- **B1 (blocker): real-HOME check missed permission-only and mtime-only changes**, also on timeout, because it reused `tree_sig` (path, size, content only). OpenLore chmods its token files to 0600, so this mattered.
+  - Fix: a local `home_sig()` in `smoke_128_130.py`. Per entry it records path, file type, permission bits and mtime_ns, plus:
+    - size and content hash for a readable file;
+    - size and inode for an unreadable file;
+    - the target string for a symlink (never followed below the watched dir).
+  - `tree_sig` and the 122-124 smokes are unchanged.
+  - Receipts now list the changed dirs in `real_home_changed`. The reason names only those dirs, also on the normal FAIL path.
+- **New tests**, each run for both entries, with a seeded HOME and mtimes restored so only one attribute changes:
+  - FAIL: `chmod 600`, `touch -d 2024-05-05`, `chmod 600` plus `PFY_XINTAKE_TIMEOUT=1` (timeout reason plus `real_home_untouched: false`), a symlink swapped to an identical-content target, a nested same-size edit, an empty dir, a rewritten 0000 file;
+  - PASS: the seeded HOME left untouched, including the unreadable file.
+- **RED**: the new tests are red against `346d323`'s script (12 failures, 7 errors), and green after the fix.
+- **Mutants**: drop permission bits, mtime, symlink target, content hash, recursion, dir entries or the unreadable fallback, or revert to `tree_sig`: each turns a test red.
+- **Tester F1 (surviving mutants)**: M5, M11, M16, M21, M23, M24, M25, M29 and M31 now each have a killing test.
+  - M10 (`tree_sig` `glob` instead of `rglob`) still survives. It is equivalent here: `tree_sig` now only guards the flat fixtures, and a nested write still adds a top-level dir line. The `home_sig` version of that mutant (H4) is killed.
+- **Tester F2**: Harness Score's PASS reason now names its watched dirs, as OpenLore's does. Scope is stated: writes outside the watched dirs (e.g. `~/.newdot`) are not watched.
+- **Tester F4 (catalog)**: Harness Score 585 stars; OpenLore install added 322 packages (lockfile 393); hal0 model `qwen3.6-35b-a3b-crown`.
+- **Reviewer nit**: if the run raises (e.g. a timeout before any check), `checks.body_completed` is false and `exception` names it. `main()` still writes the FAIL reason.
+- **Runs (nimo worktree)**: 42 stub tests OK. Full suite: `Ran 421 tests`, `OK (skipped=4)`. `catalog_check.py`, `smoke_contract_lint.py` and `check_no_encoded_payloads.py` all PASS.
+- **Real tools, new script (Grok Bot box, bwrap, temp HOME seeded with `~/.openlore/tok` at 0600 and `~/.harness-score/c`)**: Harness Score 1.8.2 PASS on Node 20.19.2; OpenLore 3.3.1 PASS on Node 22.20.0. Both show `real_home_untouched: true`, so there is no false FAIL.
 
 ## Findings worth knowing
 
@@ -56,7 +78,7 @@ SKIPPED: open-computer-use (linked repo not reachable), Keepresso and Harness te
 
 ## Locks respected
 
-Catalog 70-75 HOLD untouched. Nothing installed or downloaded on nimo. Mark's main checkout and stashes untouched; no pfy-mentat checkout was made (files read through the GitHub connector). No accounts, sign-ins, paid keys or spend. Harness Score and OpenLore ran only on the Grok Bot box in `/tmp` with temp HOMEs; no model or agent CLI was started.
+Catalog 70-75 HOLD untouched. Nothing installed or downloaded on nimo. Mark's main checkout and stashes untouched; no pfy-mentat checkout was made (files read through the GitHub connector). No accounts, sign-ins, paid keys or spend. Harness Score and OpenLore ran only on the Grok Bot box in `/tmp` with temp HOMEs; no model or agent CLI was started. Round 2 was done in a temporary nimo worktree under `tmp/`, removed afterwards; stub tests only on nimo, nothing installed.
 
 ## How this fails / how we recover
 
@@ -64,5 +86,5 @@ Catalog 70-75 HOLD untouched. Nothing installed or downloaded on nimo. Mark's ma
 |------|----------------|----------|
 | Entry numbers collide | Another branch also adds 128-130 | Renumber on rebase; entries are self-contained files |
 | Smoke in CI without prereqs | Exit 2 read as red | Not wired into CI or Make; exit 2 is the honest "can't run here" |
-| A tool writes to the real HOME | `~/.openlore` or `~/.harness-score` appears on nimo | Both smokes content-hash those dirs in a finally and FAIL on any change, also on timeout |
-| `smoke_122_124.tree_sig` changes | Import breaks | The tests import the smoke end to end; move `tree_sig` into `smoke.py` if it's reused again |
+| A tool writes to the real HOME | `~/.openlore` or `~/.harness-score` appears or changes on nimo | Both smokes fingerprint the watched dirs (`home_sig`: content, size, type, permissions, mtime, symlink target) before the run and in a finally, and FAIL on any change, also on timeout. Writes outside the watched dirs are not seen |
+| `smoke_122_124.tree_sig` changes | Import breaks (fixture check only) | The tests import the smoke end to end; move `tree_sig` into `smoke.py` if it's reused again |

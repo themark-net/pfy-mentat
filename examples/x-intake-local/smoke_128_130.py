@@ -10,10 +10,13 @@ env limited to PATH/HOME/TERM/LANG/NO_COLOR plus the variables named below; noth
 provider key is ever seen; a timeout SIGKILLs the process group) under bwrap with no network when bwrap works.
 No smoke calls a model, adds a key, runs an `install`/`connect`/`setup` command or starts an agent CLI.
 PFY_XINTAKE_TIMEOUT (float seconds, > 0) overrides the 600s per-command timeout.
-Real HOME: each entry content-hashes the real-HOME dirs the tool could write (harnessscore: ~/.harness-score,
+Real HOME: each entry fingerprints the real-HOME dirs the tool could write (harnessscore: ~/.harness-score,
 ~/.config/harness-score, precautionary, upstream says it writes nothing; openlore: ~/.openlore, which holds its update
-check and local embedding models, and ~/.pi/agent/extensions) and compares them in a finally, also on timeout:
-checks.real_home_untouched, and any change FAILs (exit 1), even when bwrap is unavailable.
+check, token descriptors and local embedding models, and ~/.pi/agent/extensions) with home_sig() before the run and
+again in a finally, also on timeout or a crash. A created, deleted or renamed entry, or a change to any entry's type,
+permission bits, mtime, size, content or symlink target, sets checks.real_home_untouched false, lists the dirs in
+real_home_changed and FAILs (exit 1), even when bwrap is unavailable. Only those dirs are watched: a write elsewhere in
+HOME (e.g. ~/.newdot) is not seen. checks.body_completed is false and `exception` names it when the run raised.
 
   harnessscore  Node >= 18 ($NODE_BIN, ~/DEVELOP/pfy-mentat/tmp/node/bin/node, or PATH) and the unpacked npm tarball
                 harness-score-1.8.2.tgz: $HARNESS_SCORE_DIR, else ~/DEVELOP/pfy-mentat/tmp/harness-score/package
@@ -38,10 +41,12 @@ checks.real_home_untouched, and any change FAILs (exit 1), even when bwrap is un
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -107,27 +112,91 @@ def finish(r: dict, checks: dict, ok_reason: str) -> int:
     return 0
 
 
-def home_note(entry: str) -> str:
-    return f"real HOME {', '.join('~/' + d for d in WATCH[entry])} changed"
+def watch_dirs(entry: str) -> str:
+    return ", ".join("~/" + d for d in WATCH[entry])
+
+
+def home_note(entry: str, r: dict) -> str:
+    return f"real HOME {', '.join(r.get('real_home_changed') or ['~/' + d for d in WATCH[entry]])} changed"
+
+
+def home_sig(p: Path) -> str | None:
+    """Real-HOME fingerprint of p, or None when p doesn't exist. Stricter than smoke_122_124.tree_sig (left as is for
+    the 122-124 smokes): one line per entry, p included, with path, file type, permission bits and mtime_ns, plus size
+    and content hash for a regular file, or size and inode when it can't be read (a rewrite still shows in size, mtime
+    or inode), and the target string for a symlink. Symlinks below p are never followed; a symlinked p is recorded as
+    a link and then its target is walked."""
+    try:
+        p.lstat()
+    except FileNotFoundError:
+        return None
+    h = hashlib.sha256()
+    if p.is_symlink():
+        h.update(f"{p}:root-link:{os.readlink(p)}\n".encode())
+        p = Path(os.path.realpath(p))
+    _sig_walk(p, h)
+    return h.hexdigest()
+
+
+def _sig_walk(f: Path, h) -> None:
+    try:
+        st = f.lstat()
+    except OSError as e:
+        h.update(f"{f}:lstat-error:{e.errno}\n".encode())
+        return
+    head = f"{f}:{stat.S_IFMT(st.st_mode):o}:{stat.S_IMODE(st.st_mode):o}:{st.st_mtime_ns}"
+    if stat.S_ISLNK(st.st_mode):
+        h.update(f"{head}:link:{os.readlink(f)}\n".encode())
+    elif stat.S_ISDIR(st.st_mode):
+        h.update(f"{head}:dir\n".encode())
+        try:
+            names = sorted(os.listdir(f))
+        except OSError:
+            h.update(f"{f}:unlistable\n".encode())
+            return
+        for n in names:
+            _sig_walk(f / n, h)
+    elif stat.S_ISREG(st.st_mode):
+        try:
+            fh = hashlib.sha256()
+            with f.open("rb") as fp:  # streamed in 1 MiB chunks, so a huge file doesn't load into RAM
+                for chunk in iter(lambda: fp.read(1 << 20), b""):
+                    fh.update(chunk)
+            h.update(f"{head}:{st.st_size}:{fh.hexdigest()}\n".encode())
+        except OSError:
+            h.update(f"{head}:{st.st_size}:unreadable:{st.st_ino}\n".encode())
+    else:
+        h.update(f"{head}:other:{st.st_size}\n".encode())
 
 
 def watched(entry: str, body, r: dict) -> int:
     """Run body(r, checks) with the real HOME watched; the finally runs on timeout and on any exception too."""
     real_home = Path.home()
-    before = {d: tree_sig(real_home / d) for d in WATCH[entry]}
+    before = {d: home_sig(real_home / d) for d in WATCH[entry]}
     checks: dict[str, bool] = {}
     try:
         code = body(r, checks)
+        checks["body_completed"] = True
+    except BaseException as e:  # main() turns it into a FAIL; the receipt says what stopped the run
+        checks["body_completed"] = False
+        r["exception"] = f"{type(e).__name__}: {e}"[:300]
+        raise
     finally:
-        after = {d: tree_sig(real_home / d) for d in WATCH[entry]}
-        checks["real_home_untouched"] = before == after
+        after = {d: home_sig(real_home / d) for d in WATCH[entry]}
+        changed = [f"~/{d}" for d in WATCH[entry] if before[d] != after[d]]
+        checks["real_home_untouched"] = not changed
+        if changed:
+            r["real_home_changed"] = changed
         r["checks"] = checks
     if code is not None:
         if not checks["real_home_untouched"]:
-            r["reason"] = f"{r.get('reason', '')}; {home_note(entry)}"
+            r["reason"] = f"{r.get('reason', '')}; {home_note(entry, r)}"
             return 1
         return code
-    return finish(r, checks, r.pop("_ok_reason", ""))
+    code = finish(r, checks, r.pop("_ok_reason", ""))
+    if not checks["real_home_untouched"]:
+        r["reason"] += f"; {home_note(entry, r)}"
+    return code
 
 
 def node_version(node: str, home: str, cwd: str) -> tuple[int, ...] | None:
@@ -214,7 +283,8 @@ def _harnessscore(r: dict, node: str, cli: Path, want: str, checks: dict) -> int
         checks["fixtures_untouched"] = {d.name: tree_sig(d) for d in (clean, leaky)} == sig_before
         checks["home_untouched"] = not any(home.iterdir())
     r["_ok_reason"] = ("offline scan: AGENTS.md and protected .env seen, unignored .env flagged, rerun byte-identical, "
-                       "--min-level gate exits 1; fixtures, temp HOME and real HOME unchanged")
+                       "--min-level gate exits 1; fixtures, temp HOME and the watched real-HOME dirs "
+                       f"({watch_dirs('harnessscore')}) unchanged")
     return None
 
 
@@ -297,7 +367,7 @@ def _openlore(r: dict, node: str, cli: Path, git: str, checks: dict) -> int | No
         checks["home_untouched"] = not any(home.iterdir())
     r["_ok_reason"] = ("offline index of a temp TS repo: orient ranked applyDiscount first; an added required parameter "
                        "was flagged breaking with checkout as consumer; the restored file was non-breaking; temp HOME "
-                       "and real ~/.openlore unchanged")
+                       f"and the watched real-HOME dirs ({watch_dirs('openlore')}) unchanged")
     return None
 
 
@@ -314,7 +384,7 @@ def main() -> int:
         receipt.pop("_ok_reason", None)
         receipt["reason"] = str(e) if isinstance(e, TimeoutError) else f"unexpected {type(e).__name__}: {e}"
         if receipt.get("checks", {}).get("real_home_untouched") is False:
-            receipt["reason"] += f"; {home_note(a.entry)}"
+            receipt["reason"] += f"; {home_note(a.entry, receipt)}"
         code = 1
     return write(a.entry, receipt, code)
 

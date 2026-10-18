@@ -154,8 +154,10 @@ Both look up `$NODE_BIN`, then `tmp/node/bin/node`, then PATH. Harness Score rea
 `tmp/harness-score/package` (the unpacked npm tarball, `dist/cli.js`); OpenLore reads `$OPENLORE_DIR` or
 `tmp/openlore` (an npm prefix holding `node_modules/openlore`). Neither runs `install`, `connect`, `setup` or a plugin
 install, so no host config is written. Both run under bwrap with no network when it works, FAIL if their temp HOME is
-written, and content-hash the real-HOME dirs the tool could write (`~/.harness-score`, `~/.config/harness-score`;
-`~/.openlore`, `~/.pi/agent/extensions`) in a finally, so a real-HOME change FAILs even on timeout or without bwrap.
+written, and fingerprint the real-HOME dirs the tool could write (`~/.harness-score`, `~/.config/harness-score`;
+`~/.openlore`, `~/.pi/agent/extensions`) before the run and again in a finally: a created, deleted or changed entry
+(content, size, permissions, mtime, symlink target) FAILs, even on timeout or without bwrap, and the receipt lists the
+changed dirs in `real_home_changed`. Writes elsewhere in HOME are not watched.
 OpenLore gets `TMPDIR` inside the temp dir and `OPENLORE_NO_UPDATE_NOTIFIER=1`. `PFY_XINTAKE_TIMEOUT` overrides the
 600s per-command timeout.
 
