@@ -143,4 +143,22 @@ socket), bind only `127.0.0.1:$HR_SMOKE_PORT` (default 3917), add no provider ke
 and its volume. For a non-default socket set `HR_DOCKER_HOST`. `PFY_XINTAKE_TIMEOUT` overrides the 600s per-command
 timeout.
 
+Entries 128-130 (`smoke_128_130.py`; 130 hal0 is catalog-only, no smoke):
+
+```sh
+python3 examples/x-intake-local/smoke_128_130.py --entry harnessscore  # pinned 1.8.2, two temp fixtures, offline scan
+python3 examples/x-intake-local/smoke_128_130.py --entry openlore      # pinned 3.3.1, Node >= 22.19, temp TS repo
+```
+
+Both look up `$NODE_BIN`, then `tmp/node/bin/node`, then PATH. Harness Score reads `$HARNESS_SCORE_DIR` or
+`tmp/harness-score/package` (the unpacked npm tarball, `dist/cli.js`); OpenLore reads `$OPENLORE_DIR` or
+`tmp/openlore` (an npm prefix holding `node_modules/openlore`). Neither runs `install`, `connect`, `setup` or a plugin
+install, so no host config is written. Both run under bwrap with no network when it works, FAIL if their temp HOME is
+written, and fingerprint the real-HOME dirs the tool could write (`~/.harness-score`, `~/.config/harness-score`;
+`~/.openlore`, `~/.pi/agent/extensions`) before the run and again in a finally: a created, deleted or changed entry
+(content, size, permissions, mtime, symlink target) FAILs, even on timeout or without bwrap, and the receipt lists the
+changed dirs in `real_home_changed`. Writes elsewhere in HOME are not watched.
+OpenLore gets `TMPDIR` inside the temp dir and `OPENLORE_NO_UPDATE_NOTIFIER=1`. `PFY_XINTAKE_TIMEOUT` overrides the
+600s per-command timeout.
+
 Not wired into CI or Make.
