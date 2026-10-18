@@ -112,6 +112,9 @@ pipelines/smoke/tsa/
 pipelines/smoke/llmrouter/
 pipelines/smoke/harnessrouter/
 pipelines/smoke/squadra/
+# 128-130 receipts.
+pipelines/smoke/harnessscore/
+pipelines/smoke/openlore/
 
 # agentdescent-trial promote temp files
 examples/agentdescent-trial/.results.new-*/
