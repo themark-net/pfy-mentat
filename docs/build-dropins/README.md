@@ -21,6 +21,7 @@ Ready-to-paste prompts that move the heavy work from bots to Grok Build. On 2026
 | 4 | [practiceminder.md](practiceminder.md) | `~/DEVELOP/practiceminder` | M3 LockAdapter + emergency unlock (#8) | **Yes**: pasting = RELEASE | No |
 | 5 | [leasegrid.md](leasegrid.md) | `~/DEVELOP/leasegrid-c` (repo leasegrid-c) | #26 relative recovery-file path (Android) | **Yes**: pasting = RELEASE | No |
 | 6 | [lotline.md](lotline.md) | `~/DEVELOP/lotline` | Phase B kit (deal-sheet checker, kill clock, release check) | Partly: 3 FOUNDER inputs | No |
+| eval (done on this branch) | [hermes-eval.md](hermes-eval.md) | `~/DEVELOP/pfy-mentat` | Hermes Agent vs current local path, Entry 131 | No (BEST_EFFORT, not a Feature GO) | Finished. Do not start another copy while a bench holds Ollama |
 
 Why atg-framework first: your Build context is already warm on that repo. Its first part (client + mock PoC suite) runs now without touching the GLM bench. And its result decides whether the pfy-mentat slice can promote ATG past I1.
 
@@ -32,5 +33,6 @@ Repo path and mandatory reads · its own worktree and branch (never the founder 
 
 ## Changelog
 
+- 2026-10-19: added `hermes-eval.md` (Entry 131 bake-off). The run is on `bot/hermes-eval`. Verdict NO-WIN. Not a Feature GO.
 - 2026-10-06: added `atg-finish-autonomous.md` (row 1-alt) to the index, and pointed the toolsets drop-in at `sources/x-posts.md` for Entries 041, 049 and 051, which have no entry files.
 - 2026-10-06: added `pfy-mentat-toolsets.md` (ranking items #3, #4, #5, #7, #8) and clarified that the Leasegrid repo is leasegrid-c.
