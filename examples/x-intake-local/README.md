@@ -177,4 +177,11 @@ real-HOME dirs the tool could write (`~/.jah`; `~/.local/share/ai-memory`, `~/.c
 OpenLore gets `TMPDIR` inside the temp dir and `OPENLORE_NO_UPDATE_NOTIFIER=1`. `PFY_XINTAKE_TIMEOUT` overrides the
 600s per-command timeout.
 
+Entries 135-136 (no smoke script; 134 is held for the Hermes entry on `bot/hermes-eval`):
+
+Monid (135) is catalog-only. Every useful path needs an account, a key or spend, and its open connector engine
+still needs each vendor's own key, so there is nothing to smoke without Mark's OK. Harness² (136) has no script
+here either: its own offline demo (`harness2-demo --k 2`, no model, no key) was run once on the Grok Bot box under
+bwrap with no network and a temp HOME, and the result is in the entry. A pinned smoke can come with an eval-auto trial.
+
 Not wired into CI or Make.
