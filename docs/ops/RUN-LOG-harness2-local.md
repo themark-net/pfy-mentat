@@ -123,7 +123,7 @@ N3, the held-out half of N4, and N6 wait for items 3 and 6. Layout half of N4, r
 
 ### Item 2b — should-fixes
 
-2b.1 DONE. Sweeps list `$RUNS/tmp` with `os.scandir` and `os.lstat` and touch only real directories. Symlinks and other non-directories are skipped and logged. Commands stay `chmod -R -P u+rwX -- <ws>` and `find -P <ws> -xdev -type s -delete`. `chmod --version` is `chmod (uutils coreutils) 0.10.0`; `-P` is accepted ("do not traverse any symbolic links (default)").
+2b.1 DONE. Commit `da6d56a9ea711b3825ba406ca5f49cabe326b55d`. Sweeps list `$RUNS/tmp` with `os.scandir` and `os.lstat` and touch only real directories. Symlinks and other non-directories are skipped and logged. Commands stay `chmod -R -P u+rwX -- <ws>` and `find -P <ws> -xdev -type s -delete`. `chmod --version` is `chmod (uutils coreutils) 0.10.0`; `-P` is accepted ("do not traverse any symbolic links (default)").
 
 Test: `python3 -m unittest tests.test_harness2_local_sandbox` → Ran 27 tests in 45.204s, OK. The new case is `test_sweep_skips_symlinks_and_leaves_the_target`: a symlink under `$RUNS/tmp` and one inside a finished workspace and the live workspace all point at a host-only dir (mode 600 file, mode 700 subdir, a unix socket). After both sweeps the target modes, contents, and socket are unchanged, the real workspace is swept, the log names the skipped symlink and the skipped regular file, and the chmod/find argv record does not name the symlink.
 
