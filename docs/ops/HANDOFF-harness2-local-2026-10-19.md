@@ -2,7 +2,7 @@
 
 Branch: `bot/h1-harness2`
 Base: `aed526d080114f83fbd9ad329b4c9e5b62baf64c` (launch `origin/main`). Later `origin/main` moved for Hermes eval. This branch is not merged with that tip.
-Head: `a785c27e88945791de0e9a658dd6f2bdfa53f308` on `bot/h1-harness2` (item 2c). Docs tip after this recording commit is one commit ahead. Item 4 was `475f34ddc8736969db253e3ed654fd85f8bbaea1`; the stop-file docs commit was `e240d5b47024f5102ba0c6939f3fc9e9472434ce`; item 3 was `3260e0228cee5344578bfad2a26076ef43bb03ec`; resume base `902e04f47eaf7c7083b80062235a056c63352f63`.
+Head: `4bd065de7a2366149dac47f4c9cf964e31e65f20` on `bot/h1-harness2` (item 5). Docs tip after this recording commit is one commit ahead. Item 2c was `a785c27e88945791de0e9a658dd6f2bdfa53f308`; item 4 was `475f34ddc8736969db253e3ed654fd85f8bbaea1`; the stop-file docs commit was `e240d5b47024f5102ba0c6939f3fc9e9472434ce`; item 3 was `3260e0228cee5344578bfad2a26076ef43bb03ec`; resume base `902e04f47eaf7c7083b80062235a056c63352f63`.
 Compare: https://github.com/themark-net/pfy-mentat/compare/main...bot/h1-harness2
 Proposal branch: none
 Exit: STOPPED_EXIT: stop-file (`$W/tmp/STOP`, empty, mtime 2026-10-20 12:13 PDT)
@@ -18,7 +18,7 @@ Exit: STOPPED_EXIT: stop-file (`$W/tmp/STOP`, empty, mtime 2026-10-20 12:13 PDT)
 | 2c fixes | DONE. Tester FAIL of `902e04f`: idle 600 s, caller XDG wins, sbun exposes the relay port, watchdog gap 10 s after a miss, mutant tests, hermetic stage, executor XDG, checkout refusal, em dashes in headings. Full suite 520 OK (skipped=4) in 424.657s. |
 | 3 adapter | DONE. Commit `3260e0228cee5344578bfad2a26076ef43bb03ec`. 8 tests OK in 62.360s. |
 | 4 surface | DONE. Commit `475f34ddc8736969db253e3ed654fd85f8bbaea1`. 5 tests OK in 0.426s. |
-| 5 propose | DONE. Host-side gate. Tests under `$W/tmp/propose-tests`. SHA recorded in the docs commit after this item. |
+| 5 propose | DONE. Commit `4bd065de7a2366149dac47f4c9cf964e31e65f20`. 20 tests OK. Full suite 540 OK (skipped=4) in 427.292s. |
 | 6 live | not started |
 | 7 docs | not started (stop-file) |
 | N nimo checks | N1 PASS, N2 PASS, N5 PASS. N3, N4 held-out/pins, N6 not started. |

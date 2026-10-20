@@ -284,6 +284,8 @@ RED (each restored, then cases + propose green):
 
 Full suite after the restore: `python3 -m unittest discover -s tests -t .` → Ran 540 tests in 427.292s, OK (skipped=4).
 
+Commit: `4bd065de7a2366149dac47f4c9cf964e31e65f20`. Pushed fast-forward to `origin/bot/h1-harness2`. `git diff aed526d..HEAD | grep '^+' | grep -c` of U+2014 is 0.
+
 ### Item 6: live
 
 state: pending
