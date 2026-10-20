@@ -214,7 +214,7 @@ Upstream `validate` on the mapped tree: 1386 always-on chars, 1 skill, 1 script,
 
 ### Item 2c: Tester FAIL of 902e04f
 
-state: DONE | attempt 1 | tests: `python3 -m unittest discover -s tests -t .` → Ran 520 tests in 424.657s, OK (skipped=4), exit 0. Sandbox module is 40 tests. Stage module stays 8. Baseline at resume was 508.
+state: DONE | attempt 1 | commit: `a785c27e88945791de0e9a658dd6f2bdfa53f308` | tests: `python3 -m unittest discover -s tests -t .` → Ran 520 tests in 424.657s, OK (skipped=4), exit 0. Sandbox module is 40 tests. Stage module stays 8. Baseline at resume was 508.
 
 Fixes the two blockers and the should-fixes from the Tester FAIL of `902e04f`, before item 5. One commit. Decisions D13-D20.
 
@@ -256,7 +256,7 @@ M22 is 2c.1.
 
 2c.7 A checkout whose realpath is under `/tmp` or `/run` exits 2 `BLOCKED: checkout under /tmp` (or `/run`) before any mount. The test points `HARNESS2_W` at a symlink. RED: delete `_refuse_ephemeral_checkout(wt)` → `test_checkout_under_tmp_or_run_is_refused` FAILED (`checkout under`). Restored. Green again. No checkout debris was created under `/tmp`.
 
-2c.8 Headings this branch added since `aed526d` used U+2014. The `## D1` through `## D12` headings, the handoff title, and the `### Item N` headings now use a colon. The count `git diff aed526d..HEAD | grep '^+' | grep -c $'\xe2\x80\x94'` is recorded after the commit.
+2c.8 Headings this branch added since `aed526d` used U+2014. The `## D1` through `## D12` headings, the handoff title, and the `### Item N` headings now use a colon. After `a785c27`, `git diff aed526d..HEAD | grep '^+' | grep -c $'\xe2\x80\x94'` is 0.
 
 Cheap nits folded in: the dead `/var/run` `pass` in `build_bwrap` is gone (`/var` is not bound). Handoff status and `docs/TODO.md` no longer say 26 sandbox tests. The handoff Head line is updated in the docs commit that records this item's SHA.
 
