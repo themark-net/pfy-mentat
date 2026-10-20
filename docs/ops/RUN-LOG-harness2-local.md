@@ -318,7 +318,9 @@ The executor prompt now says to read `systemprompt.md` first and follow its answ
 
 Third a1 at 14:03:49-14:04:37 after `fb2d5dc`: rc 0, 15/16, `parse_ok` 1.0, `wrong_but_confident` 1, `n_escalate` 0. The session read `systemprompt.md`, then `cases.json`, and wrote `case` / `choice` / `confidence` / `why`. The miss is t35 (choice `drop`, label `keep`, confidence 0.9). Six POSTs, all `temperature: 0` `seed: 230`. Largest request body 64178 bytes, under the 24k-token raise. This is base run a1. Receipt copy: `tmp/host-only/receipt-a1.json` (not committed).
 
-Next: held-out base `a2`, then `drive.py --k 1`.
+Base a2 at 14:05:51-14:06:40: rc 0, 15/16, `parse_ok` 1.0, `wrong_but_confident` 1, `n_escalate` 1. Same shape: read `systemprompt.md`, then `cases.json`. Choice diffs vs a1: t35 (a1 wrong `drop`, a2 right `keep`) and t45 (a1 right `qwen3-coder:30b`, a2 wrong `tool:bare`). Correct-count gap is 0. Better base is 15/16. Five POSTs, all `temperature: 0` `seed: 230`. Receipt copy: `tmp/host-only/receipt-a2.json`.
+
+Next: `drive.py --k 1` on the 4 train tasks. Step c only if the chain adopts a harness.
 
 ### Item 7: docs
 
