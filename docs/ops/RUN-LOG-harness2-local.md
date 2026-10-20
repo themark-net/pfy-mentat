@@ -340,6 +340,8 @@ Live N6 after that commit, 2026-10-20T15:04:17-0700 to 15:04:43, log `tmp/host-o
 
 state: DONE. Entry 136 moved I0 to I1. Triple-write: TOOLS.md row `harness2`, `data/tools.json` v0.4.18, `data/tool_integration_stages.json` v1.3 (56 cards). Scores S1 70, S2 55, S3 58, S4 45, overall 59 (weighted 59.5, floored), tier C. Not a Feature GO. Not I3. HOLD 70-75 untouched. `docs/TODO.md` H1-6 and H1-7 marked done. `docs/build-dropins/README.md` H1 row points at worktree `tmp/h1-harness2` and records gain 0. `examples/harness2-local/README.md` records the live result and the sbun exec path.
 
+The first full suite after that row failed two tests that the row itself caused. `test_every_tools_md_row_has_handoff_keys` was 52 rows against 51 handoff cards. `test_executor_launcher_xdg_is_inside_the_workspace` raised because the stub wrote no `output/answer.json` and `_launch` now treats that as a failure. Fix `31f96ed`: handoff card for `harness2`, the notes say `I1 stay`, and the stub writes an empty answer file. Both tests passed. Structural eval then PASS, including Ran 545 tests in 433.377s, OK (skipped=4).
+
 ### Item N: nimo-only
 
 N1, N2, N3, N5 were already PASS (see the sections above and the handoff). N4 and N6:
@@ -357,3 +359,11 @@ See the decisions file. Ctx stays 32768. The first editor or executor prompt did
 Superseded by the H1c session (START 2026-10-20T12:23:06-07:00). The H1b stop-file below was intentional so item 2c could run first. It is not a failure and not a skip.
 
 STOPPED_EXIT: stop-file. `$W/tmp/STOP` existed (empty file, mtime 2026-10-20 12:13 PDT, owner mark). Seen at 2026-10-20 12:20 PDT, after item 4 was green and before item 5 started. No llama-server was started in that session. Items 5, 6, 7 and checks N3, N4 held-out, N6 did not start. Local CI was not run.
+
+## Exit (H1c)
+
+Goal met. 2026-10-20 15:34 PDT. START was 2026-10-20T12:23:06-07:00. No new item after 18:23:06. Stop-by was 19:53:06. This exit is inside the cap. Not a stop-file, not 2-skips, not a BLOCKED gate.
+
+Local CI: structural PASS on `31f96ed` (545 tests, OK, skipped=4, 433.377s). Golden PASS. catalog_check PASS. catalog_dashboard PASS. check_no_encoded_payloads PASS. The other eval-structural run steps passed on the 15:09 run, before the handoff-card fix.
+
+llama-server pid 425470 pgid 425470 received SIGTERM. Only that process was in the group. Health then refused connections. Watcher pid 425489 exited after `tmp/host-only/llama-watch.stop`. No mem-edge file. monerod 1163482, node 121239, and grok 103455/103456 were still running.
