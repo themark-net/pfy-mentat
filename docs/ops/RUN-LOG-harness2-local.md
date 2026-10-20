@@ -338,7 +338,7 @@ Live N6 after that commit, 2026-10-20T15:04:17-0700 to 15:04:43, log `tmp/host-o
 
 ### Item 7: docs
 
-state: pending (catalog I1 is the next commit)
+state: DONE. Entry 136 moved I0 to I1. Triple-write: TOOLS.md row `harness2`, `data/tools.json` v0.4.18, `data/tool_integration_stages.json` v1.3 (56 cards). Scores S1 70, S2 55, S3 58, S4 45, overall 59 (weighted 59.5, floored), tier C. Not a Feature GO. Not I3. HOLD 70-75 untouched. `docs/TODO.md` H1-6 and H1-7 marked done. `docs/build-dropins/README.md` H1 row points at worktree `tmp/h1-harness2` and records gain 0. `examples/harness2-local/README.md` records the live result and the sbun exec path.
 
 ### Item N: nimo-only
 

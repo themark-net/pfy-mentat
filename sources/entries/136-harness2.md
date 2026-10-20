@@ -19,7 +19,7 @@
   - **Data licenses differ from the code license.** WorkBuddy-Bench uses a custom Tencent license with an EU limit. Datasets come from Hugging Face under their own terms. Setup clones pinned upstream checkouts and downloads data, so it needs network access.
   - The paper's gains are on GLM-5 and Gemini 3.5 Flash with frontier editors. It doesn't show that a 35B local model can do the editor and composer jobs. That is the open question for us.
 - **Extracted Repos / Tools**: https://github.com/google-research/harness2 · https://arxiv.org/abs/2610.14224 · https://harness2.github.io · https://github.com/Tencent/workbuddy-bench
-- **TOOLS.md Link**: None yet. I0 awareness. No TOOLS.md row, no `data/tools.json` row.
+- **TOOLS.md Link**: `harness2` row in TOOLS.md, `data/tools.json`, and `data/tool_integration_stages.json`. I1 as of 2026-10-20. Not I3.
 - **Smoke**: None committed. The box check above used upstream's own `harness2-demo`; a pinned smoke script can come with a trial.
 - **Non-goals**: No benchmark setup, no Docker, no gcloud, no Vertex or other cloud model, no change to our skills or drop-ins from its output.
 - **How this fails / how we recover**:
@@ -32,6 +32,7 @@
 | Vertex coupling | WorkBuddy and LAB setup expect Gemini routes | Use JobBench with a local OpenAI-compatible judge first |
 | Overfitting harness edits | Lessons fit one benchmark, not our work | Treat the library as suggestions; a person reviews before anything goes into AGENTS.md or skills |
 
-- **Status**: Cataloged I0. Offline demo PASS on the Grok Bot box; not staged on nimo.
+- **Nimo trial (2026-10-20)**: `examples/harness2-local` on branch `bot/h1-harness2`. Own `llama-server`, `qwen3.6:35b`, ctx 32768, sandboxed OpenCode, no paid keys. Held-out bases a1 and a2 were both 15/16 (`parse_ok` 1.0, wrong-but-confident 1). The chain adopted an empty `LongTermMEMORY.md` and the final held-out run was also 15/16. Gain 0. No `bot/h2-proposal-*` branch. Receipt: `pipelines/dogfood/harness2-local/receipt.json`. Scores S1 70, S2 55, S3 58, S4 45, overall 59 (weighted 59.5, floored), tier C.
+- **Status**: I1 staged evaluation. The offline demo PASS on the Grok Bot box still stands. The nimo trial completed with a negative finding. Not I3. Not a Feature GO.
 
-**Verdict: catalog-only.** It is a strong, Apache-2.0 method for testing harness edits before keeping them and can in principle run fully local, but the shipped setup is built around Vertex and nothing shows a local 35B model can do the editor job, so it waits for a scoped eval-auto trial (JobBench, `--k 1`, Ollama executor and judge) that Mark approves.
+**Verdict: I1, negative finding.** A local 35B model can run the executor and the editor inside the sandbox (temperature 0, seed 230, 288 relay POSTs). On this 48-case decision set the editor did not beat the base by the required 2 held-out cases. Stay I1 until a later trial clears that gate and a person merges the proposal branch.

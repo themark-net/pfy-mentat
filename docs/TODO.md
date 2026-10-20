@@ -16,8 +16,8 @@ Branch `bot/h1-harness2`. Not a Feature GO. Catalog HOLD 70-75 stays. Run log: [
 | H1-3 | 48-case adapter and driver | done (`3260e0228cee5344578bfad2a26076ef43bb03ec`, 8 tests OK) |
 | H1-4 | Surface map and write allow-list | done (`475f34ddc8736969db253e3ed654fd85f8bbaea1`, 5 tests OK) |
 | H1-5 | Proposal branch, never merges | done (`4bd065de7a2366149dac47f4c9cf964e31e65f20`, 20 tests OK) |
-| H1-6 | Live llama-server run | pending |
-| H1-7 | Docs and catalog row | pending |
+| H1-6 | Live llama-server run | done (gain 0, receipt `c26ad1a`, no proposal branch) |
+| H1-7 | Docs and catalog row | done (Entry 136 I1, tier C, overall 59) |
 
 
 ## G8 — Simple harness-agnostic launch (2026-07-31)
