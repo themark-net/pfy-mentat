@@ -15,7 +15,7 @@ Branch `bot/h1-harness2`. Not a Feature GO. Catalog HOLD 70-75 stays. Run log: [
 | H1-2c | Tester FAIL of 902e04f (idle, sbun, watchdog, mutant tests) | done (40 sandbox tests; full suite 520 OK, skipped=4) |
 | H1-3 | 48-case adapter and driver | done (`3260e0228cee5344578bfad2a26076ef43bb03ec`, 8 tests OK) |
 | H1-4 | Surface map and write allow-list | done (`475f34ddc8736969db253e3ed654fd85f8bbaea1`, 5 tests OK) |
-| H1-5 | Proposal branch, never merges | pending |
+| H1-5 | Proposal branch, never merges | done (propose.py gate; SHA in the docs commit) |
 | H1-6 | Live llama-server run | pending |
 | H1-7 | Docs and catalog row | pending |
 

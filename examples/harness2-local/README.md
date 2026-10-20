@@ -6,4 +6,24 @@ OpenCode at pin `23fb5e0516c99ac04a1aa46c193efda2e1b9bb24` reads its managed con
 
 Upstream Proposer and the executor launcher set `XDG_DATA_HOME` and `XDG_STATE_HOME` to the call workspace (`cwd/.ocdata`, `cwd/.ocstate`). Those values win, because `$W/tmp/state` is read-only inside the sandbox. `sbun` reads `HARNESS2_RELAY_PORT` (the same variable `write_opencode_config` uses) and passes it as `--expose` and `--allow`. If the port is missing or not an integer from 1 to 65535, `sbun` exits 2 with `BLOCKED: relay port unknown` and does not start a call. The relay keeps a silent request open for 600 s. The watchdog waits 10 s between probes after a miss as well as after a success, and kills the call on 2 misses in a row. A checkout whose realpath is under `/tmp` or `/run` is refused before any mount (`BLOCKED: checkout under /tmp` or `/run`).
 
+## Proposal branch
+
+`propose.py` takes the mapped diff and the item 6 receipt. It scans the diff for token shapes, and for any value of a `PAID_KEYS` name in the environment that is at least 8 characters. A hit exits 2 and prints only the first 4 characters plus `***`.
+
+A label leak in an added line exits 0. The receipt is `negative_finding: label-leak` with diff line numbers, and no branch is created. Bare label words do not block. They are listed under `Leak warnings:` in the commit body. The line `case 3 - A` does block. That is the accepted false positive.
+
+The gate requires `install_mode` `workspace_config`, two base held-out runs and one final run of 16 cases, `temperature: 0` and `seed: 230` on every `POST` in `relay_log`, and a gain of at least 2 correct cases over the better base. When the two base runs differ by 2 or more, the gain must be larger than that gap. Wrong-but-confident must not rise. `parse_ok` must not drop.
+
+A pass clones `main` from `--remote` into `--work-dir`, commits the diff with the before/after counts, and pushes `bot/h2-proposal-<YYYYMMDD>-<shortsha>`. An existing name gets a `-2` suffix, then `-3`. `main`, `master`, `stage`, `dev`, and `build/*` exit 2. The script does not merge and does not force-push.
+
+```bash
+python3 examples/harness2-local/propose.py \
+  --receipt "$W/tmp/host-only/proposal-receipt.json" \
+  --diff "$W/tmp/host-only/proposal.diff" \
+  --remote <remote-with-main> \
+  --work-dir "$W/tmp/proposal-work"
+```
+
+The tests use a bare repo under the worktree `tmp/propose-tests`.
+
 The build spec is [docs/build-dropins/harness2-local.md](../../docs/build-dropins/harness2-local.md). The run log is [docs/ops/RUN-LOG-harness2-local.md](../../docs/ops/RUN-LOG-harness2-local.md).

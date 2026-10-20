@@ -60,6 +60,49 @@ def note_hits(text: str, notes: list[str]) -> list[str]:
     return [note for note in notes if len(note) >= 20 and note in text]
 
 
+def verdict_pattern(labels: list[str]) -> re.Pattern[str]:
+    """Block a label or choice letter only when it ends the value.
+
+    Letters stay case-sensitive inside the ``(?i)`` pattern, so the article
+    ``a`` does not count. ``re.M`` is the spec flag. Labels are escaped and
+    joined longest first.
+    """
+    labs = _alt(labels) if labels else r"(?!x)"
+    letter = r"(?-i:\b[A-D]\b)"
+    value = rf"(?:(?:{labs})|{letter})"
+    key = r"""["']?\b(?:label|expected|gold|answer(?:[_ ]key)?|ground[_ -]truth)\b["']?"""
+    pat = (
+        rf"(?i)(?:{key}\s*[:=]\s*[\"']?{value}{_END})"
+        rf"|(?:\bcase\s*#?\d+\s*[:=-]\s*(?:label\s*)?[\"']?{value}{_END})"
+        rf"|(?:[\"']correct[\"']\s*:\s*(?:true|false))"
+        rf"|(?:\b(?:held[- ]out|heldout)\b[^\n]{{0,30}}\b\d{{1,2}}\s*/\s*16\b)"
+    )
+    return re.compile(pat, re.M)
+
+
+def verdict_hits(text: str, labels: list[str]) -> list[str]:
+    return [match.group(0) for match in verdict_pattern(labels).finditer(text)]
+
+
+def bare_label_hits(text: str, labels: list[str]) -> list[str]:
+    """Everyday option words. These warn. They block only if a caller asks."""
+    found = []
+    for lab in sorted(set(labels), key=len, reverse=True):
+        pat = re.compile(rf"(?i)(?<![\w-]){re.escape(lab)}(?![\w-])")
+        found.extend(pat.findall(text))
+    return found
+
+
+def verdict_near_letter(text: str) -> bool:
+    """A verdict word within 20 characters of a choice letter A-D."""
+    for match in re.finditer(r"(?i)\b(?:incorrect|correct|wrong)\b", text):
+        before = text[max(0, match.start() - 20) : match.start()]
+        after = text[match.end() : match.end() + 20]
+        if re.search(r"\b[A-D]\b", before) or re.search(r"\b[A-D]\b", after):
+            return True
+    return False
+
+
 def answer_pair_text(text: str) -> str:
     """Drop executor ``why`` values. Model free text is not a leak we wrote."""
     try:

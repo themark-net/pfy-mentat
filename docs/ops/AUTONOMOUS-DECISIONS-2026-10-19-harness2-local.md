@@ -81,3 +81,7 @@ Choice: after resolving the worktree, exit 2 `BLOCKED: checkout under /tmp` (or 
 ## D20: H1c clock
 
 Choice: START is 2026-10-20T12:23:06-07:00. Start no new item after 2026-10-20T18:23:06-07:00. Stop by 2026-10-20T19:53:06-07:00. Live item 6 starts only if begun by 2026-10-20T16:38:06-07:00. | Alternative: keep D9's H1b limits. | The H1c block says this session's clock replaces those limits. D4 and D9 stay as the record of the earlier sessions. Item 2c is one sequential workstream: the sub-items share `sandbox.py`.
+
+## D21: Proposal gate is a host-side CLI
+
+Choice: `propose.py` reads a receipt with `install_mode`, `heldout.a1`, `heldout.a2`, `heldout.c` (`correct` or `n_correct`, `n`, `wrong_but_confident`, `parse_ok`), and `relay_log`. `GAIN_MIN = 2`. Paid-key values shorter than 8 characters are ignored. The bare repo for tests is `$W/tmp/propose-tests`, not `/tmp`. `origin/main` moved to Hermes eval commits after `aed526d`; this branch is not merged with that tip. A proposal clones whatever `main` the given remote has. | Alternative: call only upstream's grader-marker check, and rebase onto current `origin/main` before item 5. | Upstream accepted `label: B correct`. Rebase would rewrite pushed commits. The short-value floor keeps a dummy `local` key from matching ordinary prose.

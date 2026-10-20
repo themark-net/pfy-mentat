@@ -264,7 +264,25 @@ Deferred Tester nits (not in this commit): `_read_http` truncates a chunked body
 
 ### Item 5: propose
 
-state: not started
+state: DONE | tests: `python3 -m unittest tests.test_harness2_local_propose` → Ran 20 tests in 1.962s, OK | files: `propose.py`, `leaks.py` verdict scan, `tests/test_harness2_local_propose.py`, README, D21
+
+`propose.py` is the host-side gate. Tests use a bare repo under `$W/tmp/propose-tests` (H1c: not `/tmp`). `origin/main` is no longer `aed526d` (Hermes eval commits, tip read `24fe672` at 13:16 PDT). This branch was not rebased onto it. D21.
+
+A passing receipt pushes `bot/h2-proposal-<YYYYMMDD>-<12 hex>` and leaves bare `main` where it was. The commit body has the before/after counts. Warn-only lines (`Prefer push only when CI is green.`, `Expected: escalate for the ambiguous Kronos case.`) are under `Leak warnings:`.
+
+Named leak lines, including `label: B correct`, `ph-01-green-idle`, a verbatim note, and `see ph-03`, all block. The receipt stores line numbers and not the matched text. The 28 benign lines block only `case 3 - A`.
+
+RED (each restored, then cases + propose green):
+- `GAIN_MIN = 1` → `test_plus_one_gain_writes_no_ref` FAILED (`pushed bot/h2-proposal-20261020-ebc621cc1281`, no gain finding).
+- `scan_secrets` returns `[]` → `test_secret_shapes_are_masked_and_write_no_ref` FAILED (rc 0, pushed).
+- token regex replaced with `sk-|xai-` → `test_benign_secret_text_pushes` FAILED (rc 1).
+- `gh[pousr]_` changed to `ghp_` → `test_gho_token_is_refused` FAILED (rc 0, pushed).
+- `_line_leaks` returns `False` → `test_label_b_correct_is_a_negative_finding` FAILED (pushed, no `label-leak`).
+- `BLOCK_BARE_LABELS = True` → `test_false_positive_budget_blocks_only_case_3` FAILED (list was not only `case 3 - A`).
+- letter class without `(?-i:)` → same test FAILED (`answer: a.` and `case 3 - A`).
+- `name_is_protected` returns `False` → `test_target_main_exits_2` FAILED (rc 0, `pushed main-2`).
+
+Full suite after the restore: `python3 -m unittest discover -s tests -t .` → Ran 540 tests in 427.292s, OK (skipped=4).
 
 ### Item 6: live
 
