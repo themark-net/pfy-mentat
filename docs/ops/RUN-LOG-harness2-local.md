@@ -187,7 +187,20 @@ RED (each mutant restored; the tree matched the pre-mutant bytes afterward):
 
 ### Item 4 — surface
 
-state: pending
+state: DONE | tests: `python3 -m unittest tests.test_harness2_local_surface` → Ran 5 tests in 0.426s, OK. Drive and case tests re-run after `write_base` became live: Ran 8 tests in 62.413s, OK | files: surface.py, trial.py `decision_prompt`, surface tests | err: none
+
+Skills mapped: `jev-decision` only (`.grok/skills/jev-decision/SKILL.md`). That is the #230 Choice skill the decision task uses (D12).
+
+`systemprompt.md` is the return string of `decision_prompt()` in `examples/typed-decisions-local/trial.py`. `guardrails.md` is the `## Do not` block of `AGENTS.md` plus the Feature-GO gate line, read-only. `tool_descriptions/tool_guidance.md` is the `### Custom Scripts, Tools & Automation` section. `write_base` also writes `scripts/pfy_jev_230.py` so upstream accepts the skill's `python3 scripts/pfy_jev_230.py` line. Adopt ignores that stub when it is unchanged.
+
+Fail/recover: delete `.grok/skills/jev-decision/SKILL.md` and export exits 2 naming it; restore the file and export plus adopt leave the repo byte-identical (`test_missing_skill_recovers`).
+
+RED (restored; surface tests green afterward):
+
+- `rule_edits` returns `[]` immediately → `test_guardrail_edit_is_rejected` (`0 != 2`).
+- `enforce_path_allow` returns `[]` immediately → `test_disallowed_paths_are_named` (`0 != 2`).
+
+Upstream `validate` on the mapped tree: 1386 always-on chars, 1 skill, 1 script, no error.
 
 ### Item 5 — propose
 

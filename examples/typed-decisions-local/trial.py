@@ -53,6 +53,20 @@ EXIT_BROKEN = 1
 EXIT_CANNOT_RUN = 2
 
 
+# HARNESS2_PROMPT_BEGIN
+def decision_prompt() -> str:
+    """Executor procedure. The 0.85 figure is DEFAULT_GATE. harness2-local maps this string."""
+    return """Read cases.json in this workspace.
+Each case has an id, instructions, a state, and criteria.
+Pick exactly one criteria key for each case.
+Write output/answer.json and nothing else, in this shape:
+{"answers":[{"case":"<id>","choice":"<criteria key>","confidence":0.0,"why":"one short reason"}]}
+Use a confidence below 0.85 when the state does not settle the choice.
+When a case is a typed Choice, load the `jev-decision` skill.
+"""
+# HARNESS2_PROMPT_END
+
+
 def now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
