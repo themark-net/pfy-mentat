@@ -21,7 +21,7 @@ Exit: STOPPED_EXIT: stop-file (`$W/tmp/STOP`, empty, mtime 2026-10-20 12:13 PDT)
 | 5 propose | DONE. Commit `4bd065de7a2366149dac47f4c9cf964e31e65f20`. 20 tests OK. Full suite 540 OK (skipped=4) in 427.292s. |
 | 6 live | not started |
 | 7 docs | not started (stop-file) |
-| N nimo checks | N1 PASS, N2 PASS, N5 PASS. N3, N4 held-out/pins, N6 not started. |
+| N nimo checks | N1 PASS, N2 PASS, N5 PASS. N3 PASS (health and /v1/models both 200 in under 5 ms while a slot was busy; watchdog probe is GET /health). N4 and N6 not started. |
 
 ## Tests
 

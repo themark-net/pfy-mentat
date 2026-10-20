@@ -288,7 +288,17 @@ Commit: `4bd065de7a2366149dac47f4c9cf964e31e65f20`. Pushed fast-forward to `orig
 
 ### Item 6: live
 
-state: pending
+state: in progress. Load gates passed at 2026-10-20T13:37 PDT. Item clock starts 2026-10-20T13:42 (own 3h cap, stop this item by about 16:42). Server pid 425470, pgid 425470, port 18111. Not stopped yet.
+
+Quiet host: `ollama ps` printed only the header. No other `llama-server` and no `bench.py`. Port 18080 is monerod (pid 1163482). It was not touched. Our server uses 127.0.0.1:18111.
+
+Memory arithmetic before load: weights file 20.227 GiB (21706498560 bytes) + about 4 GiB KV at 32k + 25 GiB margin = 49.227 GiB. The spec floor is 52 GiB. MemAvailable was 61547860 kB (58.70 GiB), above 52. The lane's own check is file size + 25 GiB (45.227 GiB), also clear. SwapFree was 612 kB. Lowest MemAvailable seen during load: 29777968 kB (28.40 GiB), above the 16 GiB floor. After the N3 generation: 56 to 57 GiB.
+
+Server: `llamacpp-nommap` via `pfylib/hedge.py` `start_llamacpp_nommap`, script flags `--no-mmap -ngl 999 -c 32768 -np 1 -fa on --no-webui`. GGUF is the `qwen3.6:35b` blob `sha256-d372de8e934898a59e6ccfabc3368474711384d8f1fd4d22d87a3f0a45400cdc` (sha256sum matches that name). `GET /health` returned 200 `{"status":"ok"}` at t=20s. `GET /v1/models` lists that blob with `n_ctx` 32768.
+
+N3: during one completion that took 23.8 s, `GET /health` was HTTP 200 in 1.3 ms and `GET /v1/models` was HTTP 200 in 0.4 ms. Idle, both were under 8 ms. `/v1/models` does not queue behind the single slot on this build. The watchdog already probes `GET /health` and treats any bytes back as alive. That probe stays.
+
+Next: held-out base runs `a1` and `a2`, then `drive.py --k 1`.
 
 ### Item 7: docs
 
