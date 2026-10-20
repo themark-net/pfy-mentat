@@ -298,7 +298,15 @@ Server: `llamacpp-nommap` via `pfylib/hedge.py` `start_llamacpp_nommap`, script 
 
 N3: during one completion that took 23.8 s, `GET /health` was HTTP 200 in 1.3 ms and `GET /v1/models` was HTTP 200 in 0.4 ms. Idle, both were under 8 ms. `/v1/models` does not queue behind the single slot on this build. The watchdog already probes `GET /health` and treats any bytes back as alive. That probe stays.
 
-Next: held-out base runs `a1` and `a2`, then `drive.py --k 1`.
+First `a1` attempt at 13:41 used `--endpoint http://127.0.0.1:18111/v1` and exited 2 `endpoint down` in 0.33 s (`tmp/host-only/drive-a1.log`). `endpoint_up` asked for `/v1/v1/models`, and the body lists the blob digest, not `qwen3.6-35b`. A direct completion with thinking left on returned empty `content` (`finish_reason: length`). `chat_template_kwargs.enable_thinking: false` returned `pong`.
+
+Fix (D22): accept a 64-character `HARNESS2_GGUF_SHA` in the models body, strip one trailing `/v1`, and add `chat_template_kwargs.enable_thinking: false` to the generated model options.
+
+RED: drop the digest acceptance -> `EndpointTests.test_blob_digest_and_trailing_v1_count_as_up` fails (`False is not true`). Drop the `/v1` strip -> the same test fails. Drop `chat_template_kwargs` from `write_opencode_config` -> `test_sbun_runs_real_opencode_with_proposer_env` fails (`None is not False`) while the body still has `temperature: 0` and `seed: 230`.
+
+Green: `EndpointTests` 2 tests OK. `test_sbun_runs_real_opencode_with_proposer_env` OK in 9.8 s. `test_opencode_run_uses_config_model_and_a_host_plant_blocks` OK in 3.9 s. Live probe through `sbun` against pid 425470: rc 0, assistant text `pong`, two POSTs in `tmp/state/relay.log` both `model=qwen3.6-35b temperature: 0 seed: 230`.
+
+Next: held-out base runs `a1` and `a2` with `--endpoint http://127.0.0.1:18111` (no `/v1` suffix), then `drive.py --k 1`.
 
 ### Item 7: docs
 

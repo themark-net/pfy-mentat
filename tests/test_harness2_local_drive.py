@@ -557,5 +557,60 @@ class DriveTests(unittest.TestCase):
         self._assert_leak(bank, split)
 
 
+class EndpointTests(unittest.TestCase):
+    """The live llama-server lists a blob digest, not the OpenCode model name."""
+
+    def _serve(self, body: bytes) -> tuple[ThreadingHTTPServer, int]:
+        class _Handler(BaseHTTPRequestHandler):
+            def do_GET(self) -> None:  # noqa: N802
+                path = self.path.split("?", 1)[0]
+                if path != "/v1/models":
+                    self.send_response(404)
+                    self.send_header("Content-Length", "0")
+                    self.end_headers()
+                    return
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, fmt: str, *args) -> None:
+                return
+
+        httpd = ThreadingHTTPServer(("127.0.0.1", 0), _Handler)
+        threading.Thread(target=httpd.serve_forever, daemon=True).start()
+        self.addCleanup(httpd.shutdown)
+        return httpd, httpd.server_address[1]
+
+    def test_blob_digest_and_trailing_v1_count_as_up(self) -> None:
+        sha = "d" * 64
+        _httpd, port = self._serve(
+            json.dumps({"object": "list", "data": [{"id": f"sha256-{sha}"}]}).encode()
+        )
+        drive = _load("h2drive_endpoint", DRIVE)
+        saved = os.environ.get("HARNESS2_GGUF_SHA")
+        self.addCleanup(
+            lambda: os.environ.__setitem__("HARNESS2_GGUF_SHA", saved)
+            if saved is not None
+            else os.environ.pop("HARNESS2_GGUF_SHA", None)
+        )
+        os.environ["HARNESS2_GGUF_SHA"] = sha
+        self.assertTrue(drive.endpoint_up(f"http://127.0.0.1:{port}", "llamacpp/qwen3.6-35b"))
+        self.assertTrue(drive.endpoint_up(f"http://127.0.0.1:{port}/v1", "llamacpp/qwen3.6-35b"))
+        os.environ["HARNESS2_GGUF_SHA"] = "e" * 64
+        self.assertFalse(drive.endpoint_up(f"http://127.0.0.1:{port}", "llamacpp/qwen3.6-35b"))
+        os.environ.pop("HARNESS2_GGUF_SHA")
+        self.assertFalse(drive.endpoint_up(f"http://127.0.0.1:{port}", "llamacpp/qwen3.6-35b"))
+
+    def test_model_name_still_counts_without_a_digest(self) -> None:
+        _httpd, port = self._serve(
+            b'{"object":"list","data":[{"id":"llamacpp/qwen3.6-35b"}]}'
+        )
+        drive = _load("h2drive_endpoint_name", DRIVE)
+        os.environ.pop("HARNESS2_GGUF_SHA", None)
+        self.assertTrue(drive.endpoint_up(f"http://127.0.0.1:{port}/v1/", "llamacpp/qwen3.6-35b"))
+
+
 if __name__ == "__main__":
     unittest.main()

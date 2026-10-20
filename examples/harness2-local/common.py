@@ -282,7 +282,12 @@ def write_opencode_config(port: int | None = None) -> Path:
                 "models": {
                     model: {
                         "name": model,
-                        "options": {"temperature": 0, "seed": 230},
+                        "options": {
+                            "temperature": 0,
+                            "seed": 230,
+                            # qwen3.6 otherwise fills reasoning_content and leaves content empty.
+                            "chat_template_kwargs": {"enable_thinking": False},
+                        },
                     }
                 },
             }

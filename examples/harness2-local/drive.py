@@ -135,15 +135,29 @@ def parse_notes(notes: str) -> tuple[str, str]:
     return cue, lesson
 
 
+def _models_url(endpoint: str) -> str:
+    """One /v1/models URL. A caller that already passed /v1 is not doubled."""
+    base = endpoint.strip().rstrip("/")
+    if base.endswith("/v1"):
+        base = base[: -len("/v1")]
+    return base + "/v1/models"
+
+
 def endpoint_up(endpoint: str, model: str) -> bool:
-    url = endpoint.rstrip("/") + "/v1/models"
+    url = _models_url(endpoint)
     try:
         with urllib.request.urlopen(url, timeout=5) as resp:
             body = resp.read().decode("utf-8", "replace")
     except Exception:
         return False
     suffix = model.split("/")[-1]
-    return model in body or suffix in body
+    if model in body or suffix in body:
+        return True
+    # llama-server --model <blob> lists the blob digest, not the OpenCode name.
+    sha = os.environ.get("HARNESS2_GGUF_SHA", "").strip().lower()
+    if len(sha) == 64 and all(c in "0123456789abcdef" for c in sha):
+        return sha in body.lower()
+    return False
 
 
 def bind_relay_port(endpoint: str) -> int:

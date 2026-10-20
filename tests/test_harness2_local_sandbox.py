@@ -81,6 +81,16 @@ class Handler(BaseHTTPRequestHandler):
         return
 
 
+def assert_post_sampling(test: unittest.TestCase, raw: bytes) -> None:
+    """The JSON body, not the relay line. `temperature: 0` is a prefix of `0.55`."""
+    obj = json.loads(raw)
+    temp = obj.get("temperature")
+    test.assertTrue(temp == 0 or temp == 0.0, raw[:400])
+    test.assertEqual(obj.get("seed"), 230)
+    kwargs = obj.get("chat_template_kwargs") or {}
+    test.assertIs(kwargs.get("enable_thinking"), False, raw[:400])
+
+
 def serve(stream_reply: str | None = None) -> tuple[ThreadingHTTPServer, int]:
     httpd = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     httpd.hits = []
@@ -1111,7 +1121,11 @@ print("ok")
                     "models": {
                         "qwen3.6-35b": {
                             "name": "qwen3.6-35b",
-                            "options": {"temperature": 0, "seed": 230},
+                            "options": {
+                                "temperature": 0,
+                                "seed": 230,
+                                "chat_template_kwargs": {"enable_thinking": False},
+                            },
                         }
                     },
                 }
@@ -1155,6 +1169,8 @@ print("ok")
         self.assertIn("qwen3.6-35b", blob)
         self.assertNotIn("PLANT-CANARY", blob)
         self.assertNotIn("PARENT-PLANT", blob)
+        for _method, _path, raw in posts:
+            assert_post_sampling(self, raw)
         log = (self.box.state / "relay.log").read_text(encoding="utf-8")
         self.assertIn("temperature: 0", log)
         self.assertIn("seed: 230", log)
@@ -1478,27 +1494,19 @@ print("ok")
             self.skipTest("staged OpenCode is not present")
         httpd, port = serve(stream_reply="pong")
         self.addCleanup(httpd.shutdown)
-        cfg = {
-            "$schema": "https://opencode.ai/config.json",
-            "provider": {
-                "llamacpp": {
-                    "npm": "@ai-sdk/openai-compatible",
-                    "name": "llama.cpp (local)",
-                    "options": {
-                        "baseURL": f"http://127.0.0.1:{port}/v1",
-                        "apiKey": "local",
-                    },
-                    "models": {
-                        "qwen3.6-35b": {
-                            "name": "qwen3.6-35b",
-                            "options": {"temperature": 0, "seed": 230},
-                        }
-                    },
-                }
-            },
-            "model": "llamacpp/qwen3.6-35b",
-        }
-        (self.box.state / "opencode.json").write_text(json.dumps(cfg, indent=2) + "\n")
+        writer = subprocess.run(
+            [PY, str(REPO / "examples" / "harness2-local" / "common.py"), "write-opencode-config"],
+            env=self.box.env(HARNESS2_W=str(self.box.wt), HARNESS2_RELAY_PORT=str(port)),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(writer.returncode, 0, writer.stderr)
+        cfg = json.loads((self.box.state / "opencode.json").read_text(encoding="utf-8"))
+        self.assertEqual(
+            cfg["provider"]["llamacpp"]["options"]["baseURL"],
+            f"http://127.0.0.1:{port}/v1",
+        )
         ws = self.box.ws()
         allow = {"*": "deny", str(ws): "allow", f"{ws}/**": "allow"}
         env = self.box.env(
@@ -1538,8 +1546,10 @@ print("ok")
         self.assertIn("pong", proc.stdout)
         posts = [hit for hit in httpd.hits if hit[0] == "POST"]
         self.assertGreaterEqual(len(posts), 1, httpd.hits)
+        for _method, _path, raw in posts:
+            assert_post_sampling(self, raw)
         log = (self.box.state / "relay.log").read_text(encoding="utf-8")
-        self.assertIn("temperature: 0", log)
+        self.assertRegex(log, r"temperature:\s*0(?:\.0+)?(?![\d.])")
         self.assertIn("seed: 230", log)
         relay_pid = int((self.box.state / "relay.pid").read_text())
         with self.assertRaises(ProcessLookupError):
