@@ -159,7 +159,7 @@ RED: `_acquire_call_lock` opens the file and does not flock → `test_second_cal
 
 ### Item 3 — adapter
 
-state: DONE | tests: `python3 -m unittest tests.test_harness2_local_cases tests.test_harness2_local_drive` → Ran 8 tests in 62.360s, OK | files: cases, leaks, split, pfy_adapter, drive, sbun, both test modules | err: none
+state: DONE | tests: `python3 -m unittest tests.test_harness2_local_cases tests.test_harness2_local_drive` → Ran 8 tests in 62.360s, OK | files: cases, leaks, split, pfy_adapter, drive, sbun, both test modules | err: none | commit: `3260e0228cee5344578bfad2a26076ef43bb03ec`
 
 Attempt 1 (the interrupted slice) finished. One commit on top of `902e04f`. The driver runs the upstream chain through `recursion.run_parallel` with `propose_workers=1` and `rollout_workers=1`. Labels are `base1` and `agg1`. `H_{t+1}` is `agg1` when its train `n_correct` and `parse_ok` are at least `base1`'s, otherwise the log says `kept H_t: agg1 regressed`. Held-out scoring uses the chain's final tree. A chain that keeps the base is `negative_finding: chain-kept-base` and does not rerun held-out. Receipt status stays `draft`.
 
