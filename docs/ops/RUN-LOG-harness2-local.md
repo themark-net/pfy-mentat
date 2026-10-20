@@ -187,7 +187,7 @@ RED (each mutant restored; the tree matched the pre-mutant bytes afterward):
 
 ### Item 4 — surface
 
-state: DONE | tests: `python3 -m unittest tests.test_harness2_local_surface` → Ran 5 tests in 0.426s, OK. Drive and case tests re-run after `write_base` became live: Ran 8 tests in 62.413s, OK | files: surface.py, trial.py `decision_prompt`, surface tests | err: none
+state: DONE | tests: `python3 -m unittest tests.test_harness2_local_surface` → Ran 5 tests in 0.426s, OK. Drive and case tests re-run after `write_base` became live: Ran 8 tests in 62.413s, OK | files: surface.py, trial.py `decision_prompt`, surface tests | err: none | commit: `475f34ddc8736969db253e3ed654fd85f8bbaea1`
 
 Skills mapped: `jev-decision` only (`.grok/skills/jev-decision/SKILL.md`). That is the #230 Choice skill the decision task uses (D12).
 
@@ -204,7 +204,11 @@ Upstream `validate` on the mapped tree: 1386 always-on chars, 1 skill, 1 script,
 
 ### Item 5 — propose
 
-state: pending
+state: not started
+
+## Exit
+
+STOPPED_EXIT: stop-file. `$W/tmp/STOP` exists (empty file, mtime 2026-10-20 12:13 PDT, owner mark). Seen at 2026-10-20 12:20 PDT, after item 4 was green and before item 5 started. No llama-server was started in this session. Items 5, 6, 7 and checks N3, N4 held-out, N6 did not start. Local CI was not run.
 
 ### Item 6 — live
 

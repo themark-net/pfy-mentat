@@ -2,10 +2,10 @@
 
 Branch: `bot/h1-harness2`
 Base: `aed526d080114f83fbd9ad329b4c9e5b62baf64c` (`origin/main`, equal)
-Head: `3260e0228cee5344578bfad2a26076ef43bb03ec` on `bot/h1-harness2` (resume base `902e04f47eaf7c7083b80062235a056c63352f63`; 2b.6 was `931b2030846d892daa15c884013cc97695483cc6`; 2b.2 was `31c326743010d3e1fb11036f287d5ac0b65521bc`; 2b.1 was `da6d56a9ea711b3825ba406ca5f49cabe326b55d`; item 2 was `96408480a0fcfa29e6bff0963aa6f7ff58c313e6`; item 1 was `7243b2aef6a40603c8c10a4ca7b9e1ba3d4fe547`)
+Head: `475f34ddc8736969db253e3ed654fd85f8bbaea1` on `bot/h1-harness2` (item 3 was `3260e0228cee5344578bfad2a26076ef43bb03ec`; resume base `902e04f47eaf7c7083b80062235a056c63352f63`; 2b.6 was `931b2030846d892daa15c884013cc97695483cc6`; 2b.2 was `31c326743010d3e1fb11036f287d5ac0b65521bc`; 2b.1 was `da6d56a9ea711b3825ba406ca5f49cabe326b55d`; item 2 was `96408480a0fcfa29e6bff0963aa6f7ff58c313e6`; item 1 was `7243b2aef6a40603c8c10a4ca7b9e1ba3d4fe547`)
 Compare: https://github.com/themark-net/pfy-mentat/compare/main...bot/h1-harness2
-Proposal branch: none yet
-Exit: none yet (run in progress)
+Proposal branch: none
+Exit: STOPPED_EXIT: stop-file (`$W/tmp/STOP`, empty, mtime 2026-10-20 12:13 PDT)
 
 ## Status
 
@@ -16,10 +16,10 @@ Exit: none yet (run in progress)
 | 2 sandbox | DONE. 26 behavior tests OK in 46.054s. Real OpenCode run uses the config model. N1, N2, N5 PASS. |
 | 2b fixes | DONE. 2b.1 and 2b.2 committed. 2b.3, 2b.4, 2b.5 ALREADY-DONE in item 2. 2b.6 cites managed.ts:30 and config.ts:619-623. |
 | 3 adapter | DONE. Commit `3260e0228cee5344578bfad2a26076ef43bb03ec`. 8 tests OK in 62.360s. |
-| 4 surface | pending |
-| 5 propose | pending |
-| 6 live | pending |
-| 7 docs | pending |
+| 4 surface | DONE. Commit `475f34ddc8736969db253e3ed654fd85f8bbaea1`. 5 tests OK in 0.426s. |
+| 5 propose | not started (stop-file) |
+| 6 live | not started (stop-file) |
+| 7 docs | not started (stop-file) |
 | N nimo checks | N1 PASS, N2 PASS, N5 PASS. N3, N4 held-out/pins, N6 not started. |
 
 ## Tests
@@ -29,7 +29,9 @@ Exit: none yet (run in progress)
 - Item 2: `python3 -m unittest tests.test_harness2_local_sandbox` → Ran 26 tests in 46.054s, OK.
 - Item 2b.1: same module → Ran 27 tests in 45.204s, OK.
 - Item 2b.2: same module → Ran 28 tests in 51.530s, OK.
-- Item 3: `python3 -m unittest tests.test_harness2_local_cases tests.test_harness2_local_drive` → Ran 8 tests in 62.360s, OK.
+- Item 3: `python3 -m unittest tests.test_harness2_local_cases tests.test_harness2_local_drive` → Ran 8 tests in 62.360s, OK. Re-run after item 4's `write_base`: Ran 8 tests in 62.413s, OK.
+- Item 4: `python3 -m unittest tests.test_harness2_local_surface` → Ran 5 tests in 0.426s, OK.
+- Baseline remains 459 OK (skipped=4) at `aed526d`. Resume suite was 498 OK (skipped=4). The full suite was not re-run after items 3 and 4.
 
 ## RED
 
@@ -40,10 +42,13 @@ Exit: none yet (run in progress)
 - 2b.1 `find -L` → `test_sweep_skips_symlinks_and_leaves_the_target` (socket deleted). Dropping the lstat skip → same test (symlink path passed to chmod and find). `chmod -R -L` stayed green on uutils 0.10.0 (PASS-BY-ACCIDENT, D8). Restored.
 - 2b.2 no flock in `_acquire_call_lock` → `test_second_call_is_blocked_until_the_first_finishes` (B exited 0). Restored.
 - Item 3 mutants are listed in the run log. All were restored. The visible key-order failures after the assert reorder are `first=24 last=9`, `first=9 last=24`, and `'local' unexpectedly found in 'wz-01-local-30b'`. Sorted-only fails the order-preserving pin (`eb00a397` != `ab0ee29b`).
+- Item 4: `rule_edits` returns `[]` → `test_guardrail_edit_is_rejected` (`0 != 2`). `enforce_path_allow` returns `[]` → `test_disallowed_paths_are_named` (`0 != 2`). Restored.
 
 ## Not verified yet
 
-Local CI. Live receipt. Items 4 through 7. N3, N4 held-out/pins, N6.
+Local CI was not run. No live receipt. No llama-server was started. Items 5, 6, 7. N3, N4 held-out/pins, N6.
+
+Next step: remove `$W/tmp/STOP` only if the owner wants the run to continue, then start item 5 (`examples/harness2-local/propose.py`). Live item 6 still has to start by 2026-10-20T15:36:42-07:00 or it is BLOCKED: no-time-for-live. Stop by 2026-10-20T18:51:42-07:00.
 
 Decisions: `docs/ops/AUTONOMOUS-DECISIONS-2026-10-19-harness2-local.md`
 Run log: `docs/ops/RUN-LOG-harness2-local.md`
