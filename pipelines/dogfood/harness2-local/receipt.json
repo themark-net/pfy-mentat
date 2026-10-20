@@ -1,0 +1,212 @@
+{
+  "adopted_run": {
+    "accuracy": 0.9375,
+    "n": 16,
+    "n_correct": 15,
+    "n_escalate": 1,
+    "n_parse_ok": 16,
+    "parse_ok": 1.0,
+    "wrong_but_confident": 1
+  },
+  "base_sha": "aed526d080114f83fbd9ad329b4c9e5b62baf64c",
+  "bases": {
+    "a1": {
+      "accuracy": 0.9375,
+      "n": 16,
+      "n_correct": 15,
+      "n_escalate": 0,
+      "n_parse_ok": 16,
+      "parse_ok": 1.0,
+      "wrong_but_confident": 1
+    },
+    "a2": {
+      "accuracy": 0.9375,
+      "n": 16,
+      "n_correct": 15,
+      "n_escalate": 1,
+      "n_parse_ok": 16,
+      "parse_ok": 1.0,
+      "wrong_but_confident": 1
+    }
+  },
+  "branch": null,
+  "bun": "/home/mark/DEVELOP/pfy-mentat/tmp/h1-harness2/examples/harness2-local/sbun",
+  "chain_adopted": true,
+  "code_sha": "fb2d5dce7ceb4ee62ed8a4ed7f082e630f39b30f",
+  "ctx": 32768,
+  "editor_workspaces": 12,
+  "final_label": "agg1",
+  "final_tree_sha256": "fb0796e748b717678a7b38d3ca7747cdcb1679e30c34eca2b3afa6033c1c0f30",
+  "gate": "fail",
+  "gate_reason": "final 15/16, better base 15/16, gain 0, need 2. base-to-base correct gap is 0.",
+  "harness_diff": "chain-final adds an empty LongTermMEMORY.md. No other file differs from the base harness. The new sha appears at train-1 agg1 and is unchanged after that.",
+  "heldout_harness": "chain-final",
+  "heldout_score": {
+    "accuracy": 0.9375,
+    "n": 16,
+    "n_correct": 15,
+    "n_escalate": 1,
+    "n_parse_ok": 16,
+    "parse_ok": 1.0,
+    "wrong_but_confident": 1
+  },
+  "heldout_tree_sha256": "fb0796e748b717678a7b38d3ca7747cdcb1679e30c34eca2b3afa6033c1c0f30",
+  "install_mode": "workspace_config",
+  "k": 1,
+  "llama_server_pid": 425470,
+  "max_n_tokens": 32767,
+  "mem_floor_kb": 16777216,
+  "min_mem_available_during_scoring_kb": 52210068,
+  "min_mem_available_kb": 34984468,
+  "negative_finding": "gain",
+  "peak_rss_kb": 31688712,
+  "pins": {
+    "ctx": 32768,
+    "gguf": "d372de8e934898a59e6ccfabc3368474711384d8f1fd4d22d87a3f0a45400cdc",
+    "harness2": "1cfe254e8d25b15f37048c3730134686abe60335",
+    "id_map_sha256": "bb0f2dd47444053f91d3bff4fb0a9349e4e1bd02e1355f98e60b0c331877a23c",
+    "install_mode": "workspace_config",
+    "opencode": "23fb5e0516c99ac04a1aa46c193efda2e1b9bb24",
+    "seed": 230,
+    "split_sha256": "d9fe0d09d0c011e0f4ad5158e8bac7c70ada404cd13631c593b87f5b53aa51fb",
+    "stripped_sha256": "ab0ee29bbe75b46d33248729f9c4dd61376ec357275c8debf6efdb4d296e1b7e",
+    "temperature": 0
+  },
+  "prompt_token_peak": 24231,
+  "propose_workers": 1,
+  "relay_posts": 288,
+  "relay_posts_bad_seed": 0,
+  "relay_posts_bad_temperature": 0,
+  "reused_replies": 0,
+  "rollout_workers": 1,
+  "seed_from_relay": 230,
+  "split_seed": 230,
+  "status": "DONE",
+  "tasks": [
+    {
+      "agg_score": {
+        "accuracy": 0.75,
+        "n": 8,
+        "n_correct": 6,
+        "n_escalate": 0,
+        "n_parse_ok": 8,
+        "parse_ok": 1.0,
+        "wrong_but_confident": 2
+      },
+      "agg_tree_sha256": "fb0796e748b717678a7b38d3ca7747cdcb1679e30c34eca2b3afa6033c1c0f30",
+      "base_labels": [
+        "base1"
+      ],
+      "base_score": {
+        "accuracy": 0.75,
+        "n": 8,
+        "n_correct": 6,
+        "n_escalate": 0,
+        "n_parse_ok": 8,
+        "parse_ok": 1.0,
+        "wrong_but_confident": 2
+      },
+      "base_tree_sha256": "9144e9a58a02260be2e41e9a9ceacf2dee14239f604eedc0654f7a0c3e4b42fc",
+      "final_label": "agg1",
+      "kept_base": false,
+      "library_dir": "/home/mark/DEVELOP/pfy-mentat/tmp/h1-harness2/tmp/harness2-runs/library/agg/pfy-decisions",
+      "task_id": "train-1"
+    },
+    {
+      "agg_score": {
+        "accuracy": 0.875,
+        "n": 8,
+        "n_correct": 7,
+        "n_escalate": 0,
+        "n_parse_ok": 8,
+        "parse_ok": 1.0,
+        "wrong_but_confident": 1
+      },
+      "agg_tree_sha256": "fb0796e748b717678a7b38d3ca7747cdcb1679e30c34eca2b3afa6033c1c0f30",
+      "base_labels": [
+        "base1"
+      ],
+      "base_score": {
+        "accuracy": 0.875,
+        "n": 8,
+        "n_correct": 7,
+        "n_escalate": 1,
+        "n_parse_ok": 8,
+        "parse_ok": 1.0,
+        "wrong_but_confident": 0
+      },
+      "base_tree_sha256": "fb0796e748b717678a7b38d3ca7747cdcb1679e30c34eca2b3afa6033c1c0f30",
+      "final_label": "agg1",
+      "kept_base": false,
+      "library_dir": "/home/mark/DEVELOP/pfy-mentat/tmp/h1-harness2/tmp/harness2-runs/library/agg/pfy-decisions",
+      "task_id": "train-2"
+    },
+    {
+      "agg_score": {
+        "accuracy": 0.875,
+        "n": 8,
+        "n_correct": 7,
+        "n_escalate": 0,
+        "n_parse_ok": 8,
+        "parse_ok": 1.0,
+        "wrong_but_confident": 1
+      },
+      "agg_tree_sha256": "fb0796e748b717678a7b38d3ca7747cdcb1679e30c34eca2b3afa6033c1c0f30",
+      "base_labels": [
+        "base1"
+      ],
+      "base_score": {
+        "accuracy": 0.875,
+        "n": 8,
+        "n_correct": 7,
+        "n_escalate": 0,
+        "n_parse_ok": 8,
+        "parse_ok": 1.0,
+        "wrong_but_confident": 1
+      },
+      "base_tree_sha256": "fb0796e748b717678a7b38d3ca7747cdcb1679e30c34eca2b3afa6033c1c0f30",
+      "final_label": "agg1",
+      "kept_base": false,
+      "library_dir": "/home/mark/DEVELOP/pfy-mentat/tmp/h1-harness2/tmp/harness2-runs/library/agg/pfy-decisions",
+      "task_id": "train-3"
+    },
+    {
+      "agg_score": {
+        "accuracy": 1.0,
+        "n": 8,
+        "n_correct": 8,
+        "n_escalate": 0,
+        "n_parse_ok": 8,
+        "parse_ok": 1.0,
+        "wrong_but_confident": 0
+      },
+      "agg_tree_sha256": "fb0796e748b717678a7b38d3ca7747cdcb1679e30c34eca2b3afa6033c1c0f30",
+      "base_labels": [
+        "base1"
+      ],
+      "base_score": {
+        "accuracy": 1.0,
+        "n": 8,
+        "n_correct": 8,
+        "n_escalate": 0,
+        "n_parse_ok": 8,
+        "parse_ok": 1.0,
+        "wrong_but_confident": 0
+      },
+      "base_tree_sha256": "fb0796e748b717678a7b38d3ca7747cdcb1679e30c34eca2b3afa6033c1c0f30",
+      "final_label": "agg1",
+      "kept_base": false,
+      "library_dir": "/home/mark/DEVELOP/pfy-mentat/tmp/h1-harness2/tmp/harness2-runs/library/agg/pfy-decisions",
+      "task_id": "train-4"
+    }
+  ],
+  "temperature_from_relay": 0,
+  "train_answer_files": 16,
+  "truncated_calls": 2,
+  "wall": {
+    "a1": "2026-10-20T14:03:49-0700/2026-10-20T14:04:37-0700",
+    "a2": "2026-10-20T14:05:51-0700/2026-10-20T14:06:40-0700",
+    "train": "2026-10-20T14:07:53-0700/2026-10-20T14:47:01-0700",
+    "train_s": 2348
+  }
+}
