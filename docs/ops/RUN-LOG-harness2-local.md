@@ -316,7 +316,9 @@ Second a1 at 13:58: rc 0, five POSTs, all `temperature: 0` `seed: 230`, `answer.
 
 The executor prompt now says to read `systemprompt.md` first and follow its answer shape. RED: put the old "Read cases.json. Pick one criteria key" prompt back -> `test_executor_prompt_names_systemprompt` fails (`systemprompt.md` absent).
 
-Next: rerun held-out base `a1`, then `a2`, with `--endpoint http://127.0.0.1:18111`, then `drive.py --k 1`.
+Third a1 at 14:03:49-14:04:37 after `fb2d5dc`: rc 0, 15/16, `parse_ok` 1.0, `wrong_but_confident` 1, `n_escalate` 0. The session read `systemprompt.md`, then `cases.json`, and wrote `case` / `choice` / `confidence` / `why`. The miss is t35 (choice `drop`, label `keep`, confidence 0.9). Six POSTs, all `temperature: 0` `seed: 230`. Largest request body 64178 bytes, under the 24k-token raise. This is base run a1. Receipt copy: `tmp/host-only/receipt-a1.json` (not committed).
+
+Next: held-out base `a2`, then `drive.py --k 1`.
 
 ### Item 7: docs
 
