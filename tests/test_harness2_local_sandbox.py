@@ -711,6 +711,83 @@ class SandboxTests(unittest.TestCase):
         self.assertIn(f"sweep: skip symlink {link}", proc.stderr)
         self.assertIn(f"sweep: skip non-directory {plain}", proc.stderr)
 
+    def test_second_call_is_blocked_until_the_first_finishes(self) -> None:
+        httpd, port = serve()
+        self.addCleanup(httpd.shutdown)
+        env = self.box.env()
+        expose = ["--expose", str(port), "--allow", str(port)]
+
+        def script(ws: Path, sleep_s: int) -> None:
+            write_script(ws / "child.py", f"""
+                import json, pathlib, time, urllib.request
+                time.sleep({sleep_s})
+                pathlib.Path({str(ws / "marker")!r}).write_text("ran")
+                body = json.dumps({{"model": "qwen3.6-35b", "temperature": 0, "seed": 230}}).encode()
+                req = urllib.request.Request(
+                    "http://127.0.0.1:{port}/v1/chat/completions", data=body, method="POST")
+                with urllib.request.urlopen(req, timeout=5) as resp:
+                    resp.read()
+            """)
+
+        ws_a = self.box.ws()
+        script(ws_a, 5)
+        proc_a = subprocess.Popen(
+            self.box.args(ws_a, [PY, str(ws_a / "child.py")], extra=expose),
+            env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        )
+
+        def stop_a() -> None:
+            if proc_a.poll() is None:
+                proc_a.kill()
+                try:
+                    proc_a.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    pass
+
+        self.addCleanup(stop_a)
+        pidfile = self.box.state / "relay.pid"
+        deadline = time.time() + 20
+        while time.time() < deadline and not pidfile.exists():
+            if proc_a.poll() is not None:
+                err = proc_a.communicate()[1]
+                self.fail(f"A exited early rc={proc_a.returncode} {err}")
+            time.sleep(0.05)
+        self.assertTrue(pidfile.exists(), "A never started")
+
+        ws_b = self.box.ws()
+        script(ws_b, 0)
+        state_b = self.box.wt / "tmp" / "stb"
+        proc_b = subprocess.Popen(
+            self.box.args(ws_b, [PY, str(ws_b / "child.py")], extra=["--state", str(state_b), *expose]),
+            env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        )
+        t0 = time.time()
+        try:
+            err_b = proc_b.communicate(timeout=1)[1]
+        except subprocess.TimeoutExpired:
+            time.sleep(1.5)
+            marker = (ws_b / "marker").exists()
+            proc_b.kill()
+            proc_b.wait(timeout=5)
+            self.fail(f"B still running after 1s; child_marker={marker}")
+        self.assertLess(time.time() - t0, 1.0)
+        self.assertEqual(proc_b.returncode, 2, err_b)
+        self.assertIn("BLOCKED: call in progress", err_b)
+        self.assertFalse((ws_b / "marker").exists())
+        self.assertEqual([hit for hit in httpd.hits if hit[0] == "POST"], [])
+
+        err_a = proc_a.communicate(timeout=20)[1]
+        self.assertEqual(proc_a.returncode, 0, err_a)
+        self.assertEqual((ws_a / "marker").read_text().strip(), "ran")
+        self.assertEqual(len([hit for hit in httpd.hits if hit[0] == "POST"]), 1)
+
+        ws_c = self.box.ws()
+        script(ws_c, 0)
+        proc_c = run(self.box.args(ws_c, [PY, str(ws_c / "child.py")], extra=expose), env)
+        self.assertEqual(proc_c.returncode, 0, proc_c.stderr)
+        self.assertEqual((ws_c / "marker").read_text().strip(), "ran")
+        self.assertEqual(len([hit for hit in httpd.hits if hit[0] == "POST"]), 2)
+
     def test_sweep_failure_blocks_the_launch(self) -> None:
         stub = self.box.root / "stubs"
         stub.mkdir()

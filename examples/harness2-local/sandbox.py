@@ -9,6 +9,7 @@ when it is in ``--allow``. Stdin is inherited so ``sbun`` can close it with
 """
 from __future__ import annotations
 
+import fcntl
 import json
 import os
 import select
@@ -67,6 +68,18 @@ PASS_EXACT = {
 def die(msg: str, code: int = 2) -> None:
     print(msg, file=sys.stderr)
     raise SystemExit(code)
+
+
+def _acquire_call_lock(host_only: Path) -> int:
+    """Exclusive lock for the whole call. The file is never bound into the sandbox."""
+    host_only.mkdir(parents=True, exist_ok=True)
+    fd = os.open(host_only / "call.lock", os.O_CREAT | os.O_RDWR, 0o600)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        os.close(fd)
+        die("BLOCKED: call in progress")
+    return fd
 
 
 def bun_path() -> Path:
@@ -740,111 +753,115 @@ def host_main(argv: list[str]) -> int:
     sock = state / "r" / "s"
     if len(str(sock)) > SUN_PATH_MAX:
         die("socket path too long")
-    for finished in finished_workspaces(runs, ws):
-        _sweep_one(finished)
-    env = build_env(os.environ, home=home, state=state, harness=harness)
-    call = {
-        "ws": str(ws),
-        "state": str(state),
-        "sock": str(sock),
-        "expose": opt["expose"],
-        "uid": os.getuid(),
-        "mount_timeout": opt["mount_timeout"],
-        "cmd": cmd,
-    }
-    call_path = state / "bin" / "call.json"
-    call_path.write_text(json.dumps(call), encoding="utf-8")
-    runner = state / "bin" / "sandbox.py"
-    shutil.copyfile(Path(__file__).resolve(), runner)
-    os.chmod(runner, 0o755)
-    base = build_bwrap(
-        bwrap, home=home, harness=harness, runs=runs, ws=ws, state=state,
-        py312=py312, hide_dirs=list(opt["hide"]),
-    )
-    py = "/usr/bin/python3"
-    pre_cmd = [py, str(runner), "--mode", "preflight", "--call", str(call_path)]
-    real_cmd = [py, str(runner), "--mode", "inside", "--call", str(call_path)]
-    log_path = state / "relay.log"
-    relay = subprocess.Popen(
-        [sys.executable, str(Path(__file__).resolve()), "--mode", "relay",
-         "--sock", str(sock), "--allow", ",".join(str(p) for p in opt["allow"]),
-         "--log", str(log_path)],
-        start_new_session=True,
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    (state / "relay.pid").write_text(str(relay.pid), encoding="utf-8")
+    lock_fd = _acquire_call_lock(wt / "tmp" / "host-only")
     try:
-        deadline = time.time() + 5
-        up = False
-        while time.time() < deadline:
-            if _probe(str(sock), opt["allow"], timeout=1):
-                up = True
-                break
-            if relay.poll() is not None:
-                break
-            time.sleep(0.05)
-        if not up:
-            die("relay down")
-        rc, out, err = _launch(
-            base + ["--", *pre_cmd], env, cap=opt["cap"], inherit_stdin=False, cwd=str(ws),
+        for finished in finished_workspaces(runs, ws):
+            _sweep_one(finished)
+        env = build_env(os.environ, home=home, state=state, harness=harness)
+        call = {
+            "ws": str(ws),
+            "state": str(state),
+            "sock": str(sock),
+            "expose": opt["expose"],
+            "uid": os.getuid(),
+            "mount_timeout": opt["mount_timeout"],
+            "cmd": cmd,
+        }
+        call_path = state / "bin" / "call.json"
+        call_path.write_text(json.dumps(call), encoding="utf-8")
+        runner = state / "bin" / "sandbox.py"
+        shutil.copyfile(Path(__file__).resolve(), runner)
+        os.chmod(runner, 0o755)
+        base = build_bwrap(
+            bwrap, home=home, harness=harness, runs=runs, ws=ws, state=state,
+            py312=py312, hide_dirs=list(opt["hide"]),
         )
-        text = (out + err).decode("utf-8", "replace")
-        (state / "plant-walk.txt").write_text(text, encoding="utf-8")
-        if rc is None:
-            die("BLOCKED: preflight cap")
-        blocked = _blocked_line(text)
-        if blocked or rc != 0:
-            die(blocked or f"BLOCKED: preflight rc={rc}")
-        real = subprocess.Popen(
-            base + ["--", *real_cmd], env=env, stdin=None, start_new_session=True,
-            cwd=str(ws),
+        py = "/usr/bin/python3"
+        pre_cmd = [py, str(runner), "--mode", "preflight", "--call", str(call_path)]
+        real_cmd = [py, str(runner), "--mode", "inside", "--call", str(call_path)]
+        log_path = state / "relay.log"
+        relay = subprocess.Popen(
+            [sys.executable, str(Path(__file__).resolve()), "--mode", "relay",
+             "--sock", str(sock), "--allow", ",".join(str(p) for p in opt["allow"]),
+             "--log", str(log_path)],
+            start_new_session=True,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
-        (state / "call.pgid").write_text(str(real.pid), encoding="utf-8")
-        dead = threading.Event()
-        stop = threading.Event()
-
-        def watch() -> None:
-            misses = 0
-            while not stop.is_set() and real.poll() is None:
-                if _probe(str(sock), opt["allow"]):
-                    misses = 0
-                    stop.wait(10)
-                    continue
-                misses += 1
-                if misses >= 2:
-                    dead.set()
-                    try:
-                        os.killpg(real.pid, signal.SIGKILL)
-                    except ProcessLookupError:
-                        pass
-                    return
-                stop.wait(0.2)
-
-        threading.Thread(target=watch, daemon=True).start()
-        child_rc = real.wait()
-        stop.set()
-        if dead.is_set():
-            die("relay down")
-        return int(child_rc)
-    finally:
+        (state / "relay.pid").write_text(str(relay.pid), encoding="utf-8")
         try:
-            os.killpg(relay.pid, signal.SIGTERM)
-        except (ProcessLookupError, PermissionError):
-            pass
-        try:
-            relay.wait(timeout=2)
-        except subprocess.TimeoutExpired:
+            deadline = time.time() + 5
+            up = False
+            while time.time() < deadline:
+                if _probe(str(sock), opt["allow"], timeout=1):
+                    up = True
+                    break
+                if relay.poll() is not None:
+                    break
+                time.sleep(0.05)
+            if not up:
+                die("relay down")
+            rc, out, err = _launch(
+                base + ["--", *pre_cmd], env, cap=opt["cap"], inherit_stdin=False, cwd=str(ws),
+            )
+            text = (out + err).decode("utf-8", "replace")
+            (state / "plant-walk.txt").write_text(text, encoding="utf-8")
+            if rc is None:
+                die("BLOCKED: preflight cap")
+            blocked = _blocked_line(text)
+            if blocked or rc != 0:
+                die(blocked or f"BLOCKED: preflight rc={rc}")
+            real = subprocess.Popen(
+                base + ["--", *real_cmd], env=env, stdin=None, start_new_session=True,
+                cwd=str(ws),
+            )
+            (state / "call.pgid").write_text(str(real.pid), encoding="utf-8")
+            dead = threading.Event()
+            stop = threading.Event()
+
+            def watch() -> None:
+                misses = 0
+                while not stop.is_set() and real.poll() is None:
+                    if _probe(str(sock), opt["allow"]):
+                        misses = 0
+                        stop.wait(10)
+                        continue
+                    misses += 1
+                    if misses >= 2:
+                        dead.set()
+                        try:
+                            os.killpg(real.pid, signal.SIGKILL)
+                        except ProcessLookupError:
+                            pass
+                        return
+                    stop.wait(0.2)
+
+            threading.Thread(target=watch, daemon=True).start()
+            child_rc = real.wait()
+            stop.set()
+            if dead.is_set():
+                die("relay down")
+            return int(child_rc)
+        finally:
             try:
-                os.killpg(relay.pid, signal.SIGKILL)
-            except ProcessLookupError:
+                os.killpg(relay.pid, signal.SIGTERM)
+            except (ProcessLookupError, PermissionError):
                 pass
-        if ws.is_dir():
             try:
-                _sweep_one(ws)
-            except SystemExit:
-                raise
+                relay.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                try:
+                    os.killpg(relay.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+            if ws.is_dir():
+                try:
+                    _sweep_one(ws)
+                except SystemExit:
+                    raise
+    finally:
+        os.close(lock_fd)
 
 
 def main(argv: list[str] | None = None) -> None:

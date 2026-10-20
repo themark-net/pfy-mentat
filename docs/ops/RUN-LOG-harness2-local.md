@@ -133,7 +133,19 @@ RED: drop the lstat skip → same test FAILED. The argv record contained the sym
 
 PASS-BY-ACCIDENT: `chmod -R -P` → `chmod -R -L` → same test stayed green (rc 0). uutils 0.10.0 does not follow a directory symlink. Not treated as a red. See D8.
 
-2b.2 through 2b.6: pending. 2b.3, 2b.4, and 2b.5 were already proven in the item 2 RED list (`--setenv X 1`, cap-stub order, `OPENCODE_TEST_MANAGED_CONFIG_DIR`). They will be logged ALREADY-DONE when that pass is written. No extra commit unless a gap shows up.
+2b.2 DONE. Every sandboxed call takes an exclusive nonblocking `fcntl.flock` on `$W/tmp/host-only/call.lock` before the pre-launch sweep and holds it until the after-call sweep finishes (the fd stays open across that sweep; closing it releases the lock). A second call exits 2 `BLOCKED: call in progress` and does not start a child. `drive.py` does not exist yet. Item 3 will run executors and editors through this same sandbox path, so the lock is the concurrency gate, and the upstream arguments recorded then are `propose_workers=1` and `rollout_workers=1`.
+
+Test: `python3 -m unittest tests.test_harness2_local_sandbox` → Ran 28 tests in 51.530s, OK. `test_second_call_is_blocked_until_the_first_finishes`: A sleeps 5s inside the sandbox against a stub server; B, with its own state dir, exits 2 `BLOCKED: call in progress` within 1s, writes no marker, and adds no POST. A then exits 0 with one POST. C after A exits 0 with a second POST.
+
+RED: `_acquire_call_lock` opens the file and does not flock → `test_second_call_is_blocked_until_the_first_finishes` FAILED (`0 != 2`). B finished in 1.175s, so its child ran. Restored. Green again in the same script (6.836s, rc 0).
+
+2b.3 ALREADY-DONE in item 2. `test_preflight_and_real_bwrap_argv_match` diffs the argv and env captured from the preflight and the real `Popen`, not the builder's return value. RED: `--setenv X 1` on the real call only → argv prefixes differ. No new commit.
+
+2b.4 ALREADY-DONE in item 2. `test_preflight_cap_records_the_stub_before_the_next_launch` reads the stub `find` record right after the BLOCKED exit, then removes it. RED: launching the next call first stayed green (PASS-BY-ACCIDENT). The record is a regular file in that workspace, and the sweep deletes sockets only. The test keeps the check first. No new commit.
+
+2b.5 ALREADY-DONE in item 2. `OPENCODE_TEST_MANAGED_CONFIG_DIR` is in the always-dropped set. `test_env_allow_list_drops_secrets_and_open_code_overrides` sets it and asserts it is absent, along with `OPENCODE_CONFIG_DIR`, `OPENCODE_CONFIG_CONTENT`, and `OPENCODE_FOO`. RED: matching `OPENCODE_` as a prefix → `OPENCODE_CONFIG_DIR` arrives. No new commit.
+
+2b.6: pending. Citation of `packages/opencode/src/config/managed.ts:30` next to `config.ts:619-623`, in the drop-in and a short README.
 
 ### Item 3 — adapter
 
