@@ -1,0 +1,63 @@
+{
+  "seed": 230,
+  "train_tasks": [
+    [
+      "hd-04-structural-fail",
+      "fm-01-fill-model",
+      "cp-03-truncate-bulky",
+      "wz-12-local-deepseek",
+      "hd-07-write-guard-audit",
+      "ph-10-unknown-kronos",
+      "fm-08-skip-already-filled",
+      "cp-04-keep-error"
+    ],
+    [
+      "ph-04-known-red",
+      "fm-03-check-decision-on",
+      "fm-02-fill-lane",
+      "fm-06-skip-launch-empty",
+      "hd-12-colibri-no-download",
+      "ph-08-missing-ci",
+      "wz-09-local-not-tool",
+      "wz-04-gab-auto"
+    ],
+    [
+      "wz-03-local-freetoken-empty",
+      "wz-06-cloud-grok",
+      "hd-01-optional-tool-skip",
+      "hd-10-phase0-not-assist",
+      "wz-01-local-30b",
+      "hd-05-eval-no-ollama",
+      "hd-02-high-blast-weights",
+      "ph-03-ci-red"
+    ],
+    [
+      "cp-05-drop-old-models-list",
+      "cp-06-truncate-readme-dump",
+      "wz-02-local-7b",
+      "fm-04-skip-decision-off",
+      "hd-08-architecture-fork",
+      "hd-11-fits-skill-path",
+      "wz-11-cloud-generic",
+      "wz-05-opencode-free"
+    ]
+  ],
+  "heldout": [
+    "fm-07-skip-unrelated",
+    "hd-09-scheduling-only",
+    "cp-01-keep-needed",
+    "hd-03-antigravity-skip",
+    "ph-07-waived-busy",
+    "ph-01-green-idle",
+    "ph-05-kronos-busy",
+    "ph-06-red-busy",
+    "wz-07-toolset-jev",
+    "ph-02-waived-idle",
+    "cp-02-drop-stale",
+    "ph-09-unknown-ci",
+    "wz-08-honesty-local-not-gab",
+    "hd-06-no-subtree",
+    "fm-05-click-launch-ready",
+    "wz-10-default-local-lane"
+  ]
+}

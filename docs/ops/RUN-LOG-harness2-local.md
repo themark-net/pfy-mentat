@@ -7,7 +7,17 @@ HEAD at start: `aed526d080114f83fbd9ad329b4c9e5b62baf64c`
 `origin/main`: `aed526d080114f83fbd9ad329b4c9e5b62baf64c` (equal; `git fetch origin` done)
 Drop-in: `git diff origin/main -- docs/build-dropins/harness2-local.md` empty. **ALREADY-DONE** (no commit).
 STOP file: absent.
-Clock: no new item after 09:31 local. Stop by 11:01. Live item only if started by about 07:46.
+Clock (first session): no new item after 09:31 local. Stop by 11:01. Live item only if started by about 07:46.
+
+## Resume (H1b)
+
+START: 2026-10-20T11:21:42-07:00
+HEAD: `902e04f47eaf7c7083b80062235a056c63352f63` (equals `origin/bot/h1-harness2`). Not rewritten.
+`git status --short` at resume: `M docs/ops/RUN-LOG-harness2-local.md`, untracked `examples/harness2-local/{cases.py,leaks.py,split.v0.json}`, `tests/test_harness2_local_cases.py`.
+STOP file: absent.
+This session's clock (replaces 09:31 / 11:01): no new item after 2026-10-20T17:21:42-07:00. Stop by 2026-10-20T18:51:42-07:00. Live item 6 starts only if begun by 2026-10-20T15:36:42-07:00.
+Suite on the current tree: `python3 -m unittest discover -s tests -t .` → Ran 498 tests in 337.619s, OK (skipped=4), exit 0. The 498 include the uncommitted `test_harness2_local_cases` (3). Nothing else is red. Not BLOCKED: red-base.
+At resume, item 3 attempt 1 was in progress (not a failure). It finished in this session. See Item 3.
 
 ## Host
 
@@ -149,7 +159,31 @@ RED: `_acquire_call_lock` opens the file and does not flock → `test_second_cal
 
 ### Item 3 — adapter
 
-state: pending
+state: DONE | tests: `python3 -m unittest tests.test_harness2_local_cases tests.test_harness2_local_drive` → Ran 8 tests in 62.360s, OK | files: cases, leaks, split, pfy_adapter, drive, sbun, both test modules | err: none
+
+Attempt 1 (the interrupted slice) finished. One commit on top of `902e04f`. The driver runs the upstream chain through `recursion.run_parallel` with `propose_workers=1` and `rollout_workers=1`. Labels are `base1` and `agg1`. `H_{t+1}` is `agg1` when its train `n_correct` and `parse_ok` are at least `base1`'s, otherwise the log says `kept H_t: agg1 regressed`. Held-out scoring uses the chain's final tree. A chain that keeps the base is `negative_finding: chain-kept-base` and does not rerun held-out. Receipt status stays `draft`.
+
+`sbun` no longer execs the sandbox, so an opt-in `HARNESS2_BUN_TRACE` can record start and end. It passes `--heldout` or `--runs`. Stdin stays closed with `</dev/null`. `config.BUN` is a `Path` of `sbun`.
+
+Split: seed 230, 32 train / 16 held-out, four tasks of 8, committed as `examples/harness2-local/split.v0.json`. Opaque ids are `t01`..`t48` after `random.Random(230).shuffle` of the sorted real ids. Criteria keys are sorted, then shuffled with `random.Random(f"230:{real_id}")`. Pinned shuffle: label is first in 12 of 48 and last in 22 of 48. The order-preserving stripped sha256 (D11) is `ab0ee29bbe75b46d33248729f9c4dd61376ec357275c8debf6efdb4d296e1b7e`. The sort_keys digest `6d6c09cf6467a7fbd72c5d7800be86794867e483c5aa2e26c7c35a38658b57bb` is not the pin.
+
+Fail/recover: stopping the stub server makes `drive.py` exit 2 with `endpoint down` and no receipt (`test_endpoint_down_writes_no_receipt`). The later stub runs complete.
+
+RED (each mutant restored; the tree matched the pre-mutant bytes afterward):
+
+- `strip_case` id is the real id → `test_stripped_file_hash_and_key_order` (`'local' unexpectedly found in 'wz-01-local-30b'`). Re-run after the assert reorder.
+- `shuffled_criteria` returns `dict(criteria)` → same test (`first=24 last=9`). Re-run after the assert reorder.
+- criteria keys reversed → same test (`first=9 last=24`). Re-run after the assert reorder.
+- `sorted(criteria)` only, no shuffle → same test (`eb00a397` != `ab0ee29b`, first=20 last=12, band still true).
+- drop comma and bare-space joiners → `test_pair_controls` (`[] is not true : hd-03 hold`).
+- copy unstripped cases into the train batch → `test_real_bank_hides_labels_and_heldout` (verbatim note in the leak walk).
+- write `train-scores.json` under the runs dir → same test (host-boundary hook, open outside host-only).
+- id map via default-dir `NamedTemporaryFile` plus `os.replace` → same test (rename source outside host-only).
+- train batch includes one held-out id → same test (isolation match `t33`).
+- `PROPOSE_WORKERS=2` → same test (trace overlap `2 != 1`).
+- roll an extra `base2` at k=1 → same test (`BudgetError: R=5 (want 4)`).
+- `FINAL_LABEL="c1"` → same test (`KeyError: 'c1'`).
+- every task re-reads the base harness → `test_improve_chain_adopts_and_scores_heldout` (task 2 base sha != task 1 agg sha).
 
 ### Item 4 — surface
 

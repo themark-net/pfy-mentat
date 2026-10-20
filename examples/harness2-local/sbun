@@ -6,4 +6,23 @@ HERE=$(cd "$(dirname "$0")" && pwd)
 # shellcheck disable=SC1091
 source "$HERE/env.sh"
 REAL=${HARNESS2_REAL_BUN:-$W/tmp/harness2/dependencies/tools/node_modules/.bin/bun}
-exec python3 "$HERE/sandbox.py" --real-bun "$REAL" -- "$@" </dev/null
+# Trace is opt-in. start/end wrap the sandbox so a caller can see overlapping
+# bun processes. exec would drop the end line, so the shell waits and exits.
+if [[ -n "${HARNESS2_BUN_TRACE:-}" ]]; then
+  mkdir -p "$(dirname "$HARNESS2_BUN_TRACE")"
+  printf 'start %s %s\n' "$$" "$(date +%s%N)" >> "$HARNESS2_BUN_TRACE"
+fi
+extra=()
+if [[ -n "${HARNESS2_HELDOUT:-}" ]]; then
+  extra+=(--heldout "$HARNESS2_HELDOUT")
+elif [[ -n "${HARNESS2_RUNS_DIR:-}" ]]; then
+  extra+=(--runs "$HARNESS2_RUNS_DIR")
+fi
+set +e
+python3 "$HERE/sandbox.py" --real-bun "$REAL" "${extra[@]}" -- "$@" </dev/null
+rc=$?
+set -e
+if [[ -n "${HARNESS2_BUN_TRACE:-}" ]]; then
+  printf 'end %s %s\n' "$$" "$(date +%s%N)" >> "$HARNESS2_BUN_TRACE"
+fi
+exit "$rc"

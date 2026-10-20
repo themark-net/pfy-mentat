@@ -33,3 +33,15 @@ Choice: on a read-only mount the socket scan is `find "$m" -xdev \( -path /proc 
 ## D8 — The sweep proof that follows a symlink is find -L
 
 Choice: keep `chmod -R -P` and `find -P`, and skip every `$RUNS/tmp` entry that is not a real directory (`os.lstat`, then `S_ISDIR`). The RED that shows a followed symlink is `find -P` changed to `find -L`. | Alternatives: drop `-P` because uutils calls it the default; use the spec's `chmod -R -L` as the only RED. | On nimo, `chmod (uutils coreutils) 0.10.0` does not change modes through a directory symlink for `-L`, `-H`, or the default, so `chmod -R -L` left the sweep test green. `find -L <ws> -xdev -type s -delete` deletes the socket in the target. Dropping the lstat skip handed the symlink and a regular file to both tools; the test went red because those paths were arguments, while `-P` still left the target modes alone. `-P` stays. If `-P` is rejected, the sweep exits 2. There is no fallback.
+
+## D9 — This session's clock replaces the first session's
+
+Choice: START is 2026-10-20T11:21:42-07:00. Start no new item after 2026-10-20T17:21:42-07:00. Stop by 2026-10-20T18:51:42-07:00. Live item 6 starts only if begun by 2026-10-20T15:36:42-07:00. | Alternative: keep D4's 09:31 / 11:01 / 07:46 limits from the first session. | The H1b block says this session's clock replaces those limits. D4 stays as the record of the first session.
+
+## D10 — Stub driver shape
+
+Choice: `sbun` waits on the sandbox instead of `exec` so an opt-in trace can write a start line and an end line, and it passes `--heldout` or `--runs` from the environment. Score tests use a synthetic bank (every label `push`) because the sandbox cannot see gold. The leak walk uses one real-bank task. `LocalProposer` forces `max_attempts=1` only when `HARNESS2_STUB_MODE` is set. The held-out path logs one line so `drive.log` exists. The `c1` scan matches rollout labels only (`__c1`, receipt `final_label`, `base_labels`) because upstream surface markdown contains the prose `c1 persona`. An audit `*.meta.json` `label` that matches a session label (`base`/`inv`/`dom`/`agg` plus an optional attempt) is not a gold label. | Alternatives: `exec` the sandbox; scan every `c1` boundary in the run dir; ban every `label` key in meta files; score the real bank from inside the sandbox. | `exec` drops the end line. A whole-tree `c1` scan false-positives on the component table. Upstream meta uses `label` for the session name. Live runs do not set `HARNESS2_STUB_MODE`, so they keep two transport attempts.
+
+## D11 — Order-preserving stripped pin
+
+Choice: pin the stripped file with `canonical_order` (`sort_keys=False`) at `ab0ee29bbe75b46d33248729f9c4dd61376ec357275c8debf6efdb4d296e1b7e`. The id map still uses sorted-key `canonical`. | Alternative: pin the sort_keys digest `6d6c09cf6467a7fbd72c5d7800be86794867e483c5aa2e26c7c35a38658b57bb` from the spec text. | `sort_keys` erases criteria order. A sorted-only strip stays inside the key-order band (first 20, last 12) and has that same `6d6c09cf` digest, so the test would stay green. The order-preserving pin goes red (`eb00a397` != `ab0ee29b`).
