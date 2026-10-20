@@ -78,7 +78,7 @@ Real stage (2026-10-20, `$W/tmp/state/stage-rerun.log`, exit 0):
 
 ### Item 2 — sandbox
 
-state: DONE | tests: `python3 -m unittest tests.test_harness2_local_sandbox` → Ran 26 tests in 46.054s, OK | files: `examples/harness2-local/sandbox.py`, `examples/harness2-local/sbun`, `tests/test_harness2_local_sandbox.py`, D7 sentence in `docs/build-dropins/harness2-local.md` | err: none
+state: DONE | commit: `96408480a0fcfa29e6bff0963aa6f7ff58c313e6` | tests: `python3 -m unittest tests.test_harness2_local_sandbox` → Ran 26 tests in 46.054s, OK | files: `examples/harness2-local/sandbox.py`, `examples/harness2-local/sbun`, `tests/test_harness2_local_sandbox.py`, D7 sentence in `docs/build-dropins/harness2-local.md` | err: none
 
 Real OpenCode at the pin, through the sandbox, against a stub server: one `POST /v1/chat/completions` with `model=qwen3.6-35b`, relay log `temperature: 0` and `seed: 230`, no `PLANT-CANARY`. A host plant at `$RUNS/opencode.json` then exits 2 `BLOCKED: opencode-plant` before the child, with no later POST.
 
