@@ -306,6 +306,8 @@ RED: drop the digest acceptance -> `EndpointTests.test_blob_digest_and_trailing_
 
 Green: `EndpointTests` 2 tests OK. `test_sbun_runs_real_opencode_with_proposer_env` OK in 9.8 s. `test_opencode_run_uses_config_model_and_a_host_plant_blocks` OK in 3.9 s. Live probe through `sbun` against pid 425470: rc 0, assistant text `pong`, two POSTs in `tmp/state/relay.log` both `model=qwen3.6-35b temperature: 0 seed: 230`.
 
+Fix commit: `ba0d371b79bf26babaa10602f5f689ecd5acf1cd`, pushed fast-forward onto `a2f934d`.
+
 Next: held-out base runs `a1` and `a2` with `--endpoint http://127.0.0.1:18111` (no `/v1` suffix), then `drive.py --k 1`.
 
 ### Item 7: docs
