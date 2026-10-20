@@ -47,6 +47,25 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:  # noqa: N802
         raw = self._read()
         self.server.hits.append(("POST", self.path, raw))
+        reply = getattr(self.server, "stream_reply", None)
+        if reply and b'"stream":true' in raw.replace(b" ", b""):
+            # OpenCode asks for a stream. A plain completion is accepted but
+            # never copied into the json event stdout.
+            chunk = json.dumps({
+                "id": "stub",
+                "object": "chat.completion.chunk",
+                "choices": [{"index": 0, "delta": {"content": reply}, "finish_reason": None}],
+            })
+            done = json.dumps({
+                "id": "stub",
+                "object": "chat.completion.chunk",
+                "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
+            })
+            self._send(
+                f"data: {chunk}\n\ndata: {done}\n\ndata: [DONE]\n\n".encode(),
+                "text/event-stream",
+            )
+            return
         payload = json.dumps({
             "id": "stub",
             "object": "chat.completion",
@@ -62,9 +81,10 @@ class Handler(BaseHTTPRequestHandler):
         return
 
 
-def serve() -> tuple[ThreadingHTTPServer, int]:
+def serve(stream_reply: str | None = None) -> tuple[ThreadingHTTPServer, int]:
     httpd = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     httpd.hits = []
+    httpd.stream_reply = stream_reply
     port = httpd.server_address[1]
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     return httpd, port
@@ -255,6 +275,10 @@ class SandboxTests(unittest.TestCase):
             OPENCODE_PERMISSION='{"external_directory":{"*":"deny"}}',
             OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX="4096",
             OPENCODE_DISABLE_MODELS_FETCH="1",
+            UV_PUBLISH_TOKEN="uv-secret",
+            HARNESS2_API_KEY="h2-secret",
+            npm_config__authToken="npm-secret",
+            BUN_INSTALL_TOKEN="bun-secret",
         )
         proc = run(self.box.args(ws, [PY, str(script)]), env)
         self.assertEqual(proc.returncode, 0, proc.stderr)
@@ -264,6 +288,8 @@ class SandboxTests(unittest.TestCase):
             "X_PASSWD", "TOKEN", "SOME_UNLISTED_VAR", "DBUS_SESSION_BUS_ADDRESS",
             "SSH_AUTH_SOCK", "XDG_RUNTIME_DIR", "DOCKER_HOST", "OPENCODE_CONFIG_DIR",
             "OPENCODE_CONFIG_CONTENT", "OPENCODE_TEST_MANAGED_CONFIG_DIR", "OPENCODE_FOO",
+            "UV_PUBLISH_TOKEN", "HARNESS2_API_KEY", "npm_config__authToken",
+            "BUN_INSTALL_TOKEN",
         ):
             self.assertNotIn(name, child, name)
         self.assertEqual(child.get("HARNESS2_RUNS_DIR"), str(self.box.runs))
@@ -573,7 +599,8 @@ class SandboxTests(unittest.TestCase):
         self.assertFalse(targets["runs-json"].exists())
         self.assertFalse(targets["runs-agents"].exists())
         names = [
-            "opencode.json", "opencode.jsonc", "AGENTS.md", "CLAUDE.md", "CONTEXT.md",
+            "opencode.json", "opencode.jsonc", "config.json", "AGENTS.md",
+            "CLAUDE.md", "CONTEXT.md",
         ]
         before = len(httpd.hits)
         for folder in (self.box.runs, self.box.runs / "tmp"):
@@ -585,7 +612,7 @@ class SandboxTests(unittest.TestCase):
                     ws2, ["/bin/sh", "-c", f"echo ran > {ws2}/marker"],
                     extra=["--expose", str(port), "--allow", str(port)],
                 ), self.box.env())
-                self.assertEqual(proc.returncode, 2, proc.stderr)
+                self.assertEqual(proc.returncode, 2, f"{path}\n{proc.stderr}")
                 self.assertIn(f"BLOCKED: opencode-plant {path}", proc.stderr)
                 self.assertFalse((ws2 / "marker").exists())
                 path.unlink()
@@ -664,10 +691,12 @@ class SandboxTests(unittest.TestCase):
         target.mkdir(parents=True)
         secret = target / "file"
         secret.write_text("token")
-        os.chmod(secret, 0o600)
+        # 600/700 already include u+rwX, so no chmod can show a follow.
+        # 400/500 become 600/700 when chmod follows the symlink.
+        os.chmod(secret, 0o400)
         sub = target / "sub"
         sub.mkdir()
-        os.chmod(sub, 0o700)
+        os.chmod(sub, 0o500)
         sock_path = target / "s.sock"
         srv = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         srv.bind(str(sock_path))
@@ -698,8 +727,11 @@ class SandboxTests(unittest.TestCase):
         proc = run(self.box.args(ws, ["/bin/sh", "-c", f"echo ran > {ws}/marker"]), env)
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertEqual((ws / "marker").read_text().strip(), "ran")
-        self.assertEqual(stat.S_IMODE(secret.stat().st_mode), 0o600)
-        self.assertEqual(stat.S_IMODE(sub.stat().st_mode), 0o700)
+        self.assertEqual(
+            stat.S_IMODE(secret.stat().st_mode), 0o400,
+            "target mode changed from 400",
+        )
+        self.assertEqual(stat.S_IMODE(sub.stat().st_mode), 0o500)
         self.assertEqual(secret.read_text(), "token")
         self.assertTrue(sock_path.exists())
         self.assertTrue(locked.stat().st_mode & stat.S_IRUSR)
@@ -877,7 +909,13 @@ class SandboxTests(unittest.TestCase):
             #!/bin/sh
             echo {prefix}
         """)
-        env = self.box.env(HARNESS2_REAL_BUN=str(stub))
+        httpd, port = serve()
+        self.addCleanup(httpd.shutdown)
+        env = self.box.env(HARNESS2_REAL_BUN=str(stub), HARNESS2_RELAY_PORT=str(port))
+        # sbun forwards HARNESS2_RUNS_DIR. A leaked stage .env value points at the
+        # real runs dir, and this workspace is not under it.
+        env.pop("HARNESS2_RUNS_DIR", None)
+        env.pop("HARNESS2_HELDOUT", None)
         # The pipe stays open. communicate() would close it and hide a missing redirect.
         proc = subprocess.Popen(
             [str(SBUN), str(ws / "marker"), "--dir", str(ws)],
@@ -919,7 +957,7 @@ class SandboxTests(unittest.TestCase):
         relay_pid = int((self.box.state / "relay.pid").read_text())
         os.kill(relay_pid, 9)
         try:
-            _out, err = proc.communicate(timeout=20)
+            _out, err = proc.communicate(timeout=40)
         except subprocess.TimeoutExpired:
             proc.kill()
             self.fail("call did not end after the relay died")
@@ -1134,6 +1172,437 @@ print("ok")
         later = [hit for hit in httpd.hits[before:] if hit[0] == "POST"]
         self.assertEqual(later, [])
         plant.unlink()
+
+    def test_silent_post_survives_35s(self) -> None:
+        """A busy server that sends nothing for 35 s still returns the body."""
+        class Slow(BaseHTTPRequestHandler):
+            protocol_version = "HTTP/1.0"
+
+            def _send(self, payload: bytes) -> None:
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(payload)))
+                self.end_headers()
+                self.wfile.write(payload)
+
+            def do_GET(self) -> None:  # noqa: N802
+                self._send(b'{"ok":true}')
+
+            def do_POST(self) -> None:  # noqa: N802
+                n = int(self.headers.get("Content-Length") or 0)
+                if n:
+                    self.rfile.read(n)
+                time.sleep(35)
+                self._send(b'{"choices":[{"message":{"content":"pong-slow"}}]}')
+
+            def log_message(self, fmt: str, *args) -> None:
+                return
+
+        httpd = ThreadingHTTPServer(("127.0.0.1", 0), Slow)
+        httpd.daemon_threads = True
+        port = httpd.server_address[1]
+        threading.Thread(target=httpd.serve_forever, daemon=True).start()
+        self.addCleanup(httpd.shutdown)
+        ws = self.box.ws()
+        script = ws / "child.py"
+        write_script(script, f"""
+            import pathlib, urllib.request
+            pathlib.Path({str(ws / "marker")!r}).write_text("ran")
+            req = urllib.request.Request(
+                "http://127.0.0.1:{port}/v1/chat/completions",
+                data=b'{{"model":"qwen3.6-35b","temperature":0,"seed":230}}',
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=90) as resp:
+                pathlib.Path({str(ws / "body")!r}).write_bytes(resp.read())
+        """)
+        proc = run(self.box.args(ws, [PY, str(script)], extra=[
+            "--expose", str(port), "--allow", str(port),
+        ]), self.box.env(), timeout=80)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual((ws / "marker").read_text().strip(), "ran")
+        self.assertIn(b"pong-slow", (ws / "body").read_bytes())
+        log = (self.box.state / "relay.log").read_text(encoding="utf-8")
+        self.assertIn("bytes_out=", log)
+        outs = [line for line in log.splitlines() if "POST" in line and "bytes_out=" in line]
+        self.assertTrue(outs, log)
+        self.assertNotIn("bytes_out=0", outs[-1])
+
+    def test_one_health_stall_does_not_kill_the_call(self) -> None:
+        class Stall(BaseHTTPRequestHandler):
+            protocol_version = "HTTP/1.0"
+
+            def do_GET(self) -> None:  # noqa: N802
+                # n==1 is the startup probe. The next /health opens one 12 s
+                # blackout. Two 5 s probes fit in it when the gap is 0.2 s.
+                # A 10 s gap starts the next probe after the blackout. A 6 s
+                # stall of one request does not: the first probe uses 5 s of
+                # it, and the retry is a new request (measured rc 0 in 22.8 s).
+                self.server.n = getattr(self.server, "n", 0) + 1
+                if self.path.startswith("/health") and self.server.n == 2:
+                    self.server.blackout_until = time.monotonic() + 12
+                until = getattr(self.server, "blackout_until", 0.0)
+                if self.path.startswith("/health") and until:
+                    delay = until - time.monotonic()
+                    if delay > 0:
+                        time.sleep(delay)
+                body = b'{"ok":true}'
+                self.send_response(200)
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, fmt: str, *args) -> None:
+                return
+
+        httpd = ThreadingHTTPServer(("127.0.0.1", 0), Stall)
+        httpd.daemon_threads = True
+        port = httpd.server_address[1]
+        threading.Thread(target=httpd.serve_forever, daemon=True).start()
+        self.addCleanup(httpd.shutdown)
+        ws = self.box.ws()
+        script = ws / "child.py"
+        write_script(script, f"""
+            import pathlib, time
+            pathlib.Path({str(ws / "marker")!r}).write_text("ran")
+            time.sleep(30)
+        """)
+        proc = run(self.box.args(ws, [PY, str(script)], extra=[
+            "--expose", str(port), "--allow", str(port),
+        ]), self.box.env(), timeout=55)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual((ws / "marker").read_text().strip(), "ran")
+
+    def test_dead_server_ends_with_relay_down(self) -> None:
+        class Hang(BaseHTTPRequestHandler):
+            protocol_version = "HTTP/1.0"
+
+            def do_GET(self) -> None:  # noqa: N802
+                self.server.n = getattr(self.server, "n", 0) + 1
+                if self.path.startswith("/health") and self.server.n >= 2:
+                    time.sleep(60)
+                    return
+                body = b'{"ok":true}'
+                self.send_response(200)
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, fmt: str, *args) -> None:
+                return
+
+        httpd = ThreadingHTTPServer(("127.0.0.1", 0), Hang)
+        httpd.daemon_threads = True
+        port = httpd.server_address[1]
+        threading.Thread(target=httpd.serve_forever, daemon=True).start()
+        self.addCleanup(httpd.shutdown)
+        ws = self.box.ws()
+        script = ws / "child.py"
+        write_script(script, f"""
+            import pathlib, time
+            pathlib.Path({str(ws / "marker")!r}).write_text("ran")
+            time.sleep(60)
+        """)
+        t0 = time.time()
+        proc = run(self.box.args(ws, [PY, str(script)], extra=[
+            "--expose", str(port), "--allow", str(port),
+        ]), self.box.env(), timeout=45)
+        elapsed = time.time() - t0
+        self.assertEqual(proc.returncode, 2, proc.stderr)
+        self.assertIn("relay down", proc.stderr)
+        self.assertGreaterEqual(elapsed, 15, f"killed too fast: {elapsed:.1f}s")
+        self.assertLess(elapsed, 35, f"killed too slow: {elapsed:.1f}s")
+        (self.box.root / "dead-elapsed.txt").write_text(f"{elapsed:.1f}\n")
+
+    def test_preflight_defaults_are_120s_and_30s(self) -> None:
+        ws = self.box.ws()
+        proc = run(self.box.args(ws, ["/bin/true"]), self.box.env())
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        call = json.loads((self.box.state / "bin" / "call.json").read_text(encoding="utf-8"))
+        self.assertEqual(call["cap"], 120.0)
+        self.assertEqual(call["mount_timeout"], 30.0)
+
+    def test_workspace_must_sit_directly_under_runs_tmp(self) -> None:
+        outside = self.box.root / "outside"
+        outside.mkdir()
+        nested_parent = self.box.runs / "tmp" / "nest"
+        nested_parent.mkdir()
+        nested = nested_parent / "inner"
+        nested.mkdir()
+        missing = self.box.runs / "tmp" / "missing-ws"
+        link = self.box.runs / "tmp" / "linkout"
+        link.symlink_to(outside, target_is_directory=True)
+        for label, ws in (
+            ("outside", outside),
+            ("nested", nested),
+            ("missing", missing),
+            ("symlink", link),
+        ):
+            marker = self.box.root / f"mark-{label}"
+            proc = run(self.box.args(
+                ws, ["/bin/sh", "-c", f"echo ran > {marker}"],
+            ), self.box.env(), timeout=30)
+            self.assertIn(
+                "workspace is not directly under RUNS/tmp",
+                proc.stderr,
+                f"{label} rc={proc.returncode}",
+            )
+            self.assertEqual(proc.returncode, 2, f"{label}: {proc.stderr}")
+            self.assertFalse(marker.exists(), label)
+
+    def test_unshare_pid_hides_the_host_pid(self) -> None:
+        host_pid = os.getpid()
+        log = self.box.root / "bwrap-log"
+        log.mkdir()
+        shim = self.box.root / "path"
+        shim.mkdir()
+        write_script(shim / "bwrap", f"""
+            #!/bin/bash
+            printf '%s\\0' "$@" > {log}/argv
+            exec /usr/bin/bwrap "$@"
+        """)
+        ws = self.box.ws()
+        script = ws / "child.py"
+        write_script(script, f"""
+            import pathlib
+            pathlib.Path({str(ws / "marker")!r}).write_text("ran")
+            seen = pathlib.Path("/proc/{host_pid}").exists()
+            pathlib.Path({str(ws / "seen")!r}).write_text("yes" if seen else "no")
+        """)
+        env = self.box.env(PATH=str(shim) + os.pathsep + os.environ.get("PATH", ""))
+        proc = run(self.box.args(ws, [PY, str(script)]), env)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual((ws / "marker").read_text().strip(), "ran")
+        self.assertEqual((ws / "seen").read_text().strip(), "no")
+        argv = (log / "argv").read_bytes().split(b"\0")
+        text = [part.decode() for part in argv if part]
+        self.assertIn("--unshare-pid", text)
+
+    def test_etc_opencode_plant_blocks(self) -> None:
+        help_text = subprocess.run(
+            ["bwrap", "--help"], capture_output=True, text=True,
+        ).stdout
+        if "--tmp-overlay" not in help_text or "--overlay-src" not in help_text:
+            self.skipTest("bwrap has no overlay flags (need 0.8 or later)")
+        standin = self.box.root / "etc-opencode"
+        standin.mkdir()
+        (standin / "opencode.json").write_text('{"model":"x/ETC-PLANT"}\n')
+        shim = self.box.root / "path"
+        shim.mkdir()
+        write_script(shim / "bwrap", f"""
+            #!/bin/bash
+            out=()
+            while [[ $# -gt 0 ]]; do
+              if [[ "$1" == "--ro-bind" && "${{2:-}}" == "/etc" && "${{3:-}}" == "/etc" ]]; then
+                out+=(--overlay-src /etc --tmp-overlay /etc --ro-bind {standin} /etc/opencode --remount-ro /etc)
+                shift 3
+                continue
+              fi
+              out+=("$1")
+              shift
+            done
+            exec /usr/bin/bwrap "${{out[@]}}"
+        """)
+        ws = self.box.ws()
+        env = self.box.env(PATH=str(shim) + os.pathsep + os.environ.get("PATH", ""))
+        proc = run(self.box.args(
+            ws, ["/bin/sh", "-c", f"echo ran > {ws}/marker"],
+        ), env, timeout=40)
+        self.assertIn("BLOCKED: opencode-plant /etc/opencode", proc.stderr)
+        self.assertEqual(proc.returncode, 2, proc.stderr)
+        self.assertFalse((ws / "marker").exists())
+
+    def test_checkout_under_tmp_or_run_is_refused(self) -> None:
+        for root in ("/tmp", "/run"):
+            link = self.box.root / f"to{root.strip('/')}"
+            link.symlink_to(root)
+            env = self.box.env()
+            env["HARNESS2_W"] = str(link)
+            proc = run([PY, str(SANDBOX), "--", "/bin/true"], env, timeout=20)
+            self.assertEqual(proc.returncode, 2, proc.stderr)
+            self.assertIn(f"BLOCKED: checkout under {root}", proc.stderr)
+
+    def test_caller_xdg_survives_env_sh(self) -> None:
+        ws = self.box.ws()
+        data = ws / ".ocdata"
+        state = ws / ".ocstate"
+        child = ws / "child.py"
+        write_script(child, f"""
+            import os, pathlib
+            ws = pathlib.Path({str(ws)!r})
+            ws.joinpath("marker").write_text("ran")
+            data = os.environ["XDG_DATA_HOME"]
+            state = os.environ["XDG_STATE_HOME"]
+            pathlib.Path(data).mkdir(parents=True)
+            pathlib.Path(state).mkdir(parents=True)
+            (pathlib.Path(data) / "ok").write_text("1")
+            ws.joinpath("got").write_text(data + "\\n" + state)
+        """)
+        env_sh = REPO / "examples" / "harness2-local" / "env.sh"
+        wrapper = self.box.root / "wrap.sh"
+        write_script(wrapper, f"""
+            #!/bin/bash
+            set -euo pipefail
+            export XDG_DATA_HOME={data}
+            export XDG_STATE_HOME={state}
+            # shellcheck disable=SC1091
+            source {env_sh}
+            exec {PY} {SANDBOX} \\
+              --harness {self.box.harness} --runs {self.box.runs} \\
+              --state {self.box.state} --py312 {self.box.py} --ws {ws} \\
+              -- {PY} {child}
+        """)
+        env = self.box.env()
+        env.pop("XDG_DATA_HOME", None)
+        env.pop("XDG_STATE_HOME", None)
+        proc = run([str(wrapper)], env)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual((ws / "marker").read_text().strip(), "ran")
+        lines = (ws / "got").read_text().splitlines()
+        self.assertEqual(lines, [str(data), str(state)])
+        self.assertTrue((data / "ok").is_file())
+
+    def test_sbun_unknown_relay_port_exits_2(self) -> None:
+        ws = self.box.ws()
+        env = self.box.env()
+        env.pop("HARNESS2_RELAY_PORT", None)
+        proc = run([str(SBUN), "true", "--dir", str(ws)], env, timeout=20)
+        self.assertEqual(proc.returncode, 2, proc.stderr)
+        self.assertIn("BLOCKED: relay port unknown", proc.stderr)
+
+    def test_sbun_runs_real_opencode_with_proposer_env(self) -> None:
+        harness = REPO / "tmp" / "harness2"
+        bun = harness / "dependencies" / "tools" / "node_modules" / ".bin" / "bun"
+        oc = harness / "dependencies" / "opencode" / "packages" / "opencode"
+        if not bun.is_file() or not (oc / "src" / "index.ts").is_file():
+            self.skipTest("staged OpenCode is not present")
+        httpd, port = serve(stream_reply="pong")
+        self.addCleanup(httpd.shutdown)
+        cfg = {
+            "$schema": "https://opencode.ai/config.json",
+            "provider": {
+                "llamacpp": {
+                    "npm": "@ai-sdk/openai-compatible",
+                    "name": "llama.cpp (local)",
+                    "options": {
+                        "baseURL": f"http://127.0.0.1:{port}/v1",
+                        "apiKey": "local",
+                    },
+                    "models": {
+                        "qwen3.6-35b": {
+                            "name": "qwen3.6-35b",
+                            "options": {"temperature": 0, "seed": 230},
+                        }
+                    },
+                }
+            },
+            "model": "llamacpp/qwen3.6-35b",
+        }
+        (self.box.state / "opencode.json").write_text(json.dumps(cfg, indent=2) + "\n")
+        ws = self.box.ws()
+        allow = {"*": "deny", str(ws): "allow", f"{ws}/**": "allow"}
+        env = self.box.env(
+            HARNESS2_RELAY_PORT=str(port),
+            HARNESS2_REAL_BUN=str(bun),
+            HARNESS2_HARNESS=str(harness),
+            HARNESS2_STATE=str(self.box.state),
+            HARNESS2_RUNS_DIR=str(self.box.runs),
+            HARNESS2_PY312=str(self.box.py),
+            XDG_DATA_HOME=str(ws / ".ocdata"),
+            XDG_STATE_HOME=str(ws / ".ocstate"),
+            OPENCODE_DISABLE_MODELS_FETCH="1",
+            OPENCODE_DISABLE_AUTOUPDATE="1",
+            OPENCODE_DISABLE_LSP_DOWNLOAD="1",
+            OPENCODE_DISABLE_DEFAULT_PLUGINS="1",
+            OPENCODE_DISABLE_EXTERNAL_SKILLS="1",
+            OPENCODE_DISABLE_CLAUDE_CODE="1",
+            OPENCODE_PERMISSION=json.dumps({"external_directory": allow}),
+            OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX="4096",
+        )
+        t0 = time.time()
+        try:
+            proc = subprocess.run(
+                [
+                    str(SBUN), "run", "--cwd", str(oc), "--conditions=browser", "src/index.ts",
+                    "run", "Reply with the single word pong.",
+                    "--dir", str(ws), "--model", "llamacpp/qwen3.6-35b", "--format", "json",
+                ],
+                env=env, stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=60,
+            )
+        except subprocess.TimeoutExpired:
+            posts = [hit for hit in httpd.hits if hit[0] == "POST"]
+            self.fail(f"sbun timed out at 60s with {len(posts)} POSTs")
+        elapsed = time.time() - t0
+        (self.box.root / "sbun-elapsed.txt").write_text(f"{elapsed:.1f}\n")
+        self.assertEqual(proc.returncode, 0, proc.stderr[-800:])
+        self.assertIn("pong", proc.stdout)
+        posts = [hit for hit in httpd.hits if hit[0] == "POST"]
+        self.assertGreaterEqual(len(posts), 1, httpd.hits)
+        log = (self.box.state / "relay.log").read_text(encoding="utf-8")
+        self.assertIn("temperature: 0", log)
+        self.assertIn("seed: 230", log)
+        relay_pid = int((self.box.state / "relay.pid").read_text())
+        with self.assertRaises(ProcessLookupError):
+            os.kill(relay_pid, 0)
+
+    def test_executor_launcher_xdg_is_inside_the_workspace(self) -> None:
+        httpd, port = serve()
+        self.addCleanup(httpd.shutdown)
+        ws = self.box.ws()
+        dumper = self.box.harness / "dump-env"
+        write_script(dumper, """
+            #!/usr/bin/env python3
+            import json, os
+            from pathlib import Path
+            Path("marker").write_text("ran")
+            Path("env.json").write_text(json.dumps({
+                "XDG_DATA_HOME": os.environ.get("XDG_DATA_HOME", ""),
+                "XDG_STATE_HOME": os.environ.get("XDG_STATE_HOME", ""),
+            }))
+        """)
+        import importlib.util
+        # harness2.config.load_dotenv() setdefaults into this process. Put them back
+        # so a later sbun test does not inherit HARNESS2_RUNS_DIR from the stage .env.
+        saved_env = dict(os.environ)
+        self.addCleanup(lambda: (os.environ.clear(), os.environ.update(saved_env)))
+        path = REPO / "examples" / "harness2-local" / "pfy_adapter.py"
+        spec = importlib.util.spec_from_file_location("h2adapt_xdg", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        adapter = mod.PfyAdapter(
+            batches={}, train_ids=[], runs=self.box.runs, model="llamacpp/qwen3.6-35b",
+        )
+        previous_timeout = os.environ.get("HARNESS2_EXEC_TIMEOUT")
+        os.environ["HARNESS2_EXEC_TIMEOUT"] = "60"
+        self.addCleanup(
+            lambda: os.environ.__setitem__("HARNESS2_EXEC_TIMEOUT", previous_timeout)
+            if previous_timeout is not None
+            else os.environ.pop("HARNESS2_EXEC_TIMEOUT", None)
+        )
+
+        def run_argv(*_a, **_k):
+            return [str(SBUN), "dump"]
+
+        def run_env(_base, _workspace, **_k):
+            return self.box.env(
+                HARNESS2_RELAY_PORT=str(port),
+                HARNESS2_REAL_BUN=str(dumper),
+                HARNESS2_RUNS_DIR=str(self.box.runs),
+                HARNESS2_PY312=str(self.box.py),
+                XDG_DATA_HOME=str(self.box.state / "xdg-data"),
+                XDG_STATE_HOME=str(self.box.state / "xdg-state"),
+            )
+
+        adapter.substrate.run_argv = run_argv
+        adapter.substrate.run_env = run_env
+        req = type("R", (), {"run_ids": ("case__base1",)})()
+        install = type("I", (), {"staging_dir": ws})()
+        adapter._launch(req, install)
+        got = json.loads((ws / "env.json").read_text(encoding="utf-8"))
+        self.assertEqual(got["XDG_DATA_HOME"], str(ws / ".ocdata"))
+        self.assertEqual(got["XDG_STATE_HOME"], str(ws / ".ocstate"))
+        self.assertNotIn(str(self.box.state), got["XDG_DATA_HOME"])
+        self.assertEqual((ws / "marker").read_text().strip(), "ran")
 
     def _root_0700(self) -> str | None:
         candidates = [

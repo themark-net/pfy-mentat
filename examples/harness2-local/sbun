@@ -18,6 +18,21 @@ if [[ -n "${HARNESS2_HELDOUT:-}" ]]; then
 elif [[ -n "${HARNESS2_RUNS_DIR:-}" ]]; then
   extra+=(--runs "$HARNESS2_RUNS_DIR")
 fi
+if [[ -n "${HARNESS2_HARNESS:-}" ]]; then
+  extra+=(--harness "$HARNESS2_HARNESS")
+fi
+if [[ -n "${HARNESS2_STATE:-}" ]]; then
+  extra+=(--state "$HARNESS2_STATE")
+fi
+if [[ -n "${HARNESS2_PY312:-}" ]]; then
+  extra+=(--py312 "$HARNESS2_PY312")
+fi
+# Same source as write_opencode_config: HARNESS2_RELAY_PORT. Unknown means
+# there is no listener and the call would sit until the wall clock.
+if ! port=$(python3 "$HERE/common.py" relay-port); then
+  exit 2
+fi
+extra+=(--expose "$port" --allow "$port")
 set +e
 python3 "$HERE/sandbox.py" --real-bun "$REAL" "${extra[@]}" -- "$@" </dev/null
 rc=$?

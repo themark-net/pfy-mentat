@@ -14,7 +14,29 @@ OC="$H2/dependencies/opencode"
 TOOLS="$H2/dependencies/tools"
 BUN="$TOOLS/node_modules/.bin/bun"
 PATCH="$H2/third_party/patches/opencode-compat.diff"
-PY_LINK="$HOME/.local/share/uv/python/cpython-3.12.12-linux-x86_64-gnu/bin/python3.12"
+# Prefer the nimo 3.12.12 path. Any other cpython-3.12.x under the uv dir
+# is accepted. HARNESS2_PY312 is the test stand-in (and an operator override).
+pick_py312() {
+  if [[ -n "${HARNESS2_PY312:-}" ]]; then
+    printf '%s\n' "$HARNESS2_PY312"
+    return
+  fi
+  local preferred="$HOME/.local/share/uv/python/cpython-3.12.12-linux-x86_64-gnu/bin/python3.12"
+  if [[ -e "$preferred" ]]; then
+    printf '%s\n' "$preferred"
+    return
+  fi
+  local cand
+  shopt -s nullglob
+  for cand in "$HOME"/.local/share/uv/python/cpython-3.12.*/bin/python3.12; do
+    printf '%s\n' "$cand"
+    shopt -u nullglob
+    return
+  done
+  shopt -u nullglob
+  printf '%s\n' "$preferred"
+}
+PY_LINK=$(pick_py312)
 STATE="$W/tmp/state"
 
 print_steps() {
@@ -110,10 +132,11 @@ step2() {
     echo "BLOCKED: no-python312" >&2
     return 2
   fi
+  local prefix="$HOME/.local/share/uv/python/"
   case "$py" in
-    "$HOME/.local/share/uv/python/"*) ;;
+    "$prefix"cpython-3.12.*/bin/python3.12) ;;
     *)
-      echo "BLOCKED: no-python312 (resolved outside the uv python dir: ${py})" >&2
+      echo "BLOCKED: no-python312 (not a 3.12.x uv interpreter: ${py})" >&2
       return 2
       ;;
   esac

@@ -22,6 +22,12 @@ sys.path.insert(0, str(ROOT / "examples" / "harness2-local"))
 
 import common  # noqa: E402
 
+def _scratch() -> Path:
+    path = ROOT / "tmp" / "stage-tests"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
 H2_PIN = common.H2_PIN
 OC_PIN = common.OC_PIN
 CACHE_KEYS = (
@@ -230,7 +236,7 @@ class CheckTests(HomeWatch):
         )
 
     def test_stub_stage_exits_0_without_preflight_module_or_harness2_check(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(dir=_scratch()) as tmp:
             root = Path(tmp)
             stage = root / "stage"
             self._stage(stage, "1.14.18")
@@ -245,7 +251,7 @@ class CheckTests(HomeWatch):
             self.assertFalse((root / "harness2-check.marker").exists())
 
     def test_package_json_117_exits_2_naming_the_version(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(dir=_scratch()) as tmp:
             root = Path(tmp)
             stage = root / "stage"
             self._stage(stage, "1.14.17")
@@ -257,7 +263,7 @@ class CheckTests(HomeWatch):
             self.assertIn("1.14.18", proc.stderr)
 
     def test_missing_solver_model_exits_2_and_restore_passes(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(dir=_scratch()) as tmp:
             root = Path(tmp)
             stage = root / "stage"
             self._stage(stage, "1.14.18")
@@ -277,7 +283,7 @@ class CheckTests(HomeWatch):
             self.assertEqual(restored.returncode, 0, restored.stderr)
 
     def test_vertex_model_exits_2(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(dir=_scratch()) as tmp:
             root = Path(tmp)
             stage = root / "stage"
             self._stage(stage, "1.14.18", solver="google-vertex/gemini-x")
@@ -299,12 +305,24 @@ class StageScriptTests(HomeWatch):
             if link.exists() or link.is_symlink():
                 link.unlink()
             link.symlink_to(stub)
+        home = work / "home"
+        py_link = (
+            home / ".local/share/uv/python/cpython-3.12.9-linux-x86_64-gnu/bin/python3.12"
+        )
+        py_link.parent.mkdir(parents=True)
+        py_link.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        py_link.chmod(0o755)
         env = os.environ.copy()
         env["PATH"] = f"{bindir}:/usr/bin:/bin"
+        env["HOME"] = str(home)
         env["HARNESS2_W"] = str(work / "wt")
+        env["HARNESS2_PY312"] = str(py_link)
         env["STUB_LOG"] = str(work / "stub.log")
         env["STUB_PY"] = str(stub)
         env["PYTHONDONTWRITEBYTECODE"] = "1"
+        # env.sh fills these only when unset. A caller value must not leak in.
+        env.pop("XDG_DATA_HOME", None)
+        env.pop("XDG_STATE_HOME", None)
         (work / "stub.log").write_text("", encoding="utf-8")
         return env
 
@@ -313,7 +331,7 @@ class StageScriptTests(HomeWatch):
         return [json.loads(line) for line in text.splitlines() if line.strip()]
 
     def test_dry_run_prints_the_pin_steps_and_nothing_upstream(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(dir=_scratch()) as tmp:
             work = Path(tmp)
             env = os.environ.copy()
             env["HARNESS2_W"] = str(work / "wt")
@@ -352,7 +370,7 @@ class StageScriptTests(HomeWatch):
             self.assertFalse((work / "wt" / "tmp" / "harness2").exists())
 
     def test_stub_tools_see_state_caches_and_home_stays(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(dir=_scratch()) as tmp:
             work = Path(tmp)
             env = self._stub_env(work)
             proc = subprocess.run(
@@ -379,7 +397,7 @@ class StageScriptTests(HomeWatch):
                     )
 
     def test_existing_env_file_is_kept_byte_identical(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(dir=_scratch()) as tmp:
             work = Path(tmp)
             env = self._stub_env(work)
             h2 = Path(env["HARNESS2_W"]) / "tmp" / "harness2"
@@ -392,6 +410,33 @@ class StageScriptTests(HomeWatch):
                 "KEEP=1\n"
             ).encode()
             (h2 / ".env").write_bytes(payload)
+            oc = h2 / "dependencies" / "opencode"
+            pkg = oc / "packages" / "opencode"
+            pkg.mkdir(parents=True)
+            (pkg / "package.json").write_text(
+                '{"version": "1.14.18"}\n', encoding="utf-8"
+            )
+            patch = h2 / "third_party" / "patches"
+            patch.mkdir(parents=True)
+            (patch / "opencode-compat.diff").write_text("diff --git a/a b/a\n", encoding="utf-8")
+            fake = work / "fakeh2"
+            (fake / "harness2" / "substrate").mkdir(parents=True)
+            (fake / "harness2" / "__init__.py").write_text("", encoding="utf-8")
+            (fake / "harness2" / "substrate" / "__init__.py").write_text("", encoding="utf-8")
+            (fake / "harness2" / "config.py").write_text(
+                "import os\nfrom pathlib import Path\n"
+                "OPENCODE_DIR = Path(os.environ['HARNESS2_STUB_OC'])\n"
+                "BUN = Path(os.environ['STUB_PY'])\n",
+                encoding="utf-8",
+            )
+            (fake / "harness2" / "substrate" / "opencode.py").write_text(
+                "class OpencodeSubstrate:\n"
+                "    def preflight(self):\n"
+                "        return None\n",
+                encoding="utf-8",
+            )
+            env["PYTHONPATH"] = str(fake)
+            env["HARNESS2_STUB_OC"] = str(oc)
             proc = subprocess.run(
                 ["bash", str(STAGE)],
                 cwd=ROOT,
@@ -399,12 +444,14 @@ class StageScriptTests(HomeWatch):
                 capture_output=True,
                 text=True,
             )
+            self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+            self.assertIn("env: kept existing .env", proc.stdout)
             self.assertNotIn("BLOCKED: home-write", proc.stderr)
             self.assertEqual((h2 / ".env").read_bytes(), payload)
             self.assertNotIn("env: written from env.local.example", proc.stdout)
 
     def test_wrong_existing_pin_is_refused(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(dir=_scratch()) as tmp:
             work = Path(tmp)
             env = self._stub_env(work)
             env["STUB_H2_HEAD"] = "deadbeef"

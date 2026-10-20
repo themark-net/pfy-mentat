@@ -230,6 +230,10 @@ class PfyAdapter:
             prompt, workspace, self.model, title=label or "adapt"
         )
         env = self.substrate.run_env(os.environ.copy(), workspace)
+        # Upstream Proposer sets these inside the writable workspace
+        # (proposer.py). The state dir is read-only inside the sandbox.
+        env["XDG_DATA_HOME"] = str(workspace / ".ocdata")
+        env["XDG_STATE_HOME"] = str(workspace / ".ocstate")
         held = os.environ.get("HARNESS2_EXEC_HELDOUT")
         if held:
             env["HARNESS2_HELDOUT"] = held

@@ -10,10 +10,11 @@ Branch `bot/h1-harness2`. Not a Feature GO. Catalog HOLD 70-75 stays. Run log: [
 | ID | Item | Status |
 |----|------|--------|
 | H1-1 | Pinned local stage (`examples/harness2-local`) | done (stage re-run exit 0, 8 tests OK) |
-| H1-2 | Network-limited sandbox | done (26 sandbox tests OK; N1 N2 N5 PASS) |
-| H1-2b | Final-gate should-fixes | done (2b.1–2b.2 committed; 2b.3–2b.5 already in item 2; 2b.6 citation) |
-| H1-3 | 48-case adapter and driver | pending |
-| H1-4 | Surface map and write allow-list | pending |
+| H1-2 | Network-limited sandbox | done (sandbox module is 40 tests after 2c; N1 N2 N5 PASS) |
+| H1-2b | Final-gate should-fixes | done (2b.1-2b.2 committed; 2b.3-2b.5 already in item 2; 2b.6 citation) |
+| H1-2c | Tester FAIL of 902e04f (idle, sbun, watchdog, mutant tests) | done (40 sandbox tests; full suite 520 OK, skipped=4) |
+| H1-3 | 48-case adapter and driver | done (`3260e0228cee5344578bfad2a26076ef43bb03ec`, 8 tests OK) |
+| H1-4 | Surface map and write allow-list | done (`475f34ddc8736969db253e3ed654fd85f8bbaea1`, 5 tests OK) |
 | H1-5 | Proposal branch, never merges | pending |
 | H1-6 | Live llama-server run | pending |
 | H1-7 | Docs and catalog row | pending |

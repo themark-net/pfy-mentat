@@ -243,6 +243,18 @@ def scrub_env(env: dict[str, str]) -> dict[str, str]:
     return out
 
 
+def relay_port() -> int:
+    """Port shared by the generated OpenCode config and by sbun.
+
+    ``HARNESS2_RELAY_PORT`` is the only source. An unset or non-numeric value
+    is unknown: the caller must fail closed instead of hanging with no route.
+    """
+    raw = os.environ.get("HARNESS2_RELAY_PORT", "").strip()
+    if raw.isdigit() and 1 <= int(raw) <= 65535:
+        return int(raw)
+    raise ValueError("relay port unknown")
+
+
 def write_opencode_config(port: int | None = None) -> Path:
     """Write $W/tmp/state/opencode.json for the llamacpp provider.
 
@@ -250,8 +262,10 @@ def write_opencode_config(port: int | None = None) -> Path:
     (schema and provider/npm fields). apiKey is the dummy string ``local``.
     """
     if port is None:
-        raw = os.environ.get("HARNESS2_RELAY_PORT", str(RELAY_PORT_DEFAULT))
-        port = int(raw)
+        try:
+            port = relay_port()
+        except ValueError:
+            port = RELAY_PORT_DEFAULT
     template_path = REPO / "examples" / "opencode-ollama" / "opencode.json.template"
     template = json.loads(template_path.read_text(encoding="utf-8"))
     model = "qwen3.6-35b"
@@ -283,7 +297,10 @@ def write_opencode_config(port: int | None = None) -> Path:
 
 def _cli(argv: list[str]) -> int:
     if len(argv) < 1:
-        print("usage: common.py home-snapshot|home-diff|write-opencode-config", file=sys.stderr)
+        print(
+            "usage: common.py home-snapshot|home-diff|write-opencode-config|relay-port",
+            file=sys.stderr,
+        )
         return 2
     cmd = argv[0]
     if cmd == "home-snapshot":
@@ -302,6 +319,13 @@ def _cli(argv: list[str]) -> int:
     if cmd == "write-opencode-config":
         path = write_opencode_config()
         print(path)
+        return 0
+    if cmd == "relay-port":
+        try:
+            print(relay_port())
+        except ValueError:
+            print("BLOCKED: relay port unknown (set HARNESS2_RELAY_PORT)", file=sys.stderr)
+            return 2
         return 0
     print(f"unknown command: {cmd}", file=sys.stderr)
     return 2

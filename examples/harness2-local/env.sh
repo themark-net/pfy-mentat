@@ -20,7 +20,11 @@ export BUN_INSTALL_CACHE_DIR="$_H2L_STATE/bun-cache"
 export BUN_INSTALL="$_H2L_STATE/bun"
 export XDG_CONFIG_HOME="$_H2L_STATE/xdg-config"
 export XDG_CACHE_HOME="$_H2L_STATE/xdg-cache"
-export XDG_DATA_HOME="$_H2L_STATE/xdg-data"
-export XDG_STATE_HOME="$_H2L_STATE/xdg-state"
+# Caller wins. Upstream Proposer and the executor launcher set these to the
+# workspace. The state dir is read-only inside the sandbox, so forcing it
+# here makes OpenCode's mkdir fail with EROFS.
+: "${XDG_DATA_HOME:=$_H2L_STATE/xdg-data}"
+: "${XDG_STATE_HOME:=$_H2L_STATE/xdg-state}"
+export XDG_DATA_HOME XDG_STATE_HOME
 export OPENCODE_CONFIG="$_H2L_STATE/opencode.json"
 unset _H2L_HERE _H2L_STATE

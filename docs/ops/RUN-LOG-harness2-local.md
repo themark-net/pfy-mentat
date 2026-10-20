@@ -19,6 +19,16 @@ This session's clock (replaces 09:31 / 11:01): no new item after 2026-10-20T17:2
 Suite on the current tree: `python3 -m unittest discover -s tests -t .` → Ran 498 tests in 337.619s, OK (skipped=4), exit 0. The 498 include the uncommitted `test_harness2_local_cases` (3). Nothing else is red. Not BLOCKED: red-base.
 At resume, item 3 attempt 1 was in progress (not a failure). It finished in this session. See Item 3.
 
+## Resume (H1c)
+
+START: 2026-10-20T12:23:06-07:00
+HEAD: `e240d5b47024f5102ba0c6939f3fc9e9472434ce` (equals `origin/bot/h1-harness2`). Not rewritten.
+`git status --short` at resume: empty.
+STOP file: absent. The H1b stop-file was removed before this session. That stop is not a failure and not a skip.
+This session's clock (replaces the H1b limits): no new item after 2026-10-20T18:23:06-07:00. Stop by 2026-10-20T19:53:06-07:00. Live item 6 starts only if begun by 2026-10-20T16:38:06-07:00.
+Suite on the current tree before item 2c edits: `python3 -m unittest discover -s tests -t .` → Ran 508 tests in 377.550s, OK (skipped=4), exit 0. Nothing else is red. Not BLOCKED: red-base.
+Items 0-4 are DONE. Item 2c (Tester FAIL of `902e04f`) is first, then item 5.
+
 ## Host
 
 - python3 3.14.4. No `/usr/bin/python3.12` or `python3.13`.
@@ -62,11 +72,11 @@ Risks:
 
 ## Items
 
-### Item 0 — drop-in
+### Item 0: drop-in
 
 state: ALREADY-DONE | tests: `git diff origin/main -- docs/build-dropins/harness2-local.md` empty | files: 0 | err: none
 
-### Item 1 — pinned local stage
+### Item 1: pinned local stage
 
 state: DONE | tests: `python3 -m unittest tests.test_harness2_local_stage` → Ran 8 tests in 132.068s, OK (exit 0), after the check.py re-exec fix | files: examples/harness2-local/{env.sh,stage.sh,check.py,common.py,env.local.example}, tests/test_harness2_local_stage.py | err: first real stage attempt exited 2 (`cannot import OpencodeSubstrate: No module named 'harness2'`); fixed by re-exec into the venv Python 3.12 plus `site.addsitedir` for the editable `.pth`. Second run: `stage: ok`.
 
@@ -86,7 +96,7 @@ Real stage (2026-10-20, `$W/tmp/state/stage-rerun.log`, exit 0):
 - `$W/tmp/state` path length on this host: 55 bytes (the drop-in said 65). `$W/tmp/state/r/<name>` still fits `sun_path` (107).
 - Node warning only: `NO_COLOR` ignored because `FORCE_COLOR` is set.
 
-### Item 2 — sandbox
+### Item 2: sandbox
 
 state: DONE | commit: `96408480a0fcfa29e6bff0963aa6f7ff58c313e6` | tests: `python3 -m unittest tests.test_harness2_local_sandbox` → Ran 26 tests in 46.054s, OK | files: `examples/harness2-local/sandbox.py`, `examples/harness2-local/sbun`, `tests/test_harness2_local_sandbox.py`, D7 sentence in `docs/build-dropins/harness2-local.md` | err: none
 
@@ -131,7 +141,7 @@ N5 PASS. The same find the preflight uses, inside the real sandbox, total 1.151s
 
 N3, the held-out half of N4, and N6 wait for items 3 and 6. Layout half of N4, recorded now: `PY312` realpath is the cpython-3.12.12 root above; `/usr/lib32` exists; `/var/run` is a symlink to `/run`.
 
-### Item 2b — should-fixes
+### Item 2b: should-fixes
 
 2b.1 DONE. Commit `da6d56a9ea711b3825ba406ca5f49cabe326b55d`. Sweeps list `$RUNS/tmp` with `os.scandir` and `os.lstat` and touch only real directories. Symlinks and other non-directories are skipped and logged. Commands stay `chmod -R -P u+rwX -- <ws>` and `find -P <ws> -xdev -type s -delete`. `chmod --version` is `chmod (uutils coreutils) 0.10.0`; `-P` is accepted ("do not traverse any symbolic links (default)").
 
@@ -141,7 +151,7 @@ RED: `find -P` → `find -L` in `_sweep_one` → `test_sweep_skips_symlinks_and_
 
 RED: drop the lstat skip → same test FAILED. The argv record contained the symlink path and `note.txt`. Target modes were unchanged because the commands were still `-P`. Restored.
 
-PASS-BY-ACCIDENT: `chmod -R -P` → `chmod -R -L` → same test stayed green (rc 0). uutils 0.10.0 does not follow a directory symlink. Not treated as a red. See D8.
+PASS-BY-ACCIDENT: `chmod -R -P` → `chmod -R -L` → same test stayed green (rc 0). The fixture modes were 600 and 700, which `u+rwX` cannot change on any chmod. The cause was the fixture, not uutils. See D8 and D13.
 
 2b.2 DONE. Commit `31c326743010d3e1fb11036f287d5ac0b65521bc`. Every sandboxed call takes an exclusive nonblocking `fcntl.flock` on `$W/tmp/host-only/call.lock` before the pre-launch sweep and holds it until the after-call sweep finishes (the fd stays open across that sweep; closing it releases the lock). A second call exits 2 `BLOCKED: call in progress` and does not start a child. `drive.py` does not exist yet. Item 3 will run executors and editors through this same sandbox path, so the lock is the concurrency gate, and the upstream arguments recorded then are `propose_workers=1` and `rollout_workers=1`.
 
@@ -157,7 +167,7 @@ RED: `_acquire_call_lock` opens the file and does not flock → `test_second_cal
 
 2b.6 DONE. Commit `931b2030846d892daa15c884013cc97695483cc6`. Re-read at the OpenCode pin `23fb5e05`: `packages/opencode/src/config/managed.ts:30` returns `/etc/opencode` on Linux. `managedConfigDir()` at line 35 returns `process.env.OPENCODE_TEST_MANAGED_CONFIG_DIR || systemManagedConfigDir()`. `packages/opencode/src/config/config.ts:619-623` merges `opencode.json` and `opencode.jsonc` from that directory when it exists. The drop-in now cites `managed.ts:30` next to `config.ts:619-623`. `examples/harness2-local/README.md` cites the same lines. No runtime mutant: this sub-item is the citation. The drop of `OPENCODE_TEST_MANAGED_CONFIG_DIR` stays covered by the 2b.5 env test.
 
-### Item 3 — adapter
+### Item 3: adapter
 
 state: DONE | tests: `python3 -m unittest tests.test_harness2_local_cases tests.test_harness2_local_drive` → Ran 8 tests in 62.360s, OK | files: cases, leaks, split, pfy_adapter, drive, sbun, both test modules | err: none | commit: `3260e0228cee5344578bfad2a26076ef43bb03ec`
 
@@ -185,7 +195,7 @@ RED (each mutant restored; the tree matched the pre-mutant bytes afterward):
 - `FINAL_LABEL="c1"` → same test (`KeyError: 'c1'`).
 - every task re-reads the base harness → `test_improve_chain_adopts_and_scores_heldout` (task 2 base sha != task 1 agg sha).
 
-### Item 4 — surface
+### Item 4: surface
 
 state: DONE | tests: `python3 -m unittest tests.test_harness2_local_surface` → Ran 5 tests in 0.426s, OK. Drive and case tests re-run after `write_base` became live: Ran 8 tests in 62.413s, OK | files: surface.py, trial.py `decision_prompt`, surface tests | err: none | commit: `475f34ddc8736969db253e3ed654fd85f8bbaea1`
 
@@ -202,22 +212,74 @@ RED (restored; surface tests green afterward):
 
 Upstream `validate` on the mapped tree: 1386 always-on chars, 1 skill, 1 script, no error.
 
-### Item 5 — propose
+### Item 2c: Tester FAIL of 902e04f
+
+state: DONE | attempt 1 | tests: `python3 -m unittest discover -s tests -t .` → Ran 520 tests in 424.657s, OK (skipped=4), exit 0. Sandbox module is 40 tests. Stage module stays 8. Baseline at resume was 508.
+
+Fixes the two blockers and the should-fixes from the Tester FAIL of `902e04f`, before item 5. One commit. Decisions D13-D20.
+
+2c.1 Relay idle is 600 s on both splice sides (`RELAY_IDLE_S`). A stub that answers `/health` and stays silent for 35 s on POST then answers: child rc 0, body contains `pong-slow`, relay log `bytes_out` is not 0. RED: `RELAY_IDLE_S = 30.0` → `test_silent_post_survives_35s` FAILED (`RemoteDisconnected`). Restored. Green again.
+
+2c.2 `env.sh` sets `XDG_DATA_HOME` and `XDG_STATE_HOME` only when unset. `sbun` passes `--expose` and `--allow` from `HARNESS2_RELAY_PORT` and exits 2 `BLOCKED: relay port unknown` when the port is missing or not an integer from 1 to 65535. A real OpenCode call through `sbun` (not a stub bun), with upstream Proposer's per-workspace XDG dirs, `OPENCODE_*` vars, and `run ... --dir ... --model ... --format json`, against a stub that speaks SSE: rc 0 in 3.2 s, 2 POSTs, relay log `temperature: 0` and `seed: 230`, stdout contains `pong`. The old "answered pong in 4 s" line was not true for the previous sbun (EROFS on the state XDG dir, and no relay route). The drop-in and the README say what is true now.
+
+RED: `env.sh` forces the state XDG dirs → `test_caller_xdg_survives_env_sh` FAILED (`Read-only file system`). Restored. Green again.
+
+RED: delete `extra+=(--expose "$port" --allow "$port")` → `test_sbun_runs_real_opencode_with_proposer_env` FAILED (0 POSTs, the test's own 60 s bound). Restored. Green again.
+
+2c.3 Both watchdog waits use `WATCHDOG_GAP_S` (10 s). One 12 s `/health` blackout during a live call stays rc 0 with the marker (31.1 s). A 6 s stall of a single request does not separate the cadences: under the 0.2 s mutant it stayed green in 22.8 s, because the first probe's 5 s recv timeout uses the stall and the retry is a new request. The 12 s blackout covers two 5 s probes when the gap is 0.2 s. A dead server still ends the call with `relay down`, and the test requires that kill to land between 15 s and 35 s (about 20 s: two 5 s timeouts and one 10 s gap, plus preflight).
+
+RED: miss-path `stop.wait(0.2)` → `test_one_health_stall_does_not_kill_the_call` FAILED (`relay down`). Restored. Green again (31.1 s).
+
+2c.4 One test change per surviving mutant. Each RED was restored and the same test passed again.
+
+RED: drop the second net → `test_env_allow_list_drops_secrets_and_open_code_overrides` FAILED (`UV_PUBLISH_TOKEN` reached the child). M02d.
+
+RED: drop `config.json` from the plant list → `test_host_plants_block_and_shell_cannot_plant_runs` FAILED (the `config.json` plant was not blocked). M03c.
+
+RED: drop `/etc/opencode` from the preflight extras → `test_etc_opencode_plant_blocks` FAILED (`opencode-plant`). The overlay stand-in is `--overlay-src /etc --tmp-overlay /etc --ro-bind standin /etc/opencode --remount-ro /etc`. Local bwrap 0.11.1 has those flags, so the test did not skip. M03h.
+
+RED: `chmod -R -P` → `chmod -R -L` → `test_sweep_skips_symlinks_and_leaves_the_target` FAILED (target mode changed from 400). M05a. The earlier green run was the 600/700 fixture, not uutils. See D13.
+
+RED: default cap 1200 → `test_preflight_defaults_are_120s_and_30s` FAILED (`1200.0 != 120.0`). M09b.
+
+RED: default mount timeout 3000 → same test FAILED (`3000.0 != 30.0`). M10b.
+
+RED: workspace check wrapped in `if False` → `test_workspace_must_sit_directly_under_runs_tmp` FAILED (`workspace is not directly under RUNS/tmp` absent). Outside, nested, missing, and a symlink to outside each give rc 2 and no marker when the check is present. M15.
+
+RED: drop `--unshare-pid` → `test_unshare_pid_hides_the_host_pid` FAILED (`'yes' != 'no'`, the child saw the test PID in `/proc`). M21.
+
+M22 is 2c.1.
+
+2c.5 Stage tests plant their own `cpython-3.12.9` stand-in under a fake HOME and set `HARNESS2_PY312`. `test_existing_env_file_is_kept_byte_identical` asserts stage rc 0 and `env: kept existing .env`. RED: point `HARNESS2_PY312` at `<stand-in>-missing` → that test FAILED (`no-python312`). Restored. Green again.
+
+2c.6 The executor launcher sets `XDG_DATA_HOME` and `XDG_STATE_HOME` to `<workspace>/.ocdata` and `<workspace>/.ocstate`. RED: delete those two assignments → `test_executor_launcher_xdg_is_inside_the_workspace` FAILED (`xdg-data`, the read-only state dir). Restored. Green again.
+
+2c.7 A checkout whose realpath is under `/tmp` or `/run` exits 2 `BLOCKED: checkout under /tmp` (or `/run`) before any mount. The test points `HARNESS2_W` at a symlink. RED: delete `_refuse_ephemeral_checkout(wt)` → `test_checkout_under_tmp_or_run_is_refused` FAILED (`checkout under`). Restored. Green again. No checkout debris was created under `/tmp`.
+
+2c.8 Headings this branch added since `aed526d` used U+2014. The `## D1` through `## D12` headings, the handoff title, and the `### Item N` headings now use a colon. The count `git diff aed526d..HEAD | grep '^+' | grep -c $'\xe2\x80\x94'` is recorded after the commit.
+
+Cheap nits folded in: the dead `/var/run` `pass` in `build_bwrap` is gone (`/var` is not bound). Handoff status and `docs/TODO.md` no longer say 26 sandbox tests. The handoff Head line is updated in the docs commit that records this item's SHA.
+
+Deferred Tester nits (not in this commit): `_read_http` truncates a chunked body (`body[:0]`); preflight `find` is resolved through PATH with the venv first; `main()` treats `"--mode" in argv[:6]` as an internal mode; `check.py` only requires a venv Python version that contains "3."; the relay startup probe sends a real `GET /health` and it shows in `relay.log`; M03i and M03j (`~/.opencode`, `$XDG_CONFIG_HOME/opencode`) still survive, and the spec keeps them as guards that cannot fire on today's fresh HOME tmpfs; M04c and M04d survive and are equivalent for a non-root user.
+
+### Item 5: propose
 
 state: not started
 
+### Item 6: live
+
+state: pending
+
+### Item 7: docs
+
+state: pending
+
+### Item N: nimo-only
+
+state: pending
+
 ## Exit
 
-STOPPED_EXIT: stop-file. `$W/tmp/STOP` exists (empty file, mtime 2026-10-20 12:13 PDT, owner mark). Seen at 2026-10-20 12:20 PDT, after item 4 was green and before item 5 started. No llama-server was started in this session. Items 5, 6, 7 and checks N3, N4 held-out, N6 did not start. Local CI was not run.
+Superseded by the H1c session (START 2026-10-20T12:23:06-07:00). The H1b stop-file below was intentional so item 2c could run first. It is not a failure and not a skip.
 
-### Item 6 — live
-
-state: pending
-
-### Item 7 — docs
-
-state: pending
-
-### Item N — nimo-only
-
-state: pending
+STOPPED_EXIT: stop-file. `$W/tmp/STOP` existed (empty file, mtime 2026-10-20 12:13 PDT, owner mark). Seen at 2026-10-20 12:20 PDT, after item 4 was green and before item 5 started. No llama-server was started in that session. Items 5, 6, 7 and checks N3, N4 held-out, N6 did not start. Local CI was not run.

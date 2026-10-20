@@ -24,6 +24,12 @@ import time
 from pathlib import Path
 
 SUN_PATH_MAX = 107
+# A llama-server request may stay silent for a long prefill or while it waits
+# behind -np 1. The splice idle budget is the per-request client timeout.
+# The watchdog, not this cut, is what ends a dead relay.
+RELAY_IDLE_S = 600.0
+# Spec: a round trip every 10 s, including after a miss. Two misses kill.
+WATCHDOG_GAP_S = 10.0
 BLOCK_NAMES = (
     "opencode.json",
     "opencode.jsonc",
@@ -207,9 +213,18 @@ def resolve_py312(explicit: str | None, home: str) -> Path:
         if not str(path).startswith(home_root + os.sep) and str(path) != home_root:
             die(f"python312 not under {home_root}")
         return path
-    candidate = Path(home) / ".local/share/uv/python/cpython-3.12.12-linux-x86_64-gnu/bin/python3.12"
-    if not candidate.is_file():
+    root = Path(home) / ".local/share/uv/python"
+    preferred = root / "cpython-3.12.12-linux-x86_64-gnu/bin/python3.12"
+    found: list[Path] = []
+    if preferred.is_file():
+        found.append(preferred)
+    if root.is_dir():
+        for cand in sorted(root.glob("cpython-3.12.*/bin/python3.12")):
+            if cand.is_file() and cand not in found:
+                found.append(cand)
+    if not found:
         die("BLOCKED: no-python312")
+    candidate = found[0]
     real_bin = Path(os.path.realpath(candidate))
     probe = subprocess.run(
         [str(real_bin), "-c", "import sys; print(sys.base_prefix)"],
@@ -242,9 +257,7 @@ def build_bwrap(bwrap: str, *, home: str, harness: Path, runs: Path, ws: Path,
     ]
     for extra in hide_dirs:
         argv += ["--tmpfs", extra]
-    # /var is not bound. A real /var/run directory would be hidden only if /var were bound.
-    if os.path.isdir("/var") and not os.path.islink("/var/run") and os.path.isdir("/var/run"):
-        pass
+    # /var is not bound, so a host /var/run is not inside the sandbox.
     argv += [
         "--dev", "/dev",
         "--proc", "/proc",
@@ -464,7 +477,7 @@ def _splice(left: socket.socket, right: socket.socket) -> int:
     out = 0
     pair = [left, right]
     while True:
-        readable, _, _ = select.select(pair, [], [], 30)
+        readable, _, _ = select.select(pair, [], [], RELAY_IDLE_S)
         if not readable:
             break
         for src in readable:
@@ -721,6 +734,14 @@ def _blocked_line(text: str) -> str | None:
     return None
 
 
+def _refuse_ephemeral_checkout(wt: Path) -> None:
+    """The sandbox replaces /tmp and /run. A checkout there would be hidden."""
+    real = Path(os.path.realpath(wt))
+    for root in ("/tmp", "/run"):
+        if real == Path(root) or str(real).startswith(root + os.sep):
+            die(f"BLOCKED: checkout under {root}")
+
+
 def host_main(argv: list[str]) -> int:
     opt = _parse_cli(argv)
     bwrap = shutil.which("bwrap")
@@ -729,6 +750,7 @@ def host_main(argv: list[str]) -> int:
     assert_tools()
     home = os.environ.get("HOME") or str(Path.home())
     wt = _worktree()
+    _refuse_ephemeral_checkout(wt)
     harness = Path(opt["harness"] or (wt / "tmp" / "harness2")).resolve()
     if opt["heldout"]:
         runs = Path(opt["runs"] or (wt / "tmp" / "heldout-runs" / opt["heldout"])).resolve()
@@ -765,6 +787,7 @@ def host_main(argv: list[str]) -> int:
             "expose": opt["expose"],
             "uid": os.getuid(),
             "mount_timeout": opt["mount_timeout"],
+            "cap": opt["cap"],
             "cmd": cmd,
         }
         call_path = state / "bin" / "call.json"
@@ -825,7 +848,7 @@ def host_main(argv: list[str]) -> int:
                 while not stop.is_set() and real.poll() is None:
                     if _probe(str(sock), opt["allow"]):
                         misses = 0
-                        stop.wait(10)
+                        stop.wait(WATCHDOG_GAP_S)
                         continue
                     misses += 1
                     if misses >= 2:
@@ -835,7 +858,7 @@ def host_main(argv: list[str]) -> int:
                         except ProcessLookupError:
                             pass
                         return
-                    stop.wait(0.2)
+                    stop.wait(WATCHDOG_GAP_S)
 
             threading.Thread(target=watch, daemon=True).start()
             child_rc = real.wait()

@@ -19,6 +19,7 @@ import tempfile
 import time
 import urllib.request
 from pathlib import Path
+from urllib.parse import urlparse
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
@@ -143,6 +144,17 @@ def endpoint_up(endpoint: str, model: str) -> bool:
         return False
     suffix = model.split("/")[-1]
     return model in body or suffix in body
+
+
+def bind_relay_port(endpoint: str) -> int:
+    """Publish the endpoint port as the one source sbun and the config share."""
+    port = urlparse(endpoint).port
+    if port is None or not (1 <= int(port) <= 65535):
+        print("BLOCKED: relay port unknown (set HARNESS2_RELAY_PORT)", file=sys.stderr)
+        raise SystemExit(2)
+    os.environ["HARNESS2_RELAY_PORT"] = str(int(port))
+    common.write_opencode_config(int(port))
+    return int(port)
 
 
 def ensure_endpoint(endpoint: str, model: str) -> None:
@@ -377,6 +389,7 @@ def main(argv: list[str] | None = None) -> int:
     tempfile.tempdir = str(RUNS / "tmp")
 
     model = load_dotenv_model()
+    bind_relay_port(args.endpoint)
     boot()
     ensure_endpoint(args.endpoint, model)
 
