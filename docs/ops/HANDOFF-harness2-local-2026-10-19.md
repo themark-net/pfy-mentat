@@ -14,7 +14,7 @@ Exit: none yet (run in progress)
 | 0 drop-in | ALREADY-DONE |
 | 1 stage | DONE. Real stage re-run exit 0 (`stage: ok`, `check: ok`). HOME diff empty. Pins match. |
 | 2 sandbox | DONE. 26 behavior tests OK in 46.054s. Real OpenCode run uses the config model. N1, N2, N5 PASS. |
-| 2b fixes | 2b.1 DONE. 2b.2 DONE (28 sandbox tests OK in 51.530s). 2b.3, 2b.4, 2b.5 ALREADY-DONE in item 2. 2b.6 pending. |
+| 2b fixes | DONE. 2b.1 and 2b.2 committed. 2b.3, 2b.4, 2b.5 ALREADY-DONE in item 2. 2b.6 cites managed.ts:30 and config.ts:619-623. |
 | 3 adapter | pending |
 | 4 surface | pending |
 | 5 propose | pending |
@@ -41,7 +41,7 @@ Exit: none yet (run in progress)
 
 ## Not verified yet
 
-Local CI. Live receipt. Item 2b.6, then items 3 through 7. N3, N4 held-out/pins, N6.
+Local CI. Live receipt. Items 3 through 7. N3, N4 held-out/pins, N6.
 
 Decisions: `docs/ops/AUTONOMOUS-DECISIONS-2026-10-19-harness2-local.md`
 Run log: `docs/ops/RUN-LOG-harness2-local.md`
