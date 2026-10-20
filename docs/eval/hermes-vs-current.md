@@ -78,6 +78,8 @@ Negatives passed on both arms (zero tool calls, expected text).
 
 ## What would have to change for a re-run
 
+A meta-tools-off re-run is planned after Mark's 2026-10-20 decision to choose Hermes as the bot interface (wiring pending). Its prerequisites and the matched-thinking rule are in the [handoff](HERMES-EVAL-HANDOFF.md#founder-decision-2026-10-20).
+
 Item C (adapter plan) is skipped. A re-run is worth it only if the question changes. On this 27-task set both arms are already above 92%, and +10 points means about three more baseline misses. The intervals overlap.
 
 1. Turn off Hermes `tool_search`, `tool_describe`, and the `tool_call` batch tool so the model emits MCP calls directly. Recompute the valid rate. The success gap can stay inside the margin even if the rate recovers.

@@ -1,4 +1,4 @@
-### Entry 134: Hermes Agent — local-first bot interface eval (catalog + bake-off receipt)
+### Entry 134: Hermes Agent: local-first bot interface eval (catalog + bake-off receipt)
 
 - **URL**: https://github.com/NousResearch/hermes-agent (MIT, Python; 255,032 stars at this read via the GitHub API on 2026-10-19; default branch `main`; pinned commit `ddabd3837862022a6053331fe3ba97cf9716b9e3`, 2026-10-19, message `chore: map contributor email for calvinnwq`). Docs: https://hermes-agent.nousresearch.com/docs
 - **Date**: 2026-10-19 (build drop-in on `bot/hermes-eval`; not an X seed)
@@ -23,5 +23,5 @@
 | Score drift | A new tools.json row or a rescore pretends the runtime won the catalog | Leave the Entry 048 scores. This receipt does not promote integration stage |
 | Auto-repair claim over-read | Docs say malformed calls are repaired, so a prose JSON blob is counted as success | Bake-off oracle reads the MCP server log. Narrated calls are a failure mode, not a repair success |
 
-- **Founder decision (2026-10-20)**: Mark keeps Hermes as pfy-mentat's bot interface, for speed and RAM (bake-off p50 8.75s vs 47.38s, agent peak RSS 221 MiB vs 1.04 GiB), despite the bake-off's **NO-WIN** verdict on task success (26/27 vs 25/27, +3.70 pp, short of +10 pp) and valid tool-call rate (82.61% vs 97.83%). The eval lands as-is ([docs/eval/hermes-vs-current.md](../../docs/eval/hermes-vs-current.md), [handoff](../../docs/eval/HERMES-EVAL-HANDOFF.md)). Follow-up: re-run with Hermes `tool_search` / `tool_describe` / `tool_call` meta tools off and recompute the valid rate. No `scripts/pfy` wiring in this change; scores unchanged.
-- **Status**: Cataloged I0 awareness for the runtime. Entry 048 remains the scored pattern port. Bake-off verdict NO-WIN; founder decision above keeps Hermes as the bot interface (wiring not done). Not a Feature GO.
+- **Founder decision (2026-10-20)**: Mark chooses Hermes as the bot interface (wiring pending), for speed and RAM (bake-off p50 8.75s vs 47.38s, agent peak RSS 221 MiB vs 1.04 GiB; not like-for-like, see the handoff), despite the bake-off's **NO-WIN** verdict on task success (26/27 vs 25/27, +3.70 pp, short of +10 pp) and valid tool-call rate (82.61% vs 97.83%). The eval lands as-is ([docs/eval/hermes-vs-current.md](../../docs/eval/hermes-vs-current.md), [handoff](../../docs/eval/HERMES-EVAL-HANDOFF.md)). Follow-up: re-run with Hermes `tool_search` / `tool_describe` / `tool_call` meta tools off and recompute the valid rate. No `scripts/pfy` wiring in this change; scores unchanged.
+- **Status**: Cataloged I0 awareness for the runtime. Entry 048 remains the scored pattern port. Bake-off verdict NO-WIN; Mark chooses Hermes as the bot interface (wiring pending). Not a Feature GO.

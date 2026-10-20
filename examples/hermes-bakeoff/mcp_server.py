@@ -105,7 +105,7 @@ def _handle(message: dict, log_path: Path, task_id: str) -> dict | None:
             }
         try:
             payload = _dispatch(name, args)
-        except Exception as exc:  # noqa: BLE001 — log and return, do not kill the server
+        except Exception as exc:  # noqa: BLE001 (log and return, do not kill the server)
             row["schema_valid"] = False
             row["error"] = type(exc).__name__
             _log(log_path, row)

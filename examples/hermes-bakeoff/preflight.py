@@ -39,7 +39,7 @@ def check_ollama(base_url: str, model: str, fetch: Callable[[str], dict] | None 
         body = getter(url)
     except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError) as exc:
         return 2, f"FAIL: Ollama unreachable at {base_url} ({type(exc).__name__})"
-    except Exception as exc:  # noqa: BLE001 — any fetch failure is unreachable
+    except Exception as exc:  # noqa: BLE001 (any fetch failure is unreachable)
         return 2, f"FAIL: Ollama unreachable at {base_url} ({type(exc).__name__})"
     names = []
     for item in body.get("models") or []:

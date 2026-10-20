@@ -1,8 +1,8 @@
 # Handoff: Hermes Agent bake-off (2026-10-19)
 
-**Branch:** `bot/hermes-eval` (worktree `/home/mark/DEVELOP/pfy-mentat/tmp/hermes-eval`), cut from `origin/main` @ `b36234b` (#303). Not merged. Not a Feature GO. No production wiring. Catalog HOLD 70–75 unchanged.
+**Branch:** `bot/hermes-eval` (worktree `/home/mark/DEVELOP/pfy-mentat/tmp/hermes-eval`), cut from `origin/main` @ `b36234b` (#303). Lands on `main` by fast-forward after the Tester and Reviewer gate (no-PR flow); `origin/main` was merged in on 2026-10-20. Not a Feature GO. No production wiring. Catalog HOLD 70–75 unchanged.
 
-**Tip:** the commit `docs: Hermes eval handoff` on this branch. Parent bake-off commit `b48d634`. Entry commit `03cfbec`. On 2026-10-20 `origin/main` (`aed526d`) was merged in (no rebase), the entry was renumbered 131 to 134, and the founder decision below was recorded.
+**History on this branch:** entry `03cfbec`, bake-off `b48d634`, handoff `9b4c8f9`, merge of `origin/main` @ `aed526d` `09b1c16` (no rebase), renumber 131 to 134 `73ff535`, founder decision `02dd0af`, then the Reviewer docs fixes on top. The gated tip SHA is the one in the gate request; after the fast-forward it is `main`.
 
 ## What shipped vs open
 
@@ -29,9 +29,19 @@ Requested `num_ctx` 65536 after Hermes refused 32768. `ollama ps` `context_lengt
 
 ## Founder decision (2026-10-20)
 
-Mark lands this eval as-is and **keeps Hermes as pfy-mentat's bot interface**, chosen for speed and RAM: p50 latency 8.75s vs 47.38s, agent peak RSS 221 MiB vs 1.04 GiB. This is a product choice made despite the NO-WIN verdict, which stands: task success missed the +10 pp bar (26/27 vs 25/27, +3.70 pp, intervals overlap) and the valid tool-call rate was 15.2 pp worse (82.61% vs 97.83%). The verdict and the numbers above are not changed.
+Mark lands this eval as-is and **chooses Hermes as the bot interface (wiring pending)**, for speed and RAM: p50 latency 8.75s vs 47.38s, agent peak RSS 221 MiB vs 1.04 GiB. This is a product choice made despite the NO-WIN verdict, which stands: task success missed the +10 pp bar (26/27 vs 25/27, +3.70 pp, intervals overlap) and the valid tool-call rate was 15.2 pp worse (82.61% vs 97.83%). The verdict and the numbers above are not changed.
 
-- **Follow-up:** re-run the bake-off with Hermes `tool_search`, `tool_describe` and the `tool_call` batch tool turned off, so the model emits MCP calls directly, and recompute the valid tool-call rate (re-run item 1 in [hermes-vs-current.md](hermes-vs-current.md)).
+**The speed and RAM rows are not like-for-like.** Hermes ran with reasoning off (`reasoning_effort: "none"` in its config and `reasoning_config={"enabled": False, ...}`, `examples/hermes-bakeoff/hermes_arm.py:47,136`), and the opencode arm did not turn thinking off. `opencode run` also pays a CLI cold start on every task, while Hermes runs in-process through `AIAgent.run_conversation`. The RSS row is the agent process only and leaves out the model itself (about 23 GB for `qwen3.6:35b`, the same for both arms). So part of the latency gap is thinking and process start, not the interface.
+
+- **Follow-up:** re-run the bake-off with Hermes `tool_search`, `tool_describe` and the `tool_call` batch tool turned off, so the model emits MCP calls directly, and recompute the valid tool-call rate (re-run item 1 in [hermes-vs-current.md](hermes-vs-current.md)). The re-run must use the same thinking setting on both arms and record it.
+  Prerequisites to fix before that re-run (listed only; not done in this change):
+  1. Stronger scoring tests: 14 of 20 mutants of the scorer survive, and `aggregate`, `wilson` and `percentile` have no tests.
+  2. The fetch/chain oracle comparison.
+  3. `labels_written` is hardcoded at `examples/hermes-bakeoff/make_tasks.py:273`.
+  4. The run start time is recorded at the end of the run (`examples/hermes-bakeoff/run.py:417`).
+  5. The choice oracle accepts scattershot answers.
+  6. Make the rescore re-runnable from git (no dependence on `./tmp` transcripts).
+  7. The tool-name mismatch between `mcp__bakeoff__*` and `bakeoff_*`.
 - **Not in this change:** no `scripts/pfy` or `pfylib/` wiring and no catalog rescore. Wiring Hermes in as the bot interface is a separate change with its own gate.
 
 ## Reproduce
@@ -52,7 +62,7 @@ Offline: unittest 9 OK. pytest `-m "not live"` 9 passed, 1 deselected (`PytestUn
 - `~/.config/opencode` mtime stayed 2026-04-30. opencode XDG homes were under `./tmp/opencode-xdg` and per-task dirs under `./tmp/bakeoff/full1`.
 - No Hermes gateway, dashboard, API server, or cron. No leftover `hermes_arm`, `opencode run`, or `mcp_server.py` from this run.
 - `openclaw-gateway.service`: **inactive**, **disabled**. Not started.
-- `qwen3.6:35b` was not in `ollama ps` at session start. This eval loaded it. Cleanup sent `keep_alive: 0`. `ollama ps` is empty. No `qwen3.6-hermes-eval-*` tag was created.
+- `qwen3.6:35b` was not in `ollama ps` at session start. This eval loaded it. The scored run did **not** unload it: it found the model already resident from the probes, so `results.json` records `model_unloaded: false` and `model_left_loaded: true`, which is true for that run. The session's cleanup step after the run (outside `run.py`, so not in `results.json`) sent `keep_alive: 0`, and `ollama ps` was empty afterwards; it was also empty on 2026-10-20 at 03:31 and 11:19 PT. No `qwen3.6-hermes-eval-*` tag was created.
 - `./tmp/` left in place (git-ignored), including the pin checkout and per-task transcripts.
 
 ## Blockers
