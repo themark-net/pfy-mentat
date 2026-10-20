@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import signal
 import socket
 import stat
 import subprocess
@@ -1666,6 +1667,94 @@ print("ok")
         self.assertIn("systemprompt.md", prompt)
         self.assertIn("answer file shape", prompt)
         self.assertTrue((ws / "output" / "answer.json").is_file())
+
+    def test_sigkill_of_sbun_reaps_the_sandbox(self) -> None:
+        ws = self.box.ws()
+        sleeper = self.box.harness / "sleep30"
+        write_script(sleeper, "#!/bin/sh\nexec /bin/sleep 60\n")
+        env = self.box.env(
+            HARNESS2_REAL_BUN=str(sleeper),
+            HARNESS2_RELAY_PORT="18111",
+            HARNESS2_PY312=str(self.box.py),
+            HARNESS2_RUNS_DIR=str(self.box.runs),
+        )
+        env.pop("HARNESS2_BUN_TRACE", None)
+        proc = subprocess.Popen(
+            [str(SBUN), "sleep", "60"],
+            env=env,
+            cwd=str(ws),
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        needle = str(self.box.root)
+
+        def cmdline(pid: int) -> str:
+            try:
+                raw = Path(f"/proc/{pid}/cmdline").read_bytes()
+            except OSError:
+                return ""
+            return raw.replace(b"\x00", b" ").decode(errors="replace")
+
+        def proc_state(pid: int) -> str:
+            try:
+                stat_line = Path(f"/proc/{pid}/stat").read_text()
+            except OSError:
+                return ""
+            tail = stat_line.rsplit(")", 1)[-1].split()
+            return tail[0] if tail else ""
+
+        def running(pid: int) -> bool:
+            return proc_state(pid) not in ("", "Z")
+
+        def marked() -> set[int]:
+            found: set[int] = set()
+            for entry in Path("/proc").iterdir():
+                if not entry.name.isdigit():
+                    continue
+                pid = int(entry.name)
+                if pid == os.getpid() or not running(pid):
+                    continue
+                if needle in cmdline(pid):
+                    found.add(pid)
+            return found
+
+        def reap() -> None:
+            for pid in marked():
+                try:
+                    os.kill(pid, signal.SIGKILL)
+                except OSError:
+                    pass
+            try:
+                proc.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                pass
+            for pipe in (proc.stdout, proc.stderr):
+                if pipe is not None:
+                    pipe.close()
+
+        self.addCleanup(reap)
+        deadline = time.time() + 30
+        saw_bwrap = False
+        while time.time() < deadline and running(proc.pid):
+            if any(cmdline(pid).find("bwrap") >= 0 for pid in marked()):
+                saw_bwrap = True
+                break
+            time.sleep(0.05)
+        self.assertTrue(saw_bwrap, "bwrap never started")
+        os.kill(proc.pid, signal.SIGKILL)
+        try:
+            proc.wait(timeout=3)
+        except subprocess.TimeoutExpired:
+            pass
+        deadline = time.time() + 3
+        left = marked()
+        while time.time() < deadline:
+            left = marked()
+            if not left:
+                break
+            time.sleep(0.1)
+        self.assertEqual(left, set(), f"processes still alive after SIGKILL: {left}")
 
     def _root_0700(self) -> str | None:
         candidates = [

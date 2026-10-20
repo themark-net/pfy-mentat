@@ -33,11 +33,15 @@ if ! port=$(python3 "$HERE/common.py" relay-port); then
   exit 2
 fi
 extra+=(--expose "$port" --allow "$port")
-set +e
-python3 "$HERE/sandbox.py" --real-bun "$REAL" "${extra[@]}" -- "$@" </dev/null
-rc=$?
-set -e
 if [[ -n "${HARNESS2_BUN_TRACE:-}" ]]; then
+  # The trace needs a line after the call, so this path cannot exec.
+  set +e
+  python3 "$HERE/sandbox.py" --real-bun "$REAL" "${extra[@]}" -- "$@" </dev/null
+  rc=$?
+  set -e
   printf 'end %s %s\n' "$$" "$(date +%s%N)" >> "$HARNESS2_BUN_TRACE"
+  exit "$rc"
 fi
-exit "$rc"
+# Replace this shell. A proposer SIGKILL hits this pid, which is the sandbox,
+# and the relay (PDEATHSIG) and bwrap (--die-with-parent) die with it.
+exec python3 "$HERE/sandbox.py" --real-bun "$REAL" "${extra[@]}" -- "$@" </dev/null
