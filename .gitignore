@@ -115,6 +115,10 @@ pipelines/smoke/squadra/
 # 128-130 receipts.
 pipelines/smoke/harnessscore/
 pipelines/smoke/openlore/
+# 131-133 receipts.
+pipelines/smoke/jah/
+pipelines/smoke/aimemory/
+pipelines/smoke/headson/
 
 # agentdescent-trial promote temp files
 examples/agentdescent-trial/.results.new-*/

@@ -22,6 +22,8 @@ Ready-to-paste prompts that move the heavy work from bots to Grok Build. On 2026
 | 5 | [leasegrid.md](leasegrid.md) | `~/DEVELOP/leasegrid-c` (repo leasegrid-c) | #26 relative recovery-file path (Android) | **Yes**: pasting = RELEASE | No |
 | 6 | [lotline.md](lotline.md) | `~/DEVELOP/lotline` | Phase B kit (deal-sheet checker, kill clock, release check) | Partly: 3 FOUNDER inputs | No |
 | eval (done on this branch) | [hermes-eval.md](hermes-eval.md) | `~/DEVELOP/pfy-mentat` | Hermes Agent vs current local path, Entry 131 | No (BEST_EFFORT, not a Feature GO) | Finished. Do not start another copy while a bench holds Ollama |
+| **H1 (founder HIGH, 2026-10-19)** | [harness2-local.md](harness2-local.md) | `~/DEVELOP/pfy-mentat` (worktree `tmp/build-harness2-local`) | Harness² fully local (own `llama-server`, `qwen3.6:35b`): pinned stage, network-limited sandbox, 48-case decision adapter, edits land only on a `bot/h2-proposal-*` branch | Grok Bot launches it on nimo; no spend | Yes: `qwen3.6:35b`, quiet host, run alone |
+| **H2 (founder HIGH, 2026-10-19)** | [skill-discovery.md](skill-discovery.md) | `~/DEVELOP/pfy-mentat` (worktree `tmp/build-skill-discovery`) | Free local discover: index Monid's MIT connector registry, our catalog, public SKILL.md sets and the MCP registry; local-model ranking; intake stubs; Monid paid runs OFF | Grok Bot launches it on nimo after H1; paid runs need a separate founder OK | Short rerank only, after H1 |
 
 Why atg-framework first: your Build context is already warm on that repo. Its first part (client + mock PoC suite) runs now without touching the GLM bench. And its result decides whether the pfy-mentat slice can promote ATG past I1.
 
@@ -33,6 +35,8 @@ Repo path and mandatory reads · its own worktree and branch (never the founder 
 
 ## Changelog
 
+- 2026-10-19: added `skill-discovery.md` (H2, founder HIGH): free local discover over open registries; Monid paid runs stay off.
+- 2026-10-19: added `harness2-local.md` (H1, founder HIGH): Harness² on local models only, sandboxed, proposals as a branch for Tester and Reviewer.
 - 2026-10-19: added `hermes-eval.md` (Entry 131 bake-off). The run is on `bot/hermes-eval`. Verdict NO-WIN. Not a Feature GO.
 - 2026-10-06: added `atg-finish-autonomous.md` (row 1-alt) to the index, and pointed the toolsets drop-in at `sources/x-posts.md` for Entries 041, 049 and 051, which have no entry files.
 - 2026-10-06: added `pfy-mentat-toolsets.md` (ranking items #3, #4, #5, #7, #8) and clarified that the Leasegrid repo is leasegrid-c.

@@ -158,7 +158,30 @@ written, and fingerprint the real-HOME dirs the tool could write (`~/.harness-sc
 `~/.openlore`, `~/.pi/agent/extensions`) before the run and again in a finally: a created, deleted or changed entry
 (content, size, permissions, mtime, symlink target) FAILs, even on timeout or without bwrap, and the receipt lists the
 changed dirs in `real_home_changed`. Writes elsewhere in HOME are not watched.
+
+Entries 131-133 (`smoke_131_133.py`):
+
+```sh
+python3 examples/x-intake-local/smoke_131_133.py --entry jah       # pinned 0.1.0, stub upstream + stub System-One, loopback
+python3 examples/x-intake-local/smoke_131_133.py --entry aimemory  # pinned 3.1.1, loopback server on a temp data dir
+python3 examples/x-intake-local/smoke_131_133.py --entry headson   # pinned 0.17.1, one temp JSON fixture
+```
+
+JevAgentHarness reads `$JAH_BIN`, then `tmp/jevagentharness/.venv/bin/jah`; ai-memory reads `$AI_MEMORY_BIN`, then
+`tmp/ai-memory/ai-memory`; headson reads `$HSON_BIN`, then `tmp/headson/hson`; each falls back to PATH. The jah and
+ai-memory smokes write a stdlib driver to a temp dir and run it on system `python3` as one isolated child, so the
+proxy or server and its clients share the child's loopback (bwrap gives it no outside network). No real model, key,
+`setup`, `install` or hook registration is used. All three FAIL if their temp HOME is written and fingerprint the
+real-HOME dirs the tool could write (`~/.jah`; `~/.local/share/ai-memory`, `~/.config/ai-memory`;
+`~/.local/state/headson`) before the run and again in a finally, as for 128-130.
 OpenLore gets `TMPDIR` inside the temp dir and `OPENLORE_NO_UPDATE_NOTIFIER=1`. `PFY_XINTAKE_TIMEOUT` overrides the
 600s per-command timeout.
+
+Entries 135-136 (no smoke script; 134 is held for the Hermes entry on `bot/hermes-eval`):
+
+Monid (135) is catalog-only. Every useful path needs an account, a key or spend, and its open connector engine
+still needs each vendor's own key, so there is nothing to smoke without Mark's OK. Harness² (136) has no script
+here either: its own offline demo (`harness2-demo --k 2`, no model, no key) was run once on the Grok Bot box under
+bwrap with no network and a temp HOME, and the result is in the entry. A pinned smoke can come with an eval-auto trial.
 
 Not wired into CI or Make.
