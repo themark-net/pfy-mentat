@@ -1,4 +1,4 @@
-# Hermes bake-off (Entry 131)
+# Hermes bake-off (Entry 134)
 
 Stdlib harness that compares two tool-calling arms on the same tasks, the same model, and the same MCP server. Not a Feature GO. No gateway. No production wiring.
 

@@ -1,4 +1,4 @@
-### Entry 131: Hermes Agent — local-first bot interface eval (catalog + bake-off receipt)
+### Entry 134: Hermes Agent — local-first bot interface eval (catalog + bake-off receipt)
 
 - **URL**: https://github.com/NousResearch/hermes-agent (MIT, Python; 255,032 stars at this read via the GitHub API on 2026-10-19; default branch `main`; pinned commit `ddabd3837862022a6053331fe3ba97cf9716b9e3`, 2026-10-19, message `chore: map contributor email for calvinnwq`). Docs: https://hermes-agent.nousresearch.com/docs
 - **Date**: 2026-10-19 (build drop-in on `bot/hermes-eval`; not an X seed)

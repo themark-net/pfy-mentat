@@ -6,7 +6,7 @@
 
 ## What shipped vs open
 
-- **A shipped.** `sources/entries/131-hermes-agent.md`. TOOLS.md notes only. No new `data/tools.json` row. Scores not invented.
+- **A shipped.** `sources/entries/134-hermes-agent.md` (first written as 131; renumbered on 2026-10-20 because #304, `a393a91`, took 131). TOOLS.md notes only. No new `data/tools.json` row. Scores not invented.
 - **B shipped.** Harness `examples/hermes-bakeoff/`, tasks `data/decision-gates/hermes-bakeoff.tasks.v0.json` (27, labels before the run), results `pipelines/dogfood/hermes-bakeoff/results.json`, write-up [hermes-vs-current.md](hermes-vs-current.md).
 - **C skipped.** Verdict is NO-WIN. No `docs/plans/hermes-bot-interface.md`. What would have to change for a re-run is in the eval doc.
 - **D this file.** Pointer at the top of `docs/PENDING-HANDOFF.md`. Row for `hermes-eval.md` in `docs/build-dropins/README.md`.

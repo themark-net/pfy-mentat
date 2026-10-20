@@ -1,8 +1,8 @@
-## 2026-10-19 — Hermes Agent bake-off (Entry 131)
+## 2026-10-19 — Hermes Agent bake-off (Entry 134)
 
 - **Branch:** `bot/hermes-eval` (worktree `/home/mark/DEVELOP/pfy-mentat/tmp/hermes-eval`). Not merged. Not a Feature GO. No production wiring.
 - **Verdict:** NO-WIN. Hermes 26/27 vs `opencode run` 25/27 on `qwen3.6:35b` (+3.70 pp, need +10). Valid tool-call rate 82.61% vs 97.83%. Hermes p50 8.75s vs 47.38s. Wilson intervals overlap.
-- **Handoff:** [eval/HERMES-EVAL-HANDOFF.md](eval/HERMES-EVAL-HANDOFF.md). Write-up [eval/hermes-vs-current.md](eval/hermes-vs-current.md). Entry 131. Item C (adapter plan) skipped.
+- **Handoff:** [eval/HERMES-EVAL-HANDOFF.md](eval/HERMES-EVAL-HANDOFF.md). Write-up [eval/hermes-vs-current.md](eval/hermes-vs-current.md). Entry 134. Item C (adapter plan) skipped.
 - **Isolation:** `~/.hermes` untouched. OpenClaw inactive and disabled. Model unloaded. `./tmp/` left in place.
 
 ## 2026-10-09 — orch-decisions-1009 decide-and-ship
