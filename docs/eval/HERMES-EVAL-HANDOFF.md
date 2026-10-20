@@ -2,7 +2,7 @@
 
 **Branch:** `bot/hermes-eval` (worktree `/home/mark/DEVELOP/pfy-mentat/tmp/hermes-eval`), cut from `origin/main` @ `b36234b` (#303). Not merged. Not a Feature GO. No production wiring. Catalog HOLD 70–75 unchanged.
 
-**Tip:** the commit `docs: Hermes eval handoff` on this branch. Parent bake-off commit `b48d634`. Entry commit `03cfbec`.
+**Tip:** the commit `docs: Hermes eval handoff` on this branch. Parent bake-off commit `b48d634`. Entry commit `03cfbec`. On 2026-10-20 `origin/main` (`aed526d`) was merged in (no rebase), the entry was renumbered 131 to 134, and the founder decision below was recorded.
 
 ## What shipped vs open
 
@@ -26,6 +26,13 @@
 Failed the +10 pp success bar (+3.70 pp) and the valid-rate bar (−15.2 pp). Intervals overlap. Hermes was faster and lighter. A first scoring pass that counted Hermes `tool_search` / `tool_call` envelopes as invalid attempts said 42% valid; the published rate excludes those meta calls. NO-WIN either way. One scored pass. No second model pass.
 
 Requested `num_ctx` 65536 after Hermes refused 32768. `ollama ps` `context_length` stayed 262144 for both arms.
+
+## Founder decision (2026-10-20)
+
+Mark lands this eval as-is and **keeps Hermes as pfy-mentat's bot interface**, chosen for speed and RAM: p50 latency 8.75s vs 47.38s, agent peak RSS 221 MiB vs 1.04 GiB. This is a product choice made despite the NO-WIN verdict, which stands: task success missed the +10 pp bar (26/27 vs 25/27, +3.70 pp, intervals overlap) and the valid tool-call rate was 15.2 pp worse (82.61% vs 97.83%). The verdict and the numbers above are not changed.
+
+- **Follow-up:** re-run the bake-off with Hermes `tool_search`, `tool_describe` and the `tool_call` batch tool turned off, so the model emits MCP calls directly, and recompute the valid tool-call rate (re-run item 1 in [hermes-vs-current.md](hermes-vs-current.md)).
+- **Not in this change:** no `scripts/pfy` or `pfylib/` wiring and no catalog rescore. Wiring Hermes in as the bot interface is a separate change with its own gate.
 
 ## Reproduce
 
@@ -54,4 +61,4 @@ None that stopped the ship. Driver bugs fixed before the scored pass, each once:
 
 ## Next
 
-Tester and Reviewer gate the merge. Do not merge from this run. Do not wire `scripts/pfy` or `pfylib/`. Do not promote Hermes in the catalog. A re-run only if the question changes; the list is in [hermes-vs-current.md](hermes-vs-current.md).
+Tester and Reviewer gate the merge (no-PR flow: on a double PASS, main is fast-forwarded to the gated SHA). Do not merge from this run. Do not wire `scripts/pfy` or `pfylib/` in this change; that is a separate change after the founder decision above. Do not rescore Hermes in the catalog. Follow-up: the meta-tools-off re-run above. A re-run only if the question changes; the list is in [hermes-vs-current.md](hermes-vs-current.md).
