@@ -223,8 +223,8 @@ class PfyAdapter:
         run_id = req.run_ids[0]
         label = run_id.split("__")[-1]
         prompt = (
-            "Read cases.json. Pick one criteria key per case. "
-            "Write output/answer.json as a JSON object with an answers list."
+            "Read systemprompt.md first and follow it exactly, including the answer file shape. "
+            "Then read cases.json and write the answer file it names."
         )
         argv = self.substrate.run_argv(
             prompt, workspace, self.model, title=label or "adapt"

@@ -1625,6 +1625,48 @@ print("ok")
         self.assertNotIn(str(self.box.state), got["XDG_DATA_HOME"])
         self.assertEqual((ws / "marker").read_text().strip(), "ran")
 
+    def test_executor_prompt_names_systemprompt(self) -> None:
+        ws = self.box.ws()
+        saved_env = dict(os.environ)
+        self.addCleanup(lambda: (os.environ.clear(), os.environ.update(saved_env)))
+        import importlib.util
+        path = REPO / "examples" / "harness2-local" / "pfy_adapter.py"
+        spec = importlib.util.spec_from_file_location("h2adapt_prompt", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        adapter = mod.PfyAdapter(
+            batches={}, train_ids=[], runs=self.box.runs, model="llamacpp/qwen3.6-35b",
+        )
+        os.environ["HARNESS2_EXEC_TIMEOUT"] = "30"
+        seen: dict[str, str] = {}
+        writer = self.box.harness / "write-answer"
+        write_script(
+            writer,
+            """
+            #!/usr/bin/env python3
+            from pathlib import Path
+            Path("output").mkdir(exist_ok=True)
+            Path("output/answer.json").write_text('{"answers":[]}')
+            """,
+        )
+
+        def run_argv(prompt, *_a, **_k):
+            seen["prompt"] = prompt
+            return [str(writer)]
+
+        def run_env(_base, _workspace, **_k):
+            return os.environ.copy()
+
+        adapter.substrate.run_argv = run_argv
+        adapter.substrate.run_env = run_env
+        req = type("R", (), {"run_ids": ("case__base1",)})()
+        install = type("I", (), {"staging_dir": ws})()
+        adapter._launch(req, install)
+        prompt = seen["prompt"]
+        self.assertIn("systemprompt.md", prompt)
+        self.assertIn("answer file shape", prompt)
+        self.assertTrue((ws / "output" / "answer.json").is_file())
+
     def _root_0700(self) -> str | None:
         candidates = [
             "/etc/ssl/private",

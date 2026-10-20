@@ -93,3 +93,7 @@ Choice: `endpoint_up` accepts a 64-character `HARNESS2_GGUF_SHA` in the `/v1/mod
 ## D23: env.sh turns off the models.dev fetch
 
 Choice: `env.sh` exports `OPENCODE_DISABLE_MODELS_FETCH=1` and the other five `OPENCODE_DISABLE_*` names. An executor that exits without `answer.json` raises, including rc 0. | Alternative: leave the fetch on and allow the 0/16 score. | A live `sbun` call without the flag exits 0, prints `FailedToOpenSocket` for `https://models.dev/api.json`, writes no stdout, and sends no POST. The same call with the flag returns `pong`. The 13:54 a1 score of 0/16 had no POST and is not a base run.
+
+## D24: The executor prompt points at systemprompt.md
+
+Choice: the executor user prompt tells OpenCode to read `systemprompt.md` first and follow its answer shape. | Alternative: keep "Read cases.json" only, or accept `id` / `criteria_key` with no confidence as a parsed answer. | The 13:58 a1 call did reach the server (temperature 0, seed 230) and wrote `answer.json`, but the model ran a script that picked the first criteria key and used `id` and `criteria_key`. It never opened `systemprompt.md`. The scorer requires `case`, `choice`, and `confidence`, so the score was 0/16 with `parse_ok` 0. That run is not the base. A harness edit cannot move the score if the executor never reads the harness.

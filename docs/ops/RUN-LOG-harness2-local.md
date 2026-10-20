@@ -312,6 +312,10 @@ Invalid a1 at 13:54: rc 0, `0/16`, `parse_ok` 0, no POST. `executor.stderr` is `
 
 `env.sh` now exports the six `OPENCODE_DISABLE_*` flags. An executor with no `answer.json` raises, including rc 0. RED: drop `OPENCODE_DISABLE_MODELS_FETCH=1` from `env.sh` -> `test_env_sh_disables_models_fetch` fails (`'' != '1'`). A `sbun` call that unsets the flags in the parent, so only `env.sh` can set them, then returns rc 0, assistant text `pong.`, and two POSTs `temperature: 0` `seed: 230`.
 
+Second a1 at 13:58: rc 0, five POSTs, all `temperature: 0` `seed: 230`, `answer.json` present, score still 0/16 `parse_ok` 0. The model ran Python that picked the first criteria key and wrote `id` / `criteria_key` with no confidence. It did not open `systemprompt.md` (D24). Not a base run.
+
+The executor prompt now says to read `systemprompt.md` first and follow its answer shape. RED: put the old "Read cases.json. Pick one criteria key" prompt back -> `test_executor_prompt_names_systemprompt` fails (`systemprompt.md` absent).
+
 Next: rerun held-out base `a1`, then `a2`, with `--endpoint http://127.0.0.1:18111`, then `drive.py --k 1`.
 
 ### Item 7: docs
