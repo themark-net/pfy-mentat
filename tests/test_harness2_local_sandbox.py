@@ -659,6 +659,58 @@ class SandboxTests(unittest.TestCase):
                 self.assertEqual((ws_b / "marker").read_text().strip(), "ran")
                 self.assertTrue((ws_a / "locked").stat().st_mode & stat.S_IRUSR)
 
+    def test_sweep_skips_symlinks_and_leaves_the_target(self) -> None:
+        target = self.box.wt / "tmp" / "host-only" / "secret"
+        target.mkdir(parents=True)
+        secret = target / "file"
+        secret.write_text("token")
+        os.chmod(secret, 0o600)
+        sub = target / "sub"
+        sub.mkdir()
+        os.chmod(sub, 0o700)
+        sock_path = target / "s.sock"
+        srv = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        srv.bind(str(sock_path))
+        srv.listen(1)
+        srv.close()
+        link = self.box.runs / "tmp" / "leak"
+        link.symlink_to(target, target_is_directory=True)
+        plain = self.box.runs / "tmp" / "note.txt"
+        plain.write_text("keep")
+        finished = self.box.runs / "tmp" / "old"
+        finished.mkdir()
+        (finished / "inner").symlink_to(target, target_is_directory=True)
+        locked = finished / "locked"
+        locked.mkdir()
+        os.chmod(locked, 0)
+        ws = self.box.ws()
+        (ws / "inner").symlink_to(target, target_is_directory=True)
+        record = self.box.root / "sweep-args"
+        stub = self.box.root / "bin"
+        stub.mkdir()
+        for name, real in (("chmod", "/usr/bin/chmod"), ("find", "/usr/bin/find")):
+            write_script(stub / name, f"""
+                #!/bin/sh
+                echo "{name} $*" >> {record}
+                exec {real} "$@"
+            """)
+        env = self.box.env(PATH=f"{stub}{os.pathsep}{os.environ.get('PATH', '')}")
+        proc = run(self.box.args(ws, ["/bin/sh", "-c", f"echo ran > {ws}/marker"]), env)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual((ws / "marker").read_text().strip(), "ran")
+        self.assertEqual(stat.S_IMODE(secret.stat().st_mode), 0o600)
+        self.assertEqual(stat.S_IMODE(sub.stat().st_mode), 0o700)
+        self.assertEqual(secret.read_text(), "token")
+        self.assertTrue(sock_path.exists())
+        self.assertTrue(locked.stat().st_mode & stat.S_IRUSR)
+        self.assertEqual(plain.read_text(), "keep")
+        logged = record.read_text()
+        self.assertNotIn(str(link), logged)
+        self.assertIn(str(finished), logged)
+        self.assertIn(str(ws), logged)
+        self.assertIn(f"sweep: skip symlink {link}", proc.stderr)
+        self.assertIn(f"sweep: skip non-directory {plain}", proc.stderr)
+
     def test_sweep_failure_blocks_the_launch(self) -> None:
         stub = self.box.root / "stubs"
         stub.mkdir()

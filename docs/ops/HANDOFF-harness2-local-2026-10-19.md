@@ -14,7 +14,7 @@ Exit: none yet (run in progress)
 | 0 drop-in | ALREADY-DONE |
 | 1 stage | DONE. Real stage re-run exit 0 (`stage: ok`, `check: ok`). HOME diff empty. Pins match. |
 | 2 sandbox | DONE. 26 behavior tests OK in 46.054s. Real OpenCode run uses the config model. N1, N2, N5 PASS. |
-| 2b fixes | pending |
+| 2b fixes | 2b.1 DONE (27 sandbox tests OK in 45.204s). 2b.2–2b.6 pending. |
 | 3 adapter | pending |
 | 4 surface | pending |
 | 5 propose | pending |
@@ -27,6 +27,7 @@ Exit: none yet (run in progress)
 - Baseline: `python3 -m unittest discover -s tests -t .` → 459 tests, OK (skipped=4), exit 0. The two previously known failures passed here and are not allow-listed.
 - Item 1: `python3 -m unittest tests.test_harness2_local_stage` → Ran 8 tests in 132.068s, OK. Real `stage.sh` re-run exit 0.
 - Item 2: `python3 -m unittest tests.test_harness2_local_sandbox` → Ran 26 tests in 46.054s, OK.
+- Item 2b.1: same module → Ran 27 tests in 45.204s, OK.
 
 ## RED
 
@@ -34,10 +35,11 @@ Exit: none yet (run in progress)
 - `--version` must be `1.14.18` → `test_stub_stage_exits_0_without_preflight_module_or_harness2_check` (`check: opencode --version printed 'local'`)
 - vertex guard removed → `test_vertex_model_exits_2`
 - Item 2 mutants are listed in the run log. All were restored. The cap-stub order reversal passed by accident (the sweep does not delete that regular file).
+- 2b.1 `find -L` → `test_sweep_skips_symlinks_and_leaves_the_target` (socket deleted). Dropping the lstat skip → same test (symlink path passed to chmod and find). `chmod -R -L` stayed green on uutils 0.10.0 (PASS-BY-ACCIDENT, D8). Restored.
 
 ## Not verified yet
 
-Local CI. Live receipt. Items 2b through 7. N3, N4 held-out/pins, N6.
+Local CI. Live receipt. Items 2b.2 through 7. N3, N4 held-out/pins, N6.
 
 Decisions: `docs/ops/AUTONOMOUS-DECISIONS-2026-10-19-harness2-local.md`
 Run log: `docs/ops/RUN-LOG-harness2-local.md`

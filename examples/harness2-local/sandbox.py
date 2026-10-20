@@ -269,7 +269,11 @@ def finished_workspaces(runs: Path, current: Path) -> list[Path]:
             st = os.lstat(entry.path)
         except OSError:
             continue
-        if stat.S_ISLNK(st.st_mode) or not stat.S_ISDIR(st.st_mode):
+        if stat.S_ISLNK(st.st_mode):
+            print(f"sweep: skip symlink {entry.path}", file=sys.stderr)
+            continue
+        if not stat.S_ISDIR(st.st_mode):
+            print(f"sweep: skip non-directory {entry.path}", file=sys.stderr)
             continue
         if os.path.realpath(entry.path) == current_real:
             continue

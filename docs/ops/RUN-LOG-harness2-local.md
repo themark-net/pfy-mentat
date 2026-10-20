@@ -123,7 +123,17 @@ N3, the held-out half of N4, and N6 wait for items 3 and 6. Layout half of N4, r
 
 ### Item 2b — should-fixes
 
-state: pending
+2b.1 DONE. Sweeps list `$RUNS/tmp` with `os.scandir` and `os.lstat` and touch only real directories. Symlinks and other non-directories are skipped and logged. Commands stay `chmod -R -P u+rwX -- <ws>` and `find -P <ws> -xdev -type s -delete`. `chmod --version` is `chmod (uutils coreutils) 0.10.0`; `-P` is accepted ("do not traverse any symbolic links (default)").
+
+Test: `python3 -m unittest tests.test_harness2_local_sandbox` → Ran 27 tests in 45.204s, OK. The new case is `test_sweep_skips_symlinks_and_leaves_the_target`: a symlink under `$RUNS/tmp` and one inside a finished workspace and the live workspace all point at a host-only dir (mode 600 file, mode 700 subdir, a unix socket). After both sweeps the target modes, contents, and socket are unchanged, the real workspace is swept, the log names the skipped symlink and the skipped regular file, and the chmod/find argv record does not name the symlink.
+
+RED: `find -P` → `find -L` in `_sweep_one` → `test_sweep_skips_symlinks_and_leaves_the_target` FAILED (`sock_path.exists()` is false). Restored. Green again inside the same script (rc 0).
+
+RED: drop the lstat skip → same test FAILED. The argv record contained the symlink path and `note.txt`. Target modes were unchanged because the commands were still `-P`. Restored.
+
+PASS-BY-ACCIDENT: `chmod -R -P` → `chmod -R -L` → same test stayed green (rc 0). uutils 0.10.0 does not follow a directory symlink. Not treated as a red. See D8.
+
+2b.2 through 2b.6: pending. 2b.3, 2b.4, and 2b.5 were already proven in the item 2 RED list (`--setenv X 1`, cap-stub order, `OPENCODE_TEST_MANAGED_CONFIG_DIR`). They will be logged ALREADY-DONE when that pass is written. No extra commit unless a gap shows up.
 
 ### Item 3 — adapter
 
