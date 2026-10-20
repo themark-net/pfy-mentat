@@ -3,6 +3,21 @@
 **Purpose:** Single ordered work queue for humans and agents.  
 **Design:** [DESIGN.md](DESIGN.md) · **ADRs:** [adr/](adr/README.md) · **Open questions:** [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md)
 
+## Harness² local (H1, 2026-10-20)
+
+Branch `bot/h1-harness2`. Not a Feature GO. Catalog HOLD 70-75 stays. Run log: [RUN-LOG-harness2-local.md](ops/RUN-LOG-harness2-local.md).
+
+| ID | Item | Status |
+|----|------|--------|
+| H1-1 | Pinned local stage (`examples/harness2-local`) | done (stage re-run exit 0, 8 tests OK) |
+| H1-2 | Network-limited sandbox | pending |
+| H1-2b | Final-gate should-fixes | pending |
+| H1-3 | 48-case adapter and driver | pending |
+| H1-4 | Surface map and write allow-list | pending |
+| H1-5 | Proposal branch, never merges | pending |
+| H1-6 | Live llama-server run | pending |
+| H1-7 | Docs and catalog row | pending |
+
 
 ## G8 — Simple harness-agnostic launch (2026-07-31)
 
