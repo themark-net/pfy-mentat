@@ -262,9 +262,12 @@ class PfyAdapter:
         answer = workspace / "output" / "answer.json"
         if answer.is_file():
             shutil.copy2(answer, out / "answer.json")
-        elif proc.returncode != 0:
+        else:
+            # A models.dev failure exits 0 with no POST and no answer. That is
+            # not a scored run.
             raise RuntimeError(
-                f"executor rc={proc.returncode}: {(proc.stderr or '')[-300:]}"
+                f"executor rc={proc.returncode} produced no answer.json: "
+                f"{(proc.stderr or '')[-300:]}"
             )
         return [run_dir]
 

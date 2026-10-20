@@ -89,3 +89,7 @@ Choice: `propose.py` reads a receipt with `install_mode`, `heldout.a1`, `heldout
 ## D22: Blob id counts as the model, and qwen thinking stays off
 
 Choice: `endpoint_up` accepts a 64-character `HARNESS2_GGUF_SHA` in the `/v1/models` body, and strips one trailing `/v1`. The generated model options add `chat_template_kwargs.enable_thinking: false` next to temperature 0 and seed 230. | Alternatives: require the OpenCode name in the body; restart llama-server with a thinking flag the lane script does not pass; rename the model so it does not contain `qwen`. | This server lists the blob digest `d372de8e...` and still accepts `llamacpp/qwen3.6-35b` on chat completions. A direct call with thinking left on returned empty `content` and `finish_reason: length`. The same call with `enable_thinking: false` returned `pong`. OpenCode forwards unknown `@ai-sdk/openai-compatible` provider options into the JSON body, which is how seed 230 already arrives. The lane script is unchanged.
+
+## D23: env.sh turns off the models.dev fetch
+
+Choice: `env.sh` exports `OPENCODE_DISABLE_MODELS_FETCH=1` and the other five `OPENCODE_DISABLE_*` names. An executor that exits without `answer.json` raises, including rc 0. | Alternative: leave the fetch on and allow the 0/16 score. | A live `sbun` call without the flag exits 0, prints `FailedToOpenSocket` for `https://models.dev/api.json`, writes no stdout, and sends no POST. The same call with the flag returns `pong`. The 13:54 a1 score of 0/16 had no POST and is not a base run.

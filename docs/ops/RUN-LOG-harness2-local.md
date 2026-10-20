@@ -308,7 +308,11 @@ Green: `EndpointTests` 2 tests OK. `test_sbun_runs_real_opencode_with_proposer_e
 
 Fix commit: `ba0d371b79bf26babaa10602f5f689ecd5acf1cd`, pushed fast-forward onto `a2f934d`.
 
-Next: held-out base runs `a1` and `a2` with `--endpoint http://127.0.0.1:18111` (no `/v1` suffix), then `drive.py --k 1`.
+Invalid a1 at 13:54: rc 0, `0/16`, `parse_ok` 0, no POST. `executor.stderr` is `FailedToOpenSocket` for `https://models.dev/api.json`. OpenCode exits 0 with empty stdout when that fetch fails (D23). Not a base run.
+
+`env.sh` now exports the six `OPENCODE_DISABLE_*` flags. An executor with no `answer.json` raises, including rc 0. RED: drop `OPENCODE_DISABLE_MODELS_FETCH=1` from `env.sh` -> `test_env_sh_disables_models_fetch` fails (`'' != '1'`). A `sbun` call that unsets the flags in the parent, so only `env.sh` can set them, then returns rc 0, assistant text `pong.`, and two POSTs `temperature: 0` `seed: 230`.
+
+Next: rerun held-out base `a1`, then `a2`, with `--endpoint http://127.0.0.1:18111`, then `drive.py --k 1`.
 
 ### Item 7: docs
 

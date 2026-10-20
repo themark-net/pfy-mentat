@@ -1438,6 +1438,17 @@ print("ok")
             self.assertEqual(proc.returncode, 2, proc.stderr)
             self.assertIn(f"BLOCKED: checkout under {root}", proc.stderr)
 
+    def test_env_sh_disables_models_fetch(self) -> None:
+        env_sh = REPO / "examples" / "harness2-local" / "env.sh"
+        proc = subprocess.run(
+            ["bash", "-c", f"set -a; source {env_sh}; printf %s \"$OPENCODE_DISABLE_MODELS_FETCH\""],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(proc.stdout, "1")
+
     def test_caller_xdg_survives_env_sh(self) -> None:
         ws = self.box.ws()
         data = ws / ".ocdata"

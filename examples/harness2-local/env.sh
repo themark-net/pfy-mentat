@@ -27,4 +27,12 @@ export XDG_CACHE_HOME="$_H2L_STATE/xdg-cache"
 : "${XDG_STATE_HOME:=$_H2L_STATE/xdg-state}"
 export XDG_DATA_HOME XDG_STATE_HOME
 export OPENCODE_CONFIG="$_H2L_STATE/opencode.json"
+# The sandbox has no route to models.dev. Without these, OpenCode's startup
+# fetch fails and `run` still exits 0 with an empty stdout and no POST.
+export OPENCODE_DISABLE_MODELS_FETCH=1
+export OPENCODE_DISABLE_AUTOUPDATE=1
+export OPENCODE_DISABLE_LSP_DOWNLOAD=1
+export OPENCODE_DISABLE_DEFAULT_PLUGINS=1
+export OPENCODE_DISABLE_EXTERNAL_SKILLS=1
+export OPENCODE_DISABLE_CLAUDE_CODE=1
 unset _H2L_HERE _H2L_STATE
