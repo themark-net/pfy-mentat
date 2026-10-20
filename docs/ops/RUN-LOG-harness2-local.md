@@ -78,7 +78,48 @@ Real stage (2026-10-20, `$W/tmp/state/stage-rerun.log`, exit 0):
 
 ### Item 2 — sandbox
 
-state: pending
+state: DONE | tests: `python3 -m unittest tests.test_harness2_local_sandbox` → Ran 26 tests in 46.054s, OK | files: `examples/harness2-local/sandbox.py`, `examples/harness2-local/sbun`, `tests/test_harness2_local_sandbox.py`, D7 sentence in `docs/build-dropins/harness2-local.md` | err: none
+
+Real OpenCode at the pin, through the sandbox, against a stub server: one `POST /v1/chat/completions` with `model=qwen3.6-35b`, relay log `temperature: 0` and `seed: 230`, no `PLANT-CANARY`. A host plant at `$RUNS/opencode.json` then exits 2 `BLOCKED: opencode-plant` before the child, with no later POST.
+
+`config.BUN` is `examples/harness2-local/sbun` as a `pathlib.Path`. `OpencodeSubstrate().preflight()` passes that way. The sbun stdin test leaves the parent pipe open (`communicate()` closes stdin, and the first RED missed because of that).
+
+RED (each mutant restored; the suite above is the restored tree):
+
+- canary control binds of `canary.txt` and `.ssh` → `test_canary_home_is_unreadable` (token read twice, child rc 0)
+- bind the worktree instead of `$W/tmp/harness2` → `test_answer_files_and_id_map_are_absent_inside` (cases file visible)
+- write the id map into `$W/tmp/state` → same test (map visible)
+- skip the socket preflight → `test_socket_in_runs_blocks_before_child` (child rc 0)
+- unpruned `find` on every mount → `test_unreadable_dir_and_clean_etc_layout` (`BLOCKED: sandbox-socket rc=1 mount=/usr`)
+- prune every mount without the owner rule → `test_owned_000_blocks_then_recovers` (launch rc 0)
+- allow sockets anywhere under state → `test_socket_outside_state_r_blocks` (launch rc 0)
+- remove the plant walk → `test_host_plants_block_and_shell_cannot_plant_runs` (launch rc 0)
+- walk the host view → `test_nimo_shaped_home_hides_host_agents` (`BLOCKED: opencode-plant .../wt/.opencode`)
+- remove the workspace sweep → `test_sweep_lets_the_next_call_run` (mode stays `000`)
+- remove the preflight cap → `test_preflight_cap_records_the_stub_before_the_next_launch` (error at the test's 20s timeout)
+- match `OPENCODE_` as a prefix → `test_env_allow_list_drops_secrets_and_open_code_overrides` (`OPENCODE_CONFIG_DIR` arrives)
+- remove the relay watchdog → `test_relay_kill_ends_the_call_and_the_next_call_runs` (call did not end)
+- bind state read-write → `test_writes_outside_workspace_are_erofs` (write to `opencode.json` succeeds)
+- drop `</dev/null` from sbun → `test_sbun_closes_stdin` (blocked on the open pipe)
+- bind the runs parent during training → `test_heldout_runs_are_not_visible_to_training` (`seen` is `yes`)
+- drop `/run` tmpfs and `--hide-dir` → `test_hidden_unix_sockets_and_live_paths` (preflight blocks the stub socket; the child does not start)
+- relay ignores `--allow` → `test_allow_list_forwards_only_A` (B returns 200)
+- drop `--unshare-net` → same test (C opens, and `1.1.1.1:443` opens)
+- `--setenv X 1` on the real call only → `test_preflight_and_real_bwrap_argv_match` (argv prefixes differ)
+- fake HOME under the state bind → `test_canary_home_is_unreadable` (token read twice). A first try was invalid: the stand-in `~/.opencode` was visible and the plant check blocked before the read.
+- launch the next call before the cap-stub check → PASS-BY-ACCIDENT. The record is a regular file in the same workspace, and the sweep deletes sockets only, so the reversed order still passed. The test keeps the check before the next launch.
+
+Re-read at the OpenCode pin: `packages/opencode/src/config/managed.ts:30` returns `/etc/opencode` on Linux; `managedConfigDir()` at line 35 uses `OPENCODE_TEST_MANAGED_CONFIG_DIR` or that path. `config.ts:619-623` merges `opencode.json` and `opencode.jsonc` from that directory. The spec citation is item 2b.6.
+
+### Item N checks recorded with item 2
+
+N1 PASS. Command: `python3 /tmp/h2-nimo.py` (real harness, real runs, real state, real `PY312`, real HOME). Child `test -e` was false for `$W/AGENTS.md`, `$W/.opencode`, the founder checkout `AGENTS.md`, `~/.opencode`, `~/.config/opencode`, `/etc/opencode`, and the cases file. Walk inside, then `PREFLIGHT_OK`: `$RUNS/tmp`, `$RUNS`, `$W/tmp`, `$W`, `.../tmp`, `.../DEVELOP`, `/home/mark`, `/home`, `/`, then `/etc/opencode`, `/home/mark/.opencode`, `/home/mark/.config/opencode`. Planted `$RUNS/tmp/AGENTS.md` → exit 2 `BLOCKED: opencode-plant` naming that path, marker absent. Plant removed.
+
+N2 PASS. `bwrap --version` is `bubblewrap 0.11.1`. Captured argv (preflight and the real call, same flags): `--ro-bind /usr /usr`, symlinks for `/bin` `/sbin` `/lib` `/lib64` and `/lib32` (`/usr/lib32` exists), `--ro-bind /etc /etc`, `--tmpfs /home/mark`, read-only `PY312` (`cpython-3.12.12-linux-x86_64-gnu`), read-only harness, read-only runs, writable workspace, read-only state, `--tmpfs /tmp`, `--tmpfs /run`, `--dev /dev`, `--proc /proc`, `--unshare-net`, `--unshare-pid`, `--die-with-parent`. Relay socket `$W/tmp/state/r/s` was a socket inside the child (`SOCK yes`). Child stderr was empty: no AppArmor denial text. `dmesg` was not used.
+
+N5 PASS. The same find the preflight uses, inside the real sandbox, total 1.151s (outer call 3.79s). Slowest mounts: harness 0.405s, `/usr` 0.400s, state 0.302s (the one allowed relay socket). Every mount rc 0. No socket outside `$W/tmp/state/r/`. The 120s cap fits. It is not raised.
+
+N3, the held-out half of N4, and N6 wait for items 3 and 6. Layout half of N4, recorded now: `PY312` realpath is the cpython-3.12.12 root above; `/usr/lib32` exists; `/var/run` is a symlink to `/run`.
 
 ### Item 2b — should-fixes
 

@@ -10,7 +10,7 @@ Branch `bot/h1-harness2`. Not a Feature GO. Catalog HOLD 70-75 stays. Run log: [
 | ID | Item | Status |
 |----|------|--------|
 | H1-1 | Pinned local stage (`examples/harness2-local`) | done (stage re-run exit 0, 8 tests OK) |
-| H1-2 | Network-limited sandbox | pending |
+| H1-2 | Network-limited sandbox | done (26 sandbox tests OK; N1 N2 N5 PASS) |
 | H1-2b | Final-gate should-fixes | pending |
 | H1-3 | 48-case adapter and driver | pending |
 | H1-4 | Surface map and write allow-list | pending |
