@@ -603,5 +603,23 @@
       "primary runtime"
     ],
     "next_gate": "PASS make smoke-kolibri1 with verified GGUF, then consider I1; Vulkan/GPU needs Mark approval."
+  },
+  "harness2": {
+    "potential": "medium",
+    "uses": "Local harness edit trial on the 48-case decision set, sandboxed OpenCode, own llama-server.",
+    "features": [
+      "pinned stage",
+      "one-port sandbox",
+      "chain driver",
+      "proposal gate that does not merge"
+    ],
+    "non_goals": [
+      "feature_go",
+      "I3",
+      "proposal_branch_on_a_failed_gate",
+      "vertex_or_paid_keys",
+      "catalog_hold_70_75"
+    ],
+    "next_gate": "Stay I1. I3 only after a proposal gate pass (gain at least 2 on the 16 held-out cases) and a human merge. This trial's gain was 0."
   }
 }

@@ -1577,6 +1577,8 @@ print("ok")
             import json, os
             from pathlib import Path
             Path("marker").write_text("ran")
+            Path("output").mkdir(exist_ok=True)
+            Path("output/answer.json").write_text('{"answers":[]}')
             Path("env.json").write_text(json.dumps({
                 "XDG_DATA_HOME": os.environ.get("XDG_DATA_HOME", ""),
                 "XDG_STATE_HOME": os.environ.get("XDG_STATE_HOME", ""),
