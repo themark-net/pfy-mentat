@@ -288,7 +288,7 @@ Commit: `4bd065de7a2366149dac47f4c9cf964e31e65f20`. Pushed fast-forward to `orig
 
 ### Item 6: live
 
-state: in progress. Load gates passed at 2026-10-20T13:37 PDT. Item clock starts 2026-10-20T13:42 (own 3h cap, stop this item by about 16:42). Server pid 425470, pgid 425470, port 18111. Not stopped yet.
+state: DONE. Load gates passed at 2026-10-20T13:37 PDT. Item clock starts 2026-10-20T13:42 (own 3h cap, stop this item by about 16:42). Finished inside that cap. Server pid 425470, pgid 425470, port 18111, still up after scoring (stopped only at the session exit).
 
 Quiet host: `ollama ps` printed only the header. No other `llama-server` and no `bench.py`. Port 18080 is monerod (pid 1163482). It was not touched. Our server uses 127.0.0.1:18111.
 
@@ -320,17 +320,37 @@ Third a1 at 14:03:49-14:04:37 after `fb2d5dc`: rc 0, 15/16, `parse_ok` 1.0, `wro
 
 Base a2 at 14:05:51-14:06:40: rc 0, 15/16, `parse_ok` 1.0, `wrong_but_confident` 1, `n_escalate` 1. Same shape: read `systemprompt.md`, then `cases.json`. Choice diffs vs a1: t35 (a1 wrong `drop`, a2 right `keep`) and t45 (a1 right `qwen3-coder:30b`, a2 wrong `tool:bare`). Correct-count gap is 0. Better base is 15/16. Five POSTs, all `temperature: 0` `seed: 230`. Receipt copy: `tmp/host-only/receipt-a2.json`.
 
-Train started 14:07:53, `drive.py --k 1`, timeout 8400 s. Task train-1 finished by 14:22: base1 6/8, agg1 6/8, `kept_base=False` (tie adopts agg1). Every POST in `tmp/state/relay.log` so far is `temperature: 0` `seed: 230` (122 lines, 0 mismatches). Task 2 editor was in flight.
+Train started 14:07:53, `drive.py --k 1`, timeout 8400 s, finished 14:47:01 (2348 s). Task train-1: base1 6/8, agg1 6/8, `kept_base=False` (tie adopts agg1). The only tree change is an empty `LongTermMEMORY.md` (sha256 of the empty file `e3b0c442...`). train-2 base1 7/8 agg1 7/8, train-3 both 7/8, train-4 both 8/8. Each kept_base is false and the tree sha stays `fb0796e748b717678a7b38d3ca7747cdcb1679e30c34eca2b3afa6033c1c0f30` after train-1. Step c (held-out on that chain final) is 15/16, parse_ok 1.0, wrong-but-confident 1. Better base is a1 (correct tie, a1 wrong-but-confident is not higher than a2). Gain 0. The gate needs 2. Maximum possible score is 16, so a rerun cannot clear the gate. No `bot/h2-proposal-*` branch. `git ls-remote --heads origin 'bot/h2-proposal-20261020*'` was empty. Proposal receipt `tmp/host-only/proposal-receipt.json`: negative_finding gain, status DONE.
 
-Next: finish train-2, train-3, train-4. Step c runs because the chain already adopted.
+Relay: 288 POSTs, temperature 0 and seed 230 on every one (`relay_posts_bad_temperature` 0, `relay_posts_bad_seed` 0). Prompt-eval peak 24231 tokens. Two calls `truncated = 1` at `n_tokens = 32767`. First prompt-eval sizes were 30, 17, 31, then 6, 4, 4, 6, 559, then 10349. D25: do not raise ctx. Memory floor not hit: min during model load 34984468 kB, min during the scoring window 52210068 kB, floor 16777216 kB. `reused_replies` 0. PINS match the receipt (harness2 `1cfe254`, OpenCode `23fb5e0`, stripped sha `ab0ee29b`).
+
+Receipt committed: `pipelines/dogfood/harness2-local/receipt.json` in `c26ad1a204177ae8b3fc4b7025513c86cab24194`. Code sha inside the receipt is `fb2d5dc` (the prompt fix). The server was left up for N4 and N6.
+
+### Item 6 close: N6 sbun exec
+
+state: DONE as part of check N6, committed before the catalog row.
+
+`sbun` waited on `sandbox.py`, so a proposer `subprocess.run(timeout=)` SIGKILL hit only the shell. The first live N6 at 14:53 left sandbox.py, the relay, and bwrap up, and the next call exited 2 `BLOCKED: call in progress`. The non-trace path now `exec`s `sandbox.py`. The trace path still waits so it can write the end line. Relay already sets PDEATHSIG. bwrap already has `--die-with-parent`.
+
+RED: put the wait form back -> `test_sigkill_of_sbun_reaps_the_sandbox` FAILED with sandbox.py, the relay, and bwrap still alive. Restored exec. The same test passed in 0.243 s (it waits until bwrap is in the tree, then SIGKILLs the sbun pid). Commit `6f6034616c14e2bce697690c111b263ac3c19204`, pushed fast-forward.
+
+Live N6 after that commit, 2026-10-20T15:04:17-0700 to 15:04:43, log `tmp/host-only/n6-live2.log`. `HARNESS2_EXEC_TIMEOUT=12` only inside that process. Production wall stays 900. Proposer: `timeout after 12s`, `PROPOSER_AFTER 0`. Executor: rc 124 (the launcher `timeout`), no answer.json, `EXEC_AFTER 0`. A mode `0o0` dir planted under `harness2-runs/tmp` was swept to `0o700` by the next `sandbox.py` call, which exited 0 and wrote `marker`. `FINAL_OURS 0`. Call lock free. llama-server pid 425470 still health 200. Those processes were ones this session started. Nothing else was killed.
 
 ### Item 7: docs
 
-state: pending
+state: pending (catalog I1 is the next commit)
 
 ### Item N: nimo-only
 
-state: pending
+N1, N2, N3, N5 were already PASS (see the sections above and the handoff). N4 and N6:
+
+N4 PASS. Capture `tmp/host-only/n4-mount.txt` (mtime 2026-10-20 14:51:42 -0700). A sandbox call with `--heldout a1 --expose 18111 --allow 18111` and workspace `tmp/heldout-runs/a1/tmp/n4-mount` printed: `/lib32` is a symlink to `usr/lib32` (host `/usr/lib32` exists; PY312 realpath is `/home/mark/.local/share/uv/python/cpython-3.12.12-linux-x86_64-gnu/bin/python3.12`). Inside the child, `tmp/harness2-runs` does not exist, `tmp/heldout-runs/a1` exists, `heldout-runs/c` and `heldout-runs/a2` do not. Mounts: `/usr` ro, the PY312 tree ro, `tmp/harness2` ro, `tmp/heldout-runs/a1` ro, that call's workspace rw, `tmp/state` ro. `tmp/harness2-runs/_audit/PINS.json` matches the receipt pins (harness2, OpenCode, stripped sha256 `ab0ee29bbe75b46d33248729f9c4dd61376ec357275c8debf6efdb4d296e1b7e`, seed 230, temperature 0, ctx 32768).
+
+N6 PASS. Evidence is the item 6 close above. Command: `tmp/harness2/.venv/bin/python tmp/h1c-n6.py` with `examples/harness2-local/env.sh` sourced and `PYTHONPATH=examples/harness2-local`. Short walls of 12 s are only in that check.
+
+### D25 note
+
+See the decisions file. Ctx stays 32768. The first editor or executor prompt did not exceed 24k tokens (first large prompt-eval was 10349). The later peak was 24231. Two calls still hit `truncated = 1` at 32767. MemAvailable during scoring stayed near 49.8 GiB, so the 25 GiB headroom was there, and the first-prompt condition was not. A rerun cannot gain 2 correct cases. The server was not restarted.
 
 ## Exit
 

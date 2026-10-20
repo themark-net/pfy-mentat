@@ -97,3 +97,7 @@ Choice: `env.sh` exports `OPENCODE_DISABLE_MODELS_FETCH=1` and the other five `O
 ## D24: The executor prompt points at systemprompt.md
 
 Choice: the executor user prompt tells OpenCode to read `systemprompt.md` first and follow its answer shape. | Alternative: keep "Read cases.json" only, or accept `id` / `criteria_key` with no confidence as a parsed answer. | The 13:58 a1 call did reach the server (temperature 0, seed 230) and wrote `answer.json`, but the model ran a script that picked the first criteria key and used `id` and `criteria_key`. It never opened `systemprompt.md`. The scorer requires `case`, `choice`, and `confidence`, so the score was 0/16 with `parse_ok` 0. That run is not the base. A harness edit cannot move the score if the executor never reads the harness.
+
+## D25: Do not raise ctx after the live run
+
+Choice: keep ctx 32768. Do not restart llama-server and do not rerun the chain. | Alternatives: raise ctx to 49152 and rerun; treat the two truncated calls as a failed item. | The spec raises ctx to 49152 only when the first editor or executor prompt exceeds 24k tokens and MemAvailable still has 25 GiB of headroom. Prompt-eval sizes start at 30, 17, 31. The first large one is 10349. The peak is 24231, and two later calls log `truncated = 1` at `n_tokens = 32767`. The first-prompt condition is not met. Scoring-window MemAvailable stayed about 49.8 GiB, so headroom alone would not have blocked a raise. The held-out score is 15/16 against a better base of 15/16. The best possible rerun is 16/16, a gain of 1, and the gate needs 2.
