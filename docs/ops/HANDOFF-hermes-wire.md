@@ -12,7 +12,7 @@ Branch `bot/hermes-wire`. Worktree `/home/mark/DEVELOP/pfy-mentat/tmp/hermes-wir
 | Oracles, stamps, git rescore | `9f44be1af22ea5a5a8dba8216568d64df852dd4d` |
 | Wording, speed caveat, millisecond TTFT | `e215cb8a4b51d04c78747df61aa30967a72102a8` |
 
-Handoff commit: `43391e1f0913932a67bdfd161e0ceea47edbc8a3` (this file, on top of `3500119`). Stamp commit: `dee785691e1351b5f4a393e45d462d350844879a`. Pushed tip that names that stamp: `363eefb453f5bced7357388ecb45ec2aa68394d2`. Tester and Reviewer gate the branch tip. A child that only records `363eefb` does not change the work.
+Handoff commit: `43391e1f0913932a67bdfd161e0ceea47edbc8a3` (this file, on top of `3500119`). Stamp commits `dee7856`, `363eefb`, `7b80757` and the 2026-10-21 08:05 PT check commit are docs only. Status: session finished (end event, end_turn) and the branch is ready to gate. Tester and Reviewer gate the branch tip, which is the commit that adds this line; its SHA is pinned in the gate request because a commit cannot name itself.
 
 ## Status
 
