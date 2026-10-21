@@ -54,7 +54,11 @@ Also report a Wilson 95% interval on each arm's task success. If the intervals o
 | Ollama down or tag missing | A run would sit until timeout and look like a model failure | `--check` exits 2 with `FAIL` and does not load a model |
 | Schema-invalid args counted as success | A bad call still "did something" | Server logs `schema_valid: false` and returns `isError`. The scorer does not pass the task on that call |
 | Narrated JSON counted as a call | The model prints a fence and the oracle trusts prose | Narrate is true only when the server log has no call. A real server call is not narrate |
-| Right tool, wrong args | The tool ran, so the task looks done | Oracle requires the labeled arguments. Wrong args fail |
+| Right tool, wrong args | The tool ran, so the task looks done | Oracle requires the labeled arguments. Wrong args fail. A matching call still passes |
+| Scattershot choices | One correct `submit_choice` hides other guesses | More than one distinct choice fails, even when one equals the label. The same choice twice is a retry |
+| Stale fetch or chain label | The model copies a drifted label and looks correct | The scorer recomputes the fixture. Disagreement is `oracle drift` and fails closed |
+| Prefixed tool names | Hermes logs `mcp__bakeoff__*` and opencode logs `bakeoff_*` | Both prefixes are stored and scored as the short server name |
+| Rescore needs `./tmp` transcripts | A checkout without the old work dir cannot be scored | `--rescore` uses the committed results JSON and the task file only |
 | Margin just under +10 pp | A small edge is written up as a win | The rule is `>= +10 pp`. Just under is NO-WIN |
 | Hermes reads `~/.hermes` | Mark's home config or keys enter the run | The guard exits before import if `HERMES_HOME` is unset or under `~/.hermes` |
 | Context windows differ | One arm is faster because it saw less context | A refusal below 64k moves **both** arms to 65536 |
@@ -82,3 +86,11 @@ HERMES_BAKEOFF_LIVE=1 python3 -m pytest tests/test_hermes_bakeoff.py -m live
 ```
 
 Results: `pipelines/dogfood/hermes-bakeoff/results.json`. Write-up: `docs/eval/hermes-vs-current.md`.
+
+Recompute that receipt without `./tmp` transcripts (stdout unless `--out` is some other path, so the published file is not overwritten):
+
+```bash
+python3 examples/hermes-bakeoff/run.py \
+  --rescore pipelines/dogfood/hermes-bakeoff/results.json \
+  --out pipelines/dogfood/hermes-bakeoff/results-rescored.json
+```

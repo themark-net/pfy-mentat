@@ -100,9 +100,13 @@ def openai_tools() -> list[dict[str, Any]]:
 
 
 def server_name(wire_or_server: str) -> str:
-    if wire_or_server.startswith(WIRE_PREFIX):
-        return wire_or_server[len(WIRE_PREFIX) :]
-    return wire_or_server
+    """Short tool name. Hermes uses mcp__bakeoff__X. opencode uses bakeoff_X."""
+    name = wire_or_server or ""
+    if name.startswith(WIRE_PREFIX):
+        name = name[len(WIRE_PREFIX) :]
+    if name.startswith("bakeoff_"):
+        name = name[len("bakeoff_") :]
+    return name
 
 
 def validate_args(name: str, args: Any) -> tuple[bool, str]:

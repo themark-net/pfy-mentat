@@ -15,13 +15,20 @@ import subprocess
 import sys
 import time
 import urllib.request
-from datetime import datetime, timezone
 from pathlib import Path
 
-from mcp_server import parse_ts
+from mcp_server import parse_ts, stamp_now
 from peak import PeakSampler
 from preflight import MEM_FLOOR_KIB, check_ollama, mem_available_kib
-from score import aggregate, count_attempts, intervals_overlap, margin_verdict, normalize_client_calls, score_task
+from score import (
+    aggregate,
+    count_attempts,
+    intervals_overlap,
+    margin_verdict,
+    normalize_client_calls,
+    rescore_payload,
+    score_task,
+)
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
@@ -274,6 +281,8 @@ def run_live(args) -> int:
         return code
     loaded_at_start = ollama_ps(args.base_url)
     model_was_loaded = args.model in loaded_at_start
+    # Recorded before any task and before the end-of-run ollama ps.
+    started_at = stamp_now()
     # The 22+25 GiB floor is the pre-load gate. Once this model is already
     # resident, another 22 GiB is not allocated; keep 8 GiB free and continue.
     if model_was_loaded:
@@ -411,7 +420,7 @@ def run_live(args) -> int:
             "model_loaded_at_start": model_was_loaded,
             "ollama_ps_at_start": loaded_at_start,
             "ollama_ps_after_tasks": ollama_ps_body(args.base_url),
-            "started": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "started": started_at,
         },
         "verdict": verdict,
         "verdict_failures": reasons,
@@ -456,7 +465,23 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--skip-ctx-probe", action="store_true")
     parser.add_argument("--keep-model", action="store_true")
     parser.add_argument("--live", action="store_true")
+    parser.add_argument("--rescore", default="", help="recompute a committed results JSON; no ./tmp transcripts")
     args = parser.parse_args(argv)
+    if args.rescore:
+        results_path = Path(args.rescore)
+        tasks_path = Path(args.tasks)
+        payload = json.loads(results_path.read_text(encoding="utf-8"))
+        bundle = json.loads(tasks_path.read_text(encoding="utf-8"))
+        scored = rescore_payload(payload, bundle["tasks"])
+        text = json.dumps(scored, indent=2) + "\n"
+        if args.out and args.out != str(DEFAULT_OUT):
+            out = Path(args.out)
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text(text, encoding="utf-8")
+            print(f"rescored {out}")
+        else:
+            sys.stdout.write(text)
+        return 0
     if args.check:
         code, message = check_ollama(args.base_url, args.model)
         print(message)

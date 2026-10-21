@@ -118,3 +118,45 @@ def value_text(value: Any) -> str:
         text = format(value, "g")
         return text
     return str(value)
+
+
+def _same_number(left: Any, right: Any) -> bool:
+    try:
+        return float(left) == float(right) and not isinstance(left, bool) and not isinstance(right, bool)
+    except (TypeError, ValueError):
+        return False
+
+
+def expected_submit(task: dict) -> str | None:
+    """Live fixture value a fetch or chain task must submit.
+
+    Choice tasks return None. A chain whose compute_sum `a` disagrees with the
+    lookup, or a fetch with no lookup, raises ValueError (oracle drift).
+    """
+    kind = task.get("kind")
+    if kind not in ("fetch", "chain"):
+        return None
+    looked: Any = None
+    sum_a: Any = None
+    sum_b: Any = None
+    for req in (task.get("oracle") or {}).get("required") or []:
+        tool = req.get("tool")
+        args = req.get("args") or {}
+        if tool == "catalog_lookup":
+            looked = catalog_lookup(int(args["entry_number"])).get("slug")
+        elif tool == "tools_query":
+            looked = tools_query(args["name"], args["field"]).get("value")
+        elif tool == "bench_receipt":
+            looked = bench_receipt(args["model"], args["metric"], args["receipt"]).get("value")
+        elif tool == "compute_sum":
+            sum_a = args.get("a")
+            sum_b = args.get("b")
+    if kind == "fetch":
+        if looked is None:
+            raise ValueError("fetch oracle missing a lookup tool")
+        return value_text(looked)
+    if looked is None or sum_b is None:
+        raise ValueError("chain oracle missing a lookup or compute_sum")
+    if not _same_number(sum_a, looked):
+        raise ValueError(f"oracle drift: compute_sum a {sum_a!r} != lookup {looked!r}")
+    return value_text(compute_sum(looked, sum_b)["value"])

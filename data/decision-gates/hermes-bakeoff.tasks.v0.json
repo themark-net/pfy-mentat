@@ -1,6 +1,6 @@
 {
   "schema_version": "hermes-bakeoff.tasks.v0",
-  "labels_written": "2026-10-19T18:00:00Z",
+  "labels_written": "2026-10-06T16:01:36Z",
   "labels_before_models": true,
   "label_rule": "Choice labels are copied from data/decision-gates/laya-trial.cases.v0.json. Fetch and chain oracles are read from sources/entries, data/tools.json, and the committed dogfood receipts. Written before either arm ran. Not a Feature GO.",
   "choice_case_ids": [

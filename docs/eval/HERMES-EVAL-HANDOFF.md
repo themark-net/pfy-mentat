@@ -9,13 +9,13 @@ Live status for the meta-tools-off re-run and the bot-interface flag. The sectio
 | R1 process boundary wording | done in this branch (Hermes is one subprocess per task, library call inside it) |
 | R2 "much faster" caveat | done; link to the not-like-for-like note |
 | R3 sub-second TTFT | done; whole-second stamps are rejected |
-| 1. Scorer mutants / aggregate, wilson, percentile | not started |
-| 2. Fetch/chain oracle comparison | not started |
-| 3. `labels_written` not hardcoded | not started |
-| 4. Run start time at the start | not started |
-| 5. Choice oracle rejects scattershot | not started |
-| 6. Rescore from git | not started |
-| 7. Tool-name mismatch | not started |
+| 1. Scorer mutants / aggregate, wilson, percentile | done; 20 mutants restored after RED (see run log) |
+| 2. Fetch/chain oracle comparison | done; live fixture must match the label or the task fails closed |
+| 3. `labels_written` not hardcoded | done; newest source stamp `2026-10-06T16:01:36Z` |
+| 4. Run start time at the start | done; `meta.started` is stamped before the closing `ollama ps` |
+| 5. Choice oracle rejects scattershot | done; distinct choices fail even if one matches the label |
+| 6. Rescore from git | done; `run.py --rescore` reads the committed JSON only |
+| 7. Tool-name mismatch | done; `mcp__bakeoff__*` and `bakeoff_*` score as the short name |
 | Re-run (meta tools off, matched thinking) | not started |
 | `scripts/pfy` Hermes flag | not started |
 

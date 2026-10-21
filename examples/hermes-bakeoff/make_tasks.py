@@ -68,6 +68,19 @@ def _fetch(task_id: str, prompt: str, required: list[dict], value: str) -> dict:
     }
 
 
+def labels_written_stamp() -> str:
+    """Newest timestamp declared by the oracle sources. Not a hand-typed constant."""
+    stamps = [json.loads(LAYA.read_text(encoding="utf-8"))["labels_written"]]
+    sources = (
+        ("pipelines/dogfood/local-bench-3/receipt.json", "finished"),
+        ("pipelines/dogfood/local-bench-5/receipt-qwen36-ollama.json", "finished"),
+        ("pipelines/dogfood/atg-compile/receipt-live-qwen36-35b.json", "when"),
+    )
+    for rel, key in sources:
+        stamps.append(json.loads((ROOT / rel).read_text(encoding="utf-8"))[key])
+    return max(stamps)
+
+
 def build() -> dict:
     cases = {item["id"]: item for item in json.loads(LAYA.read_text(encoding="utf-8"))["cases"]}
     missing = [item for item in CHOICE_IDS if item not in cases]
@@ -270,7 +283,7 @@ def build() -> dict:
     )
     return {
         "schema_version": "hermes-bakeoff.tasks.v0",
-        "labels_written": "2026-10-19T18:00:00Z",
+        "labels_written": labels_written_stamp(),
         "labels_before_models": True,
         "label_rule": (
             "Choice labels are copied from data/decision-gates/laya-trial.cases.v0.json. "

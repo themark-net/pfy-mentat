@@ -19,11 +19,22 @@ if str(BAKE) not in sys.path:
     sys.path.insert(0, str(BAKE))
 
 from guard import assert_hermes_home  # noqa: E402
-from make_tasks import build  # noqa: E402
+from fixtures import expected_submit  # noqa: E402
+from make_tasks import build, labels_written_stamp  # noqa: E402
 from mcp_framing import read_message, write_message  # noqa: E402
 from mcp_server import parse_ts, stamp_now  # noqa: E402
-from schema import validate_args  # noqa: E402
-from score import count_attempts, margin_verdict, narrate_flag, normalize_client_calls, score_task  # noqa: E402
+from schema import server_name, validate_args  # noqa: E402
+from score import (  # noqa: E402
+    aggregate,
+    count_attempts,
+    margin_verdict,
+    narrate_flag,
+    normalize_client_calls,
+    percentile,
+    rescore_payload,
+    score_task,
+    wilson,
+)
 
 try:
     import pytest
@@ -317,6 +328,16 @@ class HermesBakeoffTests(unittest.TestCase):
         scored = score_task(task, calls, "")
         self.assertFalse(scored["pass"])
         self.assertIn("submit_choice", scored["reason"])
+        # A matching call must pass. Inverting != to == still rejects the wrong
+        # call (the first key matches), so only this accept path kills that mutant.
+        good = [
+            {
+                "name": "submit_choice",
+                "schema_valid": True,
+                "arguments": {"case_id": "ph-01-green-idle", "choice": "push", "reason": "green"},
+            }
+        ]
+        self.assertTrue(score_task(task, good, "")["pass"])
 
     def test_hermes_tool_call_wrapper_is_not_a_second_invalid_attempt(self):
         client = [
@@ -401,6 +422,387 @@ class HermesBakeoffTests(unittest.TestCase):
         negatives = [task for task in committed["tasks"] if task["kind"] == "negative"]
         self.assertGreaterEqual(len(negatives), 2)
         self.assertTrue(committed["labels_before_models"])
+
+    def test_percentile_wilson_and_aggregate_lock_the_rates(self):
+        self.assertIsNone(percentile([], 0.50))
+        self.assertEqual(percentile([4.0], 0.50), 4.0)
+        # Midpoint of four walls is 25, not the second or third sample.
+        self.assertEqual(percentile([10, 20, 30, 40], 0.50), 25)
+        self.assertEqual(percentile([10, 20, 30, 40], 0.0), 10)
+        self.assertEqual(percentile([10, 20, 30, 40], 1.0), 40)
+        self.assertEqual(wilson(0, 0), (0.0, 0.0))
+        low, high = wilson(26, 27)
+        self.assertLess(low, 26 / 27)
+        self.assertGreater(high, 26 / 27)
+        self.assertGreater(high - low, 0.1)
+        self.assertGreaterEqual(low, 0.0)
+        self.assertLessEqual(high, 1.0)
+        self.assertLess(low, high)
+        rows = [
+            {
+                "pass": True,
+                "requires_call": True,
+                "narrate": True,
+                "attempts": 2,
+                "valid": 1,
+                "wall_s": 10,
+                "ttft_s": 1,
+                "peak_rss_bytes": 100,
+            },
+            {
+                "pass": False,
+                "requires_call": False,
+                "narrate": False,
+                "attempts": 0,
+                "valid": 0,
+                "wall_s": 30,
+                "ttft_s": 3,
+                "peak_rss_bytes": 500,
+            },
+        ]
+        summary = aggregate(rows)
+        self.assertEqual(summary["task_success"], 0.5)
+        self.assertEqual(summary["valid_tool_call_rate"], 0.5)
+        self.assertEqual(summary["narrate_rate"], 1.0)
+        self.assertEqual(summary["p50_s"], 20)
+        self.assertEqual(summary["peak_rss_bytes"], 500)
+        self.assertEqual(summary["wilson95"], wilson(1, 2))
+        quiet = aggregate(
+            [
+                {
+                    "pass": True,
+                    "requires_call": False,
+                    "narrate": False,
+                    "attempts": 0,
+                    "valid": 0,
+                    "wall_s": 1,
+                    "peak_rss_bytes": 10,
+                }
+            ]
+        )
+        self.assertEqual(quiet["valid_tool_call_rate"], 1.0)
+
+    def test_schema_invalid_right_args_do_not_pass(self):
+        task = {
+            "kind": "choice",
+            "requires_call": True,
+            "oracle": {
+                "required": [
+                    {"tool": "submit_choice", "args": {"case_id": "ph-01-green-idle", "choice": "push"}}
+                ]
+            },
+        }
+        calls = [
+            {
+                "name": "submit_choice",
+                "schema_valid": False,
+                "arguments": {"case_id": "ph-01-green-idle", "choice": "push", "reason": "x"},
+            }
+        ]
+        self.assertFalse(score_task(task, calls, "")["pass"])
+
+    def test_last_submit_wins_and_a_contained_string_does_not(self):
+        task = json.loads(
+            (ROOT / "data" / "decision-gates" / "hermes-bakeoff.tasks.v0.json").read_text(encoding="utf-8")
+        )
+        fetch = next(item for item in task["tasks"] if item["id"] == "fetch-entry-130-slug")
+        slug = fetch["oracle"]["submit"]["args"]["value"]
+        good = [
+            {"name": "catalog_lookup", "schema_valid": True, "arguments": {"entry_number": 130}},
+            {
+                "name": "submit_answer",
+                "schema_valid": True,
+                "arguments": {"task_id": "fetch-entry-130-slug", "value": "nope"},
+            },
+            {
+                "name": "submit_answer",
+                "schema_valid": True,
+                "arguments": {"task_id": "fetch-entry-130-slug", "value": slug},
+            },
+        ]
+        self.assertTrue(score_task(fetch, good, "")["pass"])
+        early = [
+            {"name": "catalog_lookup", "schema_valid": True, "arguments": {"entry_number": 130}},
+            {
+                "name": "submit_answer",
+                "schema_valid": True,
+                "arguments": {"task_id": "fetch-entry-130-slug", "value": slug},
+            },
+            {
+                "name": "submit_answer",
+                "schema_valid": True,
+                "arguments": {"task_id": "fetch-entry-130-slug", "value": slug + " extra"},
+            },
+        ]
+        self.assertFalse(score_task(fetch, early, "")["pass"])
+
+    def test_negative_wrong_text_fails_and_unmatched_client_is_an_attempt(self):
+        task = {
+            "kind": "negative",
+            "requires_call": False,
+            "negative_mode": "contains",
+            "expect_text": "4",
+            "oracle": {"required": []},
+        }
+        self.assertFalse(score_task(task, [], "nope")["pass"])
+        self.assertTrue(score_task(task, [], "4")["pass"])
+        attempts, valid = count_attempts(
+            [],
+            [{"name": "mcp__bakeoff__submit_choice", "arguments": {"case_id": "x", "choice": "push"}}],
+        )
+        self.assertEqual((attempts, valid), (1, 0))
+
+    def test_choice_scattershot_fails_even_when_one_choice_is_the_label(self):
+        task = {
+            "kind": "choice",
+            "requires_call": True,
+            "oracle": {
+                "required": [
+                    {"tool": "submit_choice", "args": {"case_id": "ph-08-missing-ci", "choice": "escalate"}}
+                ]
+            },
+        }
+        calls = [
+            {
+                "name": "submit_choice",
+                "schema_valid": True,
+                "arguments": {"case_id": "ph-08-missing-ci", "choice": "push", "reason": "guess"},
+            },
+            {
+                "name": "mcp__bakeoff__submit_choice",
+                "schema_valid": True,
+                "arguments": {"case_id": "ph-08-missing-ci", "choice": "escalate", "reason": "missing"},
+            },
+        ]
+        scored = score_task(task, calls, "")
+        self.assertFalse(scored["pass"])
+        self.assertIn("scattershot", scored["reason"])
+        one = [calls[1]]
+        self.assertTrue(score_task(task, one, "")["pass"])
+        retry = [calls[1], dict(calls[1])]
+        self.assertTrue(score_task(task, retry, "")["pass"])
+
+    def test_fetch_oracle_follows_the_fixture_not_a_stale_label(self):
+        bundle = json.loads(
+            (ROOT / "data" / "decision-gates" / "hermes-bakeoff.tasks.v0.json").read_text(encoding="utf-8")
+        )
+        fetch = next(item for item in bundle["tasks"] if item["id"] == "fetch-entry-130-slug")
+        chain = next(item for item in bundle["tasks"] if item["id"] == "chain-bench-plus-ten")
+        self.assertEqual(expected_submit(fetch), fetch["oracle"]["submit"]["args"]["value"])
+        self.assertEqual(expected_submit(chain), chain["oracle"]["submit"]["args"]["value"])
+        stale = json.loads(json.dumps(fetch))
+        stale["oracle"]["submit"]["args"]["value"] = "not-the-slug"
+        calls = [
+            {"name": "bakeoff_catalog_lookup", "schema_valid": True, "arguments": {"entry_number": 130}},
+            {
+                "name": "bakeoff_submit_answer",
+                "schema_valid": True,
+                "arguments": {"task_id": "fetch-entry-130-slug", "value": "not-the-slug"},
+            },
+        ]
+        scored = score_task(stale, calls, "")
+        self.assertFalse(scored["pass"])
+        self.assertIn("oracle drift", scored["reason"])
+        live_calls = [
+            {"name": "mcp__bakeoff__catalog_lookup", "schema_valid": True, "arguments": {"entry_number": 130}},
+            {
+                "name": "submit_answer",
+                "schema_valid": True,
+                "arguments": {"task_id": "fetch-entry-130-slug", "value": fetch["oracle"]["submit"]["args"]["value"]},
+            },
+        ]
+        self.assertTrue(score_task(fetch, live_calls, "")["pass"])
+
+    def test_mcp_server_accepts_both_wire_prefixes(self):
+        import tempfile
+
+        self.assertEqual(server_name("mcp__bakeoff__submit_choice"), "submit_choice")
+        self.assertEqual(server_name("bakeoff_submit_choice"), "submit_choice")
+        with tempfile.TemporaryDirectory() as tmp:
+            log = Path(tmp) / "calls.jsonl"
+            proc = subprocess.Popen(
+                [sys.executable, str(BAKE / "mcp_server.py"), "--log", str(log), "--task-id", "wire"],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+            )
+            try:
+                write_message(
+                    proc.stdin,
+                    {
+                        "jsonrpc": "2.0",
+                        "id": 1,
+                        "method": "initialize",
+                        "params": {"protocolVersion": "2024-11-05", "capabilities": {}},
+                    },
+                )
+                self.assertEqual(read_message(proc.stdout)["id"], 1)
+                write_message(
+                    proc.stdin,
+                    {"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}},
+                )
+                write_message(
+                    proc.stdin,
+                    {
+                        "jsonrpc": "2.0",
+                        "id": 2,
+                        "method": "tools/call",
+                        "params": {
+                            "name": "bakeoff_submit_choice",
+                            "arguments": {"case_id": "ph-01-green-idle", "choice": "push", "reason": "green"},
+                        },
+                    },
+                )
+                reply = read_message(proc.stdout)
+                self.assertFalse(reply["result"]["isError"])
+            finally:
+                if proc.stdin:
+                    proc.stdin.close()
+                if proc.stdout:
+                    proc.stdout.close()
+                proc.kill()
+                proc.wait(timeout=5)
+            rows = [json.loads(line) for line in log.read_text(encoding="utf-8").splitlines()]
+            self.assertEqual(rows[0]["name"], "submit_choice")
+
+    def test_labels_written_is_the_newest_source_stamp(self):
+        fresh = build()
+        atg = json.loads(
+            (ROOT / "pipelines/dogfood/atg-compile/receipt-live-qwen36-35b.json").read_text(encoding="utf-8")
+        )
+        laya = json.loads((ROOT / "data/decision-gates/laya-trial.cases.v0.json").read_text(encoding="utf-8"))
+        bench3 = json.loads(
+            (ROOT / "pipelines/dogfood/local-bench-3/receipt.json").read_text(encoding="utf-8")
+        )
+        bench5 = json.loads(
+            (ROOT / "pipelines/dogfood/local-bench-5/receipt-qwen36-ollama.json").read_text(encoding="utf-8")
+        )
+        newest = max(laya["labels_written"], bench3["finished"], bench5["finished"], atg["when"])
+        self.assertEqual(labels_written_stamp(), newest)
+        self.assertEqual(fresh["labels_written"], newest)
+        self.assertEqual(fresh["labels_written"], atg["when"])
+        committed = json.loads(
+            (ROOT / "data/decision-gates/hermes-bakeoff.tasks.v0.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(committed["labels_written"], fresh["labels_written"])
+        self.assertEqual(
+            [item["oracle"] for item in committed["tasks"]],
+            [item["oracle"] for item in fresh["tasks"]],
+        )
+        self.assertNotEqual(fresh["labels_written"], "2026-10-19T18:00:00Z")
+
+    def test_rescore_reads_the_committed_receipt_only(self):
+        import tempfile
+
+        src = ROOT / "pipelines/dogfood/hermes-bakeoff/results.json"
+        bundle = json.loads(
+            (ROOT / "data/decision-gates/hermes-bakeoff.tasks.v0.json").read_text(encoding="utf-8")
+        )
+        original = json.loads(src.read_text(encoding="utf-8"))
+        with tempfile.TemporaryDirectory() as tmp:
+            copy = Path(tmp) / "results.json"
+            copy.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+            proc = subprocess.run(
+                [
+                    sys.executable,
+                    str(BAKE / "run.py"),
+                    "--rescore",
+                    str(copy),
+                    "--tasks",
+                    str(ROOT / "data/decision-gates/hermes-bakeoff.tasks.v0.json"),
+                    "--out",
+                    str(Path(tmp) / "rescored.json"),
+                ],
+                cwd=tmp,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            self.assertEqual(proc.returncode, 0, proc.stderr[-500:])
+            rescored = json.loads((Path(tmp) / "rescored.json").read_text(encoding="utf-8"))
+        self.assertEqual(rescored["summary"]["hermes"]["n_pass"], original["summary"]["hermes"]["n_pass"])
+        self.assertEqual(rescored["summary"]["baseline"]["n_pass"], original["summary"]["baseline"]["n_pass"])
+        self.assertEqual(rescored["verdict"], original["verdict"])
+        # A direct call also ignores a missing transcript dir.
+        again = rescore_payload(original, bundle["tasks"])
+        self.assertEqual(again["summary"]["hermes"]["n_pass"], 26)
+        self.assertEqual(again["summary"]["baseline"]["n_pass"], 25)
+
+    def test_run_records_start_before_the_closing_ollama_ps(self):
+        import tempfile
+        import threading
+        from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+        seen = {"ps": 0, "ps_done": None}
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_GET(self):  # noqa: N802
+                path = self.path.split("?", 1)[0]
+                if path == "/api/tags":
+                    body = json.dumps({"models": [{"name": "qwen3.6:35b"}]}).encode()
+                elif path == "/api/version":
+                    body = json.dumps({"version": "test"}).encode()
+                elif path == "/api/ps":
+                    seen["ps"] += 1
+                    if seen["ps"] >= 2:
+                        import time as _time
+
+                        _time.sleep(0.35)
+                        seen["ps_done"] = _time.time()
+                    body = json.dumps({"models": []}).encode()
+                else:
+                    body = b"{}"
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, fmt, *args):
+                return
+
+        server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        port = server.server_address[1]
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                out = Path(tmp) / "results.json"
+                proc = subprocess.run(
+                    [
+                        sys.executable,
+                        str(BAKE / "run.py"),
+                        "--live",
+                        "--skip-ctx-probe",
+                        "--keep-model",
+                        "--task-ids",
+                        "__none__",
+                        "--num-ctx",
+                        "65536",
+                        "--base-url",
+                        f"http://127.0.0.1:{port}/v1",
+                        "--hermes-python",
+                        sys.executable,
+                        "--hermes-checkout",
+                        str(ROOT),
+                        "--hermes-home",
+                        str(Path(tmp) / "hermes-home"),
+                        "--work",
+                        str(Path(tmp) / "work"),
+                        "--out",
+                        str(out),
+                    ],
+                    cwd=ROOT,
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
+                )
+                self.assertEqual(proc.returncode, 0, proc.stdout[-400:] + proc.stderr[-400:])
+                payload = json.loads(out.read_text(encoding="utf-8"))
+        finally:
+            server.shutdown()
+        started = parse_ts(payload["meta"]["started"])
+        self.assertIsNotNone(seen["ps_done"])
+        self.assertLess(started, seen["ps_done"] - 0.2)
 
 
 @pytest.mark.live

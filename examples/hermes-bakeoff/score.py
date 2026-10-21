@@ -10,6 +10,9 @@ import math
 import re
 from typing import Any
 
+from fixtures import expected_submit
+from schema import server_name
+
 TOOL_NAMES = (
     "submit_choice",
     "catalog_lookup",
@@ -64,14 +67,34 @@ def _args_match(got: dict, want: dict) -> bool:
     return True
 
 
+def _canon_call(call: dict) -> dict:
+    out = dict(call)
+    out["name"] = server_name(str(call.get("name") or ""))
+    return out
+
+
 def _valid_calls(server_calls: list[dict]) -> list[dict]:
-    return [call for call in server_calls if call.get("schema_valid")]
+    return [_canon_call(call) for call in server_calls if call.get("schema_valid")]
+
+
+def _scattershot(valid: list[dict]) -> str:
+    """Distinct submit_choice values. One retry of the same choice is not scattershot."""
+    choices: list[str] = []
+    for call in valid:
+        if call.get("name") != "submit_choice":
+            continue
+        choice = (call.get("arguments") or {}).get("choice")
+        if isinstance(choice, str) and choice:
+            choices.append(choice)
+    distinct = list(dict.fromkeys(choices))
+    if len(distinct) > 1:
+        return "scattershot choices: " + ", ".join(distinct)
+    return ""
 
 
 def score_task(task: dict, server_calls: list[dict], final_text: str) -> dict[str, Any]:
     """Oracle. Negatives pass only with zero calls and the expected text."""
     requires = bool(task.get("requires_call", True))
-    reached = any(call.get("schema_valid") or call.get("name") for call in server_calls)
     # A schema-invalid call still "reached" the server, so it is not narrate.
     server_saw_call = len(server_calls) > 0
     narrate = narrate_flag(final_text, server_saw_call, requires)
@@ -79,8 +102,25 @@ def score_task(task: dict, server_calls: list[dict], final_text: str) -> dict[st
         text_ok = _negative_text_ok(task, final_text)
         ok = len(server_calls) == 0 and text_ok
         return {"pass": ok, "narrate": False, "reason": "" if ok else "negative required zero calls and the expected text"}
+    try:
+        live = expected_submit(task)
+    except ValueError as exc:
+        return {"pass": False, "narrate": narrate, "reason": str(exc)}
     valid = _valid_calls(server_calls)
+    if task.get("kind") == "choice":
+        scattered = _scattershot(valid)
+        if scattered:
+            return {"pass": False, "narrate": narrate, "reason": scattered}
     oracle = task["oracle"]
+    submit = oracle.get("submit")
+    if live is not None:
+        oracle_value = (submit or {}).get("args", {}).get("value")
+        if live != oracle_value:
+            return {
+                "pass": False,
+                "narrate": narrate,
+                "reason": f"oracle drift: fixture {live!r} != label {oracle_value!r}",
+            }
     for required in oracle.get("required", []):
         if not any(
             call["name"] == required["tool"] and _args_match(call.get("arguments") or {}, required["args"])
@@ -91,11 +131,16 @@ def score_task(task: dict, server_calls: list[dict], final_text: str) -> dict[st
                 "narrate": narrate,
                 "reason": f"missing {required['tool']} with {required['args']}",
             }
-    submit = oracle.get("submit")
     if submit:
         submits = [call for call in valid if call["name"] == submit["tool"]]
+        # The last submit is the answer. An earlier wrong value does not count.
         if not submits or not _args_match(submits[-1].get("arguments") or {}, submit["args"]):
             return {"pass": False, "narrate": narrate, "reason": "final submit mismatch"}
+        # Exact value. A longer string that merely contains the label is not a pass.
+        if "value" in (submit.get("args") or {}):
+            got = (submits[-1].get("arguments") or {}).get("value")
+            if got != submit["args"]["value"]:
+                return {"pass": False, "narrate": narrate, "reason": "final submit mismatch"}
     return {"pass": True, "narrate": narrate, "reason": ""}
 
 
@@ -160,10 +205,11 @@ def count_attempts(server_calls: list[dict], client_calls: list[dict]) -> tuple[
     used = [False] * len(server_calls)
     for client in client_calls:
         matched = False
+        client_name = server_name(str(client.get("name") or ""))
         for index, server in enumerate(server_calls):
             if used[index]:
                 continue
-            if server.get("name") == client.get("name") and (server.get("arguments") or {}) == (
+            if server_name(str(server.get("name") or "")) == client_name and (server.get("arguments") or {}) == (
                 client.get("arguments") or {}
             ):
                 used[index] = True
@@ -264,3 +310,40 @@ def margin_verdict(hermes: dict, baseline: dict) -> tuple[str, list[str]]:
 
 def intervals_overlap(a: tuple[float, float], b: tuple[float, float]) -> bool:
     return a[0] <= b[1] and b[0] <= a[1]
+
+
+def rescore_payload(payload: dict, tasks: list[dict]) -> dict:
+    """Recompute pass, summary, and verdict from a committed results file.
+
+    Uses the task file and the rows already in the JSON (server calls and
+    final text). Does not read ./tmp transcripts.
+    """
+    by_id = {task["id"]: task for task in tasks}
+    scored = dict(payload)
+    rows = scored.get("rows") or {}
+    summary: dict[str, Any] = {}
+    for arm, arm_rows in rows.items():
+        new_rows = []
+        for row in arm_rows:
+            task = by_id[row["task_id"]]
+            verdict = score_task(task, row.get("server_calls") or [], row.get("final_text") or "")
+            updated = dict(row)
+            updated["pass"] = verdict["pass"]
+            updated["narrate"] = verdict["narrate"]
+            updated["reason"] = verdict["reason"]
+            new_rows.append(updated)
+        rows[arm] = new_rows
+        arm_summary = aggregate(new_rows)
+        arm_summary["wilson95"] = list(arm_summary["wilson95"])
+        summary[arm] = arm_summary
+    scored["rows"] = rows
+    scored["summary"] = summary
+    if "hermes" in summary and "baseline" in summary:
+        verdict, reasons = margin_verdict(summary["hermes"], summary["baseline"])
+        scored["verdict"] = verdict
+        scored["verdict_failures"] = reasons
+        scored["wilson_overlap"] = intervals_overlap(
+            tuple(summary["hermes"]["wilson95"]),
+            tuple(summary["baseline"]["wilson95"]),
+        )
+    return scored
