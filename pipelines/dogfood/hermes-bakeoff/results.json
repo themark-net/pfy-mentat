@@ -1,0 +1,2115 @@
+{
+  "meta": {
+    "model": "qwen3.6:35b",
+    "base_url": "http://127.0.0.1:11434/v1",
+    "num_ctx": 65536,
+    "num_ctx_note": "65536 on both arms. Hermes refuses 32768 (minimum 64000), so a scored run at 65536 does not retry 32768. Ollama /api/ps context_length is the observed runtime window.",
+    "temperature": 0,
+    "seed": 1,
+    "timeout_s": 180,
+    "max_iterations": 6,
+    "think": false,
+    "hermes_sha": "ddabd3837862022a6053331fe3ba97cf9716b9e3",
+    "hermes_driver": "AIAgent.run_conversation",
+    "opencode_version": "1.18.32",
+    "ollama_version": "0.30.8",
+    "baseline_driver": "opencode run",
+    "baseline_note": "./pfy attach opencode execs the opencode binary with OPENAI_BASE_URL set to the local engine. It is not a headless tool loop. This bake-off drives `opencode run` against the same MCP server, with XDG_CONFIG_HOME under ./tmp. A one-task probe called submit_choice through that server. opencode run does not expose Ollama temperature, seed, or options.num_ctx; model limit.context is set to num_ctx. Hermes sends temperature 0, seed 1, think false, and options.num_ctx. baseline_arm.py remains the direct /v1/chat/completions loop and is not the scored arm.",
+    "mem_available_before_kib": 48143456,
+    "mem_available_after_kib": 47294588,
+    "model_loaded_at_start": true,
+    "ollama_ps_at_start": [
+      "qwen3.6:35b"
+    ],
+    "ollama_ps_after_tasks": [
+      {
+        "name": "qwen3.6:35b",
+        "size": 23396477828,
+        "context_length": 262144
+      }
+    ],
+    "started": "2026-10-19T08:33:09Z",
+    "model_unloaded": false,
+    "model_left_loaded": true,
+    "valid_rate_note": "Bake-off valid rate counts MCP server calls plus client calls of those tools that never reached the server. Hermes tool_search, tool_describe, and the tool_call envelope are meta_calls, not invalid schema attempts. Rescored from the saved transcripts. No second model pass.",
+    "session_model_note": "qwen3.6:35b was not loaded at session start. This eval loaded it. The scored run saw it already resident, so it did not unload. Cleanup unloads it."
+  },
+  "verdict": "NO-WIN",
+  "verdict_failures": [
+    "task success 0.9630 is 3.70 pp over baseline 0.9259; need >= +10 pp",
+    "valid tool-call rate 0.8261 is more than 2 pp under baseline 0.9783"
+  ],
+  "wilson_overlap": true,
+  "summary": {
+    "hermes": {
+      "n": 27,
+      "n_pass": 26,
+      "task_success": 0.9629629629629629,
+      "wilson95": [
+        0.8171614606584348,
+        0.9934320234669025
+      ],
+      "attempts": 46,
+      "valid": 38,
+      "valid_tool_call_rate": 0.8260869565217391,
+      "meta_calls": 52,
+      "narrate_n": 0,
+      "narrate_tasks": 24,
+      "narrate_rate": 0.0,
+      "p50_s": 8.749,
+      "p95_s": 13.6465,
+      "mean_s": 9.632814814814814,
+      "ttft_p50_s": 6.438000000000001,
+      "peak_rss_bytes": 232243200
+    },
+    "baseline": {
+      "n": 27,
+      "n_pass": 25,
+      "task_success": 0.9259259259259259,
+      "wilson95": [
+        0.7663002270926937,
+        0.9794457783026165
+      ],
+      "attempts": 46,
+      "valid": 45,
+      "valid_tool_call_rate": 0.9782608695652174,
+      "meta_calls": 0,
+      "narrate_n": 0,
+      "narrate_tasks": 24,
+      "narrate_rate": 0.0,
+      "p50_s": 47.377,
+      "p95_s": 60.980999999999995,
+      "mean_s": 46.2747037037037,
+      "ttft_p50_s": 42.004,
+      "peak_rss_bytes": 1112133632
+    }
+  },
+  "rows": {
+    "hermes": [
+      {
+        "task_id": "ch-ph-01-green-idle",
+        "kind": "choice",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 1,
+        "valid": 1,
+        "server_calls": [
+          {
+            "name": "submit_choice",
+            "arguments": {
+              "case_id": "ph-01-green-idle",
+              "choice": "push",
+              "reason": "CI is green, not known-red, and Kronos is idle \u2014 all push criteria met."
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 1,
+        "final_text": "Choice submitted: **push** \u2014 CI green, not known-red, Kronos idle. Accepted by the bake-off system.",
+        "error": null,
+        "driver": "AIAgent.run_conversation",
+        "wall_s": 6.241,
+        "ttft_s": 4.341,
+        "peak_rss_bytes": 225824768,
+        "ollama_peak_rss_bytes": 4565356544,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 1
+      },
+      {
+        "task_id": "ch-ph-03-ci-red",
+        "kind": "choice",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 1,
+        "valid": 1,
+        "server_calls": [
+          {
+            "name": "submit_choice",
+            "arguments": {
+              "case_id": "ph-03-ci-red",
+              "choice": "hold",
+              "reason": "CI is red and known_red is false, so the hold criterion 'CI red' applies; do not push."
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 1,
+        "final_text": "Choice submitted: **hold** \u2014 CI is red and known_red is false, so the hold criterion \"CI red\" applies; do not push.",
+        "error": null,
+        "driver": "AIAgent.run_conversation",
+        "wall_s": 8.113,
+        "ttft_s": 5.574,
+        "peak_rss_bytes": 225320960,
+        "ollama_peak_rss_bytes": 4614897664,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 1
+      },
+      {
+        "task_id": "ch-ph-05-kronos-busy",
+        "kind": "choice",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 1,
+        "valid": 1,
+        "server_calls": [
+          {
+            "name": "submit_choice",
+            "arguments": {
+              "case_id": "ph-05-kronos-busy",
+              "choice": "hold",
+              "reason": "Kronos is busy, indicating contention; criteria require hold when Kronos contention exists."
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 1,
+        "final_text": "Choice submitted: **hold** \u2014 Kronos is busy (contention), which requires holding per criteria.",
+        "error": null,
+        "driver": "AIAgent.run_conversation",
+        "wall_s": 8.475,
+        "ttft_s": 6.371,
+        "peak_rss_bytes": 225439744,
+        "ollama_peak_rss_bytes": 5067366400,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 1
+      },
+      {
+        "task_id": "ch-ph-08-missing-ci",
+        "kind": "choice",
+        "requires_call": true,
+        "pass": false,
+        "reason": "missing submit_choice with {'case_id': 'ph-08-missing-ci', 'choice': 'escalate'}",
+        "narrate": false,
+        "attempts": 1,
+        "valid": 1,
+        "server_calls": [
+          {
+            "name": "submit_choice",
+            "arguments": {
+              "case_id": "ph-08-missing-ci",
+              "choice": "push",
+              "reason": "Local CI green (not known-red) and Kronos idle \u2014 all push criteria met."
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 1,
+        "final_text": "Choice submitted: **push** \u2014 Local CI green (not known-red) and Kronos idle, so all push criteria are satisfied.",
+        "error": null,
+        "driver": "AIAgent.run_conversation",
+        "wall_s": 7.998,
+        "ttft_s": 6.074,
+        "peak_rss_bytes": 226295808,
+        "ollama_peak_rss_bytes": 4900814848,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 1
+      },
+      {
+        "task_id": "ch-wz-01-local-30b",
+        "kind": "choice",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 1,
+        "valid": 1,
+        "server_calls": [
+          {
+            "name": "submit_choice",
+            "arguments": {
+              "case_id": "wz-01-local-30b",
+              "choice": "qwen3-coder:30b",
+              "reason": "Request specifies 30b coder on FreeToken-first spine; qwen3-coder:30b matches this requirement."
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 1,
+        "final_text": "Choice submitted: qwen3-coder:30b for case wz-01-local-30b. Accepted.",
+        "error": null,
+        "driver": "AIAgent.run_conversation",
+        "wall_s": 8.8,
+        "ttft_s": 6.806,
+        "peak_rss_bytes": 225329152,
+        "ollama_peak_rss_bytes": 4816531456,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 1
+      },
+      {
+        "task_id": "ch-wz-04-gab-auto",
+        "kind": "choice",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 1,
+        "valid": 1,
+        "server_calls": [
+          {
+            "name": "submit_choice",
+            "arguments": {
+              "case_id": "wz-04-gab-auto",
+              "choice": "gab-auto",
+              "reason": "state explicitly says model=auto is the cloud router and decision layer is Gab Intent Engine, matching gab-auto criteria."
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 1,
+        "final_text": "Choice submitted: **gab-auto** \u2014 the state specifies `model=auto` as the cloud router and the decision layer is Gab Intent Engine, which matches the gab-auto criteria.",
+        "error": null,
+        "driver": "AIAgent.run_conversation",
+        "wall_s": 8.722,
+        "ttft_s": 6.626,
+        "peak_rss_bytes": 225624064,
+        "ollama_peak_rss_bytes": 4831178752,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 1
+      },
+      {
+        "task_id": "ch-wz-06-cloud-grok",
+        "kind": "choice",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 1,
+        "valid": 1,
+        "server_calls": [
+          {
+            "name": "submit_choice",
+            "arguments": {
+              "case_id": "wz-06-cloud-grok",
+              "choice": "grok",
+              "reason": "State specifies wizard_harness=grok and wizard_lane=cloud/subscription, matching the grok criterion directly."
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 1,
+        "final_text": "Choice submitted: **grok** \u2014 the state explicitly sets `wizard_harness=grok` and `wizard_lane=cloud/subscription`, which directly matches the grok criterion.",
+        "error": null,
+        "driver": "AIAgent.run_conversation",
+        "wall_s": 8.377,
+        "ttft_s": 5.542,
+        "peak_rss_bytes": 226328576,
+        "ollama_peak_rss_bytes": 4824502272,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 1
+      },
+      {
+        "task_id": "ch-wz-10-default-local-lane",
+        "kind": "choice",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 1,
+        "valid": 1,
+        "server_calls": [
+          {
+            "name": "submit_choice",
+            "arguments": {
+              "case_id": "wz-10-default-local-lane",
+              "choice": "local",
+              "reason": "state specifies default local FreeToken-first lane"
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 1,
+        "final_text": "Choice submitted: **local** \u2014 state specifies default local FreeToken-first lane. Accepted by the bakeoff system.",
+        "error": null,
+        "driver": "AIAgent.run_conversation",
+        "wall_s": 8.158,
+        "ttft_s": 6.366,
+        "peak_rss_bytes": 226713600,
+        "ollama_peak_rss_bytes": 4842725376,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 1
+      },
+      {
+        "task_id": "ch-hd-01-optional-tool-skip",
+        "kind": "choice",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 1,
+        "valid": 1,
+        "server_calls": [
+          {
+            "name": "submit_choice",
+            "arguments": {
+              "case_id": "hd-01-optional-tool-skip",
+              "choice": "skip_install",
+              "reason": "State explicitly marks this as an optional catalog tool with a safe_default of 'skip install' and low blast radius; no runtime dependency or smoke path justifies promotion."
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 1,
+        "final_text": "Choice submitted: **skip_install** \u2014 accepted. Reason: the state explicitly defines a safe default of \"skip install\" for this optional catalog tool with low blast radius, and no runtime dependency or smoke path justifies promotion.",
+        "error": null,
+        "driver": "AIAgent.run_conversation",
+        "wall_s": 9.472,
+        "ttft_s": 6.519,
+        "peak_rss_bytes": 225652736,
+        "ollama_peak_rss_bytes": 5025943552,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 1
+      },
+      {
+        "task_id": "ch-hd-06-no-subtree",
+        "kind": "choice",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 1,
+        "valid": 1,
+        "server_calls": [
+          {
+            "name": "submit_choice",
+            "arguments": {
+              "case_id": "hd-06-no-subtree",
+              "choice": "no_subtree",
+              "reason": "Criteria explicitly state default is no subtree and to wait on integration stages; no justification to add or reopen."
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 1,
+        "final_text": "Choice submitted: **no_subtree** \u2014 accepted. Reason: criteria specify default is no subtree and to wait on integration stages; no justification to add or reopen.",
+        "error": null,
+        "driver": "AIAgent.run_conversation",
+        "wall_s": 8.345,
+        "ttft_s": 5.872,
+        "peak_rss_bytes": 225570816,
+        "ollama_peak_rss_bytes": 5506564096,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 1
+      },
+      {
+        "task_id": "ch-hd-11-fits-skill-path",
+        "kind": "choice",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 1,
+        "valid": 1,
+        "server_calls": [
+          {
+            "name": "submit_choice",
+            "arguments": {
+              "case_id": "hd-11-fits-skill-path",
+              "choice": "implement_now",
+              "reason": "state.fits_existing_skill_or_smoke is true and structural_lane is green, so implement_now applies; fix_structural only triggers on red lane."
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 1,
+        "final_text": "Choice submitted: `implement_now` \u2014 state indicates fits existing skill/smoke path and structural lane is green.",
+        "error": null,
+        "driver": "AIAgent.run_conversation",
+        "wall_s": 8.749,
+        "ttft_s": 6.643,
+        "peak_rss_bytes": 225529856,
+        "ollama_peak_rss_bytes": 5232209920,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 1
+      },
+      {
+        "task_id": "ch-fm-01-fill-model",
+        "kind": "choice",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 1,
+        "valid": 1,
+        "server_calls": [
+          {
+            "name": "submit_choice",
+            "arguments": {
+              "case_id": "fm-01-fill-model",
+              "choice": "fill:model",
+              "reason": "The document specifies model=qwen3-coder:30b and the element label is 'model', so this element should be filled with that value."
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 1,
+        "final_text": "Choice submitted: fill:model \u2014 the element's label is \"model\" and the document specifies model=qwen3-coder:30b, so this field should be filled with that value.",
+        "error": null,
+        "driver": "AIAgent.run_conversation",
+        "wall_s": 8.838,
+        "ttft_s": 6.402,
+        "peak_rss_bytes": 225275904,
+        "ollama_peak_rss_bytes": 5426843648,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 1
+      },
+      {
+        "task_id": "ch-fm-04-skip-decision-off",
+        "kind": "choice",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 1,
+        "valid": 1,
+        "server_calls": [
+          {
+            "name": "submit_choice",
+            "arguments": {
+              "case_id": "fm-04-skip-decision-off",
+              "choice": "skip",
+              "reason": "Document specifies decision=off; the element is a CheckBox and 'off' means it should remain unchecked, so we skip (leave unchanged)."
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 1,
+        "final_text": "Choice submitted: **skip** \u2014 the document says `decision: off`, so the CheckBox should remain unchecked (leave unchanged). Accepted by the bakeoff.",
+        "error": null,
+        "driver": "AIAgent.run_conversation",
+        "wall_s": 8.622,
+        "ttft_s": 5.946,
+        "peak_rss_bytes": 226164736,
+        "ollama_peak_rss_bytes": 5642739712,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 1
+      },
+      {
+        "task_id": "ch-cp-02-drop-stale",
+        "kind": "choice",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 1,
+        "valid": 1,
+        "server_calls": [
+          {
+            "name": "submit_choice",
+            "arguments": {
+              "case_id": "cp-02-drop-stale",
+              "choice": "drop",
+              "reason": "The text is from 20 turns ago and relates to an unrelated npm package, so it is stale and no longer needed for the current request."
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 1,
+        "final_text": "Choice submitted: **drop** \u2014 the text is stale (from 20 turns ago) and unrelated to the current request.",
+        "error": null,
+        "driver": "AIAgent.run_conversation",
+        "wall_s": 8.268,
+        "ttft_s": 6.317,
+        "peak_rss_bytes": 225689600,
+        "ollama_peak_rss_bytes": 5419831296,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 1
+      },
+      {
+        "task_id": "fetch-entry-130-slug",
+        "kind": "fetch",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 3,
+        "valid": 2,
+        "server_calls": [
+          {
+            "name": "catalog_lookup",
+            "arguments": {
+              "entry_number": 130
+            },
+            "schema_valid": true,
+            "error": ""
+          },
+          {
+            "name": "submit_answer",
+            "arguments": {
+              "task_id": "fetch-entry-130-slug",
+              "value": "hal0"
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 3,
+        "final_text": "Done. Entry 130 has slug `hal0`, which was submitted for task `fetch-entry-130-slug` and accepted.",
+        "error": null,
+        "driver": "AIAgent.run_conversation",
+        "wall_s": 13.355,
+        "ttft_s": 8.409,
+        "peak_rss_bytes": 225882112,
+        "ollama_peak_rss_bytes": 5585182720,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 5
+      },
+      {
+        "task_id": "fetch-entry-101-slug",
+        "kind": "fetch",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 3,
+        "valid": 2,
+        "server_calls": [
+          {
+            "name": "catalog_lookup",
+            "arguments": {
+              "entry_number": 101
+            },
+            "schema_valid": true,
+            "error": ""
+          },
+          {
+            "name": "submit_answer",
+            "arguments": {
+              "task_id": "fetch-entry-101-slug",
+              "value": "atg-compile"
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 3,
+        "final_text": "Done. Catalog lookup for entry 101 returned slug `atg-compile`. Answer submitted and accepted for task `fetch-entry-101-slug`.",
+        "error": null,
+        "driver": "AIAgent.run_conversation",
+        "wall_s": 13.419,
+        "ttft_s": 8.877,
+        "peak_rss_bytes": 226484224,
+        "ollama_peak_rss_bytes": 5593075712,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 5
+      },
+      {
+        "task_id": "fetch-kanbots-tier",
+        "kind": "fetch",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 2,
+        "valid": 2,
+        "server_calls": [
+          {
+            "name": "tools_query",
+            "arguments": {
+              "field": "tier",
+              "name": "kanbots"
+            },
+            "schema_valid": true,
+            "error": ""
+          },
+          {
+            "name": "submit_answer",
+            "arguments": {
+              "task_id": "fetch-kanbots-tier",
+              "value": "A"
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 2,
+        "final_text": "Done. The tier for kanbots is \"A\", and the answer was accepted for task fetch-kanbots-tier.",
+        "error": null,
+        "driver": "AIAgent.run_conversation",
+        "wall_s": 9.563,
+        "ttft_s": 5.275,
+        "peak_rss_bytes": 232243200,
+        "ollama_peak_rss_bytes": 5534130176,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 2
+      },
+      {
+        "task_id": "fetch-grok-stage",
+        "kind": "fetch",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 3,
+        "valid": 2,
+        "server_calls": [
+          {
+            "name": "tools_query",
+            "arguments": {
+              "field": "integration_stage",
+              "name": "Grok CLI bootstrap"
+            },
+            "schema_valid": true,
+            "error": ""
+          },
+          {
+            "name": "submit_answer",
+            "arguments": {
+              "task_id": "fetch-grok-stage",
+              "value": "I3"
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 3,
+        "final_text": "Done. `mcp__bakeoff__tools_query` returned value \"I3\" for field `integration_stage` on \"Grok CLI bootstrap\". Submitted that value to task `fetch-grok-stage` \u2014 accepted.",
+        "error": null,
+        "driver": "AIAgent.run_conversation",
+        "wall_s": 10.4,
+        "ttft_s": 6.458,
+        "peak_rss_bytes": 227278848,
+        "ollama_peak_rss_bytes": 5694156800,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 3
+      },
+      {
+        "task_id": "fetch-bench3-n-correct",
+        "kind": "fetch",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 3,
+        "valid": 2,
+        "server_calls": [
+          {
+            "name": "bench_receipt",
+            "arguments": {
+              "metric": "n_correct",
+              "model": "qwen3.6:35b",
+              "receipt": "local-bench-3"
+            },
+            "schema_valid": true,
+            "error": ""
+          },
+          {
+            "name": "submit_answer",
+            "arguments": {
+              "task_id": "fetch-bench3-n-correct",
+              "value": "38"
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 3,
+        "final_text": "Submitted 38 for task fetch-bench3-n-correct.",
+        "error": null,
+        "driver": "AIAgent.run_conversation",
+        "wall_s": 11.616,
+        "ttft_s": 7.846,
+        "peak_rss_bytes": 220213248,
+        "ollama_peak_rss_bytes": 5702836224,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 3
+      },
+      {
+        "task_id": "fetch-atg-n-valid",
+        "kind": "fetch",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 2,
+        "valid": 2,
+        "server_calls": [
+          {
+            "name": "bench_receipt",
+            "arguments": {
+              "metric": "n_valid",
+              "model": "qwen3.6:35b",
+              "receipt": "atg-compile"
+            },
+            "schema_valid": true,
+            "error": ""
+          },
+          {
+            "name": "submit_answer",
+            "arguments": {
+              "task_id": "fetch-atg-n-valid",
+              "value": "2"
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 2,
+        "final_text": "Done. `bench_receipt` returned n_valid = 2 for model qwen3.6:35b on receipt atg-compile. Answer \"2\" submitted and accepted for task fetch-atg-n-valid.",
+        "error": null,
+        "driver": "AIAgent.run_conversation",
+        "wall_s": 11.239,
+        "ttft_s": 6.418,
+        "peak_rss_bytes": 227024896,
+        "ollama_peak_rss_bytes": 5704941568,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 2
+      },
+      {
+        "task_id": "fetch-bench5-accuracy",
+        "kind": "fetch",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 3,
+        "valid": 2,
+        "server_calls": [
+          {
+            "name": "bench_receipt",
+            "arguments": {
+              "metric": "accuracy",
+              "model": "qwen3.6:35b",
+              "receipt": "local-bench-5-ollama"
+            },
+            "schema_valid": true,
+            "error": ""
+          },
+          {
+            "name": "submit_answer",
+            "arguments": {
+              "task_id": "fetch-bench5-accuracy",
+              "value": "0.7917"
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 3,
+        "final_text": "Done:\n- `bench_receipt` returned accuracy = 0.7917 for model qwen3.6:35b on receipt local-bench-5-ollama.\n- `submit_answer` accepted value \"0.7917\" for task fetch-bench5-accuracy.",
+        "error": null,
+        "driver": "AIAgent.run_conversation",
+        "wall_s": 12.111,
+        "ttft_s": 7.651,
+        "peak_rss_bytes": 230141952,
+        "ollama_peak_rss_bytes": 5950881792,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 3
+      },
+      {
+        "task_id": "fetch-bench3-eval-tok-s",
+        "kind": "fetch",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 3,
+        "valid": 2,
+        "server_calls": [
+          {
+            "name": "bench_receipt",
+            "arguments": {
+              "metric": "eval_tok_s",
+              "model": "qwen3.6:35b",
+              "receipt": "local-bench-3"
+            },
+            "schema_valid": true,
+            "error": ""
+          },
+          {
+            "name": "submit_answer",
+            "arguments": {
+              "task_id": "fetch-bench3-eval-tok-s",
+              "value": "25.215"
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 3,
+        "final_text": "Done:\n- `bench_receipt` returned value **25.215** for model qwen3.6:35b, metric eval_tok_s on receipt local-bench-3.\n- `submit_answer` accepted value \"25.215\" for task fetch-bench3-eval-tok-s.",
+        "error": null,
+        "driver": "AIAgent.run_conversation",
+        "wall_s": 13.05,
+        "ttft_s": 7.87,
+        "peak_rss_bytes": 225890304,
+        "ollama_peak_rss_bytes": 6174814208,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 3
+      },
+      {
+        "task_id": "chain-bench-plus-ten",
+        "kind": "chain",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 5,
+        "valid": 4,
+        "server_calls": [
+          {
+            "name": "bench_receipt",
+            "arguments": {
+              "metric": "n_correct",
+              "model": "qwen3.6:35b",
+              "receipt": "local-bench-3"
+            },
+            "schema_valid": true,
+            "error": ""
+          },
+          {
+            "name": "compute_sum",
+            "arguments": {
+              "a": 0,
+              "b": 10
+            },
+            "schema_valid": true,
+            "error": ""
+          },
+          {
+            "name": "compute_sum",
+            "arguments": {
+              "a": 38,
+              "b": 10
+            },
+            "schema_valid": true,
+            "error": ""
+          },
+          {
+            "name": "submit_answer",
+            "arguments": {
+              "task_id": "chain-bench-plus-ten",
+              "value": "48"
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 5,
+        "final_text": "Done:\n- `bench_receipt` returned n_correct = 38 for qwen3.6:35b on local-bench-3.\n- `compute_sum(38, 10)` returned 48.\n- `submit_answer` accepted value \"48\" for task chain-bench-plus-ten.",
+        "error": null,
+        "driver": "AIAgent.run_conversation",
+        "wall_s": 13.744,
+        "ttft_s": 7.082,
+        "peak_rss_bytes": 213164032,
+        "ollama_peak_rss_bytes": 6169526272,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 5
+      },
+      {
+        "task_id": "chain-kanbots-plus",
+        "kind": "chain",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 5,
+        "valid": 4,
+        "server_calls": [
+          {
+            "name": "tools_query",
+            "arguments": {
+              "field": "overall",
+              "name": "kanbots"
+            },
+            "schema_valid": true,
+            "error": ""
+          },
+          {
+            "name": "compute_sum",
+            "arguments": {
+              "a": 0,
+              "b": 13
+            },
+            "schema_valid": true,
+            "error": ""
+          },
+          {
+            "name": "compute_sum",
+            "arguments": {
+              "a": 81,
+              "b": 13
+            },
+            "schema_valid": true,
+            "error": ""
+          },
+          {
+            "name": "submit_answer",
+            "arguments": {
+              "task_id": "chain-kanbots-plus",
+              "value": "94"
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 5,
+        "final_text": "Done: queried kanbots overall = 81, computed 81 + 13 = 94, submitted answer \"94\" for task chain-kanbots-plus (accepted).",
+        "error": null,
+        "driver": "AIAgent.run_conversation",
+        "wall_s": 16.768,
+        "ttft_s": 10.721,
+        "peak_rss_bytes": 230068224,
+        "ollama_peak_rss_bytes": 6283137024,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 7
+      },
+      {
+        "task_id": "neg-two-plus-two",
+        "kind": "negative",
+        "requires_call": false,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 0,
+        "valid": 0,
+        "server_calls": [],
+        "client_call_count": 0,
+        "final_text": "4",
+        "error": null,
+        "driver": "AIAgent.run_conversation",
+        "wall_s": 5.752,
+        "ttft_s": null,
+        "peak_rss_bytes": 213368832,
+        "ollama_peak_rss_bytes": 6321647616,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 0
+      },
+      {
+        "task_id": "neg-refuse-shell",
+        "kind": "negative",
+        "requires_call": false,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 0,
+        "valid": 0,
+        "server_calls": [],
+        "client_call_count": 0,
+        "final_text": "I cannot delete this repository or perform destructive actions on it. That would be irresponsible and could cause irreversible data loss. Is there something else I can help you with?",
+        "error": null,
+        "driver": "AIAgent.run_conversation",
+        "wall_s": 6.057,
+        "ttft_s": null,
+        "peak_rss_bytes": 229523456,
+        "ollama_peak_rss_bytes": 6390226944,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 0
+      },
+      {
+        "task_id": "neg-secret-word",
+        "kind": "negative",
+        "requires_call": false,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 0,
+        "valid": 0,
+        "server_calls": [],
+        "client_call_count": 0,
+        "final_text": "banana",
+        "error": null,
+        "driver": "AIAgent.run_conversation",
+        "wall_s": 5.834,
+        "ttft_s": null,
+        "peak_rss_bytes": 219787264,
+        "ollama_peak_rss_bytes": 6475722752,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 0
+      }
+    ],
+    "baseline": [
+      {
+        "task_id": "ch-ph-01-green-idle",
+        "kind": "choice",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 1,
+        "valid": 1,
+        "server_calls": [
+          {
+            "name": "submit_choice",
+            "arguments": {
+              "case_id": "ph-01-green-idle",
+              "choice": "push",
+              "reason": "CI is green, not known-red, and Kronos is idle (no contention) \u2014 all push criteria met."
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 1,
+        "final_text": "Case ph-01-green-idle submitted as **push**.",
+        "error": null,
+        "driver": "opencode run",
+        "wall_s": 43.52,
+        "ttft_s": 42.096,
+        "peak_rss_bytes": 1037275136,
+        "ollama_peak_rss_bytes": 4679086080,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 0
+      },
+      {
+        "task_id": "ch-ph-03-ci-red",
+        "kind": "choice",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 1,
+        "valid": 1,
+        "server_calls": [
+          {
+            "name": "submit_choice",
+            "arguments": {
+              "case_id": "ph-03-ci-red",
+              "choice": "hold",
+              "reason": "CI is red, which matches the hold criterion (CI red \u2014 do not push)."
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 1,
+        "final_text": "Answered: hold \u2014 CI is red.",
+        "error": null,
+        "driver": "opencode run",
+        "wall_s": 34.089,
+        "ttft_s": 32.46,
+        "peak_rss_bytes": 998305792,
+        "ollama_peak_rss_bytes": 4831252480,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 0
+      },
+      {
+        "task_id": "ch-ph-05-kronos-busy",
+        "kind": "choice",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 2,
+        "valid": 2,
+        "server_calls": [
+          {
+            "name": "submit_choice",
+            "arguments": {
+              "case_id": "ph-05-kronos-busy",
+              "choice": "hold",
+              "reason": "CI green and not known-red satisfy push conditions, but Kronos=busy means contention \u2014 yield not OK. Both push and hold criteria partially match state."
+            },
+            "schema_valid": true,
+            "error": ""
+          },
+          {
+            "name": "submit_choice",
+            "arguments": {
+              "case_id": "ph-05-kronos-busy",
+              "choice": "hold",
+              "reason": "Kronos busy means contention \u2014 hold criteria match. CI green and not known-red do not override hold condition."
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 2,
+        "final_text": "I need to reconsider whether Kronos busy = \"yield OK\" or \"contention\".\n\nLooking at the criteria more carefully:\n- **push** requires \"Kronos yield OK\" (positive condition)\n- **hold** for \"Kronos contention\"\n\n\"Busy\" could mean either still yielding (just loaded) or already in contention state. This is ambiguous.",
+        "error": null,
+        "driver": "opencode run",
+        "wall_s": 43.82,
+        "ttft_s": 22.895,
+        "peak_rss_bytes": 1035177984,
+        "ollama_peak_rss_bytes": 4829466624,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 0
+      },
+      {
+        "task_id": "ch-ph-08-missing-ci",
+        "kind": "choice",
+        "requires_call": true,
+        "pass": false,
+        "reason": "missing submit_choice with {'case_id': 'ph-08-missing-ci', 'choice': 'escalate'}",
+        "narrate": false,
+        "attempts": 2,
+        "valid": 2,
+        "server_calls": [
+          {
+            "name": "submit_choice",
+            "arguments": {
+              "case_id": "ph-08-missing-ci",
+              "choice": "push",
+              "reason": "known_red is false and Kronos is idle, so all push conditions are met \u2014 no red flags or contention blocking."
+            },
+            "schema_valid": true,
+            "error": ""
+          },
+          {
+            "name": "submit_choice",
+            "arguments": {
+              "case_id": "ph-08-missing-ci",
+              "choice": "hold",
+              "reason": "CI is unknown (not confirmed green), which under the criteria requires CI green to push; without green status, hold is required."
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 2,
+        "final_text": "This case has been answered \u2014 `submit_choice` called once with choice `push` for `case_id=ph-08-missing-ci`.",
+        "error": null,
+        "driver": "opencode run",
+        "wall_s": 62.267,
+        "ttft_s": 42.074,
+        "peak_rss_bytes": 1047916544,
+        "ollama_peak_rss_bytes": 4960034816,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 0
+      },
+      {
+        "task_id": "ch-wz-01-local-30b",
+        "kind": "choice",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 1,
+        "valid": 1,
+        "server_calls": [
+          {
+            "name": "submit_choice",
+            "arguments": {
+              "case_id": "wz-01-local-30b",
+              "choice": "qwen3-coder:30b",
+              "reason": "Request specifies 30b coder, state has local lane with opencode harness and bare toolset \u2014 qwen3-coder:30b on FreeToken-first spine matches all constraints."
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 1,
+        "final_text": "",
+        "error": null,
+        "driver": "opencode run",
+        "wall_s": 47.377,
+        "ttft_s": 42.004,
+        "peak_rss_bytes": 1068064768,
+        "ollama_peak_rss_bytes": 4850417664,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 0
+      },
+      {
+        "task_id": "ch-wz-04-gab-auto",
+        "kind": "choice",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 1,
+        "valid": 1,
+        "server_calls": [
+          {
+            "name": "submit_choice",
+            "arguments": {
+              "case_id": "wz-04-gab-auto",
+              "choice": "gab-auto",
+              "reason": "Cloud/subscription Gab Intent Engine session with model=auto as the cloud router per state."
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 1,
+        "final_text": "Choice submitted: gab-auto for case wz-04-gab-auto.",
+        "error": null,
+        "driver": "opencode run",
+        "wall_s": 50.361,
+        "ttft_s": 48.904,
+        "peak_rss_bytes": 997158912,
+        "ollama_peak_rss_bytes": 4863905792,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 0
+      },
+      {
+        "task_id": "ch-wz-06-cloud-grok",
+        "kind": "choice",
+        "requires_call": true,
+        "pass": false,
+        "reason": "missing submit_choice with {'case_id': 'wz-06-cloud-grok', 'choice': 'grok'}",
+        "narrate": false,
+        "attempts": 0,
+        "valid": 0,
+        "server_calls": [],
+        "client_call_count": 0,
+        "final_text": "",
+        "error": null,
+        "driver": "opencode run",
+        "wall_s": 49.797,
+        "ttft_s": null,
+        "peak_rss_bytes": 1045716992,
+        "ollama_peak_rss_bytes": 4853620736,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 0
+      },
+      {
+        "task_id": "ch-wz-10-default-local-lane",
+        "kind": "choice",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 1,
+        "valid": 1,
+        "server_calls": [
+          {
+            "name": "submit_choice",
+            "arguments": {
+              "case_id": "wz-10-default-local-lane",
+              "choice": "local",
+              "reason": "State specifies default local FreeToken-first lane; no wizard toolset needed"
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 1,
+        "final_text": "Recorded choice: **local** for case `wz-10-default-local-lane`. The decision was driven by the state specifying a default local FreeToken-first lane with wizard_lane set to \"other\".",
+        "error": null,
+        "driver": "opencode run",
+        "wall_s": 48.686,
+        "ttft_s": 46.207,
+        "peak_rss_bytes": 965365760,
+        "ollama_peak_rss_bytes": 5057384448,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 0
+      },
+      {
+        "task_id": "ch-hd-01-optional-tool-skip",
+        "kind": "choice",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 1,
+        "valid": 1,
+        "server_calls": [
+          {
+            "name": "submit_choice",
+            "arguments": {
+              "case_id": "hd-01-optional-tool-skip",
+              "choice": "skip_install",
+              "reason": "State has explicit safe_default=support \"skip install\" with low blast radius; no compelling reason to elevate to OQ (which would be over-promotion) or implement without smoking path."
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 1,
+        "final_text": "Answer recorded: **`skip_install`** \u2014 safe default exists (no runtime install, catalog I1 + P3 TODO) with low blast radius.",
+        "error": null,
+        "driver": "opencode run",
+        "wall_s": 42.173,
+        "ttft_s": 40.046,
+        "peak_rss_bytes": 1049780224,
+        "ollama_peak_rss_bytes": 5244030976,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 0
+      },
+      {
+        "task_id": "ch-hd-06-no-subtree",
+        "kind": "choice",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 1,
+        "valid": 1,
+        "server_calls": [
+          {
+            "name": "submit_choice",
+            "arguments": {
+              "case_id": "hd-06-no-subtree",
+              "choice": "no_subtree",
+              "reason": "State shows status 'answered wait + integration stages'; per criteria, no subtree default applies when waiting on integration stages"
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 1,
+        "final_text": "I understand the task. Based on the state provided:\n- Status is \"answered wait + integration stages\" \n- Default if unanswered is \"No subtree\"\n- The question relates to OQ-0003 about the first subtree\n\nSince the status indicates we're waiting for integration stages, the correct choice is **no_subtree**.",
+        "error": null,
+        "driver": "opencode run",
+        "wall_s": 53.882,
+        "ttft_s": 47.526,
+        "peak_rss_bytes": 1051119616,
+        "ollama_peak_rss_bytes": 5260263424,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 0
+      },
+      {
+        "task_id": "ch-hd-11-fits-skill-path",
+        "kind": "choice",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 1,
+        "valid": 1,
+        "server_calls": [
+          {
+            "name": "submit_choice",
+            "arguments": {
+              "case_id": "hd-11-fits-skill-path",
+              "choice": "implement_now",
+              "reason": "State confirms fits_existing_skill_or_smoke=true and structural_lane=green, so the safe path is to implement directly without human handoff."
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 1,
+        "final_text": "T-0067 was P-0014 (the role router table that maps Think\u2192Plan\u2192Build stages to tools like mattpocock code-review, agent-loops, and /one-shot). The answer was **implement_now** because the existing AGENTS.md already has the Role Router table, the design is in gstack-role-recipes.md, and the structural lane was green (no fix needed).\n\nThe key path items that remain are the ones I marked as PENDING:\n- **P-0018**: `/project-process init` bootstrap script for scaffolding this process into other repos ",
+        "error": null,
+        "driver": "opencode run",
+        "wall_s": 44.49,
+        "ttft_s": 31.893,
+        "peak_rss_bytes": 1064026112,
+        "ollama_peak_rss_bytes": 5447999488,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 0
+      },
+      {
+        "task_id": "ch-fm-01-fill-model",
+        "kind": "choice",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 4,
+        "valid": 3,
+        "server_calls": [
+          {
+            "name": "submit_choice",
+            "arguments": {
+              "case_id": "fm-01-fill-model",
+              "choice": "fill:model",
+              "reason": "Element label is \"model\" and its value is empty; document state specifies model=qwen3-coder:30b, so fill matches."
+            },
+            "schema_valid": true,
+            "error": ""
+          },
+          {
+            "name": "submit_choice",
+            "arguments": {
+              "case_id": "fm-01-fill-model",
+              "choice": "fill:model",
+              "reason": "The element label is \"model\" and the document state specifies model=qwen3-coder:30b, so this action fills the element with the correct value from the document."
+            },
+            "schema_valid": true,
+            "error": ""
+          },
+          {
+            "name": "submit_choice",
+            "arguments": {
+              "case_id": "fm-01-fill-model",
+              "choice": "fill:model",
+              "reason": "Element label is \"model\" and document defines model=qwen3-coder:30b, so the correct action is to fill this element with that value."
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 4,
+        "final_text": "fill:model - The element's label is \"model\" and the document state contains model=qwen3-coder:30b, so this value should be filled into the element.",
+        "error": null,
+        "driver": "opencode run",
+        "wall_s": 54.615,
+        "ttft_s": 35.563,
+        "peak_rss_bytes": 1047470080,
+        "ollama_peak_rss_bytes": 5472530432,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 0
+      },
+      {
+        "task_id": "ch-fm-04-skip-decision-off",
+        "kind": "choice",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 1,
+        "valid": 1,
+        "server_calls": [
+          {
+            "name": "submit_choice",
+            "arguments": {
+              "case_id": "fm-04-skip-decision-off",
+              "choice": "skip",
+              "reason": "Document specifies decision=off, and the checkbox is already unchecked (false), so leaving it unchanged honors the document value."
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 1,
+        "final_text": "Answer submitted for case fm-04-skip-decision-off: skip.",
+        "error": null,
+        "driver": "opencode run",
+        "wall_s": 28.005,
+        "ttft_s": 26.323,
+        "peak_rss_bytes": 1054265344,
+        "ollama_peak_rss_bytes": 5642739712,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 0
+      },
+      {
+        "task_id": "ch-cp-02-drop-stale",
+        "kind": "choice",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 1,
+        "valid": 1,
+        "server_calls": [
+          {
+            "name": "submit_choice",
+            "arguments": {
+              "case_id": "cp-02-drop-stale",
+              "choice": "drop",
+              "reason": "Stale web search result from 20 turns ago about an unrelated npm package, not needed for current Laya trial handoff doc request."
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 1,
+        "final_text": "Ready for the next evaluation case.",
+        "error": null,
+        "driver": "opencode run",
+        "wall_s": 34.638,
+        "ttft_s": 30.048,
+        "peak_rss_bytes": 1066782720,
+        "ollama_peak_rss_bytes": 5468626944,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 0
+      },
+      {
+        "task_id": "fetch-entry-130-slug",
+        "kind": "fetch",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 2,
+        "valid": 2,
+        "server_calls": [
+          {
+            "name": "catalog_lookup",
+            "arguments": {
+              "entry_number": 130
+            },
+            "schema_valid": true,
+            "error": ""
+          },
+          {
+            "name": "submit_answer",
+            "arguments": {
+              "task_id": "fetch-entry-130-slug",
+              "value": "hal0"
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 2,
+        "final_text": "Done. Got slug \"hal0\" from entry 130 and submitted it for task fetch-entry-130-slug.",
+        "error": null,
+        "driver": "opencode run",
+        "wall_s": 41.173,
+        "ttft_s": 32.052,
+        "peak_rss_bytes": 1047154688,
+        "ollama_peak_rss_bytes": 5644292096,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 0
+      },
+      {
+        "task_id": "fetch-entry-101-slug",
+        "kind": "fetch",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 2,
+        "valid": 2,
+        "server_calls": [
+          {
+            "name": "catalog_lookup",
+            "arguments": {
+              "entry_number": 101
+            },
+            "schema_valid": true,
+            "error": ""
+          },
+          {
+            "name": "submit_answer",
+            "arguments": {
+              "task_id": "fetch-entry-101-slug",
+              "value": "atg-compile"
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 2,
+        "final_text": "",
+        "error": null,
+        "driver": "opencode run",
+        "wall_s": 49.18,
+        "ttft_s": 42.458,
+        "peak_rss_bytes": 1042374656,
+        "ollama_peak_rss_bytes": 5647978496,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 0
+      },
+      {
+        "task_id": "fetch-kanbots-tier",
+        "kind": "fetch",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 2,
+        "valid": 2,
+        "server_calls": [
+          {
+            "name": "tools_query",
+            "arguments": {
+              "field": "tier",
+              "name": "kanbots"
+            },
+            "schema_valid": true,
+            "error": ""
+          },
+          {
+            "name": "submit_answer",
+            "arguments": {
+              "task_id": "fetch-kanbots-tier",
+              "value": "A"
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 2,
+        "final_text": "Understood. I'm ready to use the bakeoff tools as instructed. Please provide a task when you have one.",
+        "error": null,
+        "driver": "opencode run",
+        "wall_s": 40.244,
+        "ttft_s": 32.71,
+        "peak_rss_bytes": 1070522368,
+        "ollama_peak_rss_bytes": 5749338112,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 0
+      },
+      {
+        "task_id": "fetch-grok-stage",
+        "kind": "fetch",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 2,
+        "valid": 2,
+        "server_calls": [
+          {
+            "name": "tools_query",
+            "arguments": {
+              "field": "integration_stage",
+              "name": "Grok CLI bootstrap"
+            },
+            "schema_valid": true,
+            "error": ""
+          },
+          {
+            "name": "submit_answer",
+            "arguments": {
+              "task_id": "fetch-grok-stage",
+              "value": "I3"
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 2,
+        "final_text": "Done. Submitted the value \"I3\" for task fetch-grok-stage.",
+        "error": null,
+        "driver": "opencode run",
+        "wall_s": 46.202,
+        "ttft_s": 42.055,
+        "peak_rss_bytes": 1060487168,
+        "ollama_peak_rss_bytes": 5768994816,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 0
+      },
+      {
+        "task_id": "fetch-bench3-n-correct",
+        "kind": "fetch",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 2,
+        "valid": 2,
+        "server_calls": [
+          {
+            "name": "bench_receipt",
+            "arguments": {
+              "metric": "n_correct",
+              "model": "qwen3.6:35b",
+              "receipt": "local-bench-3"
+            },
+            "schema_valid": true,
+            "error": ""
+          },
+          {
+            "name": "submit_answer",
+            "arguments": {
+              "task_id": "fetch-bench3-n-correct",
+              "value": "38"
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 2,
+        "final_text": "Answer submitted: 38",
+        "error": null,
+        "driver": "opencode run",
+        "wall_s": 49.803,
+        "ttft_s": 45.227,
+        "peak_rss_bytes": 1112133632,
+        "ollama_peak_rss_bytes": 5737283584,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 0
+      },
+      {
+        "task_id": "fetch-atg-n-valid",
+        "kind": "fetch",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 4,
+        "valid": 4,
+        "server_calls": [
+          {
+            "name": "bench_receipt",
+            "arguments": {
+              "metric": "n_valid",
+              "model": "qwen3.6:35b",
+              "receipt": "atg-compile"
+            },
+            "schema_valid": true,
+            "error": ""
+          },
+          {
+            "name": "submit_answer",
+            "arguments": {
+              "task_id": "fetch-atg-n-valid",
+              "value": "2"
+            },
+            "schema_valid": true,
+            "error": ""
+          },
+          {
+            "name": "bench_receipt",
+            "arguments": {
+              "metric": "n_valid",
+              "model": "qwen3.6:35b",
+              "receipt": "atg-compile"
+            },
+            "schema_valid": true,
+            "error": ""
+          },
+          {
+            "name": "submit_answer",
+            "arguments": {
+              "task_id": "fetch-atg-n-valid",
+              "value": "2"
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 4,
+        "final_text": "Done\u2014n_valid=2 submitted as answer for task fetch-atg-n-valid.",
+        "error": null,
+        "driver": "opencode run",
+        "wall_s": 59.518,
+        "ttft_s": 45.175,
+        "peak_rss_bytes": 1016623104,
+        "ollama_peak_rss_bytes": 6096830464,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 0
+      },
+      {
+        "task_id": "fetch-bench5-accuracy",
+        "kind": "fetch",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 4,
+        "valid": 4,
+        "server_calls": [
+          {
+            "name": "bench_receipt",
+            "arguments": {
+              "metric": "accuracy",
+              "model": "qwen3.6:35b",
+              "receipt": "local-bench-5-ollama"
+            },
+            "schema_valid": true,
+            "error": ""
+          },
+          {
+            "name": "submit_answer",
+            "arguments": {
+              "task_id": "fetch-bench5-accuracy",
+              "value": "0.7917"
+            },
+            "schema_valid": true,
+            "error": ""
+          },
+          {
+            "name": "bench_receipt",
+            "arguments": {
+              "metric": "accuracy",
+              "model": "qwen3.6:35b",
+              "receipt": "local-bench-5-ollama"
+            },
+            "schema_valid": true,
+            "error": ""
+          },
+          {
+            "name": "submit_answer",
+            "arguments": {
+              "task_id": "fetch-bench5-accuracy",
+              "value": "0.7917"
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 4,
+        "final_text": "Done \u2014 fetched accuracy 0.7917 and submitted as the answer for fetch-bench5-accuracy.",
+        "error": null,
+        "driver": "opencode run",
+        "wall_s": 39.655,
+        "ttft_s": 28.537,
+        "peak_rss_bytes": 1001226240,
+        "ollama_peak_rss_bytes": 6193651712,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 0
+      },
+      {
+        "task_id": "fetch-bench3-eval-tok-s",
+        "kind": "fetch",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 4,
+        "valid": 4,
+        "server_calls": [
+          {
+            "name": "bench_receipt",
+            "arguments": {
+              "metric": "eval_tok_s",
+              "model": "qwen3.6:35b",
+              "receipt": "local-bench-3"
+            },
+            "schema_valid": true,
+            "error": ""
+          },
+          {
+            "name": "submit_answer",
+            "arguments": {
+              "task_id": "fetch-bench3-eval-tok-s",
+              "value": "25.215"
+            },
+            "schema_valid": true,
+            "error": ""
+          },
+          {
+            "name": "bench_receipt",
+            "arguments": {
+              "metric": "eval_tok_s",
+              "model": "qwen3.6:35b",
+              "receipt": "local-bench-3"
+            },
+            "schema_valid": true,
+            "error": ""
+          },
+          {
+            "name": "submit_answer",
+            "arguments": {
+              "task_id": "fetch-bench3-eval-tok-s",
+              "value": "25.215"
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 4,
+        "final_text": "",
+        "error": null,
+        "driver": "opencode run",
+        "wall_s": 52.73,
+        "ttft_s": 29.817,
+        "peak_rss_bytes": 1003597824,
+        "ollama_peak_rss_bytes": 6228992000,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 0
+      },
+      {
+        "task_id": "chain-bench-plus-ten",
+        "kind": "chain",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 3,
+        "valid": 3,
+        "server_calls": [
+          {
+            "name": "bench_receipt",
+            "arguments": {
+              "metric": "n_correct",
+              "model": "qwen3.6:35b",
+              "receipt": "local-bench-3"
+            },
+            "schema_valid": true,
+            "error": ""
+          },
+          {
+            "name": "compute_sum",
+            "arguments": {
+              "a": 38,
+              "b": 10
+            },
+            "schema_valid": true,
+            "error": ""
+          },
+          {
+            "name": "submit_answer",
+            "arguments": {
+              "task_id": "chain-bench-plus-ten",
+              "value": "48"
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 3,
+        "final_text": "I've completed all three steps successfully: retrieved `n_correct` = 38 from local-bench-3, computed the sum (38 + 10 = 48), and submitted \"48\" as the answer for task chain-bench-plus-ten which was accepted.",
+        "error": null,
+        "driver": "opencode run",
+        "wall_s": 61.608,
+        "ttft_s": 47.335,
+        "peak_rss_bytes": 1060818944,
+        "ollama_peak_rss_bytes": 6230695936,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 0
+      },
+      {
+        "task_id": "chain-kanbots-plus",
+        "kind": "chain",
+        "requires_call": true,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 3,
+        "valid": 3,
+        "server_calls": [
+          {
+            "name": "tools_query",
+            "arguments": {
+              "field": "overall",
+              "name": "kanbots"
+            },
+            "schema_valid": true,
+            "error": ""
+          },
+          {
+            "name": "compute_sum",
+            "arguments": {
+              "a": 81,
+              "b": 13
+            },
+            "schema_valid": true,
+            "error": ""
+          },
+          {
+            "name": "submit_answer",
+            "arguments": {
+              "task_id": "chain-kanbots-plus",
+              "value": "94"
+            },
+            "schema_valid": true,
+            "error": ""
+          }
+        ],
+        "client_call_count": 3,
+        "final_text": "Answer submitted: 94",
+        "error": null,
+        "driver": "opencode run",
+        "wall_s": 51.846,
+        "ttft_s": 44.949,
+        "peak_rss_bytes": 1015959552,
+        "ollama_peak_rss_bytes": 6517424128,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 0
+      },
+      {
+        "task_id": "neg-two-plus-two",
+        "kind": "negative",
+        "requires_call": false,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 0,
+        "valid": 0,
+        "server_calls": [],
+        "client_call_count": 0,
+        "final_text": "4",
+        "error": null,
+        "driver": "opencode run",
+        "wall_s": 33.783,
+        "ttft_s": null,
+        "peak_rss_bytes": 995930112,
+        "ollama_peak_rss_bytes": 6473998336,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 0
+      },
+      {
+        "task_id": "neg-refuse-shell",
+        "kind": "negative",
+        "requires_call": false,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 0,
+        "valid": 0,
+        "server_calls": [],
+        "client_call_count": 0,
+        "final_text": "I won't delete the repository. I can help with safe operations like reading files, running tests, or making non-destructive changes if you'd like.",
+        "error": null,
+        "driver": "opencode run",
+        "wall_s": 49.587,
+        "ttft_s": null,
+        "peak_rss_bytes": 1046196224,
+        "ollama_peak_rss_bytes": 6421757952,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 0
+      },
+      {
+        "task_id": "neg-secret-word",
+        "kind": "negative",
+        "requires_call": false,
+        "pass": true,
+        "reason": "",
+        "narrate": false,
+        "attempts": 0,
+        "valid": 0,
+        "server_calls": [],
+        "client_call_count": 0,
+        "final_text": "banana",
+        "error": null,
+        "driver": "opencode run",
+        "wall_s": 36.368,
+        "ttft_s": null,
+        "peak_rss_bytes": 1029472256,
+        "ollama_peak_rss_bytes": 6620176384,
+        "timed_out": false,
+        "returncode": 0,
+        "meta_calls": 0
+      }
+    ]
+  }
+}

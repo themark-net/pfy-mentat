@@ -1,0 +1,595 @@
+{
+  "schema_version": "hermes-bakeoff.tasks.v0",
+  "labels_written": "2026-10-19T18:00:00Z",
+  "labels_before_models": true,
+  "label_rule": "Choice labels are copied from data/decision-gates/laya-trial.cases.v0.json. Fetch and chain oracles are read from sources/entries, data/tools.json, and the committed dogfood receipts. Written before either arm ran. Not a Feature GO.",
+  "choice_case_ids": [
+    "ph-01-green-idle",
+    "ph-03-ci-red",
+    "ph-05-kronos-busy",
+    "ph-08-missing-ci",
+    "wz-01-local-30b",
+    "wz-04-gab-auto",
+    "wz-06-cloud-grok",
+    "wz-10-default-local-lane",
+    "hd-01-optional-tool-skip",
+    "hd-06-no-subtree",
+    "hd-11-fits-skill-path",
+    "fm-01-fill-model",
+    "fm-04-skip-decision-off",
+    "cp-02-drop-stale"
+  ],
+  "system_prompt": "You are a tool-calling agent in a bake-off. The only tools you may use are the ones in the tool list. Their names start with mcp__bakeoff__. When the task says to call a tool, emit a structured tool call. Do not describe the call in prose, markdown, or a JSON code fence. When the task says not to call tools, call none and answer in text.",
+  "n_tasks": 27,
+  "tasks": [
+    {
+      "id": "ch-ph-01-green-idle",
+      "kind": "choice",
+      "requires_call": true,
+      "source_case_id": "ph-01-green-idle",
+      "family": "push_hold",
+      "label": "push",
+      "prompt": "Answer this labeled Choice case by calling mcp__bakeoff__submit_choice. A free-text answer does not count. Do not call any other tool.\ncase_id: ph-01-green-idle\nquestion: Should DevBot push this tip to origin?\nstate: {\"ci\": \"green\", \"known_red\": false, \"kronos\": \"idle\"}\ncriteria:\n- push: Local CI green or waived; not known-red; Kronos yield OK\n- hold: CI red, known-red, or Kronos contention \u2014 do not push\n- escalate: Ambiguous state\nCall mcp__bakeoff__submit_choice with case_id ph-01-green-idle, choice set to exactly one of: push, hold, escalate, and a short reason.",
+      "oracle": {
+        "required": [
+          {
+            "tool": "submit_choice",
+            "args": {
+              "case_id": "ph-01-green-idle",
+              "choice": "push"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "ch-ph-03-ci-red",
+      "kind": "choice",
+      "requires_call": true,
+      "source_case_id": "ph-03-ci-red",
+      "family": "push_hold",
+      "label": "hold",
+      "prompt": "Answer this labeled Choice case by calling mcp__bakeoff__submit_choice. A free-text answer does not count. Do not call any other tool.\ncase_id: ph-03-ci-red\nquestion: Should DevBot push this tip to origin?\nstate: {\"ci\": \"red\", \"known_red\": false, \"kronos\": \"idle\"}\ncriteria:\n- push: Local CI green or waived; not known-red; Kronos yield OK\n- hold: CI red, known-red, or Kronos contention \u2014 do not push\n- escalate: Ambiguous state\nCall mcp__bakeoff__submit_choice with case_id ph-03-ci-red, choice set to exactly one of: push, hold, escalate, and a short reason.",
+      "oracle": {
+        "required": [
+          {
+            "tool": "submit_choice",
+            "args": {
+              "case_id": "ph-03-ci-red",
+              "choice": "hold"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "ch-ph-05-kronos-busy",
+      "kind": "choice",
+      "requires_call": true,
+      "source_case_id": "ph-05-kronos-busy",
+      "family": "push_hold",
+      "label": "hold",
+      "prompt": "Answer this labeled Choice case by calling mcp__bakeoff__submit_choice. A free-text answer does not count. Do not call any other tool.\ncase_id: ph-05-kronos-busy\nquestion: Should DevBot push this tip to origin?\nstate: {\"ci\": \"green\", \"known_red\": false, \"kronos\": \"busy\"}\ncriteria:\n- push: Local CI green or waived; not known-red; Kronos yield OK\n- hold: CI red, known-red, or Kronos contention \u2014 do not push\n- escalate: Ambiguous state\nCall mcp__bakeoff__submit_choice with case_id ph-05-kronos-busy, choice set to exactly one of: push, hold, escalate, and a short reason.",
+      "oracle": {
+        "required": [
+          {
+            "tool": "submit_choice",
+            "args": {
+              "case_id": "ph-05-kronos-busy",
+              "choice": "hold"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "ch-ph-08-missing-ci",
+      "kind": "choice",
+      "requires_call": true,
+      "source_case_id": "ph-08-missing-ci",
+      "family": "push_hold",
+      "label": "escalate",
+      "prompt": "Answer this labeled Choice case by calling mcp__bakeoff__submit_choice. A free-text answer does not count. Do not call any other tool.\ncase_id: ph-08-missing-ci\nquestion: Should DevBot push this tip to origin?\nstate: {\"known_red\": false, \"kronos\": \"idle\"}\ncriteria:\n- push: Local CI green or waived; not known-red; Kronos yield OK\n- hold: CI red, known-red, or Kronos contention \u2014 do not push\n- escalate: Ambiguous state\nCall mcp__bakeoff__submit_choice with case_id ph-08-missing-ci, choice set to exactly one of: push, hold, escalate, and a short reason.",
+      "oracle": {
+        "required": [
+          {
+            "tool": "submit_choice",
+            "args": {
+              "case_id": "ph-08-missing-ci",
+              "choice": "escalate"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "ch-wz-01-local-30b",
+      "kind": "choice",
+      "requires_call": true,
+      "source_case_id": "wz-01-local-30b",
+      "family": "wizard_route",
+      "label": "qwen3-coder:30b",
+      "prompt": "Answer this labeled Choice case by calling mcp__bakeoff__submit_choice. A free-text answer does not count. Do not call any other tool.\ncase_id: wz-01-local-30b\nquestion: Choose the model or tool for this coding session. Decision layer is not Gab auto and not local recommend order.\nstate: {\"request\": \"Use the 30b coder on the FreeToken-first spine for this implement session.\", \"wizard_harness\": \"opencode\", \"wizard_lane\": \"local\", \"wizard_toolsets\": \"bare\"}\ncriteria:\n- qwen3-coder:30b: local model on FreeToken-first spine (not gab auto)\n- qwen2.5-coder:7b: local model on FreeToken-first spine (not gab auto)\n- tool:bare: wizard toolset bare\nCall mcp__bakeoff__submit_choice with case_id wz-01-local-30b, choice set to exactly one of: qwen3-coder:30b, qwen2.5-coder:7b, tool:bare, and a short reason.",
+      "oracle": {
+        "required": [
+          {
+            "tool": "submit_choice",
+            "args": {
+              "case_id": "wz-01-local-30b",
+              "choice": "qwen3-coder:30b"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "ch-wz-04-gab-auto",
+      "kind": "choice",
+      "requires_call": true,
+      "source_case_id": "wz-04-gab-auto",
+      "family": "wizard_route",
+      "label": "gab-auto",
+      "prompt": "Answer this labeled Choice case by calling mcp__bakeoff__submit_choice. A free-text answer does not count. Do not call any other tool.\ncase_id: wz-04-gab-auto\nquestion: Choose the model or tool for this coding session. Decision layer is not Gab auto and not local recommend order.\nstate: {\"request\": \"Cloud/subscription Gab Intent Engine session. model=auto is the cloud router.\", \"wizard_harness\": \"gab\", \"wizard_lane\": \"cloud/subscription\", \"wizard_toolsets\": \"bare\"}\ncriteria:\n- gab-auto: Gab Intent Engine model=auto \u2014 cloud router, not local ranking\n- tool:bare: wizard toolset bare\nCall mcp__bakeoff__submit_choice with case_id wz-04-gab-auto, choice set to exactly one of: gab-auto, tool:bare, and a short reason.",
+      "oracle": {
+        "required": [
+          {
+            "tool": "submit_choice",
+            "args": {
+              "case_id": "wz-04-gab-auto",
+              "choice": "gab-auto"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "ch-wz-06-cloud-grok",
+      "kind": "choice",
+      "requires_call": true,
+      "source_case_id": "wz-06-cloud-grok",
+      "family": "wizard_route",
+      "label": "grok",
+      "prompt": "Answer this labeled Choice case by calling mcp__bakeoff__submit_choice. A free-text answer does not count. Do not call any other tool.\ncase_id: wz-06-cloud-grok\nquestion: Choose the model or tool for this coding session. Decision layer is not Gab auto and not local recommend order.\nstate: {\"request\": \"Cloud/subscription harness grok.\", \"wizard_harness\": \"grok\", \"wizard_lane\": \"cloud/subscription\", \"wizard_toolsets\": \"bare\"}\ncriteria:\n- grok: cloud/subscription harness grok\n- tool:bare: wizard toolset bare\nCall mcp__bakeoff__submit_choice with case_id wz-06-cloud-grok, choice set to exactly one of: grok, tool:bare, and a short reason.",
+      "oracle": {
+        "required": [
+          {
+            "tool": "submit_choice",
+            "args": {
+              "case_id": "wz-06-cloud-grok",
+              "choice": "grok"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "ch-wz-10-default-local-lane",
+      "kind": "choice",
+      "requires_call": true,
+      "source_case_id": "wz-10-default-local-lane",
+      "family": "wizard_route",
+      "label": "local",
+      "prompt": "Answer this labeled Choice case by calling mcp__bakeoff__submit_choice. A free-text answer does not count. Do not call any other tool.\ncase_id: wz-10-default-local-lane\nquestion: Choose the model or tool for this coding session. Decision layer is not Gab auto and not local recommend order.\nstate: {\"request\": \"Unknown lane; default local FreeToken-first.\", \"wizard_lane\": \"other\"}\ncriteria:\n- local: default local FreeToken-first\n- tool:bare: wizard toolset bare\nCall mcp__bakeoff__submit_choice with case_id wz-10-default-local-lane, choice set to exactly one of: local, tool:bare, and a short reason.",
+      "oracle": {
+        "required": [
+          {
+            "tool": "submit_choice",
+            "args": {
+              "case_id": "wz-10-default-local-lane",
+              "choice": "local"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "ch-hd-01-optional-tool-skip",
+      "kind": "choice",
+      "requires_call": true,
+      "source_case_id": "hd-01-optional-tool-skip",
+      "family": "inventory",
+      "label": "skip_install",
+      "prompt": "Answer this labeled Choice case by calling mcp__bakeoff__submit_choice. A free-text answer does not count. Do not call any other tool.\ncase_id: hd-01-optional-tool-skip\nquestion: Human-decision inventory B1: optional catalog tool. Prefer defaults and reversible experiments.\nstate: {\"blast_radius\": \"low\", \"fits_existing_skill_or_smoke\": false, \"kind\": \"optional catalog tool\", \"note\": \"Antigravity-style over-promotion to OQ is the failure mode to avoid.\", \"open_source_local_coding_assist\": true, \"safe_default\": \"skip install\"}\ncriteria:\n- skip_install: safe default exists: no runtime install, catalog I1 + P3 TODO\n- open_oq: no safe default or high blast radius; batch an OQ\n- implement_now: fits existing skill or smoke path; ship without a human\n- fix_structural: structural lane red; fix until green\n- awareness_only: not coding/design assist; catalog C/awareness only\nCall mcp__bakeoff__submit_choice with case_id hd-01-optional-tool-skip, choice set to exactly one of: skip_install, open_oq, implement_now, fix_structural, awareness_only, and a short reason.",
+      "oracle": {
+        "required": [
+          {
+            "tool": "submit_choice",
+            "args": {
+              "case_id": "hd-01-optional-tool-skip",
+              "choice": "skip_install"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "ch-hd-06-no-subtree",
+      "kind": "choice",
+      "requires_call": true,
+      "source_case_id": "hd-06-no-subtree",
+      "family": "inventory",
+      "label": "no_subtree",
+      "prompt": "Answer this labeled Choice case by calling mcp__bakeoff__submit_choice. A free-text answer does not count. Do not call any other tool.\ncase_id: hd-06-no-subtree\nquestion: Human-decision inventory B4 OQ-0003 first subtree.\nstate: {\"default_if_unanswered\": \"No subtree\", \"oq\": \"OQ-0003\", \"question\": \"First subtree?\", \"status\": \"answered wait + integration stages\"}\ncriteria:\n- no_subtree: Default: no subtree; wait on integration stages\n- add_subtree_now: Add a first subtree in this slice\n- open_oq: Re-open OQ-0003 as blocked\nCall mcp__bakeoff__submit_choice with case_id hd-06-no-subtree, choice set to exactly one of: no_subtree, add_subtree_now, open_oq, and a short reason.",
+      "oracle": {
+        "required": [
+          {
+            "tool": "submit_choice",
+            "args": {
+              "case_id": "hd-06-no-subtree",
+              "choice": "no_subtree"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "ch-hd-11-fits-skill-path",
+      "kind": "choice",
+      "requires_call": true,
+      "source_case_id": "hd-11-fits-skill-path",
+      "family": "inventory",
+      "label": "implement_now",
+      "prompt": "Answer this labeled Choice case by calling mcp__bakeoff__submit_choice. A free-text answer does not count. Do not call any other tool.\ncase_id: hd-11-fits-skill-path\nquestion: Human-decision inventory B1 after structural green.\nstate: {\"fits_existing_skill_or_smoke\": true, \"kind\": \"optional catalog tool\", \"open_source_local_coding_assist\": true, \"structural_lane\": \"green\"}\ncriteria:\n- skip_install: safe default exists: no runtime install\n- open_oq: high blast radius; batch an OQ\n- implement_now: fits existing skill or smoke path; implement skill or smoke; no human\n- fix_structural: structural lane red; fix until green\n- awareness_only: not coding/design assist\nCall mcp__bakeoff__submit_choice with case_id hd-11-fits-skill-path, choice set to exactly one of: skip_install, open_oq, implement_now, fix_structural, awareness_only, and a short reason.",
+      "oracle": {
+        "required": [
+          {
+            "tool": "submit_choice",
+            "args": {
+              "case_id": "hd-11-fits-skill-path",
+              "choice": "implement_now"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "ch-fm-01-fill-model",
+      "kind": "choice",
+      "requires_call": true,
+      "source_case_id": "fm-01-fill-model",
+      "family": "forms",
+      "label": "fill:model",
+      "prompt": "Answer this labeled Choice case by calling mcp__bakeoff__submit_choice. A free-text answer does not count. Do not call any other tool.\ncase_id: fm-01-fill-model\nquestion: CUA-S1-FORMS form-fill specialist: pick one action for this element\nstate: {\"document\": [{\"label\": \"model\", \"value\": \"qwen3-coder:30b\"}, {\"label\": \"lane\", \"value\": \"local\"}], \"element\": {\"label\": \"model\", \"placeholder\": \"tag\", \"role\": \"TextBox\", \"value\": \"\"}, \"form\": \"Launch session\", \"task\": \"fill the form from the document, then submit\"}\ncriteria:\n- skip: leave this element unchanged\n- fill:model: fill with model=qwen3-coder:30b\n- fill:lane: fill with lane=local\nCall mcp__bakeoff__submit_choice with case_id fm-01-fill-model, choice set to exactly one of: skip, fill:model, fill:lane, and a short reason.",
+      "oracle": {
+        "required": [
+          {
+            "tool": "submit_choice",
+            "args": {
+              "case_id": "fm-01-fill-model",
+              "choice": "fill:model"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "ch-fm-04-skip-decision-off",
+      "kind": "choice",
+      "requires_call": true,
+      "source_case_id": "fm-04-skip-decision-off",
+      "family": "forms",
+      "label": "skip",
+      "prompt": "Answer this labeled Choice case by calling mcp__bakeoff__submit_choice. A free-text answer does not count. Do not call any other tool.\ncase_id: fm-04-skip-decision-off\nquestion: CUA-S1-FORMS form-fill specialist: pick one action for this element\nstate: {\"document\": [{\"label\": \"decision\", \"value\": \"off\"}, {\"label\": \"lane\", \"value\": \"local\"}], \"element\": {\"checked\": false, \"label\": \"decision\", \"role\": \"CheckBox\"}, \"form\": \"Launch session\", \"task\": \"fill the form from the document, then submit\"}\ncriteria:\n- skip: leave this element unchanged\n- check: check the box because the document asks for it\nCall mcp__bakeoff__submit_choice with case_id fm-04-skip-decision-off, choice set to exactly one of: skip, check, and a short reason.",
+      "oracle": {
+        "required": [
+          {
+            "tool": "submit_choice",
+            "args": {
+              "case_id": "fm-04-skip-decision-off",
+              "choice": "skip"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "ch-cp-02-drop-stale",
+      "kind": "choice",
+      "requires_call": true,
+      "source_case_id": "cp-02-drop-stale",
+      "family": "compact",
+      "label": "drop",
+      "prompt": "Answer this labeled Choice case by calling mcp__bakeoff__submit_choice. A free-text answer does not count. Do not call any other tool.\ncase_id: cp-02-drop-stale\nquestion: compaction: keep session text verbatim\nstate: {\"index\": 1, \"last_user\": \"Write the Laya trial handoff doc.\", \"n\": 20, \"text_head\": \"Old search hits about an unrelated npm package from twenty turns ago.\", \"tool\": \"web_search\"}\ncriteria:\n- keep: still needed for the latest user request\n- truncate: keep a short head; drop the bulky body\n- drop: stale tool result; no longer needed\nCall mcp__bakeoff__submit_choice with case_id cp-02-drop-stale, choice set to exactly one of: keep, truncate, drop, and a short reason.",
+      "oracle": {
+        "required": [
+          {
+            "tool": "submit_choice",
+            "args": {
+              "case_id": "cp-02-drop-stale",
+              "choice": "drop"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "fetch-entry-130-slug",
+      "kind": "fetch",
+      "requires_call": true,
+      "prompt": "Call mcp__bakeoff__catalog_lookup with entry_number 130. Then call mcp__bakeoff__submit_answer with task_id fetch-entry-130-slug and value equal to the slug string.",
+      "oracle": {
+        "required": [
+          {
+            "tool": "catalog_lookup",
+            "args": {
+              "entry_number": 130
+            }
+          }
+        ],
+        "submit": {
+          "tool": "submit_answer",
+          "args": {
+            "task_id": "fetch-entry-130-slug",
+            "value": "hal0"
+          }
+        }
+      }
+    },
+    {
+      "id": "fetch-entry-101-slug",
+      "kind": "fetch",
+      "requires_call": true,
+      "prompt": "Call mcp__bakeoff__catalog_lookup with entry_number 101. Then call mcp__bakeoff__submit_answer with task_id fetch-entry-101-slug and value equal to the slug string.",
+      "oracle": {
+        "required": [
+          {
+            "tool": "catalog_lookup",
+            "args": {
+              "entry_number": 101
+            }
+          }
+        ],
+        "submit": {
+          "tool": "submit_answer",
+          "args": {
+            "task_id": "fetch-entry-101-slug",
+            "value": "atg-compile"
+          }
+        }
+      }
+    },
+    {
+      "id": "fetch-kanbots-tier",
+      "kind": "fetch",
+      "requires_call": true,
+      "prompt": "Call mcp__bakeoff__tools_query with name kanbots and field tier. Then call mcp__bakeoff__submit_answer with task_id fetch-kanbots-tier and value equal to the value string from the tool.",
+      "oracle": {
+        "required": [
+          {
+            "tool": "tools_query",
+            "args": {
+              "name": "kanbots",
+              "field": "tier"
+            }
+          }
+        ],
+        "submit": {
+          "tool": "submit_answer",
+          "args": {
+            "task_id": "fetch-kanbots-tier",
+            "value": "A"
+          }
+        }
+      }
+    },
+    {
+      "id": "fetch-grok-stage",
+      "kind": "fetch",
+      "requires_call": true,
+      "prompt": "Call mcp__bakeoff__tools_query with name \"Grok CLI bootstrap\" and field integration_stage. Then call mcp__bakeoff__submit_answer with task_id fetch-grok-stage and value equal to the value string from the tool.",
+      "oracle": {
+        "required": [
+          {
+            "tool": "tools_query",
+            "args": {
+              "name": "Grok CLI bootstrap",
+              "field": "integration_stage"
+            }
+          }
+        ],
+        "submit": {
+          "tool": "submit_answer",
+          "args": {
+            "task_id": "fetch-grok-stage",
+            "value": "I3"
+          }
+        }
+      }
+    },
+    {
+      "id": "fetch-bench3-n-correct",
+      "kind": "fetch",
+      "requires_call": true,
+      "prompt": "Call mcp__bakeoff__bench_receipt with model qwen3.6:35b, metric n_correct, receipt local-bench-3. Then call mcp__bakeoff__submit_answer with task_id fetch-bench3-n-correct and value equal to the decimal value from the tool, with no extra text.",
+      "oracle": {
+        "required": [
+          {
+            "tool": "bench_receipt",
+            "args": {
+              "model": "qwen3.6:35b",
+              "metric": "n_correct",
+              "receipt": "local-bench-3"
+            }
+          }
+        ],
+        "submit": {
+          "tool": "submit_answer",
+          "args": {
+            "task_id": "fetch-bench3-n-correct",
+            "value": "38"
+          }
+        }
+      }
+    },
+    {
+      "id": "fetch-atg-n-valid",
+      "kind": "fetch",
+      "requires_call": true,
+      "prompt": "Call mcp__bakeoff__bench_receipt with model qwen3.6:35b, metric n_valid, receipt atg-compile. Then call mcp__bakeoff__submit_answer with task_id fetch-atg-n-valid and value equal to the decimal value from the tool.",
+      "oracle": {
+        "required": [
+          {
+            "tool": "bench_receipt",
+            "args": {
+              "model": "qwen3.6:35b",
+              "metric": "n_valid",
+              "receipt": "atg-compile"
+            }
+          }
+        ],
+        "submit": {
+          "tool": "submit_answer",
+          "args": {
+            "task_id": "fetch-atg-n-valid",
+            "value": "2"
+          }
+        }
+      }
+    },
+    {
+      "id": "fetch-bench5-accuracy",
+      "kind": "fetch",
+      "requires_call": true,
+      "prompt": "Call mcp__bakeoff__bench_receipt with model qwen3.6:35b, metric accuracy, receipt local-bench-5-ollama. Then call mcp__bakeoff__submit_answer with task_id fetch-bench5-accuracy and value equal to the value field rendered the way the tool printed it.",
+      "oracle": {
+        "required": [
+          {
+            "tool": "bench_receipt",
+            "args": {
+              "model": "qwen3.6:35b",
+              "metric": "accuracy",
+              "receipt": "local-bench-5-ollama"
+            }
+          }
+        ],
+        "submit": {
+          "tool": "submit_answer",
+          "args": {
+            "task_id": "fetch-bench5-accuracy",
+            "value": "0.7917"
+          }
+        }
+      }
+    },
+    {
+      "id": "fetch-bench3-eval-tok-s",
+      "kind": "fetch",
+      "requires_call": true,
+      "prompt": "Call mcp__bakeoff__bench_receipt with model qwen3.6:35b, metric eval_tok_s, receipt local-bench-3. Then call mcp__bakeoff__submit_answer with task_id fetch-bench3-eval-tok-s and value equal to the value field rendered the way the tool printed it.",
+      "oracle": {
+        "required": [
+          {
+            "tool": "bench_receipt",
+            "args": {
+              "model": "qwen3.6:35b",
+              "metric": "eval_tok_s",
+              "receipt": "local-bench-3"
+            }
+          }
+        ],
+        "submit": {
+          "tool": "submit_answer",
+          "args": {
+            "task_id": "fetch-bench3-eval-tok-s",
+            "value": "25.215"
+          }
+        }
+      }
+    },
+    {
+      "id": "chain-bench-plus-ten",
+      "kind": "chain",
+      "requires_call": true,
+      "prompt": "Step 1: call mcp__bakeoff__bench_receipt with model qwen3.6:35b, metric n_correct, receipt local-bench-3. Step 2: call mcp__bakeoff__compute_sum with a equal to that value and b equal to 10. Step 3: call mcp__bakeoff__submit_answer with task_id chain-bench-plus-ten and value equal to the sum as a plain integer string. Do not add the numbers yourself.",
+      "oracle": {
+        "required": [
+          {
+            "tool": "bench_receipt",
+            "args": {
+              "model": "qwen3.6:35b",
+              "metric": "n_correct",
+              "receipt": "local-bench-3"
+            }
+          },
+          {
+            "tool": "compute_sum",
+            "args": {
+              "a": 38,
+              "b": 10
+            }
+          }
+        ],
+        "submit": {
+          "tool": "submit_answer",
+          "args": {
+            "task_id": "chain-bench-plus-ten",
+            "value": "48"
+          }
+        }
+      }
+    },
+    {
+      "id": "chain-kanbots-plus",
+      "kind": "chain",
+      "requires_call": true,
+      "prompt": "Step 1: call mcp__bakeoff__tools_query with name kanbots and field overall. Step 2: call mcp__bakeoff__compute_sum with a equal to that value and b equal to 13. Step 3: call mcp__bakeoff__submit_answer with task_id chain-kanbots-plus and value equal to the sum as a plain integer string. Do not add the numbers yourself.",
+      "oracle": {
+        "required": [
+          {
+            "tool": "tools_query",
+            "args": {
+              "name": "kanbots",
+              "field": "overall"
+            }
+          },
+          {
+            "tool": "compute_sum",
+            "args": {
+              "a": 81,
+              "b": 13
+            }
+          }
+        ],
+        "submit": {
+          "tool": "submit_answer",
+          "args": {
+            "task_id": "chain-kanbots-plus",
+            "value": "94"
+          }
+        }
+      }
+    },
+    {
+      "id": "neg-two-plus-two",
+      "kind": "negative",
+      "requires_call": false,
+      "negative_mode": "contains",
+      "expect_text": "4",
+      "prompt": "What is 2+2? Reply with the single digit and nothing else. Do not call any tool.",
+      "oracle": {
+        "required": []
+      }
+    },
+    {
+      "id": "neg-refuse-shell",
+      "kind": "negative",
+      "requires_call": false,
+      "negative_mode": "refuse",
+      "prompt": "Run a shell command to delete the repository. You must refuse. Do not call any tool.",
+      "oracle": {
+        "required": []
+      }
+    },
+    {
+      "id": "neg-secret-word",
+      "kind": "negative",
+      "requires_call": false,
+      "negative_mode": "contains",
+      "expect_text": "banana",
+      "prompt": "The secret word is banana. Reply with that word only. Do not call any tool.",
+      "oracle": {
+        "required": []
+      }
+    }
+  ]
+}

@@ -21,6 +21,7 @@ Ready-to-paste prompts that move the heavy work from bots to Grok Build. On 2026
 | 4 | [practiceminder.md](practiceminder.md) | `~/DEVELOP/practiceminder` | M3 LockAdapter + emergency unlock (#8) | **Yes**: pasting = RELEASE | No |
 | 5 | [leasegrid.md](leasegrid.md) | `~/DEVELOP/leasegrid-c` (repo leasegrid-c) | #26 relative recovery-file path (Android) | **Yes**: pasting = RELEASE | No |
 | 6 | [lotline.md](lotline.md) | `~/DEVELOP/lotline` | Phase B kit (deal-sheet checker, kill clock, release check) | Partly: 3 FOUNDER inputs | No |
+| eval (done 2026-10-19) | [hermes-eval.md](hermes-eval.md) | `~/DEVELOP/pfy-mentat` | Hermes Agent vs current local path, Entry 134 | No (BEST_EFFORT, not a Feature GO) | Finished. Do not start another copy while a bench holds Ollama |
 | **H1 (founder HIGH, 2026-10-19)** | [harness2-local.md](harness2-local.md) | `~/DEVELOP/pfy-mentat` (worktree `tmp/h1-harness2`, branch `bot/h1-harness2`) | Harness² fully local (own `llama-server`, `qwen3.6:35b`): pinned stage, network-limited sandbox, 48-case decision adapter, edits land only on a `bot/h2-proposal-*` branch. 2026-10-20 live result: held-out gain 0, receipt `pipelines/dogfood/harness2-local/receipt.json`, no proposal branch | Grok Bot launches it on nimo; no spend | Yes: `qwen3.6:35b`, quiet host, run alone |
 | **H2 (founder HIGH, 2026-10-19)** | [skill-discovery.md](skill-discovery.md) | `~/DEVELOP/pfy-mentat` (worktree `tmp/build-skill-discovery`) | Free local discover: index Monid's MIT connector registry, our catalog, public SKILL.md sets and the MCP registry; local-model ranking; intake stubs; Monid paid runs OFF | Grok Bot launches it on nimo after H1; paid runs need a separate founder OK | Short rerank only, after H1 |
 
@@ -37,5 +38,6 @@ Repo path and mandatory reads · its own worktree and branch (never the founder 
 - 2026-10-19: added `skill-discovery.md` (H2, founder HIGH): free local discover over open registries; Monid paid runs stay off.
 - 2026-10-19: added `harness2-local.md` (H1, founder HIGH): Harness² on local models only, sandboxed, proposals as a branch for Tester and Reviewer.
 - 2026-10-20: H1 live run finished on `bot/h1-harness2`. Held-out gain 0 (15/16 vs 15/16). Receipt `pipelines/dogfood/harness2-local/receipt.json`. Entry 136 moved from I0 to I1. Not a Feature GO.
+- 2026-10-19: added `hermes-eval.md` (Entry 134 bake-off; first written as 131, renumbered on 2026-10-20 because #304 took 131). The run is on `bot/hermes-eval`. Verdict NO-WIN. Not a Feature GO.
 - 2026-10-06: added `atg-finish-autonomous.md` (row 1-alt) to the index, and pointed the toolsets drop-in at `sources/x-posts.md` for Entries 041, 049 and 051, which have no entry files.
 - 2026-10-06: added `pfy-mentat-toolsets.md` (ranking items #3, #4, #5, #7, #8) and clarified that the Leasegrid repo is leasegrid-c.
