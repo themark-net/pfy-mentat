@@ -6,6 +6,7 @@ Branch `bot/hermes-wire`. Worktree `/home/mark/DEVELOP/pfy-mentat/tmp/hermes-wir
 
 | Commit | SHA |
 |---|---|
+| Reviewer FAIL fix B1 B2 (opencode provider config, stdin closed, isolated home and cwd, E2E test) | `fb5e34d4a6f850fd04ddb01c7053f115d204ce05` |
 | Write-up and re-run receipt | `3500119765269978bf9ad55f85ece064cdd24ead` |
 | Bot flag (`PFY_BOT_INTERFACE`, default off) | `56961bbe0c2444012fd471ed9a632b156c3577dc` |
 | Re-run harness (matched thinking, `tool_search` off) | `92431701c503cf670190796104dee1c45af65034` |
@@ -13,6 +14,15 @@ Branch `bot/hermes-wire`. Worktree `/home/mark/DEVELOP/pfy-mentat/tmp/hermes-wir
 | Wording, speed caveat, millisecond TTFT | `e215cb8a4b51d04c78747df61aa30967a72102a8` |
 
 Handoff commit: `43391e1f0913932a67bdfd161e0ceea47edbc8a3` (this file, on top of `3500119`). Stamp commits `dee7856`, `363eefb`, `7b80757` and the 2026-10-21 08:05 PT check commit are docs only. Status: session finished (end event, end_turn) and the branch is ready to gate. CI fix `56a65a15761c9fbc19509e149a0846a10e99fa91` adds a `HERMES_BAKEOFF_MEM_FLOOR_KIB` override so the ps-order test does not wait for the 47 GiB real-model floor on small runners. Tester and Reviewer gate the branch tip, which is the docs commit that adds this sentence; its SHA is pinned in the gate request because a commit cannot name itself.
+
+Reviewer FAIL on `cbcd65dd92116ec7692e153600a37e5d2086da74` is answered by `fb5e34d` plus the docs commit that adds this paragraph (the new tip; same rule, its SHA is in the gate request). What changed:
+
+- B1: `./pfy bot` passed `--model ollama/<model>` to opencode with an empty config dir, so opencode 1.18.x failed `Provider not found: ollama` and sent 0 requests. `run_opencode` now writes an `ollama` provider (`@ai-sdk/openai-compatible`, `baseURL` from `LOCAL_OPENAI_BASE_URL`, the model listed) to `tmp/bot-interface/opencode/config/opencode/opencode.json` and sets `OPENCODE_CONFIG`. The `PFY_BOT_INTERFACE=hermes` fallback uses the same path.
+- B2: the child starts with `stdin=subprocess.DEVNULL`, so a non-tty caller no longer hangs until `PFY_BOT_TIMEOUT`.
+- Isolation: opencode runs with `HOME`, XDG dirs, and cwd under `tmp/bot-interface/opencode/`, `OPENCODE_DISABLE_PROJECT_CONFIG=1`, and `--pure`, so the repo `opencode.json`, `~/.config/opencode`, and `~/.opencode` are not read.
+- Tests: stdin pipe does not hang (fake), child env and config (fake), and a real-opencode E2E against an in-process stub server on both paths that skips with a named reason when opencode is absent. Each has a RED mutant in the run log.
+- Real runs on nimo ollama `qwen3.6:35b` at `fb5e34d`: default rc 0, hermes (worktree checkout) rc 0, hermes fallback rc 0, each answered `pong` and the Ollama journal shows `POST /v1/chat/completions` 200 for each. See the run log, Item 4.
+
 
 ## Status
 
@@ -25,9 +35,10 @@ Handoff commit: `43391e1f0913932a67bdfd161e0ceea47edbc8a3` (this file, on top of
 | Live re-run | done. Receipt `pipelines/dogfood/hermes-bakeoff/results-rerun.json`. `results.json` was not overwritten |
 | `./pfy bot` flag | done. Default opencode. `PFY_BOT_INTERFACE=hermes` opts in. Plan `docs/plans/hermes-bot-interface.md` |
 | Catalog | HOLD 70-75 unchanged. No rescore. No Feature GO |
-| Suite | `env -u TMPDIR python3 -m unittest discover -s tests -t .` -> Ran 641 tests in 382.185s, OK (skipped=14), EXIT 0, at 2026-10-21 08:33 PT |
+| Suite | `TMPDIR=/home/mark/DEVELOP/pfy-mentat/tmp/hermes-wire-suite-tmp python3 -m unittest discover -s tests -t .` -> Ran 644 tests in 395.348s, OK (skipped=14), EXIT 0, at 2026-10-21 11:48 PT on `fb5e34d` plus these docs. The real-opencode E2E ran on nimo; it skips on ubuntu CI |
 | `ollama ps` | empty after the run (`keep_alive: 0` for `qwen3.6:35b`) |
-| `~/.hermes` | diff empty after restore (113616 paths). See isolation |
+| `~/.hermes` | sha256 manifest before and after the 11:32 PT real runs: 113616 paths, added 0, removed 0, changed 0. See isolation |
+| `./pfy bot` real runs | done at `fb5e34d`. Default, hermes, hermes fallback all rc 0 with Ollama requests logged. Run log Item 4 |
 
 ## Re-run numbers
 
@@ -57,7 +68,7 @@ Turn it off: `unset PFY_BOT_INTERFACE` or `PFY_BOT_INTERFACE=opencode`.
 ## Isolation
 
 - Scored run `HERMES_HOME` was `tmp/hermes-home` under this worktree. `HERMES_REDACT_SECRETS=true`. `PYTHONDONTWRITEBYTECODE=1` on bake-off children.
-- An import smoke at 00:17 PT ran the eval venv python with `HERMES_HOME` unset. Hermes treated `~/.hermes` as the home and replaced a 537-byte legacy SOUL scaffold with the pin default, and added a config backup plus cache files. Those bytes were restored from the known legacy scaffold (size match only) and the eight added paths were removed. Snapshot diff after that restore: empty. File contents were not printed.
+- An import smoke at 00:17 PT ran the eval venv python with `HERMES_HOME` unset. Hermes treated `~/.hermes` as the home and replaced a 537-byte legacy SOUL scaffold with the pin default, and added a config backup plus cache files. Those bytes were restored from the known legacy scaffold and the eight added paths were removed. Snapshot diff after that restore: empty. sha256 compare at 2026-10-21 11:35 PT: `~/.hermes/SOUL.md` hashes to `3a10ce135b52753beda81368712decc49a83715d527e00660c19f69d1b4879da`, equal to the legacy `SOUL_EOF` heredoc in `~/.hermes/hermes-agent/scripts/install.sh` (lines 1733-1747). A full sha256 manifest of `~/.hermes` before and after the Item 4 real runs matched (added 0, removed 0, changed 0). File contents were not printed.
 - `~/.local/bin/hermes` was not used. No gateway, dashboard, API server, or cron was started by this run.
 - The model was unloaded. `ollama ps` was empty at 01:02 PT.
 - `openclaw-gateway.service` was inactive and disabled at 01:03 PT. This run did not start it.

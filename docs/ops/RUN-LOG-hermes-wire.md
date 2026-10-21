@@ -88,3 +88,40 @@ Ollama at start: tags include `qwen3.6:35b`, `ollama ps` empty. bwrap present. S
 - 2026-10-21 01:10 PT: second suite `env -u TMPDIR python3 -m unittest discover -s tests -t .` -> Ran 640 tests in 388.186s, OK (skipped=14), EXIT 0. Pushed `43391e1` `dee7856` `363eefb`. `ollama ps` empty. STOP absent. `date` Wed Oct 21 01:10:43 AM PDT 2026.
 - 2026-10-21 08:05 PT: post-session check. Grok log ended with an end event (end_turn, 212 turns). PIDs 2858753 and 2858754 gone. origin/main still `e9365d5`, no merge needed. No added line vs main contains U+2014. `env -u TMPDIR python3 -m unittest discover -s tests -t .` -> Ran 640 tests in 396.995s, OK (skipped=14). `ollama ps` empty. Handoff status set to ready to gate.
 - 2026-10-21 08:35 PT: CI round 1 (run 39622614753 on `aa42b63`) red on ubuntu: `test_run_records_start_before_the_closing_ollama_ps` timed out at 60s because `wait_for_memory` waits for the 47 GiB real-model floor and the runner has far less. Fix: `HERMES_BAKEOFF_MEM_FLOOR_KIB` env override in `wait_for_memory`, set to 0 by that test, plus `test_memory_gate_override_returns_without_waiting`. RED: without the override the new test hung and `timeout 20` exited 124. Restored. `tests.test_hermes_bakeoff` Ran 24 tests OK. Full suite `env -u TMPDIR python3 -m unittest discover -s tests -t .` -> Ran 641 tests in 382.185s, OK (skipped=14). The nimo job's catalog step also failed in round 1 while a local structural run overlapped it on the same host (the `/tmp/pfy-*` race in `test_module_run_leaves_no_new_tmp_dirs` noted at 23:59 PT).
+
+## Item 4: Reviewer FAIL fix (B1, B2, nits)
+
+- 2026-10-21 11:27 PT: start. STOP absent. Tip `cbcd65dd92116ec7692e153600a37e5d2086da74`. `origin/main` already in the branch, no merge needed. opencode 1.18.32 at `~/.local/bin/opencode`. `ollama ps` empty. MemAvailable 71624512 kB.
+- B1 control: the `cbcd65d` `bot_interface.py` against an in-process stub OpenAI-compatible server (`--model ollama/stub-model`) -> `FAIL: opencode exited 1`, rc 1. Stub log: one `GET /api/tags` (the probe), zero `POST`. opencode never reached the server.
+- B1 fix: `run_opencode` writes `tmp/bot-interface/opencode/config/opencode/opencode.json` with an `ollama` provider (`npm` `@ai-sdk/openai-compatible`, `options.baseURL` = `LOCAL_OPENAI_BASE_URL`, `models` lists `PFY_BOT_MODEL`) and sets `OPENCODE_CONFIG` to it. Same stub run after the fix: rc 0, stdout `stub-ok`, stub log `GET /api/tags` then two `POST /v1/chat/completions model=stub-model stream=True`.
+- B2 fix: `_run_child` passes `stdin=subprocess.DEVNULL` (both the opencode and Hermes children).
+- Isolation: the opencode child gets `HOME`, `XDG_CONFIG_HOME`, `XDG_DATA_HOME`, `XDG_CACHE_HOME`, `XDG_STATE_HOME` and its cwd under `tmp/bot-interface/opencode/`, plus `OPENCODE_DISABLE_PROJECT_CONFIG=1`, `--pure`, and autoupdate, models fetch, share, Claude Code, external skills, and LSP download turned off. `OPENCODE_CONFIG_CONTENT` from the caller is not passed through (`_scrub` allow-list). `~/.config/opencode` and `~/.opencode` had no file newer than the pre-run snapshot after the real runs below.
+- New tests in `tests/test_bot_interface.py`:
+  - `test_open_stdin_pipe_does_not_hang_the_child`: fake opencode reads stdin to EOF while the caller holds a never-closed pipe. RED: drop `stdin=subprocess.DEVNULL` -> FAIL (the child ran into the 8s timeout). Restored.
+  - `test_opencode_child_gets_a_provider_for_the_server_and_no_user_config`: fake opencode dumps cwd, env, argv. Asserts the config file names the server `baseURL` and model, `--model ollama/<model>`, every state dir and the cwd under the work dir, and no caller `OPENCODE_CONFIG_CONTENT`. RED: drop `OPENCODE_DISABLE_PROJECT_CONFIG` -> ERROR. Restored.
+  - `test_real_opencode_resolves_the_provider_and_reaches_the_server`: real opencode binary against an in-process stub on an ephemeral port, once default and once `PFY_BOT_INTERFACE=hermes` with no checkout (fallback). Asserts rc 0, no `Provider not found`, at least one `POST /v1/chat/completions` with the configured model, and the stub reply on stdout. Skips with reason `opencode binary not found on PATH or PFY_BOT_OPENCODE` when the binary is absent (ubuntu CI). RED: rename the `provider` key -> both subtests FAIL (rc 1). Restored.
+- `tests.test_bot_interface`: Ran 12 tests in 8.4s, OK on nimo (E2E ran, not skipped).
+- Code commit `fb5e34d4a6f850fd04ddb01c7053f115d204ce05`.
+
+### Real `./pfy bot` runs on nimo ollama at `fb5e34d`
+
+Script `tmp/b1/real-runs.sh` (gitignored), output `tmp/b1/real-runs.log`. `PFY_BOT_MODEL=qwen3.6:35b PFY_BOT_TIMEOUT=600`, stdin `/dev/null`, prompt `Reply with exactly one word: pong`. Evidence is the Ollama service journal (`journalctl -u ollama`), the window starts at each run's start second so the first line can be the previous run's last request.
+
+| Run | Command | rc | Time | Stdout | Ollama requests in window |
+|---|---|---:|---:|---|---|
+| default (11:32:18 PT) | `./pfy bot "Reply with exactly one word: pong"` | 0 | 58.0s (cold load) | `bot interface: opencode`, `pong` | `GET /api/tags`, `POST /v1/chat/completions` 200 (45.5s), `POST /v1/chat/completions` 200 (56.2s) |
+| hermes (11:33:16 PT) | `PFY_BOT_INTERFACE=hermes ./pfy bot "..."` (worktree checkout `tmp/hermes-agent` and `tmp/.venv-hermes` present) | 0 | 33.5s | `bot interface: hermes`, `pong` | `GET /api/tags` x2, `POST /api/show` x7, `POST /v1/chat/completions` 200 (30.0s) |
+| hermes fallback (11:33:49 PT) | `PFY_BOT_INTERFACE=hermes PFY_HERMES_CHECKOUT=tmp/b1/no-hermes-checkout ./pfy bot "..."` | 0 | 5.7s | `Hermes checkout or python is missing`, `falling back to opencode`, `bot interface: opencode`, `pong` | `GET /api/tags`, `POST /v1/chat/completions` 200 (3.8s), `POST /v1/chat/completions` 200 (4.2s) |
+
+`ollama ps` was empty before the first run, held `qwen3.6:35b` between runs, and was empty again after `keep_alive: 0`.
+
+### `~/.hermes` sha256 compare
+
+- Before the real runs: sha256 manifest of every path under `~/.hermes` (113616 paths, same count as the 23:42 PT snapshot) in `tmp/b1/hermes-sha-before.json`. After: `tmp/b1/hermes-sha-after.json`. Added 0, removed 0, changed 0. Contents not printed.
+- Restored `~/.hermes/SOUL.md` (537 bytes, mtime 2026-06-15 22:18 PT) sha256 `3a10ce135b52753beda81368712decc49a83715d527e00660c19f69d1b4879da`. The `SOUL_EOF` heredoc that `~/.hermes/hermes-agent/scripts/install.sh` (`c6b0eb4`, lines 1733-1747) writes as the legacy scaffold hashes to the same value. The 00:17 PT restore is now a hash match, not only a size match.
+
+### Suite
+
+- 2026-10-21 11:41 PT: `TMPDIR=$W/tmp/tmpdir python3 -m unittest discover -s tests -t .` -> Ran 644 tests in 397.141s, FAILED (failures=1, skipped=14). The one failure is the known `test_relative_outdir_log_path_safe` (temp dir inside the worktree counts as in-tree, see 23:54 PT decision).
+- Decision: suite TMPDIR is `/home/mark/DEVELOP/pfy-mentat/tmp/hermes-wire-suite-tmp`, under the project tmp but outside this worktree, so it is neither `/tmp` nor in-tree. `tests.test_local_bench` with it: Ran 16 tests, OK.
+- 2026-10-21 11:48 PT: `TMPDIR=/home/mark/DEVELOP/pfy-mentat/tmp/hermes-wire-suite-tmp python3 -m unittest discover -s tests -t .` -> Ran 644 tests in 395.348s, OK (skipped=14), EXIT 0. `origin/main` still in the branch. `ollama ps` empty.

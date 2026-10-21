@@ -39,7 +39,7 @@ Turn it off: `unset PFY_BOT_INTERFACE` or `PFY_BOT_INTERFACE=opencode`.
 
 Hermes reasoning `off` writes `reasoning_effort: none` and `tools.tool_search.enabled: off` into the isolated home. Opencode is started as `opencode run --model ollama/<tag> --variant none` (or `--variant high` when reasoning is `on`). The opencode CLI has no temperature or seed switch. The variant flag is the explicit request. The bake-off proxy, not this command, is what forces the eval arms to the same body.
 
-State dirs for the opencode path are `XDG_CONFIG_HOME`, `XDG_DATA_HOME`, and `XDG_CACHE_HOME` under `<repo>/tmp/bot-interface/`. The command does not write `~/.config/opencode`.
+State for the opencode path lives under `<repo>/tmp/bot-interface/opencode/`: `HOME`, `XDG_CONFIG_HOME`, `XDG_DATA_HOME`, `XDG_CACHE_HOME`, `XDG_STATE_HOME`, and the child cwd. The command writes `config/opencode/opencode.json` there with an `ollama` provider (`@ai-sdk/openai-compatible`, `baseURL` from `LOCAL_OPENAI_BASE_URL`, the model from `PFY_BOT_MODEL` listed) and points `OPENCODE_CONFIG` at it, so `--model ollama/<model>` resolves. `OPENCODE_DISABLE_PROJECT_CONFIG=1` and `--pure` keep the repo `opencode.json`, `~/.opencode`, and external plugins out. The child stdin is `/dev/null`. The command does not write `~/.config/opencode`.
 
 ## Fallback and recovery
 
