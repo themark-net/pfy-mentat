@@ -82,3 +82,5 @@ Ollama at start: tags include `qwen3.6:35b`, `ollama ps` empty. bwrap present. S
 - Decision: `./pfy bot` execs `pfylib/bot_interface.py`. `./pfy attach hermes` is unchanged.
 - 2026-10-21 00:47 PT: `env -u TMPDIR python3 -m unittest tests.test_bot_interface` -> Ran 9 tests in 3.850s, OK. Covers default opencode, missing Hermes falling back, both binaries missing, model server down (no child), malformed tool call, timeout kill, real `~/.hermes` refused, driver missing checkout. Full suite waits until the model is unloaded, then runs before the push.
 - 2026-10-21 01:02 PT: `env -u TMPDIR python3 -m unittest discover -s tests -t .` -> Ran 640 tests in 409.171s, OK (skipped=14), EXIT 0. `date` Wed Oct 21 01:02:12 AM PDT 2026. STOP absent. `ollama ps` empty. Em dash check: no added line contains U+2014. The diff hunk header still quotes the pre-existing `pfy` usage line.
+- 2026-10-21 01:02 PT: bot flag pushed `56961bb`. Re-run receipt and write-up pushed `3500119`.
+- 2026-10-21 01:03 PT: `~/.hermes` snapshot diff empty again (113616 paths, added 0, removed 0, changed 0). `openclaw-gateway` inactive and disabled. STOP absent. `date` Wed Oct 21 01:03:34 AM PDT 2026.
