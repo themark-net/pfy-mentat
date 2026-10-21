@@ -2,7 +2,7 @@
 
 Not a Feature GO. No production wiring. Verdict: **NO-WIN**.
 
-Hermes (`AIAgent.run_conversation` at pin `ddabd3837862022a6053331fe3ba97cf9716b9e3`) beat `opencode run` 1.18.32 by 3.70 percentage points on task success (26/27 vs 25/27) and was much faster. That is short of the +10 point bar. Its bake-off valid tool-call rate was also 15.2 points worse. Wilson 95% intervals on task success overlap.
+Hermes (`AIAgent.run_conversation` at pin `ddabd3837862022a6053331fe3ba97cf9716b9e3`) beat `opencode run` 1.18.32 by 3.70 percentage points on task success (26/27 vs 25/27) and was much faster ([not like-for-like](HERMES-EVAL-HANDOFF.md#founder-decision-2026-10-20): thinking off on Hermes only, opencode CLI cold start, RSS excludes the model). That is short of the +10 point bar. Its bake-off valid tool-call rate was also 15.2 points worse. Wilson 95% intervals on task success overlap.
 
 ## Method
 

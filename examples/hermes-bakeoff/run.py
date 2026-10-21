@@ -18,6 +18,7 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
+from mcp_server import parse_ts
 from peak import PeakSampler
 from preflight import MEM_FLOOR_KIB, check_ollama, mem_available_kib
 from score import aggregate, count_attempts, intervals_overlap, margin_verdict, normalize_client_calls, score_task
@@ -42,10 +43,6 @@ def scrubbed(extra: dict | None = None) -> dict[str, str]:
     if extra:
         env.update({key: str(value) for key, value in extra.items()})
     return env
-
-
-def _parse_ts(ts: str) -> float:
-    return datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc).timestamp()
 
 
 def load_server_log(path: Path) -> list[dict]:
@@ -236,7 +233,7 @@ def score_one(task: dict, arm_result_path: Path, log_path: Path, sampled: dict) 
     attempts, valid = count_attempts(server_calls, client.get("client_calls") or [])
     ttft = None
     if server_calls and server_calls[0].get("ts"):
-        ttft = max(0.0, _parse_ts(server_calls[0]["ts"]) - sampled["started"])
+        ttft = max(0.0, parse_ts(server_calls[0]["ts"]) - sampled["started"])
     peak = sampled["peak"]
     return {
         "task_id": task["id"],

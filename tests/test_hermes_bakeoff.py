@@ -21,6 +21,7 @@ if str(BAKE) not in sys.path:
 from guard import assert_hermes_home  # noqa: E402
 from make_tasks import build  # noqa: E402
 from mcp_framing import read_message, write_message  # noqa: E402
+from mcp_server import parse_ts, stamp_now  # noqa: E402
 from schema import validate_args  # noqa: E402
 from score import count_attempts, margin_verdict, narrate_flag, normalize_client_calls, score_task  # noqa: E402
 
@@ -183,6 +184,105 @@ class HermesBakeoffTests(unittest.TestCase):
             self.assertFalse(scored["pass"])
             ok, _error = validate_args("submit_choice", {"choice": 3})
             self.assertFalse(ok)
+
+    def test_ttft_keeps_milliseconds_and_rejects_whole_second_stamps(self):
+        """A whole-second server stamp must not score. TTFT stays sub-second."""
+        import tempfile
+
+        from run import score_one
+
+        stamped = stamp_now()
+        self.assertRegex(stamped, r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$")
+        whole = stamped.split(".", 1)[0] + "Z"
+        with self.assertRaises(ValueError):
+            parse_ts(whole)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            log = Path(tmp) / "calls.jsonl"
+            proc = subprocess.Popen(
+                [
+                    sys.executable,
+                    str(BAKE / "mcp_server.py"),
+                    "--log",
+                    str(log),
+                    "--task-id",
+                    "ttft",
+                ],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+            )
+            try:
+                write_message(
+                    proc.stdin,
+                    {
+                        "jsonrpc": "2.0",
+                        "id": 1,
+                        "method": "initialize",
+                        "params": {"protocolVersion": "2024-11-05", "capabilities": {}},
+                    },
+                )
+                self.assertEqual(read_message(proc.stdout)["id"], 1)
+                write_message(
+                    proc.stdin,
+                    {"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}},
+                )
+                write_message(
+                    proc.stdin,
+                    {
+                        "jsonrpc": "2.0",
+                        "id": 2,
+                        "method": "tools/call",
+                        "params": {
+                            "name": "submit_choice",
+                            "arguments": {
+                                "case_id": "ph-01-green-idle",
+                                "choice": "push",
+                                "reason": "green",
+                            },
+                        },
+                    },
+                )
+                reply = read_message(proc.stdout)
+                self.assertFalse(reply["result"]["isError"])
+            finally:
+                if proc.stdin:
+                    proc.stdin.close()
+                if proc.stdout:
+                    proc.stdout.close()
+                proc.kill()
+                proc.wait(timeout=5)
+            rows = [json.loads(line) for line in log.read_text(encoding="utf-8").splitlines()]
+            self.assertEqual(len(rows), 1)
+            self.assertRegex(rows[0]["ts"], r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$")
+            parsed = parse_ts(rows[0]["ts"])
+            task = {
+                "id": "ttft",
+                "kind": "choice",
+                "requires_call": True,
+                "oracle": {
+                    "required": [
+                        {"tool": "submit_choice", "args": {"case_id": "ph-01-green-idle", "choice": "push"}}
+                    ]
+                },
+            }
+            sampled = {
+                "timed_out": False,
+                "stderr": "",
+                "returncode": 0,
+                "stdout": "",
+                "wall_s": 1.0,
+                "started": parsed - 0.25,
+                "peak": {"agent_peak_rss_bytes": 1000, "ollama_peak_rss_bytes": 0},
+            }
+            missing = Path(tmp) / "no-arm.json"
+            scored = score_one(task, missing, log, sampled)
+            self.assertEqual(scored["ttft_s"], 0.25)
+            whole_row = dict(rows[0])
+            whole_row["ts"] = rows[0]["ts"].split(".", 1)[0] + "Z"
+            whole_log = Path(tmp) / "whole.jsonl"
+            whole_log.write_text(json.dumps(whole_row) + "\n", encoding="utf-8")
+            with self.assertRaises(ValueError):
+                score_one(task, missing, whole_log, sampled)
 
     def test_narrate_detects_fenced_json_and_ignores_a_real_call(self):
         fenced = "I would answer like this:\n```json\n{name: submit_choice, arguments: {choice: push}}\n```"

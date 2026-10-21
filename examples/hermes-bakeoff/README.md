@@ -32,7 +32,7 @@ Computed from the server log and the client transcript. A sentence that names a 
 - **valid tool-call rate** = schema-valid server calls ÷ structured attempts against these bake-off tools. An attempt is a server `tools/call` row, plus a client-side call of one of these tools that never reached the server. Hermes `tool_search`, `tool_describe`, and the `tool_call` envelope are meta calls. They are counted separately and are not attempts.
 - **task success** = oracle pass ÷ tasks. The required tool names and arguments must appear on schema-valid calls, and the final `submit_*` value must match. Negatives pass only with zero calls and the expected text.
 - **narrate-instead-of-call rate** = tasks whose assistant text contains a tool name, a fenced JSON call, or "I would call…", and for which no structured call reached the server, ÷ tasks that required a call.
-- **latency** = per-task wall clock. Report p50, p95, and mean. Time-to-first-tool-call is the first server-log timestamp minus process start.
+- **latency** = per-task wall clock. Report p50, p95, and mean. Time-to-first-tool-call is the first server-log timestamp minus process start. The log stamp is UTC ISO-8601 with milliseconds (`2026-10-20T23:41:46.123Z`). A whole-second stamp is rejected, so TTFT is not rounded to `42.00`.
 - **agent peak RSS** = max of process-tree VmHWM and summed VmRSS, sampled every 0.5s. Ollama RSS is recorded separately and is not part of either agent's peak.
 
 ## Clear-margin rule

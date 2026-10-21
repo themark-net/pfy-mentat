@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import traceback
 from datetime import datetime, timezone
@@ -19,9 +20,28 @@ from fixtures import bench_receipt, catalog_lookup, compute_sum, tools_query
 from mcp_framing import read_message, write_message
 from schema import mcp_tools, server_name, validate_args
 
+# Milliseconds are required. A whole-second stamp makes TTFT look like 42.00s.
+_TS_RE = re.compile(r"^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})\.(\d{3})Z$")
+
+
+def stamp_now() -> str:
+    """UTC ISO-8601 with milliseconds, Zulu. Never whole-second."""
+    now = datetime.now(timezone.utc)
+    millis = now.microsecond // 1000
+    return now.strftime("%Y-%m-%dT%H:%M:%S.") + f"{millis:03d}Z"
+
+
+def parse_ts(ts: str) -> float:
+    """Epoch seconds from a bake-off stamp. Whole-second stamps raise."""
+    match = _TS_RE.match(ts or "")
+    if not match:
+        raise ValueError("bake-off timestamp needs milliseconds: " + repr(ts))
+    parsed = datetime.strptime(match.group(1) + "." + match.group(2), "%Y-%m-%dT%H:%M:%S.%f")
+    return parsed.replace(tzinfo=timezone.utc).timestamp()
+
 
 def _now() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return stamp_now()
 
 
 def _log(path: Path, row: dict) -> None:

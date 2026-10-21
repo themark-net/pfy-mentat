@@ -1,5 +1,24 @@
 # Handoff: Hermes Agent bake-off (2026-10-19)
 
+## Wire run status (2026-10-20, branch `bot/hermes-wire`)
+
+Live status for the meta-tools-off re-run and the bot-interface flag. The sections below stay the 2026-10-19 eval record. Run log: [RUN-LOG-hermes-wire.md](../ops/RUN-LOG-hermes-wire.md).
+
+| Prerequisite | Status |
+|---|---|
+| R1 process boundary wording | done in this branch (Hermes is one subprocess per task, library call inside it) |
+| R2 "much faster" caveat | done; link to the not-like-for-like note |
+| R3 sub-second TTFT | done; whole-second stamps are rejected |
+| 1. Scorer mutants / aggregate, wilson, percentile | not started |
+| 2. Fetch/chain oracle comparison | not started |
+| 3. `labels_written` not hardcoded | not started |
+| 4. Run start time at the start | not started |
+| 5. Choice oracle rejects scattershot | not started |
+| 6. Rescore from git | not started |
+| 7. Tool-name mismatch | not started |
+| Re-run (meta tools off, matched thinking) | not started |
+| `scripts/pfy` Hermes flag | not started |
+
 **Branch:** `bot/hermes-eval` (worktree `/home/mark/DEVELOP/pfy-mentat/tmp/hermes-eval`), cut from `origin/main` @ `b36234b` (#303). Lands on `main` by fast-forward after the Tester and Reviewer gate (no-PR flow); `origin/main` was merged in on 2026-10-20. Not a Feature GO. No production wiring. Catalog HOLD 70–75 unchanged.
 
 **History on this branch:** entry `03cfbec`, bake-off `b48d634`, handoff `9b4c8f9`, merge of `origin/main` @ `aed526d` `09b1c16` (no rebase), renumber 131 to 134 `73ff535`, founder decision `02dd0af`, then the Reviewer docs fixes on top. The gated tip SHA is the one in the gate request; after the fast-forward it is `main`.
@@ -31,7 +50,7 @@ Requested `num_ctx` 65536 after Hermes refused 32768. `ollama ps` `context_lengt
 
 Mark lands this eval as-is and **chooses Hermes as the bot interface (wiring pending)**, for speed and RAM: p50 latency 8.75s vs 47.38s, agent peak RSS 221 MiB vs 1.04 GiB. This is a product choice made despite the NO-WIN verdict, which stands: task success missed the +10 pp bar (26/27 vs 25/27, +3.70 pp, intervals overlap) and the valid tool-call rate was 15.2 pp worse (82.61% vs 97.83%). The verdict and the numbers above are not changed.
 
-**The speed and RAM rows are not like-for-like.** Hermes ran with reasoning off (`reasoning_effort: "none"` in its config and `reasoning_config={"enabled": False, ...}`, `examples/hermes-bakeoff/hermes_arm.py:47,136`), and the opencode arm did not turn thinking off. `opencode run` also pays a CLI cold start on every task, while Hermes runs in-process through `AIAgent.run_conversation`. The RSS row is the agent process only and leaves out the model itself (about 23 GB for `qwen3.6:35b`, the same for both arms). So part of the latency gap is thinking and process start, not the interface.
+**The speed and RAM rows are not like-for-like.** Hermes ran with reasoning off (`reasoning_effort: "none"` in its config and `reasoning_config={"enabled": False, ...}`, `examples/hermes-bakeoff/hermes_arm.py:47,136`), and the opencode arm did not turn thinking off. `opencode run` pays a CLI cold start on every task. The Hermes arm is also one process per task: `run.py` launches `hermes_arm.py` through `subprocess` (`_arm_cmd` and `_run_sampled` in `examples/hermes-bakeoff/run.py`). Inside that process the driver is the library call `AIAgent.run_conversation`, not the Hermes CLI. That process still pays Python startup, the Hermes import, and a child MCP server, and it does not stay up across tasks. The RSS row is the agent process only and leaves out the model itself (about 23 GB for `qwen3.6:35b`, the same for both arms). So part of the latency gap is thinking and process start, not the interface.
 
 - **Follow-up:** re-run the bake-off with Hermes `tool_search`, `tool_describe` and the `tool_call` batch tool turned off, so the model emits MCP calls directly, and recompute the valid tool-call rate (re-run item 1 in [hermes-vs-current.md](hermes-vs-current.md)). The re-run must use the same thinking setting on both arms and record it.
   Prerequisites to fix before that re-run (listed only; not done in this change):
