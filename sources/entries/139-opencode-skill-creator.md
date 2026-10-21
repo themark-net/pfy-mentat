@@ -1,0 +1,27 @@
+### Entry 139: OpenCode Skill Creator: validate, trigger-eval and tune agent skills in OpenCode
+
+- **URL**: https://github.com/antongulin/opencode-skill-creator (Apache-2.0, TypeScript; 186 stars at this read; npm `opencode-skill-creator@0.3.6`, published 2026-10-20T01:59Z, tag `v0.3.6` at `d4383924e3d5`; tarball sha256 `eef1b5e9f9b9a77d744c39eade57a11a8233062ab50e812824c094fb8f627deb`)
+- **Date**: 2026-10-20 (daily X intake, window 2026-10-20T00:36Z to 2026-10-21T00:39Z)
+- **Source / Poster**: @DanKornas, https://x.com/DanKornas/status/2112487477399154742 (repo link in the reply https://x.com/DanKornas/status/2112487667174912288)
+- **Summary / Key Claims** (upstream README at 0.3.6; their claims except where marked verified): a TypeScript port of Anthropic's skill-creator for OpenCode V2 (and V1 1.18.29 or newer). A bundled workflow skill plus a plugin with 14 tools: `skill_validate`, `skill_parse`, `skill_eval` (should-trigger and should-not-trigger queries run through `opencode run` to measure whether the description makes the skill fire), `skill_improve_description`, `skill_optimize_loop` (train/test split), benchmark aggregation, HTML reports and a review viewer, and a gold-standard store of good descriptions. Upstream says plainly that trigger evals measure skill selection, not output quality, and that model use can cost money.
+- **Why it matters here**: pfy-mentat ships many skills and `./pfy` already attaches OpenCode to local engines. Nothing measures whether a skill's description actually makes it trigger, and Entry 074 logged skill-creator only as process advice. `skill_eval` against a local model on nimo is a cheap way to find skills that never fire or fire on the wrong prompts, and `skill_validate` is a fast frontmatter lint.
+- **Fit on nimo**: Yes. `npm install --prefix ~/DEVELOP/pfy-mentat/tmp/opencode-skill-creator --ignore-scripts opencode-skill-creator@0.3.6` (29 packages, 64 MB including the `@opencode-ai/plugin` peer). Trigger evals need OpenCode pointed at a local engine (Ollama or llama.cpp); no paid key.
+- **Verified on the Grok Bot box** (Node 20.19.2, bubblewrap 0.12.0 with no network, temp HOME, `XDG_CONFIG_HOME`/`XDG_CACHE_HOME` in the temp dir, `OPENCODE_SKILL_CREATOR_AUTO_UPDATE=0`): smoke PASS. The V2 plugin entry loaded with a fake OpenCode ctx and registered its 14 tools. `skill_validate` accepted a good skill and rejected an unknown frontmatter key (`foo`), a non-kebab name (`BadName`) and a missing `SKILL.md`; `skill_parse` read the name and description. Start-up installed the bundled skill under the temp `XDG_CONFIG_HOME/opencode/skills/opencode-skill-creator/` and nowhere else; with auto-update off there was no update-check file and no package cache. The watched real-HOME paths were unchanged. `skill_eval` was **not** run (it needs `opencode run` and a model).
+- **Findings**:
+  - **Plugin start-up writes and phones home**: every load copies its bundled skill into the user-level OpenCode skills dir (`$XDG_CONFIG_HOME` or `~/.config/opencode/skills/opencode-skill-creator/`), even with `install --project`. Unless `OPENCODE_SKILL_CREATOR_AUTO_UPDATE=0` it also fetches `registry.npmjs.org/opencode-skill-creator/latest` once a day, writes `opencode-skill-creator-update-check.json` and can schedule removal of OpenCode's cached `opencode-skill-creator@latest` package. For a pinned local setup set that variable and point `XDG_CONFIG_HOME` at the worktree.
+  - `install --project` only edits `./opencode.json(c)`: it added the plugin to an existing `plugins` array and kept the other entry and comments. Its message says the skill goes to `~/.config/opencode/skills` on first start.
+  - The validator allows only `name`, `description`, `license`, `allowed-tools`, `metadata`, `compatibility` in frontmatter. pfy-mentat skills with other keys would fail `skill_validate`; check before using it as a lint.
+- **Extracted Repos / Tools**: https://github.com/antongulin/opencode-skill-creator · https://www.npmjs.com/package/opencode-skill-creator · https://github.com/anthropics/skills/tree/main/skills/skill-creator
+- **TOOLS.md Link**: None yet. I0 awareness. Cross-reference Entry 074 (skill-creator as advice). No TOOLS.md row, no `data/tools.json` row.
+- **Smoke**: `python3 examples/x-intake-local/smoke_137_139.py --entry skillcreator`. Looks up `$OSC_DIR`, then `tmp/opencode-skill-creator`; Node from `$OSC_NODE`, then `tmp/opencode-skill-creator/node/bin/node`, then PATH. Version pinned to 0.3.6 (`$OSC_VERSION`). Receipt: `pipelines/smoke/skillcreator/latest.json`.
+- **Non-goals**: No `opencode-skill-creator install`, no OpenCode config edit, no `skill_eval`/`skill_optimize_loop` run, no hosted model.
+- **How this fails / how we recover**:
+
+| Risk | How it fails | Recovery |
+|------|----------------|----------|
+| Writes the real OpenCode config | Bundled skill lands in `~/.config/opencode/skills` | Set `XDG_CONFIG_HOME` to the worktree; the smoke watches that path |
+| Auto-update | Daily registry fetch, cache removal | `OPENCODE_SKILL_CREATOR_AUTO_UPDATE=0`; pin the version |
+| Trigger eval over-read | A high trigger rate is taken as a good skill | Upstream says it measures selection only; pair it with graded outputs |
+| Frontmatter rules differ | Our skills fail validation on extra keys | Run it read-only first and decide per key |
+
+- **Status**: Cataloged I0. Smoke PASS on the Grok Bot box (validate/parse and start-up side effects only); not staged on nimo.

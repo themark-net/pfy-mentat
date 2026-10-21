@@ -1,0 +1,29 @@
+### Entry 137: neatroots: local-first trace checks, replay and MCP for agent runs
+
+- **URL**: https://github.com/neatlogs/neatroots (Apache-2.0, TypeScript; 79 stars at this read; release `v0.2.9`, 2026-10-18, tag commit `f82c31cf1d06`). Bundle `neatroots.tar.gz` (17,215,448 bytes) sha256 `4c6c66ba65646080a0b6726dbbd2e1b9a5502e564beb501eb948a82e7c3de35a`, matching the release's `.sha256`.
+- **Date**: 2026-10-20 (daily X intake, window 2026-10-20T00:36Z to 2026-10-21T00:39Z)
+- **Source / Poster**: @DanKornas, https://x.com/DanKornas/status/2112646020576481666 (repo link in the reply https://x.com/DanKornas/status/2112646215884239066)
+- **Summary / Key Claims** (upstream README at v0.2.9; their claims except where marked verified): a local collector (Neatlogs SDKs, Neatlogs HTTP trace API, OTLP HTTP/gRPC with OpenInference/OpenLLMetry/GenAI attributes, trace-file import) into SQLite on `127.0.0.1:4100`. Each run is checked by code rules (loops, repeated tool calls, error streaks, leaked keys, failed or empty runs), then yes/no questions answered by a local decision model (**Laya, Entry 086**, ~1.4 GB) and an explanation from a local LLM (Ollama, LM Studio, llama.cpp; hosted models are opt-in). Replay of one LLM call or the whole agent, 23 MCP tools for coding agents (`neatroots connect`), opt-in steering (a note on the next LLM call, a `gate` mode, or a `check_my_work` tool). `neatroots check <files>` runs the rules over saved traces with no server and no model: exit 0 clean, 1 when a rule fires, 2 for bad input. Checks are YAML; a repo's own go in `.neatroots/checks/`.
+- **Why it matters here**: pfy-mentat's evals (the Hermes bake-off oracle in Entry 134, the 48-case decision benchmark, JevAgentHarness steps in 131) count failed and repeated tool calls with hand-written log parsing. `neatroots check` is a ready offline gate with an exit code: run it over a run's traces and fail the receipt when a rule fires, with our own rules as YAML next to the code. Its decision lane is Laya, already cataloged, so the question layer can stay local.
+- **Fit on nimo**: Yes for `check`. One 17 MB bundle unpacked under `~/DEVELOP/pfy-mentat/tmp/neatroots/app` and Node 22+ (the bundle's own `install.sh` fetches Node 24.14.1 into `~/.neatroots/node`; for the smoke, unpack a Node tarball under `tmp/neatroots/node` instead). The full app (`neatroots start`) is a loopback server plus optional Laya and a local LLM; that waits for a trial.
+- **Verified on the Grok Bot box** (Node 24.14.1 from the official tarball in `/tmp`, bubblewrap 0.12.0 with no network, temp HOME, `TMPDIR` inside the temp dir): smoke PASS. `cli.js --version` and `package.json` both 0.2.9; 13 library rules. A clean run exited 0 with no findings. A run with three identical `lookup_order` calls fired `repeated-tool-call` (`tool: lookup_order`, `count: 3`); a run whose model output held a fake `sk-` key fired `secret-in-output` and the key appeared nowhere in the output. A refund with no earlier lookup fired a project rule from `--checks` (`requires_before`) and only on that run (14 rules in force); `--only repeated-tool-call` narrowed to that rule; an unparsable file exited 2. Fixtures, temp HOME and `~/.neatroots` unchanged; the `neatroots-check-*` scratch dir was removed.
+- **Findings**:
+  - **`check` needs a writable `TMPDIR`**: it makes a `neatroots-check-*` dir there, and with a read-only `/tmp` every call exits 2 (`EROFS ... mkdtemp`), so the exit code alone can't tell a bad trace from a bad sandbox. Read stderr.
+  - `--checks` takes several dirs, so it eats the file arguments that follow it. Put the trace files first.
+  - `requires_before` selectors use `tool:`, not `name:`, for tool spans (`span: { type: [tool], tool: refund }`). Selectors are strict (zod `.strict()`): an unknown key is an error.
+  - The secret finding reports a span id and a count, not the matched text. That is right for logs, but you need the trace to see what leaked.
+  - `install.sh` writes `~/.neatroots`, `~/.local/bin/neatroots`, can edit shell profiles and offers to connect every coding agent it finds. Don't use it on nimo.
+- **Extracted Repos / Tools**: https://github.com/neatlogs/neatroots · https://github.com/neatlogs/neatroots/releases/tag/v0.2.9 · https://github.com/neatlogs/neatlogs (SDKs) · https://huggingface.co/convaiinnovations/laya
+- **TOOLS.md Link**: None yet. I0 awareness. No TOOLS.md row, no `data/tools.json` row.
+- **Smoke**: `python3 examples/x-intake-local/smoke_137_139.py --entry neatroots`. Looks up `$NEATROOTS_APP`, then `tmp/neatroots/app`; Node from `$NEATROOTS_NODE`, then `tmp/neatroots/node/bin/node`, then PATH. Version pinned to 0.2.9 (`$NEATROOTS_VERSION`). Only `check`, on temp fixtures. Receipt: `pipelines/smoke/neatroots/latest.json`.
+- **Non-goals**: No `neatroots start`, `connect`, `init`, steering, Laya download, hosted LLM, Jev cloud or Neatlogs Cloud. No `install.sh`.
+- **How this fails / how we recover**:
+
+| Risk | How it fails | Recovery |
+|------|----------------|----------|
+| Sandbox without a writable TMPDIR | Every check exits 2 with EROFS | Give it a temp `TMPDIR`; the smoke does |
+| Trace shape drift | Our converted logs stop matching a rule | Pin the version; keep one known-bad fixture per rule we rely on |
+| Installer side effects | `install.sh` writes `~/.neatroots`, `~/.local/bin` and agent MCP configs | Unpack the release bundle under `tmp/` instead; the smoke watches `~/.neatroots` |
+| Hosted model slips in | `neatroots llm use anthropic` sends run content out | Keep `neatroots llm local`; never log in to a provider |
+
+- **Status**: Cataloged I0. Smoke PASS on the Grok Bot box; not staged on nimo. Possible eval-auto trial (see the handoff).
