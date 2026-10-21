@@ -127,6 +127,7 @@ pfy — simple setup & launch for the pfy-mentat stack
   pfy up                  same as bare pfy (native window; attach is in-window sidecar)
   pfy harness list|use <id>|show [id]
   pfy start [harness]     no name: same as bare pfy. named: exec that harness after inference/stage
+  pfy bot "prompt"        one-shot local bot. PFY_BOT_INTERFACE=hermes opts in. Default is opencode.
   pfy stage [--lab]       env-stage; --lab optional personal cage lab (doctor→setup→up-mcp)
   pfy eval | ship
   pfy endpoint              print FreeToken-first live OpenAI-compat base (one line)
@@ -2119,6 +2120,10 @@ main() {
       esac
       ;;
     start) cmd_start "$@" ;;
+    bot)
+      export PFY_ROOT="$ROOT"
+      exec python3 "$ROOT/pfylib/bot_interface.py" "$@"
+      ;;
     stage) cmd_stage "$@" ;;
     env|launch-env) cmd_env ;;
     eval) cmd_eval ;;
