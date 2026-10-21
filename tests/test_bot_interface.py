@@ -81,6 +81,34 @@ def _env_script(dump: Path) -> str:
     )
 
 
+_STUB_RUN_AGENT = """
+import json, os
+from pathlib import Path
+
+
+class AIAgent:
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+        home = Path(os.environ["HERMES_HOME"])
+        record = {key: value for key, value in kwargs.items() if key != "request_overrides"}
+        (home / "agent-started.json").write_text(json.dumps(record, default=str), encoding="utf-8")
+
+    def run_conversation(self, user_message):
+        if user_message == "boom":
+            raise RuntimeError("stub failure")
+        return {"final_response": "stub-hermes-ok", "messages": []}
+"""
+
+
+def _stub_hermes(tmp_path: Path) -> tuple[Path, Path]:
+    """A present Hermes checkout whose AIAgent records that it started. Python is this interpreter."""
+    checkout = tmp_path / "hermes-checkout"
+    checkout.mkdir()
+    (checkout / "run_agent.py").write_text(_STUB_RUN_AGENT, encoding="utf-8")
+    home = tmp_path / "hermes-home"
+    return checkout, home
+
+
 class _ChatStub(BaseHTTPRequestHandler):
     """OpenAI-compatible enough for one opencode turn. Records each request."""
 
@@ -230,6 +258,7 @@ class BotInterfaceTests(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
         self.assertIn("falling back to opencode", proc.stdout)
         self.assertIn("opencode-ok", proc.stdout)
+        self.assertIn("notice: PFY_BOT_INTERFACE=hermes was requested but Hermes is missing", proc.stderr)
         self.assertNotIn("install.sh", proc.stdout + proc.stderr)
 
     def test_hermes_and_opencode_missing_names_the_attach_recovery(self):
@@ -433,6 +462,9 @@ class BotInterfaceTests(unittest.TestCase):
         for key in ("HOME", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_CACHE_HOME", "OPENCODE_CONFIG"):
             self.assertTrue(Path(env[key]).resolve().is_relative_to(work), key)
         self.assertTrue(Path(seen["cwd"]).resolve().is_relative_to(work))
+        real_home = Path(os.environ.get("HOME", str(Path.home()))).resolve()
+        for key in ("XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_CACHE_HOME", "XDG_STATE_HOME"):
+            self.assertNotEqual(Path(env[key]).resolve().parent, real_home, key)
 
     @unittest.skipUnless(_real_opencode(), "opencode binary not found on PATH or PFY_BOT_OPENCODE")
     def test_real_opencode_resolves_the_provider_and_reaches_the_server(self):
@@ -481,16 +513,150 @@ class BotInterfaceTests(unittest.TestCase):
                 if flag:
                     self.assertIn("falling back to opencode", proc.stdout)
 
-    def test_real_hermes_home_is_refused(self):
-        proc = self._run(
-            "hello",
-            self._env(
-                PFY_BOT_INTERFACE="hermes",
-                PFY_HERMES_HOME=str(Path.home() / ".hermes"),
-            ),
+    def _stub_env(self, tmp_path: Path, base: str, **extra):
+        checkout, home = _stub_hermes(tmp_path)
+        opencode = tmp_path / "opencode"
+        _fake(opencode, _opencode_script(tmp_path / "opencode-stamp"))
+        env = self._env(
+            LOCAL_OPENAI_BASE_URL=base,
+            PFY_ROOT=str(tmp_path / "root"),
+            PFY_HERMES_PYTHON=sys.executable,
+            PFY_HERMES_CHECKOUT=str(checkout),
+            PFY_HERMES_HOME=str(home),
+            PFY_BOT_OPENCODE=str(opencode),
         )
-        self.assertNotEqual(proc.returncode, 0)
-        self.assertIn("under ~/.hermes", proc.stdout + proc.stderr)
+        env.pop("PFY_BOT_INTERFACE", None)
+        env.update(extra)
+        return env, home / "agent-started.json", tmp_path / "opencode-stamp"
+
+    def test_default_off_never_starts_a_present_hermes(self):
+        base = self._server()
+        # Positive control: the same stub is found and started when the flag is hermes.
+        with tempfile.TemporaryDirectory() as tmp:
+            env, started, oc = self._stub_env(Path(tmp), base, PFY_BOT_INTERFACE="hermes")
+            proc = self._run("hello", env)
+            self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+            self.assertTrue(started.exists(), proc.stdout + proc.stderr)
+            self.assertFalse(oc.exists())
+            self.assertIn("stub-hermes-ok", proc.stdout)
+        for label, value in (("unset", None), ("empty", ""), ("blank", "  "), ("off", "off"), ("opencode", "OpenCode")):
+            with self.subTest(flag=label), tempfile.TemporaryDirectory() as tmp:
+                env, started, oc = self._stub_env(Path(tmp), base)
+                if value is not None:
+                    env["PFY_BOT_INTERFACE"] = value
+                proc = self._run("hello", env)
+                self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+                self.assertFalse(started.exists(), label)
+                self.assertTrue(oc.exists(), label)
+                self.assertIn("bot interface: opencode", proc.stdout)
+                self.assertNotIn("bot interface: hermes", proc.stdout)
+                self.assertNotIn("Hermes checkout", proc.stdout)
+
+    def test_hermes_driver_runs_with_no_toolsets(self):
+        base = self._server()
+        with tempfile.TemporaryDirectory() as tmp:
+            env, started, _oc = self._stub_env(Path(tmp), base, PFY_BOT_INTERFACE="hermes")
+            proc = self._run("hello", env)
+            self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+            kwargs = json.loads(started.read_text(encoding="utf-8"))
+            config = (started.parent / "config.yaml").read_text(encoding="utf-8")
+        self.assertEqual(kwargs["enabled_toolsets"], [])
+        self.assertEqual(kwargs["base_url"], base)
+        self.assertIn("mode: off", config)
+
+    def test_hermes_driver_failure_is_a_failure(self):
+        base = self._server()
+        with tempfile.TemporaryDirectory() as tmp:
+            env, started, oc = self._stub_env(Path(tmp), base, PFY_BOT_INTERFACE="hermes")
+            proc = self._run("boom", env)
+            self.assertTrue(started.exists())
+            self.assertFalse(oc.exists())
+        self.assertEqual(proc.returncode, 1, proc.stdout + proc.stderr)
+        self.assertIn("FAIL: Hermes driver Hermes run failed: RuntimeError", proc.stdout)
+
+    def test_bad_flag_values_exit_2_and_start_nothing(self):
+        base = self._server()
+        for value in ("yes", "1", "hermes;rm -rf x", "h\u00e9rmes"):
+            with self.subTest(flag=value), tempfile.TemporaryDirectory() as tmp:
+                env, started, oc = self._stub_env(Path(tmp), base, PFY_BOT_INTERFACE=value)
+                proc = self._run("hello", env)
+                self.assertEqual(proc.returncode, 2, proc.stdout + proc.stderr)
+                self.assertIn("PFY_BOT_INTERFACE must be opencode or hermes", proc.stdout)
+                self.assertFalse(started.exists())
+                self.assertFalse(oc.exists())
+        with tempfile.TemporaryDirectory() as tmp:
+            env, started, _oc = self._stub_env(Path(tmp), base, PFY_BOT_INTERFACE=" HERMES ")
+            proc = self._run("hello", env)
+            self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+            self.assertTrue(started.exists())
+
+    def test_bad_reasoning_and_empty_prompt_exit_2_and_start_nothing(self):
+        base = self._server()
+        cases = (("hello", {"PFY_BOT_REASONING": "maybe"}, "PFY_BOT_REASONING must be off or on"), ("   ", {}, "prompt is empty"))
+        for prompt, extra, message in cases:
+            with self.subTest(message=message), tempfile.TemporaryDirectory() as tmp:
+                env, started, oc = self._stub_env(Path(tmp), base, **extra)
+                proc = self._run(prompt, env)
+                self.assertEqual(proc.returncode, 2, proc.stdout + proc.stderr)
+                self.assertIn(message, proc.stdout)
+                self.assertFalse(started.exists())
+                self.assertFalse(oc.exists())
+
+    def test_opencode_nonzero_exit_is_a_failure(self):
+        base = self._server()
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            opencode = tmp_path / "opencode"
+            _fake(opencode, "#!/bin/sh\necho broken >&2\nexit 7\n")
+            proc = self._run(
+                "hello",
+                self._env(LOCAL_OPENAI_BASE_URL=base, PFY_ROOT=str(tmp_path / "root"), PFY_BOT_OPENCODE=str(opencode)),
+            )
+        self.assertEqual(proc.returncode, 1, proc.stdout + proc.stderr)
+        self.assertIn("FAIL: opencode exited 7", proc.stdout)
+        self.assertIn("broken", proc.stdout)
+
+    def test_root_base_url_gets_v1(self):
+        base = self._server()
+        root_form = base[: -len("/v1")] + "/"
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            opencode = tmp_path / "opencode"
+            dump = tmp_path / "dump.json"
+            _fake(opencode, _env_script(dump))
+            proc = self._run(
+                "hello",
+                self._env(LOCAL_OPENAI_BASE_URL=root_form, PFY_ROOT=str(tmp_path / "root"), PFY_BOT_OPENCODE=str(opencode)),
+            )
+            self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+            env = json.loads(dump.read_text(encoding="utf-8"))["env"]
+            config = json.loads(Path(env["OPENCODE_CONFIG"]).read_text(encoding="utf-8"))
+        self.assertIn(f"endpoint: {base}\n", proc.stdout)
+        self.assertEqual(config["provider"]["ollama"]["options"]["baseURL"], base)
+
+    def test_real_hermes_home_is_refused(self):
+        base = self._server()
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            checkout, _home = _stub_hermes(tmp_path)
+            driver = tmp_path / "driver.py"
+            pid = tmp_path / "driver-started"
+            _fake(driver, _sleep_script(pid))
+            proc = self._run(
+                "hello",
+                self._env(
+                    PFY_BOT_INTERFACE="hermes",
+                    LOCAL_OPENAI_BASE_URL=base,
+                    PFY_ROOT=str(tmp_path / "root"),
+                    PFY_HERMES_PYTHON=sys.executable,
+                    PFY_HERMES_CHECKOUT=str(checkout),
+                    PFY_BOT_DRIVER=str(driver),
+                    PFY_HERMES_HOME=str(Path.home() / ".hermes"),
+                ),
+            )
+            self.assertFalse(pid.exists())
+        self.assertEqual(proc.returncode, 2, proc.stdout + proc.stderr)
+        self.assertIn("PFY_HERMES_HOME resolves under ~/.hermes", proc.stdout + proc.stderr)
         self.assertNotIn("install.sh", proc.stdout + proc.stderr)
 
     def test_driver_missing_checkout_writes_an_error_and_does_not_call_out(self):

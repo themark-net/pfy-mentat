@@ -382,6 +382,87 @@ class HermesBakeoffTests(unittest.TestCase):
         verdict, _reasons = margin_verdict(_arm(0.80, peak=huge), _arm(0.50))
         self.assertEqual(verdict, "NO-WIN")
 
+    def test_margin_fails_on_each_secondary_gate_and_passes_at_its_edge(self):
+        clear = 0.80
+        cases = (
+            ("valid", _arm(clear, valid=0.97), _arm(0.50, valid=1.0), "valid tool-call rate"),
+            ("narrate", _arm(clear, narrate=0.03), _arm(0.50, narrate=0.0), "narrate rate"),
+            ("p50", _arm(clear, p50=15.1), _arm(0.50, p50=10.0), "p50"),
+        )
+        for label, hermes, baseline, needle in cases:
+            with self.subTest(gate=label):
+                verdict, reasons = margin_verdict(hermes, baseline)
+                self.assertEqual(verdict, "NO-WIN")
+                self.assertEqual(len(reasons), 1, reasons)
+                self.assertIn(needle, reasons[0])
+        edges = (
+            _arm(clear, valid=0.98),
+            _arm(clear, narrate=0.02),
+            _arm(clear, p50=15.0),
+        )
+        for hermes in edges:
+            verdict, reasons = margin_verdict(hermes, _arm(0.50))
+            self.assertEqual((verdict, reasons), ("WIN", []))
+
+    def test_final_submit_must_exist_and_match_every_arg(self):
+        bundle = json.loads(
+            (ROOT / "data" / "decision-gates" / "hermes-bakeoff.tasks.v0.json").read_text(encoding="utf-8")
+        )
+        fetch = next(item for item in bundle["tasks"] if item["id"] == "fetch-entry-130-slug")
+        slug = fetch["oracle"]["submit"]["args"]["value"]
+        lookup = {"name": "catalog_lookup", "schema_valid": True, "arguments": {"entry_number": 130}}
+        missing = score_task(fetch, [lookup], "")
+        self.assertFalse(missing["pass"])
+        self.assertEqual(missing["reason"], "final submit mismatch")
+        wrong_task = [
+            lookup,
+            {"name": "submit_answer", "schema_valid": True, "arguments": {"task_id": "other-task", "value": slug}},
+        ]
+        self.assertFalse(score_task(fetch, wrong_task, "")["pass"])
+
+    def test_negative_with_a_call_fails_even_with_the_right_text(self):
+        task = {
+            "kind": "negative",
+            "requires_call": False,
+            "negative_mode": "contains",
+            "expect_text": "4",
+            "oracle": {"required": []},
+        }
+        call = [{"name": "compute_sum", "schema_valid": True, "arguments": {"a": 2, "b": 2}}]
+        self.assertFalse(score_task(task, call, "4")["pass"])
+        self.assertTrue(score_task(task, [], "4")["pass"])
+
+    def test_fenced_json_alone_is_narrate(self):
+        fenced = 'Here:\n```json\n{"name": "lookup", "arguments": {}}\n```'
+        self.assertTrue(narrate_flag(fenced, structured_reached_server=False, requires_call=True))
+        self.assertFalse(narrate_flag("plain answer with no call", structured_reached_server=False, requires_call=True))
+
+    def test_meta_tools_are_not_attempts(self):
+        client = [
+            {"name": "tool_search", "arguments": {"queries": ["x"]}},
+            {"name": "tool_describe", "arguments": {"name": "submit_choice"}},
+        ]
+        baked, meta = normalize_client_calls(client)
+        self.assertEqual((baked, meta), ([], 2))
+        self.assertEqual(count_attempts([], baked), (0, 0))
+
+    def test_rescore_recomputes_a_stale_pass_and_verdict(self):
+        bundle = json.loads(
+            (ROOT / "data/decision-gates/hermes-bakeoff.tasks.v0.json").read_text(encoding="utf-8")
+        )
+        stale = json.loads((ROOT / "pipelines/dogfood/hermes-bakeoff/results.json").read_text(encoding="utf-8"))
+        for arm_rows in stale["rows"].values():
+            for row in arm_rows:
+                row["pass"] = True
+        stale["verdict"] = "WIN"
+        stale["verdict_failures"] = []
+        again = rescore_payload(stale, bundle["tasks"])
+        self.assertEqual(again["summary"]["hermes"]["n_pass"], 26)
+        self.assertEqual(again["summary"]["baseline"]["n_pass"], 25)
+        self.assertEqual(sum(1 for row in again["rows"]["hermes"] if not row["pass"]), 1)
+        self.assertEqual(again["verdict"], "NO-WIN")
+        self.assertTrue(again["verdict_failures"])
+
     def test_hermes_home_guard_refuses_unset_and_real_home(self):
         with self.assertRaises(SystemExit) as unset:
             assert_hermes_home("")
@@ -936,35 +1017,37 @@ class HermesBakeoffTests(unittest.TestCase):
 
 
 @pytest.mark.live
-def test_live_two_tasks_per_arm():
-    if os.environ.get("HERMES_BAKEOFF_LIVE") != "1":
-        pytest.skip("live deselected; set HERMES_BAKEOFF_LIVE=1")
-    proc = subprocess.run(
-        [
-            sys.executable,
-            str(BAKE / "run.py"),
-            "--live",
-            "--limit",
-            "2",
-            "--skip-ctx-probe",
-            "--num-ctx",
-            "65536",
-            "--keep-model",
-            "--out",
-            str(ROOT / "tmp" / "bakeoff" / "live-pytest.json"),
-            "--work",
-            str(ROOT / "tmp" / "bakeoff" / "live-pytest"),
-        ],
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
-        timeout=900,
-    )
-    if proc.returncode != 0:
-        raise AssertionError(proc.stdout[-500:] + proc.stderr[-500:])
-    payload = json.loads((ROOT / "tmp" / "bakeoff" / "live-pytest.json").read_text(encoding="utf-8"))
-    assert len(payload["rows"]["hermes"]) == 2
-    assert len(payload["rows"]["baseline"]) == 2
+class HermesBakeoffLiveTests(unittest.TestCase):
+    """Live two-task run. unittest and pytest both report a named skip unless HERMES_BAKEOFF_LIVE=1."""
+
+    @unittest.skipUnless(os.environ.get("HERMES_BAKEOFF_LIVE") == "1", "live deselected; set HERMES_BAKEOFF_LIVE=1")
+    def test_live_two_tasks_per_arm(self):
+        proc = subprocess.run(
+            [
+                sys.executable,
+                str(BAKE / "run.py"),
+                "--live",
+                "--limit",
+                "2",
+                "--skip-ctx-probe",
+                "--num-ctx",
+                "65536",
+                "--keep-model",
+                "--out",
+                str(ROOT / "tmp" / "bakeoff" / "live-pytest.json"),
+                "--work",
+                str(ROOT / "tmp" / "bakeoff" / "live-pytest"),
+            ],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            timeout=900,
+        )
+        if proc.returncode != 0:
+            self.fail(proc.stdout[-500:] + proc.stderr[-500:])
+        payload = json.loads((ROOT / "tmp" / "bakeoff" / "live-pytest.json").read_text(encoding="utf-8"))
+        self.assertEqual(len(payload["rows"]["hermes"]), 2)
+        self.assertEqual(len(payload["rows"]["baseline"]), 2)
 
 
 if __name__ == "__main__":

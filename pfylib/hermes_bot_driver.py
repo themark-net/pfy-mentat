@@ -14,6 +14,10 @@ import sys
 from pathlib import Path
 
 
+# One-shot bot turns are chat only. Approvals are off, so tools stay off too.
+ENABLED_TOOLSETS: tuple[str, ...] = ()
+
+
 def _refuse_home(raw: str) -> Path:
     resolved = Path(raw).expanduser().resolve()
     forbidden = (Path.home() / ".hermes").resolve()
@@ -92,6 +96,9 @@ def main(argv: list[str] | None = None) -> int:
             skip_memory=True,
             skip_context_files=True,
             max_iterations=6,
+            # Approvals are off in config.yaml, so no tool may run unapproved:
+            # an empty list enables no toolsets (no terminal, file, web, browser).
+            enabled_toolsets=list(ENABLED_TOOLSETS),
             reasoning_config={"enabled": args.reasoning == "on", "effort": "none" if args.reasoning == "off" else "high"},
             request_overrides={"temperature": 0, "seed": 1},
         )

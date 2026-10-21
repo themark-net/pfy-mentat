@@ -18,6 +18,10 @@ import urllib.request
 from pathlib import Path
 
 EXIT_OK, EXIT_FAIL, EXIT_USAGE = 0, 1, 2
+FALLBACK_NOTICE = (
+    "notice: PFY_BOT_INTERFACE=hermes was requested but Hermes is missing; "
+    "this turn ran opencode and the exit code is opencode's"
+)
 
 
 def repo_root() -> Path:
@@ -50,8 +54,12 @@ def reasoning_setting(env: dict | None = None) -> str:
 
 
 def endpoint(env: dict | None = None) -> str:
+    """OpenAI-compatible base. A root form like http://127.0.0.1:11434 gets /v1, as in scripts/pfy."""
     env = env if env is not None else os.environ
-    return (env.get("LOCAL_OPENAI_BASE_URL") or "http://127.0.0.1:11434/v1").rstrip("/")
+    base = (env.get("LOCAL_OPENAI_BASE_URL") or "").strip().rstrip("/") or "http://127.0.0.1:11434/v1"
+    if not base.endswith("/v1"):
+        base += "/v1"
+    return base
 
 
 def hermes_home(env: dict | None = None, root: Path | None = None) -> Path:
@@ -253,6 +261,7 @@ def run_hermes(prompt: str, env: dict, root: Path, timeout: float, base: str, re
         print("FAIL: Hermes checkout or python is missing")
         print("  next: falling back to opencode")
         print("  turn off: unset PFY_BOT_INTERFACE or set PFY_BOT_INTERFACE=opencode")
+        print(FALLBACK_NOTICE, file=sys.stderr)
         return run_opencode(prompt, env, root, timeout, base, reasoning, model)
     home.mkdir(parents=True, exist_ok=True)
     work = _work(root)
@@ -345,6 +354,7 @@ def run_turn(prompt: str, env: dict | None = None, root: Path | None = None) -> 
         print("FAIL: Hermes checkout or python is missing")
         print("  next: falling back to opencode")
         print("  turn off: unset PFY_BOT_INTERFACE or set PFY_BOT_INTERFACE=opencode")
+        print(FALLBACK_NOTICE, file=sys.stderr)
         print("bot interface: opencode")
         interface = "opencode"
     if not probe_model(base):
@@ -359,6 +369,9 @@ def main(argv: list[str] | None = None) -> int:
     if argv in (["-h"], ["--help"]):
         print("usage: pfy bot \"prompt\"")
         print("  PFY_BOT_INTERFACE=hermes selects Hermes. Default is opencode.")
+        print("  hermes requested but its checkout or python missing: falls back to opencode,")
+        print("  prints a notice on stderr, and exits with opencode's code (0 on success).")
+        print("  Hermes runs with no toolsets (no terminal, file, or web tools).")
         print("  turn off: unset PFY_BOT_INTERFACE or set PFY_BOT_INTERFACE=opencode")
         return EXIT_OK
     prompt = " ".join(argv).strip()

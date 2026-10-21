@@ -170,9 +170,6 @@ def normalize_client_calls(client_calls: list[dict]) -> tuple[list[dict], int]:
             continue
         name = str(call.get("name") or call.get("wire_name") or "")
         args = call.get("arguments") if isinstance(call.get("arguments"), dict) else {}
-        if name in ("tool_search", "tool_describe"):
-            meta += 1
-            continue
         if name == "tool_call" and isinstance(args.get("calls"), list):
             meta += 1
             for inner in args["calls"]:
