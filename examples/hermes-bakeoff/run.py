@@ -146,6 +146,10 @@ def unload_model(base_url: str, model: str) -> None:
 
 def wait_for_memory(required_kib: int | None = None) -> int:
     need = MEM_FLOOR_KIB if required_kib is None else required_kib
+    # Tests on small CI runners set this to skip the real-model memory gate.
+    override = os.environ.get("HERMES_BAKEOFF_MEM_FLOOR_KIB", "").strip()
+    if override:
+        need = int(override)
     deadline = time.time() + 20 * 60
     while True:
         kib = mem_available_kib()

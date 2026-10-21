@@ -795,6 +795,7 @@ class HermesBakeoffTests(unittest.TestCase):
                         str(out),
                     ],
                     cwd=ROOT,
+                    env=dict(os.environ, HERMES_BAKEOFF_MEM_FLOOR_KIB="0"),
                     capture_output=True,
                     text=True,
                     timeout=60,
@@ -808,6 +809,24 @@ class HermesBakeoffTests(unittest.TestCase):
         self.assertLess(started, seen["ps_done"] - 0.2)
         self.assertEqual(payload["meta"]["tool_search"], "off")
         self.assertIn("think=false", payload["meta"]["thinking_control"])
+
+    def test_memory_gate_override_returns_without_waiting(self):
+        import time
+
+        import run as bake_run
+
+        saved = os.environ.get("HERMES_BAKEOFF_MEM_FLOOR_KIB")
+        os.environ["HERMES_BAKEOFF_MEM_FLOOR_KIB"] = "0"
+        try:
+            began = time.time()
+            kib = bake_run.wait_for_memory(10**12)
+        finally:
+            if saved is None:
+                os.environ.pop("HERMES_BAKEOFF_MEM_FLOOR_KIB", None)
+            else:
+                os.environ["HERMES_BAKEOFF_MEM_FLOOR_KIB"] = saved
+        self.assertGreaterEqual(kib, 0)
+        self.assertLess(time.time() - began, 5)
 
     def test_think_proxy_forces_chat_and_leaves_unload_alone(self):
         import threading
