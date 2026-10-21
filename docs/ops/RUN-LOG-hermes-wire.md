@@ -125,3 +125,36 @@ Script `tmp/b1/real-runs.sh` (gitignored), output `tmp/b1/real-runs.log`. `PFY_B
 - 2026-10-21 11:41 PT: `TMPDIR=$W/tmp/tmpdir python3 -m unittest discover -s tests -t .` -> Ran 644 tests in 397.141s, FAILED (failures=1, skipped=14). The one failure is the known `test_relative_outdir_log_path_safe` (temp dir inside the worktree counts as in-tree, see 23:54 PT decision).
 - Decision: suite TMPDIR is `/home/mark/DEVELOP/pfy-mentat/tmp/hermes-wire-suite-tmp`, under the project tmp but outside this worktree, so it is neither `/tmp` nor in-tree. `tests.test_local_bench` with it: Ran 16 tests, OK.
 - 2026-10-21 11:48 PT: `TMPDIR=/home/mark/DEVELOP/pfy-mentat/tmp/hermes-wire-suite-tmp python3 -m unittest discover -s tests -t .` -> Ran 644 tests in 395.348s, OK (skipped=14), EXIT 0. `origin/main` still in the branch. `ollama ps` empty.
+
+## Item 5: Tester FAIL fix on `cbcd65d` (default-off blocker, should-fixes)
+
+- 2026-10-21 11:54 PT: Tester FAIL on `cbcd65d`. Blocker: mutant B01 (unset or empty flag resolves to hermes) survived because the default test had no Hermes checkout and fell through to the checkout-missing path. G0 run 39656092964 on `1c8aa9a` completed success at 12:02 PT.
+- Blocker fix: `test_default_off_never_starts_a_present_hermes` builds a present stub Hermes (checkout with a `run_agent.py` whose `AIAgent` writes `agent-started.json` into `HERMES_HOME`, python is the test interpreter, real driver). Positive control: `PFY_BOT_INTERFACE=hermes` starts it. Unset, empty, blank, `off`, and `OpenCode` never start it, run opencode, and never print `bot interface: hermes`.
+- Should-fixes:
+  - Tests for garbage flag (`yes`, `1`, `hermes;rm -rf x`, `h\u00e9rmes` -> rc 2, nothing started; ` HERMES ` -> hermes), `off`, driver `ok: false` (stub raises -> rc 1 `FAIL: Hermes driver Hermes run failed: RuntimeError`, no opencode), opencode exit 7 -> rc 1, empty prompt and bad `PFY_BOT_REASONING` -> rc 2 with nothing started, XDG dirs not under the real `HOME`.
+  - Hermes toolsets: `hermes_bot_driver.py` passes `enabled_toolsets=[]` (Hermes `_select_tool_names([])` is empty, checked against the pin with an isolated `HERMES_HOME`). Approvals stay off in `config.yaml` with nothing to approve. Plan doc says so and says to turn approvals on before adding a toolset. `test_hermes_driver_runs_with_no_toolsets` asserts the kwarg.
+  - Provider block verified on the new tip (written file below, real runs below).
+  - `endpoint()` appends `/v1` to a root `LOCAL_OPENAI_BASE_URL`, same as `scripts/pfy` attach. `test_root_base_url_gets_v1`.
+  - Scorer: new tests for each secondary margin gate and its edge, missing or wrong final submit, negative with a call, fenced JSON alone, meta tools not attempts, rescore of a tampered receipt (all rows `pass: true`, verdict `WIN`) back to 26 vs 25 and NO-WIN. The duplicate `tool_search`/`tool_describe` branch in `normalize_client_calls` was removed (the `_META_TOOLS` branch below it already handled both, which made M08 equivalent); M08 now targets `_META_TOOLS`.
+  - `test_live_two_tasks_per_arm` is now `HermesBakeoffLiveTests` with `unittest.skipUnless`, so `python3 -m unittest` reports `skipped 'live deselected; set HERMES_BAKEOFF_LIVE=1'`. The pytest `live` mark is kept on the class.
+  - Fallback: stderr gets `notice: PFY_BOT_INTERFACE=hermes was requested but Hermes is missing; this turn ran opencode and the exit code is opencode's`. `./pfy bot --help` and the plan table say rc is opencode's.
+  - `test_real_hermes_home_is_refused` is now hermetic (stub server, stub checkout, fake driver that must not start). On nimo the old form reached the real `:11434` and the worktree Hermes checkout.
+- Mutants, Tester's scripts (`tmp/b1/mut_bot.py`, `tmp/b1/mut_score.py`, B14 pattern moved to the new `sandbox / "config"` line, B16 to B20 added). Bot: 19 of 20 killed. B06 (no SIGTERM on timeout) survives; it is near-equivalent because the SIGKILL stage still reaps the child 2s later. Scorer: 29 of 30 killed. N30 survives and is equivalent (`_args_match` already compares `value`).
+- Mutant-run side effect: one B07 run used `PFY_HERMES_HOME=~/.hermes/sub`, and the mutant (refusal removed) created that empty dir. Removed it with `rmdir` at 12:05 PT. The test now uses `~/.hermes` itself so a mutant cannot create a path. The sha256 manifest below is unchanged.
+- Code commit `a2cf3fc4d92065095f8d1db32b467c82b4a8b7c2`.
+
+### Real `./pfy bot` runs at `a2cf3fc`
+
+Same script and prompt as Item 4 (`tmp/b1/real-runs2.log`).
+
+| Run | rc | Time | Stdout | Ollama requests in window |
+|---|---:|---:|---|---|
+| default (12:09:29 PT) | 0 | 65.1s (cold load) | `bot interface: opencode`, `pong` | `GET /api/tags`, `POST /v1/chat/completions` 200 (50.9s), `POST /v1/chat/completions` 200 (1m3s) |
+| hermes, worktree checkout (12:10:34 PT) | 0 | 4.1s | `bot interface: hermes`, `pong` | `GET /api/tags` x2, `POST /api/show` x2, `POST /v1/chat/completions` 200 (1.3s) |
+| hermes fallback, missing checkout (12:10:38 PT) | 0 | 11.7s | stderr notice, `falling back to opencode`, `bot interface: opencode`, `pong` | `GET /api/tags`, `POST /v1/chat/completions` 200 (9.7s), `POST /v1/chat/completions` 200 (10.0s) |
+
+The Hermes turn sent no tool schemas now, so its one request is short. `ollama ps` empty after `keep_alive: 0`. Written `tmp/bot-interface/opencode/config/opencode/opencode.json`: provider `ollama`, `npm` `@ai-sdk/openai-compatible`, `baseURL` `http://127.0.0.1:11434/v1`, model `qwen3.6:35b`, `apiKey` placeholder `local`.
+
+`~/.hermes` sha256 manifest before (`tmp/b1/hermes-sha-before2.json`) and after (`tmp/b1/hermes-sha-after2.json`) these runs, and against the Item 4 baseline: 113616 paths, added 0, removed 0, changed 0.
+
+- 2026-10-21 12:17 PT: `TMPDIR=/home/mark/DEVELOP/pfy-mentat/tmp/hermes-wire-suite-tmp python3 -m unittest discover -s tests -t .` -> Ran 658 tests in 402.214s, OK (skipped=15), EXIT 0. skipped went 14 -> 15 because the live bake-off test is now collected by unittest. `ollama ps` empty.
