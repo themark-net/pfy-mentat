@@ -1,13 +1,17 @@
-"""Bot interface fail and recover. Fake processes and a local HTTP probe. No Ollama."""
+"""Bot interface fail and recover. Fake processes, a local HTTP probe, and one E2E
+run of the real opencode binary against an in-process stub server. No Ollama."""
 
 from __future__ import annotations
 
 import json
 import os
+import shutil
 import stat
 import subprocess
 import sys
+import tempfile
 import threading
+import time
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -53,6 +57,81 @@ def _bad_script() -> str:
         "    'tool_calls': [{'name': 'submit', 'arguments': 'nope'}],\n"
         "}), encoding='utf-8')\n"
     )
+
+
+def _stdin_script(stamp: Path) -> str:
+    """Fake opencode that reads stdin to EOF, like a CLI that sees a non-tty pipe."""
+    return (
+        "#!/bin/sh\n"
+        "cat > /dev/null\n"
+        f"printf '%s\\n' stdin-closed > {json.dumps(str(stamp))}\n"
+        "echo opencode-ok\n"
+        "exit 0\n"
+    )
+
+
+def _env_script(dump: Path) -> str:
+    """Fake opencode that records its cwd, env, and argv as JSON."""
+    return (
+        "#!/usr/bin/env python3\n"
+        "import json, os, sys\n"
+        f"open({json.dumps(str(dump))}, 'w', encoding='utf-8').write(json.dumps("
+        "{'cwd': os.getcwd(), 'env': dict(os.environ), 'argv': sys.argv[1:]}))\n"
+        "print('opencode-ok')\n"
+    )
+
+
+class _ChatStub(BaseHTTPRequestHandler):
+    """OpenAI-compatible enough for one opencode turn. Records each request."""
+
+    protocol_version = "HTTP/1.1"
+    seen: list = []
+
+    def _send(self, body: bytes, ctype: str = "application/json") -> None:
+        self.send_response(200)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_GET(self):  # noqa: N802
+        self.seen.append(("GET", self.path, None))
+        self._send(b'{"models":[],"data":[]}')
+
+    def do_POST(self):  # noqa: N802
+        raw = self.rfile.read(int(self.headers.get("Content-Length") or 0))
+        try:
+            body = json.loads(raw)
+        except ValueError:
+            body = {}
+        model = body.get("model")
+        self.seen.append(("POST", self.path, model))
+        delta = {"role": "assistant", "content": "stub-reply-ok"}
+        if body.get("stream"):
+            chunks = [
+                {"id": "c1", "object": "chat.completion.chunk", "created": 1, "model": model,
+                 "choices": [{"index": 0, "delta": delta, "finish_reason": None}]},
+                {"id": "c1", "object": "chat.completion.chunk", "created": 1, "model": model,
+                 "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
+                 "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2}},
+            ]
+            data = b"".join(b"data: " + json.dumps(c).encode() + b"\n\n" for c in chunks)
+            self._send(data + b"data: [DONE]\n\n", "text/event-stream")
+            return
+        reply = {"id": "c1", "object": "chat.completion", "created": 1, "model": model,
+                 "choices": [{"index": 0, "message": delta, "finish_reason": "stop"}],
+                 "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2}}
+        self._send(json.dumps(reply).encode())
+
+    def log_message(self, fmt, *args):
+        return
+
+
+def _real_opencode() -> str:
+    explicit = (os.environ.get("PFY_BOT_OPENCODE") or "").strip()
+    if explicit and Path(explicit).exists():
+        return explicit
+    return shutil.which("opencode") or ""
 
 
 class _Tags(BaseHTTPRequestHandler):
@@ -283,6 +362,124 @@ class BotInterfaceTests(unittest.TestCase):
             except OSError:
                 alive = False
             self.assertFalse(alive)
+
+    def test_open_stdin_pipe_does_not_hang_the_child(self):
+        base = self._server()
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            opencode = tmp_path / "opencode"
+            seen = tmp_path / "stdin-stamp"
+            _fake(opencode, _stdin_script(seen))
+            env = self._env(
+                LOCAL_OPENAI_BASE_URL=base,
+                PFY_ROOT=str(tmp_path / "root"),
+                PFY_BOT_OPENCODE=str(opencode),
+                PFY_BOT_TIMEOUT="8",
+            )
+            started = time.monotonic()
+            # stdin is a pipe this test never closes, as under a non-tty caller.
+            proc = subprocess.Popen(
+                [sys.executable, str(BOT), "hello"],
+                env=env,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                cwd=ROOT,
+            )
+            try:
+                stdout, stderr = proc.stdout.read(), proc.stderr.read()
+                proc.wait(timeout=20)
+            finally:
+                for stream in (proc.stdin, proc.stdout, proc.stderr):
+                    stream.close()
+            elapsed = time.monotonic() - started
+            self.assertTrue(seen.exists(), stdout + stderr)
+        self.assertEqual(proc.returncode, 0, stdout + stderr)
+        self.assertNotIn("timeout", stdout)
+        self.assertLess(elapsed, 8)
+
+    def test_opencode_child_gets_a_provider_for_the_server_and_no_user_config(self):
+        base = self._server()
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            opencode = tmp_path / "opencode"
+            dump = tmp_path / "dump.json"
+            _fake(opencode, _env_script(dump))
+            root = tmp_path / "root"
+            proc = self._run(
+                "hello",
+                self._env(
+                    LOCAL_OPENAI_BASE_URL=base,
+                    PFY_ROOT=str(root),
+                    PFY_BOT_OPENCODE=str(opencode),
+                    PFY_BOT_MODEL="some-model:7b",
+                    OPENCODE_CONFIG="/nonexistent/user/opencode.json",
+                    OPENCODE_CONFIG_CONTENT='{"model": "anthropic/x"}',
+                ),
+            )
+            self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+            seen = json.loads(dump.read_text(encoding="utf-8"))
+            env = seen["env"]
+            config = json.loads(Path(env["OPENCODE_CONFIG"]).read_text(encoding="utf-8"))
+            work = (root / "tmp" / "bot-interface").resolve()
+        self.assertIn("--model", seen["argv"])
+        self.assertEqual(seen["argv"][seen["argv"].index("--model") + 1], "ollama/some-model:7b")
+        provider = config["provider"]["ollama"]
+        self.assertEqual(provider["options"]["baseURL"], base)
+        self.assertIn("some-model:7b", provider["models"])
+        self.assertEqual(env["OPENCODE_DISABLE_PROJECT_CONFIG"], "1")
+        self.assertNotIn("OPENCODE_CONFIG_CONTENT", env)
+        for key in ("HOME", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_CACHE_HOME", "OPENCODE_CONFIG"):
+            self.assertTrue(Path(env[key]).resolve().is_relative_to(work), key)
+        self.assertTrue(Path(seen["cwd"]).resolve().is_relative_to(work))
+
+    @unittest.skipUnless(_real_opencode(), "opencode binary not found on PATH or PFY_BOT_OPENCODE")
+    def test_real_opencode_resolves_the_provider_and_reaches_the_server(self):
+        for flag in ("", "hermes"):
+            with self.subTest(interface=flag or "default"):
+                _ChatStub.seen = []
+                server = ThreadingHTTPServer(("127.0.0.1", 0), _ChatStub)
+                thread = threading.Thread(target=server.serve_forever, daemon=True)
+                thread.start()
+                try:
+                    base = f"http://127.0.0.1:{server.server_address[1]}/v1"
+                    with tempfile.TemporaryDirectory() as tmp:
+                        tmp_path = Path(tmp)
+                        extra = {}
+                        if flag:
+                            extra = {
+                                "PFY_BOT_INTERFACE": flag,
+                                "PFY_HERMES_PYTHON": str(tmp_path / "missing-python"),
+                                "PFY_HERMES_CHECKOUT": str(tmp_path / "missing-checkout"),
+                                "PFY_HERMES_HOME": str(tmp_path / "hermes-home"),
+                            }
+                        proc = self._run(
+                            "Reply with one word.",
+                            self._env(
+                                LOCAL_OPENAI_BASE_URL=base,
+                                PFY_ROOT=str(tmp_path / "root"),
+                                PFY_BOT_OPENCODE=_real_opencode(),
+                                PFY_BOT_MODEL="pfy-stub-model",
+                                PFY_BOT_TIMEOUT="90",
+                                **extra,
+                            ),
+                            timeout=120,
+                        )
+                finally:
+                    server.shutdown()
+                    server.server_close()
+                out = proc.stdout + proc.stderr
+                self.assertNotIn("ProviderModelNotFoundError", out)
+                self.assertNotIn("Provider not found", out)
+                self.assertEqual(proc.returncode, 0, out)
+                posts = [row for row in _ChatStub.seen if row[0] == "POST"]
+                self.assertTrue(posts, out)
+                self.assertTrue(all(path == "/v1/chat/completions" for _, path, _ in posts), posts)
+                self.assertIn("pfy-stub-model", [model for _, _, model in posts])
+                self.assertIn("stub-reply-ok", proc.stdout)
+                if flag:
+                    self.assertIn("falling back to opencode", proc.stdout)
 
     def test_real_hermes_home_is_refused(self):
         proc = self._run(

@@ -121,11 +121,15 @@ def _scrub(env: dict, **extra: str) -> dict[str, str]:
     return out
 
 
-def _run_child(cmd: list[str], env: dict, timeout: float) -> tuple[int, str, str, bool]:
-    """Run one child. On timeout, kill the process group this call started."""
+def _run_child(
+    cmd: list[str], env: dict, timeout: float, cwd: Path | None = None
+) -> tuple[int, str, str, bool]:
+    """Run one child with stdin closed. On timeout, kill the process group this call started."""
     proc = subprocess.Popen(
         cmd,
         env=env,
+        cwd=cwd,
+        stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
@@ -167,6 +171,33 @@ def _work(root: Path) -> Path:
     return path
 
 
+def opencode_config(base: str, model: str) -> dict:
+    """Provider block so `--model ollama/<model>` resolves to the configured server."""
+    return {
+        "$schema": "https://opencode.ai/config.json",
+        "autoupdate": False,
+        "share": "disabled",
+        "model": f"ollama/{model}",
+        "enabled_providers": ["ollama"],
+        "provider": {
+            "ollama": {
+                "npm": "@ai-sdk/openai-compatible",
+                "name": "Ollama (local)",
+                "options": {"baseURL": base, "apiKey": "local"},
+                "models": {model: {"name": model, "tool_call": True}},
+            }
+        },
+    }
+
+
+def write_opencode_config(work: Path, base: str, model: str) -> Path:
+    """Write the isolated opencode config under work and return the file path."""
+    path = work / "opencode" / "config" / "opencode" / "opencode.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(opencode_config(base, model), indent=2) + "\n", encoding="utf-8")
+    return path
+
+
 def run_opencode(prompt: str, env: dict, root: Path, timeout: float, base: str, reasoning: str, model: str) -> int:
     binary = _which_opencode(env)
     if not binary:
@@ -175,18 +206,32 @@ def run_opencode(prompt: str, env: dict, root: Path, timeout: float, base: str, 
         return EXIT_USAGE
     work = _work(root)
     variant = "none" if reasoning == "off" else "high"
-    cmd = [binary, "run", "--model", f"ollama/{model}", "--variant", variant, prompt]
+    config = write_opencode_config(work, base, model)
+    sandbox = work / "opencode"
+    cmd = [binary, "run", "--pure", "--model", f"ollama/{model}", "--variant", variant, prompt]
     child_env = _scrub(
         env,
         OPENAI_BASE_URL=base,
-        XDG_CONFIG_HOME=str(work / "opencode-config"),
-        XDG_DATA_HOME=str(work / "opencode-data"),
-        XDG_CACHE_HOME=str(work / "opencode-cache"),
+        HOME=str(sandbox / "home"),
+        XDG_CONFIG_HOME=str(sandbox / "config"),
+        XDG_DATA_HOME=str(sandbox / "data"),
+        XDG_CACHE_HOME=str(sandbox / "cache"),
+        XDG_STATE_HOME=str(sandbox / "state"),
+        OPENCODE_CONFIG=str(config),
+        OPENCODE_DISABLE_PROJECT_CONFIG="1",
+        OPENCODE_DISABLE_AUTOUPDATE="1",
+        OPENCODE_DISABLE_MODELS_FETCH="1",
+        OPENCODE_DISABLE_SHARE="1",
+        OPENCODE_DISABLE_CLAUDE_CODE="1",
+        OPENCODE_DISABLE_EXTERNAL_SKILLS="1",
+        OPENCODE_DISABLE_LSP_DOWNLOAD="1",
         PFY_BOT_REASONING=reasoning,
     )
-    for path in (child_env["XDG_CONFIG_HOME"], child_env["XDG_DATA_HOME"], child_env["XDG_CACHE_HOME"]):
-        Path(path).mkdir(parents=True, exist_ok=True)
-    code, stdout, stderr, timed_out = _run_child(cmd, child_env, timeout)
+    cwd = sandbox / "cwd"
+    for key in ("HOME", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_CACHE_HOME", "XDG_STATE_HOME"):
+        Path(child_env[key]).mkdir(parents=True, exist_ok=True)
+    cwd.mkdir(parents=True, exist_ok=True)
+    code, stdout, stderr, timed_out = _run_child(cmd, child_env, timeout, cwd=cwd)
     if timed_out:
         print("FAIL: timeout")
         print("  next: retry or raise PFY_BOT_TIMEOUT")
