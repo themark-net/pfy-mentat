@@ -12,7 +12,7 @@ Branch `bot/hermes-wire`. Worktree `/home/mark/DEVELOP/pfy-mentat/tmp/hermes-wir
 | Oracles, stamps, git rescore | `9f44be1af22ea5a5a8dba8216568d64df852dd4d` |
 | Wording, speed caveat, millisecond TTFT | `e215cb8a4b51d04c78747df61aa30967a72102a8` |
 
-The commit that adds this file sits on `3500119`. Tester and Reviewer gate that tip (or the child that only adds this handoff).
+Handoff commit: `43391e1f0913932a67bdfd161e0ceea47edbc8a3` (this file, on top of `3500119`). Tester and Reviewer gate the branch tip. A child commit that only records this SHA does not change the work.
 
 ## Status
 
