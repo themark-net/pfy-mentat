@@ -16,7 +16,7 @@ Live status for the meta-tools-off re-run and the bot-interface flag. The sectio
 | 5. Choice oracle rejects scattershot | done; distinct choices fail even if one matches the label |
 | 6. Rescore from git | done; `run.py --rescore` reads the committed JSON only |
 | 7. Tool-name mismatch | done; `mcp__bakeoff__*` and `bakeoff_*` score as the short name |
-| Re-run (meta tools off, matched thinking) | not started |
+| Re-run (meta tools off, matched thinking) | harness ready; live 27-task run not in this commit |
 | `scripts/pfy` Hermes flag | not started |
 
 **Branch:** `bot/hermes-eval` (worktree `/home/mark/DEVELOP/pfy-mentat/tmp/hermes-eval`), cut from `origin/main` @ `b36234b` (#303). Lands on `main` by fast-forward after the Tester and Reviewer gate (no-PR flow); `origin/main` was merged in on 2026-10-20. Not a Feature GO. No production wiring. Catalog HOLD 70–75 unchanged.

@@ -20,7 +20,10 @@ if str(BAKE) not in sys.path:
 
 from guard import assert_hermes_home  # noqa: E402
 from fixtures import expected_submit  # noqa: E402
+from hermes_arm import _write_config  # noqa: E402
 from make_tasks import build, labels_written_stamp  # noqa: E402
+from run import child_tmpdir, scrubbed  # noqa: E402
+from think_proxy import ThinkProxy  # noqa: E402
 from mcp_framing import read_message, write_message  # noqa: E402
 from mcp_server import parse_ts, stamp_now  # noqa: E402
 from schema import server_name, validate_args  # noqa: E402
@@ -803,6 +806,114 @@ class HermesBakeoffTests(unittest.TestCase):
         started = parse_ts(payload["meta"]["started"])
         self.assertIsNotNone(seen["ps_done"])
         self.assertLess(started, seen["ps_done"] - 0.2)
+        self.assertEqual(payload["meta"]["tool_search"], "off")
+        self.assertIn("think=false", payload["meta"]["thinking_control"])
+
+    def test_think_proxy_forces_chat_and_leaves_unload_alone(self):
+        import threading
+        import urllib.request
+
+        seen = {"bodies": []}
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_GET(self):  # noqa: N802
+                self._reply({"models": []})
+
+            def do_POST(self):  # noqa: N802
+                length = int(self.headers.get("Content-Length") or 0)
+                raw = self.rfile.read(length)
+                seen["bodies"].append({"path": self.path.split("?", 1)[0], "body": json.loads(raw.decode())})
+                self._reply({"ok": True})
+
+            def _reply(self, payload):
+                body = json.dumps(payload).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, fmt, *args):
+                return
+
+        server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        proxy = ThinkProxy.start(f"http://127.0.0.1:{server.server_address[1]}/v1")
+        secret = "sk-should-not-leak"
+        try:
+            chat = json.dumps(
+                {
+                    "model": "qwen3.6:35b",
+                    "temperature": 0.9,
+                    "think": True,
+                    "messages": [{"role": "user", "content": secret}],
+                }
+            ).encode()
+            request = urllib.request.Request(
+                proxy.base_v1 + "/chat/completions",
+                data=chat,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(request, timeout=5) as response:
+                self.assertEqual(response.status, 200)
+            unload = json.dumps({"model": "qwen3.6:35b", "keep_alive": 0, "prompt": ""}).encode()
+            request = urllib.request.Request(
+                proxy.root + "/api/generate",
+                data=unload,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(request, timeout=5) as response:
+                self.assertEqual(response.status, 200)
+        finally:
+            proxy.close()
+            server.shutdown()
+            server.server_close()
+        chat_row = next(row for row in seen["bodies"] if row["path"] == "/v1/chat/completions")
+        self.assertEqual(chat_row["body"]["temperature"], 0)
+        self.assertEqual(chat_row["body"]["seed"], 1)
+        self.assertIs(chat_row["body"]["think"], False)
+        self.assertEqual(chat_row["body"]["reasoning_effort"], "none")
+        self.assertEqual(chat_row["body"]["messages"][0]["content"], secret)
+        unload_row = next(row for row in seen["bodies"] if row["path"] == "/api/generate")
+        self.assertEqual(unload_row["body"]["keep_alive"], 0)
+        self.assertNotIn("think", unload_row["body"])
+        public = json.dumps(proxy.forced)
+        self.assertNotIn(secret, public)
+        self.assertIn("think", public)
+
+    def test_hermes_config_turns_tool_search_off(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            _write_config(home, "qwen3.6:35b", "http://127.0.0.1:9/v1", 65536, home / "calls.jsonl", "t1")
+            text = (home / "config.yaml").read_text(encoding="utf-8")
+        self.assertIn("tool_search:", text)
+        self.assertIn("enabled: off", text)
+        self.assertIn('reasoning_effort: "none"', text)
+        self.assertNotIn("api_key: sk-", text)
+
+    def test_child_tmpdir_stays_in_the_worktree(self):
+        root = (ROOT / "tmp").resolve()
+        old = os.environ.pop("TMPDIR", None)
+        try:
+            got = scrubbed()["TMPDIR"]
+            self.assertTrue(Path(got).resolve().is_relative_to(root))
+            self.assertNotEqual(Path(got).resolve(), Path("/tmp"))
+            os.environ["TMPDIR"] = "/var/tmp"
+            outside = child_tmpdir()
+            self.assertTrue(Path(outside).resolve().is_relative_to(root))
+            custom = root / "custom-scratch"
+            os.environ["TMPDIR"] = str(custom)
+            self.assertEqual(Path(child_tmpdir()).resolve(), custom.resolve())
+        finally:
+            if old is None:
+                os.environ.pop("TMPDIR", None)
+            else:
+                os.environ["TMPDIR"] = old
 
 
 @pytest.mark.live

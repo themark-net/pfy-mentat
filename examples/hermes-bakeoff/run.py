@@ -19,6 +19,7 @@ from pathlib import Path
 
 from mcp_server import parse_ts, stamp_now
 from peak import PeakSampler
+from think_proxy import ThinkProxy, write_forced_log
 from preflight import MEM_FLOOR_KIB, check_ollama, mem_available_kib
 from score import (
     aggregate,
@@ -36,6 +37,27 @@ DEFAULT_TASKS = ROOT / "data" / "decision-gates" / "hermes-bakeoff.tasks.v0.json
 DEFAULT_OUT = ROOT / "pipelines" / "dogfood" / "hermes-bakeoff" / "results.json"
 
 
+def child_tmpdir() -> str:
+    """Bake-off child scratch under this worktree. Never the system /tmp.
+
+    An incoming TMPDIR is kept only when it already sits under <repo>/tmp.
+    The unittest suite unsets TMPDIR, so it does not inherit this path.
+    """
+    root = (ROOT / "tmp").resolve()
+    raw = os.environ.get("TMPDIR") or ""
+    if raw:
+        try:
+            path = Path(raw).resolve()
+        except OSError:
+            path = None
+        if path is not None and path.is_relative_to(root):
+            path.mkdir(parents=True, exist_ok=True)
+            return str(path)
+    dest = root / "tmpdir"
+    dest.mkdir(parents=True, exist_ok=True)
+    return str(dest)
+
+
 def scrubbed(extra: dict | None = None) -> dict[str, str]:
     home = os.environ.get("HOME") or str(Path.home())
     env = {
@@ -45,7 +67,8 @@ def scrubbed(extra: dict | None = None) -> dict[str, str]:
         "LC_ALL": "C.UTF-8",
         "USER": os.environ.get("USER", "mark"),
         "LOGNAME": os.environ.get("LOGNAME", "mark"),
-        "TMPDIR": "/tmp",
+        "TMPDIR": child_tmpdir(),
+        "PYTHONDONTWRITEBYTECODE": "1",
     }
     if extra:
         env.update({key: str(value) for key, value in extra.items()})
@@ -275,6 +298,17 @@ def score_one(task: dict, arm_result_path: Path, log_path: Path, sampled: dict) 
 
 
 def run_live(args) -> int:
+    """Point both arms at the thinking proxy, then run. Always closes the proxy."""
+    proxy = ThinkProxy.start(args.base_url)
+    args.think_proxy = proxy
+    args.base_url = proxy.base_v1
+    try:
+        return _run_live(args)
+    finally:
+        proxy.close()
+
+
+def _run_live(args) -> int:
     code, message = check_ollama(args.base_url, args.model)
     if code != 0:
         print(message)
@@ -389,6 +423,9 @@ def run_live(args) -> int:
             tuple(summary["hermes"]["wilson95"]),
             tuple(summary["baseline"]["wilson95"]),
         )
+    proxy = getattr(args, "think_proxy", None)
+    forced = list(getattr(proxy, "forced", []) or [])
+    write_forced_log(work / "think-proxy.jsonl", forced)
     mem_after = mem_available_kib()
     payload = {
         "meta": {
@@ -398,6 +435,12 @@ def run_live(args) -> int:
             "num_ctx_note": ctx_note,
             "temperature": 0,
             "seed": 1,
+            "thinking_control": (
+                "local proxy forced think=false, temperature=0, seed=1, "
+                "reasoning_effort=none on /v1/chat/completions and /api/chat for both arms"
+            ),
+            "tool_search": "off",
+            "think_proxy_forced": len(getattr(getattr(args, "think_proxy", None), "forced", []) or []),
             "timeout_s": args.timeout,
             "max_iterations": 6,
             "think": False,

@@ -56,3 +56,18 @@ Ollama at start: tags include `qwen3.6:35b`, `ollama ps` empty. bwrap present. S
 - RED s7 `bakeoff_` strip removed -> `test_mcp_server_accepts_both_wire_prefixes` FAIL (`bakeoff_submit_choice` no longer becomes `submit_choice`).
 - 2026-10-21 00:15 PT: campaign restore checked (`git diff --stat` is only the Item 1 files). STOP absent. `date` Wed Oct 21 12:15:45 AM PDT 2026.
 - 2026-10-21 00:22 PT: `env -u TMPDIR python3 -m unittest discover -s tests -t .` -> Ran 628 tests in 376.975s, OK (skipped=14), EXIT 0. Em dash check on `git diff origin/main` was empty.
+- 2026-10-21 00:24 PT: Item 1 pushed `9f44be1` to `origin/bot/hermes-wire`.
+
+## Item 2
+
+- 2026-10-21 00:24 PT: start re-run harness. STOP absent. `date` Wed Oct 21 12:24:14 AM PDT 2026. Latest live start is still 2026-10-21 04:26 PT.
+- Decision: thinking stays off on both arms. A stdlib proxy forces `think=false`, `temperature=0`, `seed=1`, `reasoning_effort=none` on `/v1/chat/completions` and `/api/chat`. Unload `POST /api/generate` is not rewritten. The proxy log does not store prompts.
+- Decision: Hermes config sets `tools.tool_search.enabled: off` so the tool_search bridge stays off and MCP tools are offered directly. Checkout copied to `$W/tmp/hermes-agent` at `ddabd383`. Venv copied to `$W/tmp/.venv-hermes`. Its python symlink still points at the eval worktree uv runtime and this run does not write that tree.
+- Decision: bake-off child `TMPDIR` is `<repo>/tmp/tmpdir`, or `TMPDIR` when that path is already under `<repo>/tmp`. It is not `/tmp`.
+- RED: delete the `tools.tool_search` block -> `test_hermes_config_turns_tool_search_off` FAIL. Restored.
+- RED: chat body drops `think` instead of forcing false -> `test_think_proxy_forces_chat_and_leaves_unload_alone` ERROR (missing think). Restored.
+- 2026-10-21 00:26 PT: `tests.test_hermes_bakeoff` Ran 23 tests in 3.219s, OK, before the full suite. `date` Wed Oct 21 12:26:18 AM PDT 2026.
+- Decision: bake-off children get `PYTHONDONTWRITEBYTECODE=1` so imports do not write bytecode into the copied checkout or the uv runtime the venv symlink still points at.
+- 2026-10-21 00:33 PT: `env -u TMPDIR python3 -m unittest discover -s tests -t .` -> Ran 631 tests in 379.367s, OK (skipped=14), EXIT 0. That run was before the bytecode env line. Re-running the suite with the line in place before the push. `date` Wed Oct 21 12:33:02 AM PDT 2026. STOP absent. Ollama `ps` empty. MemAvailable 51870352 kB.
+- 2026-10-21 00:40 PT: suite again with `PYTHONDONTWRITEBYTECODE=1` in the child env -> Ran 631 tests in 379.086s, OK (skipped=14), EXIT 0. Em dash check empty. `date` Wed Oct 21 12:40:08 AM PDT 2026. STOP absent. Ollama `ps` empty. MemAvailable 52838128 kB.
+- 2026-10-21 00:40 PT: live re-run starts after this push. Command: `bash tmp/run-rerun.sh` (27 tasks, num_ctx 65536, out `pipelines/dogfood/hermes-bakeoff/results-rerun.json`, does not overwrite `results.json`).

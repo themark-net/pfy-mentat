@@ -45,6 +45,9 @@ def _write_config(home: Path, model: str, base_url: str, num_ctx: int, log_path:
 agent:
   max_turns: 6
   reasoning_effort: "none"
+tools:
+  tool_search:
+    enabled: off
 approvals:
   mode: off
 mcp_servers:
