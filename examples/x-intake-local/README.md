@@ -184,4 +184,26 @@ still needs each vendor's own key, so there is nothing to smoke without Mark's O
 here either: its own offline demo (`harness2-demo --k 2`, no model, no key) was run once on the Grok Bot box under
 bwrap with no network and a temp HOME, and the result is in the entry. A pinned smoke can come with an eval-auto trial.
 
+Entries 137-139 (`smoke_137_139.py`):
+
+```sh
+python3 examples/x-intake-local/smoke_137_139.py --entry neatroots     # pinned 0.2.9, `neatroots check` on temp trace files
+python3 examples/x-intake-local/smoke_137_139.py --entry teammates     # pinned 1.1.0 @ de85f5d4793e, config + ledger only
+python3 examples/x-intake-local/smoke_137_139.py --entry skillcreator  # pinned 0.3.6, V2 plugin with a fake OpenCode ctx
+```
+
+neatroots reads `$NEATROOTS_APP`, then `tmp/neatroots/app` (the unpacked release bundle), and Node 22+ from
+`$NEATROOTS_NODE`, then `tmp/neatroots/node/bin/node`, then PATH. Hermes Teammates reads `$HERMES_TEAMMATES_DIR`, then
+`tmp/hermes-teammates` (a git clone; HEAD is pinned with `$HT_COMMIT`). The skill creator reads `$OSC_DIR`, then
+`tmp/opencode-skill-creator` (an `npm install --prefix ... --ignore-scripts` tree), and Node 18+ from `$OSC_NODE`, then
+`tmp/opencode-skill-creator/node/bin/node`, then PATH. Only offline paths run: `neatroots check` (rules, no server,
+no model, `TMPDIR` inside the temp dir), a stdlib driver that imports `teammates_config.py` and `teammates_store.py`
+(no Hermes, `PYTHONDONTWRITEBYTECODE=1`), and a node driver that loads the skill creator's plugin entry with
+`XDG_CONFIG_HOME`/`XDG_CACHE_HOME` in the temp dir and `OPENCODE_SKILL_CREATOR_AUTO_UPDATE=0`. No installer,
+`neatroots connect`, `hermes plugins install`, `opencode run` or model call. All three FAIL if their temp HOME is
+written and fingerprint the real-HOME paths the tool could write (`~/.neatroots`;
+`~/.hermes/plugin-data/hermes-teammates`; `~/.config/opencode/skills/opencode-skill-creator`,
+`~/.config/opencode/opencode-skill-creator-update-check.json`, `~/.cache/opencode/packages/opencode-skill-creator@latest`)
+before the run and again in a finally, as for 128-130.
+
 Not wired into CI or Make.

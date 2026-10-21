@@ -119,6 +119,10 @@ pipelines/smoke/openlore/
 pipelines/smoke/jah/
 pipelines/smoke/aimemory/
 pipelines/smoke/headson/
+# 137-139 receipts.
+pipelines/smoke/neatroots/
+pipelines/smoke/teammates/
+pipelines/smoke/skillcreator/
 
 # agentdescent-trial promote temp files
 examples/agentdescent-trial/.results.new-*/
