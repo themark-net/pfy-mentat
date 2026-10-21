@@ -1,8 +1,9 @@
 # Handoff: harness2-local (2026-10-19 name, run 2026-10-20)
 
 Branch: `bot/h1-harness2`
-Base: `aed526d080114f83fbd9ad329b4c9e5b62baf64c` (launch `origin/main`). Later `origin/main` moved for Hermes eval. This branch was not rebased onto that tip.
-Code tip before this handoff commit: `31f96ed`. This file is the docs commit on top of that. Compare: https://github.com/themark-net/pfy-mentat/compare/main...bot/h1-harness2
+Base: `aed526d080114f83fbd9ad329b4c9e5b62baf64c` (launch `origin/main`). `origin/main` at `4641585` was merged in at `6f7a620` (no rebase, no force-push).
+Head: the Reviewer-nit fix commit on top of `6f7a620` (relay `upstream down port`, read-only prune reason, D2 port text, `WALK /etc/opencode` assert, this line). The gate request names that pushed SHA. Earlier handoff commit: `c6fe837`.
+Gate status: ready for Tester and Reviewer at the pushed SHA. `902e04f` was FAIL before item 2c. Compare: https://github.com/themark-net/pfy-mentat/compare/main...bot/h1-harness2
 Proposal branch: none. `git ls-remote --heads origin 'bot/h2-proposal-20261020*'` was empty.
 Exit: goal met (H1c, 2026-10-20 15:34 PDT). The H1b stop-file was an intentional pause so item 2c could run first. It is not this session's exit.
 

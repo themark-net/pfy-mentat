@@ -1098,6 +1098,7 @@ print("ok")
             self.assertTrue(line.startswith("NO "), line)
         walk = (self.box.state / "plant-walk.txt").read_text(encoding="utf-8")
         self.assertIn("WALK ", walk)
+        self.assertIn("WALK /etc/opencode", walk)
         self.assertNotIn("BLOCKED: opencode-plant", walk)
 
     def test_opencode_run_uses_config_model_and_a_host_plant_blocks(self) -> None:
@@ -1674,9 +1675,14 @@ print("ok")
         ws = self.box.ws()
         sleeper = self.box.harness / "sleep30"
         write_script(sleeper, "#!/bin/sh\nexec /bin/sleep 60\n")
+        # A stub upstream, so the relay probe does not depend on a live
+        # llama-server on 18111 (the test failed with "relay down" once the
+        # item 6 server was gone).
+        httpd, port = serve()
+        self.addCleanup(httpd.shutdown)
         env = self.box.env(
             HARNESS2_REAL_BUN=str(sleeper),
-            HARNESS2_RELAY_PORT="18111",
+            HARNESS2_RELAY_PORT=str(port),
             HARNESS2_PY312=str(self.box.py),
             HARNESS2_RUNS_DIR=str(self.box.runs),
         )

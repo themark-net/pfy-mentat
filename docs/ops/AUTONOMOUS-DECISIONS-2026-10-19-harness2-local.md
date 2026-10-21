@@ -8,7 +8,7 @@ Choice: import `home_sig` and mix its digest in for watched trees of at most 32 
 
 ## D2: OpenCode config port until the relay binds
 
-Choice: `stage.sh` writes `$W/tmp/state/opencode.json` with `baseURL http://127.0.0.1:8766/v1`, provider `llamacpp`, npm `@ai-sdk/openai-compatible`, apiKey `local`, temperature 0, seed 230. The sandbox rewrites the port when the relay binds. | Alternative: leave the file unwritten until item 2. | Upstream `config.py` and OpenCode need the file present, and item 1's stage is the place that generates it from `examples/opencode-ollama/opencode.json.template`.
+Choice: `stage.sh` writes `$W/tmp/state/opencode.json` with `baseURL http://127.0.0.1:8766/v1`, provider `llamacpp`, npm `@ai-sdk/openai-compatible`, apiKey `local`, temperature 0, seed 230. The sandbox does not rewrite this port (corrected 2026-10-20, Reviewer N3). `common.py write_opencode_config` takes the port from `HARNESS2_RELAY_PORT` and falls back to 8766, and `drive.py bind_relay_port` sets that variable from the llama-server endpoint. The port in `opencode.json` must match the llama-server port. | Alternative: leave the file unwritten until item 2. | Upstream `config.py` and OpenCode need the file present, and item 1's stage is the place that generates it from `examples/opencode-ollama/opencode.json.template`.
 
 ## D3: One worktree, lead implements in order
 

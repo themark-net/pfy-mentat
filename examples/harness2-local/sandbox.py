@@ -551,7 +551,9 @@ def relay_main(sock_path: str, allow: list[int], log_path: str) -> None:
             try:
                 upstream = socket.create_connection(("127.0.0.1", port), timeout=5)
             except OSError:
-                log_line(f"denied port {port}")
+                # Allowed port, but nothing is listening there. Say so, so a
+                # down llama-server is not read as an allow-list denial.
+                log_line(f"upstream down port {port}")
                 return
             try:
                 upstream.sendall(head + b"\r\n\r\n" + body)
@@ -638,6 +640,12 @@ def preflight_mode(call_path: str) -> int:
             continue
         ro = "ro" in opts.split(",")
         if ro:
+            # Read-only mount: nothing can create a socket there during the
+            # call, so a dir we cannot list (not ours, and not readable or not
+            # searchable) is pruned instead of failing find with rc 1. A
+            # socket hidden in such a dir is also unreachable to the sandboxed
+            # uid. Writable mounts get no such prune: an unreadable dir there
+            # makes find fail and the preflight blocks.
             cmd = [
                 "find", mnt, "-xdev",
                 "(", "-path", "/proc", "-o", "-path", "/sys", ")", "-prune",
