@@ -16,8 +16,8 @@ Live status for the meta-tools-off re-run and the bot-interface flag. The sectio
 | 5. Choice oracle rejects scattershot | done; distinct choices fail even if one matches the label |
 | 6. Rescore from git | done; `run.py --rescore` reads the committed JSON only |
 | 7. Tool-name mismatch | done; `mcp__bakeoff__*` and `bakeoff_*` score as the short name |
-| Re-run (meta tools off, matched thinking) | harness ready; live 27-task run not in this commit |
-| `scripts/pfy` Hermes flag | not started |
+| Re-run (meta tools off, matched thinking) | done 2026-10-21. Receipt `pipelines/dogfood/hermes-bakeoff/results-rerun.json`. NO-WIN: 26/27 vs 26/27, valid 36/36 vs 36/36, p50 7.011s vs 7.191s, TTFT p50 4.877s vs 5.364s, peak 239.8 MiB vs 1.03 GiB, meta calls 0. Thinking off on both arms. `tool_search` off. Requested num_ctx 65536, observed context_length 262144. Does not block the flag |
+| `scripts/pfy` Hermes flag | done. `PFY_BOT_INTERFACE=hermes` opts in. Default remains opencode. Plan `docs/plans/hermes-bot-interface.md`. Not a Feature GO. Catalog HOLD 70-75 unchanged |
 
 **Branch:** `bot/hermes-eval` (worktree `/home/mark/DEVELOP/pfy-mentat/tmp/hermes-eval`), cut from `origin/main` @ `b36234b` (#303). Lands on `main` by fast-forward after the Tester and Reviewer gate (no-PR flow); `origin/main` was merged in on 2026-10-20. Not a Feature GO. No production wiring. Catalog HOLD 70–75 unchanged.
 
@@ -90,4 +90,4 @@ None that stopped the ship. Driver bugs fixed before the scored pass, each once:
 
 ## Next
 
-Tester and Reviewer gate the merge (no-PR flow: on a double PASS, main is fast-forwarded to the gated SHA). Do not merge from this run. Do not wire `scripts/pfy` or `pfylib/` in this change; that is a separate change after the founder decision above. Do not rescore Hermes in the catalog. Follow-up: the meta-tools-off re-run above. A re-run only if the question changes; the list is in [hermes-vs-current.md](hermes-vs-current.md).
+2026-10-21: the re-run receipt and the default-off `./pfy bot` flag are on `bot/hermes-wire`. See the status table at the top of this file and [hermes-vs-current.md](hermes-vs-current.md). Tester and Reviewer still gate the merge (no-PR flow: on a double PASS, main is fast-forwarded to the gated SHA). Do not merge from this run. Do not rescore Hermes in the catalog. The 2026-10-19 instruction not to wire `scripts/pfy` is superseded by the flag above, which stays off unless `PFY_BOT_INTERFACE=hermes`.

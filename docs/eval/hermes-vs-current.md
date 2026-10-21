@@ -1,6 +1,37 @@
 # Hermes vs current local path (Entry 134)
 
-Not a Feature GO. No production wiring. Verdict: **NO-WIN**.
+## Re-run 2026-10-21 (meta tools off, matched thinking)
+
+Not a Feature GO. Verdict: **NO-WIN**. The tie does not block the bot-interface flag. Mark already chose Hermes for the interface. The flag stays off unless `PFY_BOT_INTERFACE=hermes`.
+
+Receipt: `pipelines/dogfood/hermes-bakeoff/results-rerun.json`. The 2026-10-19 file `results.json` is unchanged. Same 27 labels. Local Ollama `qwen3.6:35b` only. Pin `ddabd383`. opencode 1.18.32.
+
+Both arms went through a local proxy that forced `think: false`, `temperature: 0`, `seed: 1`, and `reasoning_effort: none` on 153 `POST /v1/chat/completions` calls. The proxy log stores those fields and not the prompt. Hermes config set `tools.tool_search.enabled: off`. Each Hermes task was offered the six `mcp__bakeoff__*` tools and no `tool_search`, `tool_describe`, or `tool_call`. `meta_calls` is 0 on both arms. `meta.started` is `2026-10-21T07:40:26.585Z`.
+
+Requested `num_ctx` 65536. After the tasks, `ollama ps` still reported `context_length` 262144 for `qwen3.6:35b` (resident size about 22.8 GB). The model was not loaded at the start. This run unloaded it (`model_unloaded: true`), and `ollama ps` was empty afterward.
+
+| Metric | Hermes | opencode run | Prior run (2026-10-19) |
+|---|---:|---:|---|
+| Task success | 26/27 = 96.30% | 26/27 = 96.30% | 26/27 vs 25/27 |
+| Wilson 95% | 81.7% to 99.3% | 81.7% to 99.3% | 81.7% to 99.3% vs 76.6% to 97.9% |
+| Valid tool-call rate | 36/36 = 100% | 36/36 = 100% | 38/46 = 82.61% vs 45/46 = 97.83% |
+| Narrate rate | 0 | 0 | 0 vs 0 |
+| Latency p50 / p95 / mean | 7.011s / 8.806s / 7.854s | 7.191s / 8.585s / 7.292s | 8.75s / 13.65s / 9.63s vs 47.38s / 60.98s / 46.27s |
+| Time to first tool call, p50 | 4.877s | 5.364s | 6.44s vs 42.00s (whole seconds) |
+| Agent peak RSS | 239.8 MiB | 1.03 GiB | 221 MiB vs 1.04 GiB |
+| Meta calls | 0 | 0 | 52 vs 0 |
+
+TTFT uses the millisecond server stamps. Of the 24 tasks with a tool call on each arm, none of the `ttft_s` values are whole seconds. The first Hermes task, `ch-ph-01-green-idle`, took 30.42s of wall time (process cold start). Later tasks sit near 7s, so p50 stays 7.011s.
+
+Failed condition: task success is +0.00 pp, and the bar is +10 pp. The Wilson intervals are the same interval, so they overlap. Valid rate, narrate, p50 (0.97x), and Hermes peak RSS pass.
+
+The only miss on both arms is `ch-ph-08-missing-ci`. Each arm made one schema-valid `submit_choice` of `hold`. The label is `escalate`. That is one wrong choice, not a scattershot pair. On the 2026-10-19 pass Hermes chose `push` and opencode chose `push` then `hold`, and opencode also missed `ch-wz-06-cloud-grok`. Opencode passes `wz-06` on this re-run. Hermes no longer emits the empty `submit_answer` retries that made 8 of 46 attempts invalid, which is why the valid rate is now 36/36 on both arms.
+
+Against the prior run: the valid-rate gap closed. The latency gap did not survive matched thinking (7.011s vs 7.191s, was 8.75s vs 47.38s). The RSS gap remains (239.8 MiB vs 1.03 GiB).
+
+## 2026-10-19 scored pass
+
+Not a Feature GO. No production wiring in that pass. Verdict: **NO-WIN**.
 
 Hermes (`AIAgent.run_conversation` at pin `ddabd3837862022a6053331fe3ba97cf9716b9e3`) beat `opencode run` 1.18.32 by 3.70 percentage points on task success (26/27 vs 25/27) and was much faster ([not like-for-like](HERMES-EVAL-HANDOFF.md#founder-decision-2026-10-20): thinking off on Hermes only, opencode CLI cold start, RSS excludes the model). That is short of the +10 point bar. Its bake-off valid tool-call rate was also 15.2 points worse. Wilson 95% intervals on task success overlap.
 
@@ -78,7 +109,7 @@ Negatives passed on both arms (zero tool calls, expected text).
 
 ## What would have to change for a re-run
 
-A meta-tools-off re-run is planned after Mark's 2026-10-20 decision to choose Hermes as the bot interface (wiring pending). Its prerequisites and the matched-thinking rule are in the [handoff](HERMES-EVAL-HANDOFF.md#founder-decision-2026-10-20).
+The meta-tools-off re-run with matched thinking is the 2026-10-21 section at the top of this file. Prerequisites and the founder choice are in the [handoff](HERMES-EVAL-HANDOFF.md#founder-decision-2026-10-20).
 
 Item C (adapter plan) is skipped. A re-run is worth it only if the question changes. On this 27-task set both arms are already above 92%, and +10 points means about three more baseline misses. The intervals overlap.
 
