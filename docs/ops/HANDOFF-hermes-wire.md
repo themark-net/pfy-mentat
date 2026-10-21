@@ -12,7 +12,7 @@ Branch `bot/hermes-wire`. Worktree `/home/mark/DEVELOP/pfy-mentat/tmp/hermes-wir
 | Oracles, stamps, git rescore | `9f44be1af22ea5a5a8dba8216568d64df852dd4d` |
 | Wording, speed caveat, millisecond TTFT | `e215cb8a4b51d04c78747df61aa30967a72102a8` |
 
-Handoff commit: `43391e1f0913932a67bdfd161e0ceea47edbc8a3` (this file, on top of `3500119`). Stamp commits `dee7856`, `363eefb`, `7b80757` and the 2026-10-21 08:05 PT check commit are docs only. Status: session finished (end event, end_turn) and the branch is ready to gate. Tester and Reviewer gate the branch tip, which is the commit that adds this line; its SHA is pinned in the gate request because a commit cannot name itself.
+Handoff commit: `43391e1f0913932a67bdfd161e0ceea47edbc8a3` (this file, on top of `3500119`). Stamp commits `dee7856`, `363eefb`, `7b80757` and the 2026-10-21 08:05 PT check commit are docs only. Status: session finished (end event, end_turn) and the branch is ready to gate. CI fix `56a65a15761c9fbc19509e149a0846a10e99fa91` adds a `HERMES_BAKEOFF_MEM_FLOOR_KIB` override so the ps-order test does not wait for the 47 GiB real-model floor on small runners. Tester and Reviewer gate the branch tip, which is the docs commit that adds this sentence; its SHA is pinned in the gate request because a commit cannot name itself.
 
 ## Status
 
@@ -25,7 +25,7 @@ Handoff commit: `43391e1f0913932a67bdfd161e0ceea47edbc8a3` (this file, on top of
 | Live re-run | done. Receipt `pipelines/dogfood/hermes-bakeoff/results-rerun.json`. `results.json` was not overwritten |
 | `./pfy bot` flag | done. Default opencode. `PFY_BOT_INTERFACE=hermes` opts in. Plan `docs/plans/hermes-bot-interface.md` |
 | Catalog | HOLD 70-75 unchanged. No rescore. No Feature GO |
-| Suite | `env -u TMPDIR python3 -m unittest discover -s tests -t .` -> Ran 640 tests in 409.171s, OK (skipped=14), EXIT 0, at 2026-10-21 01:02 PT |
+| Suite | `env -u TMPDIR python3 -m unittest discover -s tests -t .` -> Ran 641 tests in 382.185s, OK (skipped=14), EXIT 0, at 2026-10-21 08:33 PT |
 | `ollama ps` | empty after the run (`keep_alive: 0` for `qwen3.6:35b`) |
 | `~/.hermes` | diff empty after restore (113616 paths). See isolation |
 
