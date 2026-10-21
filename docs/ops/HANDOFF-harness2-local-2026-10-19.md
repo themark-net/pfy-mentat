@@ -2,7 +2,7 @@
 
 Branch: `bot/h1-harness2`
 Base: `aed526d080114f83fbd9ad329b4c9e5b62baf64c` (launch `origin/main`). `origin/main` at `4641585` was merged in at `6f7a620` (no rebase, no force-push).
-Head: the Reviewer-nit fix commit on top of `6f7a620` (relay `upstream down port`, read-only prune reason, D2 port text, `WALK /etc/opencode` assert, this line). The gate request names that pushed SHA. Earlier handoff commit: `c6fe837`.
+Head: the CI-fix commit on top of `d8b92fd` (Reviewer B1 at `d8b92fd`: lazy harness2 import in `pfy_adapter.py`, bwrap and staged-harness2 skip guards, long AF_UNIX paths bound through an `O_PATH` dir fd; nits n1 n2 n6 n8, mutant tests n3 n4 n5, Tester N06 N03 N09 N08 tests and a named `--runs`/`--state` under /tmp or /run refusal; this line). The gate request names that pushed SHA. Earlier heads: `d8b92fd` (Reviewer nits N1 N3 N4 N6), handoff commit `c6fe837`.
 Gate status: ready for Tester and Reviewer at the pushed SHA. `902e04f` was FAIL before item 2c. Compare: https://github.com/themark-net/pfy-mentat/compare/main...bot/h1-harness2
 Proposal branch: none. `git ls-remote --heads origin 'bot/h2-proposal-20261020*'` was empty.
 Exit: goal met (H1c, 2026-10-20 15:34 PDT). The H1b stop-file was an intentional pause so item 2c could run first. It is not this session's exit.
@@ -31,7 +31,9 @@ Held-out a1 and a2: 15/16, parse_ok 1.0, wrong-but-confident 1. Chain final (ste
 ## Tests
 
 - Baseline at `aed526d`: `python3 -m unittest discover -s tests -t .` 459 tests, OK (skipped=4). The two previously known failures passed on nimo and are not allow-listed.
-- Final, inside structural eval on `31f96ed`: Ran 545 tests in 433.377s, OK (skipped=4).
+- Earlier, inside structural eval on `31f96ed`: Ran 545 tests in 433.377s, OK (skipped=4).
+- At `d8b92fd` on nimo (staged): Ran 609 tests, OK (skipped=4). CI run 39540683605 was red: no staged `tmp/harness2` on either runner, no bwrap on ubuntu-latest, two AF_UNIX paths over 107 bytes in the nimo runner's deeper checkout. The Reviewer's own run of the same head saw 1 failure (`test_hedge`) and 5 skips, so the suite result depends on the host.
+- At the CI-fix head on nimo, staged `tmp/harness2` and bwrap: Ran 617 tests in 452.126s, OK (skipped=4). Fresh clone with no staged harness2 (CI-like, deeper path than the nimo runner): Ran 617, OK (skipped=14: 7 harness2 not staged, 2 staged OpenCode, 1 stage venv, 4 pre-existing). Same clone with bwrap removed from PATH (ubuntu-like): Ran 617, OK (skipped=51: 40 bwrap, 6 harness2 not staged, 1 stage venv, 4 pre-existing). `test_hedge` passed on nimo in all three; the Tester and Reviewer box sees it fail on base `4641585` too (pre-existing, host-dependent).
 - Structural eval: PASS (wrote `pipelines/eval/structural.latest.md`, gitignored). Golden PASS. `catalog_check` PASS. `catalog_dashboard` PASS. `check_no_encoded_payloads` PASS. The other eval-structural `run:` steps (gab, jev, launch wizard, launcher, toolset, hedge) passed on the 15:09 CI run. The later diff is the handoff card, the "I1 stay" note, and the XDG stub's `answer.json`.
 
 ## RED

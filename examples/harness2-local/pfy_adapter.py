@@ -24,8 +24,15 @@ _H2_ROOT = (
 if str(_H2_ROOT) not in sys.path:
     sys.path.insert(0, str(_H2_ROOT))
 
-from harness2.core.spec import BenchPrompts, BenchSpec, ChannelSpec
-from harness2.substrate.opencode import OpencodeSubstrate
+
+def _harness2():
+    """Import upstream lazily. A checkout without a staged tmp/harness2 (CI)
+    can still import this module and drive.py; only building an adapter needs it."""
+    from harness2.core.spec import BenchPrompts, BenchSpec, ChannelSpec
+    from harness2.substrate.opencode import OpencodeSubstrate
+
+    return BenchPrompts, BenchSpec, ChannelSpec, OpencodeSubstrate
+
 
 INSTALL_MODE = "workspace_config"
 # Parallel recursion labels finals agg1..aggk. c1..ck belong to sequential mode.
@@ -100,6 +107,7 @@ class PfyAdapter:
         self.runs = Path(runs)
         self.model = model
         self.editor_timeout = int(editor_timeout)
+        BenchPrompts, BenchSpec, ChannelSpec, OpencodeSubstrate = _harness2()
         self.substrate = OpencodeSubstrate(self._launch)
         self.spec = BenchSpec(
             name="pfy-decisions",
@@ -183,11 +191,10 @@ class PfyAdapter:
             return run_dir
         held = os.environ.get("HARNESS2_EXEC_HELDOUT")
         previous = tempfile.tempdir
-        if held:
-            tmp = Path(os.environ.get("HARNESS2_W", Path(__file__).resolve().parents[2])) / "tmp" / "heldout-runs" / held / "tmp"
-            # worktree() is not imported here; HARNESS2_W is exported by env.sh and by drive.
-            if "HARNESS2_HELDOUT_ROOT" in os.environ:
-                tmp = Path(os.environ["HARNESS2_HELDOUT_ROOT"]) / held / "tmp"
+        if held and "HARNESS2_HELDOUT_ROOT" in os.environ:
+            # drive.main() sets HARNESS2_HELDOUT_ROOT before any held-out call,
+            # the same condition _run_dir() uses.
+            tmp = Path(os.environ["HARNESS2_HELDOUT_ROOT"]) / held / "tmp"
             tmp.mkdir(parents=True, exist_ok=True)
             tempfile.tempdir = str(tmp)
         try:

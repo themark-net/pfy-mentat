@@ -23,6 +23,14 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 DRIVE = REPO / "examples" / "harness2-local" / "drive.py"
 STUB = REPO / "tmp" / "harness2" / "h2-stub-bun"
+H2_PKG = REPO / "tmp" / "harness2" / "harness2" / "__init__.py"
+H2_SKIP = (
+    "harness2 is not staged at tmp/harness2 (examples/harness2-local/stage.sh); "
+    "a fresh CI checkout has none"
+)
+BWRAP_SKIP = "bwrap required: not on PATH (GitHub-hosted ubuntu runners have none)"
+# drive.main() stops at the endpoint probe before any sbun call.
+NO_BWRAP = frozenset({"test_endpoint_down_writes_no_receipt"})
 # Rollout labels only. Upstream's surface table says "c1 persona", which is not a rollout.
 C1_LABEL = re.compile(r'(?:__c1\b|"final_label"\s*:\s*"c1"|"base_labels"\s*:\s*\[[^\]]*"c1")')
 SESSION_LABEL = re.compile(r"^(?:base|inv|dom|agg)\d+(?:\.a\d+)?$")
@@ -212,6 +220,12 @@ def _files(root: Path):
 
 class DriveTests(unittest.TestCase):
     def setUp(self) -> None:
+        # drive.main() boots the staged upstream package, and every scored
+        # call goes through sbun and the real sandbox.
+        if not H2_PKG.is_file():
+            self.skipTest(H2_SKIP)
+        if self._testMethodName not in NO_BWRAP and not shutil.which("bwrap"):
+            self.skipTest(BWRAP_SKIP)
         self.scratch = REPO / "tmp" / "h2drv" / self._testMethodName
         if self.scratch.exists():
             subprocess.run(["chmod", "-R", "u+rwX", "--", str(self.scratch)], check=False)
@@ -610,6 +624,35 @@ class EndpointTests(unittest.TestCase):
         drive = _load("h2drive_endpoint_name", DRIVE)
         os.environ.pop("HARNESS2_GGUF_SHA", None)
         self.assertTrue(drive.endpoint_up(f"http://127.0.0.1:{port}/v1/", "llamacpp/qwen3.6-35b"))
+
+
+class RuleTests(unittest.TestCase):
+    """Pure rules in drive.py and pfy_adapter.py. No staged harness2, no bwrap."""
+
+    def test_tie_adopts_and_any_regression_keeps_the_base(self) -> None:
+        drive = _load("h2drive_rules", DRIVE)
+        base = {"n_correct": 3, "parse_ok": 1.0}
+        self.assertTrue(drive.adopts({"n_correct": 3, "parse_ok": 1.0}, base))
+        self.assertTrue(drive.adopts({"n_correct": 4, "parse_ok": 1.0}, base))
+        self.assertFalse(drive.adopts({"n_correct": 2, "parse_ok": 1.0}, base))
+        self.assertFalse(drive.adopts({"n_correct": 4, "parse_ok": 0.5}, base))
+
+    def test_task_files_writes_train_only(self) -> None:
+        adapter_mod = _load("h2adapt_rules", REPO / "examples" / "harness2-local" / "pfy_adapter.py")
+        scratch = REPO / "tmp" / "h2drv" / self._testMethodName
+        shutil.rmtree(scratch, ignore_errors=True)
+        self.addCleanup(shutil.rmtree, scratch, True)
+        rows = [{"id": "c1", "instructions": "x", "state": {}, "criteria": {"a": "b"}}]
+        fake = type("A", (), {})()
+        fake.batches = {"train-1": rows, "heldout": rows}
+        fake.train_ids = ["train-1"]
+        fake._src_root = scratch / "sources"
+        task_files = adapter_mod.PfyAdapter.task_files
+        self.assertIsNone(task_files(fake, "heldout"))
+        self.assertFalse((fake._src_root / "heldout").exists())
+        dest = task_files(fake, "train-1")
+        self.assertEqual(dest, fake._src_root / "train-1")
+        self.assertEqual(json.loads((dest / "cases.json").read_text(encoding="utf-8")), rows)
 
 
 if __name__ == "__main__":

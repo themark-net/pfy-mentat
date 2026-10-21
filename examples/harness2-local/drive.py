@@ -80,10 +80,7 @@ def sha256_text(text: str) -> str:
 
 
 def git_sha(repo: Path) -> str:
-    if not (repo / ".git").exists() and not (repo / "HEAD").exists():
-        # A worktree or a normal checkout both answer rev-parse. A missing
-        # checkout is recorded, not fatal, until preflight runs.
-        pass
+    # A missing checkout is recorded as "missing", not fatal, until preflight runs.
     proc = subprocess.run(
         ["git", "-C", str(repo), "rev-parse", "HEAD"],
         stdin=subprocess.DEVNULL,
@@ -266,6 +263,14 @@ def make_proposer(model: str, audit: Path, timeout: int):
     return prop
 
 
+def adopts(agg_score: dict, base_score: dict) -> bool:
+    """agg1 replaces H_t unless it regresses. A tie on both counts adopts."""
+    return (
+        agg_score["n_correct"] >= base_score["n_correct"]
+        and agg_score["parse_ok"] >= base_score["parse_ok"]
+    )
+
+
 def run_task(adapter, prop, task_id, gold_rows, mapping, gate, H, lib_dir, k, work, index):
     from harness2.core.recursion import run_parallel
     from harness2.core.spec import RunView
@@ -307,8 +312,7 @@ def run_task(adapter, prop, task_id, gold_rows, mapping, gate, H, lib_dir, k, wo
     base_view = result.rollouts["base1"]
     base_score = score_run(base_view.run_dir, gold_rows, mapping, gate)
     agg_score = score_run(agg_view.run_dir, gold_rows, mapping, gate)
-    adopt = agg_score["n_correct"] >= base_score["n_correct"] and agg_score["parse_ok"] >= base_score["parse_ok"]
-    if adopt:
+    if adopts(agg_score, base_score):
         new_h = dict(agg_tree)
         kept = False
     else:

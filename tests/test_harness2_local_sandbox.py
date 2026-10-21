@@ -25,6 +25,77 @@ REPO = Path(__file__).resolve().parents[1]
 SANDBOX = REPO / "examples" / "harness2-local" / "sandbox.py"
 SBUN = REPO / "examples" / "harness2-local" / "sbun"
 PY = sys.executable
+H2_PKG = REPO / "tmp" / "harness2" / "harness2" / "__init__.py"
+H2_SKIP = (
+    "harness2 is not staged at tmp/harness2 (examples/harness2-local/stage.sh); "
+    "a fresh CI checkout has none"
+)
+# sun_path is 108 bytes with the NUL. A deep checkout (the nimo runner's
+# _work/pfy-mentat/pfy-mentat) pushes some test socket paths past it.
+SUN_PATH_MAX = 107
+
+
+def _bwrap_skip_reason() -> str | None:
+    """None when bwrap is on PATH and can build a namespace sandbox here."""
+    path = shutil.which("bwrap")
+    if not path:
+        return "bwrap required: not on PATH (GitHub-hosted ubuntu runners have none)"
+    try:
+        probe = subprocess.run(
+            [path, "--unshare-all", "--ro-bind", "/", "/", "--dev", "/dev", "/bin/true"],
+            capture_output=True, text=True, timeout=30,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return f"bwrap at {path} did not run: {exc}"
+    if probe.returncode != 0:
+        return f"bwrap at {path} cannot sandbox here: rc={probe.returncode} {probe.stderr.strip()[-200:]}"
+    return None
+
+
+BWRAP_SKIP = _bwrap_skip_reason()
+# The only SandboxTests that never reach bwrap. Every other test drives the
+# real /usr/bin/bwrap, directly or through a logging shim.
+NO_BWRAP = frozenset({
+    "test_bwrap_missing_does_not_run_child",
+    "test_env_sh_disables_models_fetch",
+    "test_sbun_unknown_relay_port_exits_2",
+    "test_substrate_preflight_wants_a_path",
+    "test_executor_prompt_names_systemprompt",
+    "test_relay_logs_upstream_down_apart_from_denied",
+    "test_py312_glob_fallback_takes_another_patch",
+    "test_sbun_heldout_passes_heldout_and_not_runs",
+})
+# Tests that build a PfyAdapter, which imports the staged upstream package.
+NEEDS_H2 = frozenset({
+    "test_executor_launcher_xdg_is_inside_the_workspace",
+    "test_executor_prompt_names_systemprompt",
+})
+
+
+def _unix_op(path: Path | str, op) -> None:
+    """Run bind or connect on ``path`` even when it is longer than sun_path.
+
+    A long path is reached through an O_PATH fd on its parent dir, so the
+    socket still sits at the exact path the test means (inside state, runs or
+    the workspace). Nothing is moved to a short dir.
+    """
+    text = str(path)
+    if len(os.fsencode(text)) <= SUN_PATH_MAX:
+        op(text)
+        return
+    fd = os.open(os.path.dirname(text), os.O_PATH | os.O_DIRECTORY)
+    try:
+        op(f"/proc/self/fd/{fd}/{os.path.basename(text)}")
+    finally:
+        os.close(fd)
+
+
+def bind_unix(srv: socket.socket, path: Path | str) -> None:
+    _unix_op(path, srv.bind)
+
+
+def connect_unix(sock: socket.socket, path: Path | str) -> None:
+    _unix_op(path, sock.connect)
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -169,6 +240,11 @@ def write_script(path: Path, body: str) -> None:
 
 class SandboxTests(unittest.TestCase):
     def setUp(self) -> None:
+        name = self._testMethodName
+        if BWRAP_SKIP and name not in NO_BWRAP:
+            self.skipTest(BWRAP_SKIP)
+        if name in NEEDS_H2 and not H2_PKG.is_file():
+            self.skipTest(H2_SKIP)
         self.box = Box(f"{os.getpid():x}"[-6:] + self._testMethodName[:4])
 
     def tearDown(self) -> None:
@@ -359,7 +435,7 @@ class SandboxTests(unittest.TestCase):
             srv = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             if path.exists():
                 path.unlink()
-            srv.bind(str(path))
+            bind_unix(srv, path)
             srv.listen(4)
             listeners.append(srv)
             self.addCleanup(srv.close)
@@ -375,7 +451,14 @@ class SandboxTests(unittest.TestCase):
                 try:
                     c = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
                     c.settimeout(2)
-                    c.connect(path)
+                    if len(os.fsencode(path)) > {SUN_PATH_MAX}:
+                        fd = os.open(os.path.dirname(path), os.O_PATH | os.O_DIRECTORY)
+                        try:
+                            c.connect(f"/proc/self/fd/{{fd}}/" + os.path.basename(path))
+                        finally:
+                            os.close(fd)
+                    else:
+                        c.connect(path)
                     lines.append("OPEN " + path)
                 except OSError as exc:
                     lines.append("ERR " + path + " " + str(exc.errno))
@@ -397,7 +480,7 @@ class SandboxTests(unittest.TestCase):
         for srv, path in zip(listeners, socks):
             host = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             host.settimeout(2)
-            host.connect(str(path))
+            connect_unix(host, path)
             host.close()
 
     def test_answer_files_and_id_map_are_absent_inside(self) -> None:
@@ -437,7 +520,7 @@ class SandboxTests(unittest.TestCase):
         ws = self.box.ws()
         sock_path = self.box.runs / "evil.sock"
         srv = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        srv.bind(str(sock_path))
+        bind_unix(srv, sock_path)
         srv.listen(1)
         self.addCleanup(srv.close)
         proc = run(self.box.args(ws, ["/bin/sh", "-c", f"echo ran > {ws}/marker"]), self.box.env())
@@ -497,7 +580,7 @@ class SandboxTests(unittest.TestCase):
         ws = self.box.ws()
         sock_path = self.box.state / "not-relay.sock"
         srv = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        srv.bind(str(sock_path))
+        bind_unix(srv, sock_path)
         srv.listen(1)
         self.addCleanup(srv.close)
         proc = run(self.box.args(ws, ["/bin/sh", "-c", f"echo ran > {ws}/marker"]), self.box.env())
@@ -511,7 +594,7 @@ class SandboxTests(unittest.TestCase):
         hidden = ws / "hidden"
         hidden.mkdir()
         srv = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        srv.bind(str(hidden / "l.sock"))
+        bind_unix(srv, hidden / "l.sock")
         srv.listen(4)
         srv.settimeout(0.2)
         got: list[int] = []
@@ -710,7 +793,7 @@ class SandboxTests(unittest.TestCase):
         os.chmod(sub, 0o500)
         sock_path = target / "s.sock"
         srv = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        srv.bind(str(sock_path))
+        bind_unix(srv, sock_path)
         srv.listen(1)
         srv.close()
         link = self.box.runs / "tmp" / "leak"
@@ -1491,13 +1574,54 @@ print("ok")
         self.assertEqual(lines, [str(data), str(state)])
         self.assertTrue((data / "ok").is_file())
 
-    def test_sbun_unknown_relay_port_exits_2(self) -> None:
+    def _sbun_marker_call(self, port: str | None) -> tuple[subprocess.CompletedProcess, Path]:
+        """A call that is valid apart from the relay port: real py312 stand-in,
+        runs, state and harness all set, and a REAL_BUN that writes a marker."""
         ws = self.box.ws()
-        env = self.box.env()
+        writer = self.box.harness / "write-marker"
+        write_script(writer, f"""
+            #!/bin/sh
+            echo ran > {ws}/marker
+        """)
+        env = self.box.env(
+            HARNESS2_REAL_BUN=str(writer),
+            HARNESS2_PY312=str(self.box.py),
+            HARNESS2_RUNS_DIR=str(self.box.runs),
+            HARNESS2_STATE=str(self.box.state),
+            HARNESS2_HARNESS=str(self.box.harness),
+        )
         env.pop("HARNESS2_RELAY_PORT", None)
-        proc = run([str(SBUN), "true", "--dir", str(ws)], env, timeout=20)
-        self.assertEqual(proc.returncode, 2, proc.stderr)
-        self.assertIn("BLOCKED: relay port unknown", proc.stderr)
+        env.pop("HARNESS2_HELDOUT", None)
+        env.pop("HARNESS2_BUN_TRACE", None)
+        if port is not None:
+            env["HARNESS2_RELAY_PORT"] = port
+        proc = run([str(SBUN), "go", "--dir", str(ws)], env, timeout=60)
+        return proc, ws
+
+    def test_sbun_unknown_relay_port_exits_2(self) -> None:
+        # rc 2 must come from the port check alone: sandbox.py never starts
+        # (no call.json), so a fallback port (8766) would show up here.
+        for port in (None, "", "not-a-port"):
+            with self.subTest(port=port):
+                call = self.box.state / "bin" / "call.json"
+                call.unlink(missing_ok=True)
+                proc, ws = self._sbun_marker_call(port)
+                self.assertEqual(proc.returncode, 2, proc.stderr)
+                self.assertIn("BLOCKED: relay port unknown", proc.stderr)
+                blocked = [line for line in proc.stderr.splitlines() if "BLOCKED" in line]
+                self.assertEqual(len(blocked), 1, proc.stderr)
+                self.assertNotIn("no-python312", proc.stderr)
+                self.assertNotIn("bwrap required", proc.stderr)
+                self.assertFalse(call.exists(), "sandbox.py started despite an unknown port")
+                self.assertFalse((ws / "marker").exists())
+
+    def test_sbun_known_relay_port_runs_the_same_call(self) -> None:
+        # Control for the test above: the same env with a live port runs.
+        httpd, port = serve()
+        self.addCleanup(httpd.shutdown)
+        proc, ws = self._sbun_marker_call(str(port))
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual((ws / "marker").read_text().strip(), "ran")
 
     def test_sbun_runs_real_opencode_with_proposer_env(self) -> None:
         harness = REPO / "tmp" / "harness2"
@@ -1763,6 +1887,131 @@ print("ok")
                 break
             time.sleep(0.1)
         self.assertEqual(left, set(), f"processes still alive after SIGKILL: {left}")
+
+    def test_relay_logs_upstream_down_apart_from_denied(self) -> None:
+        probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        probe.bind(("127.0.0.1", 0))
+        dead = probe.getsockname()[1]
+        probe.close()
+        other = dead + 1 if dead < 65535 else dead - 1
+        sock = self.box.state / "r" / "s"
+        log = self.box.state / "relay.log"
+        relay = subprocess.Popen(
+            [PY, str(SANDBOX), "--mode", "relay", "--sock", str(sock),
+             "--allow", str(dead), "--log", str(log)],
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+        self.addCleanup(relay.wait, 5)
+        self.addCleanup(relay.kill)
+
+        def ask(port: int) -> None:
+            conn = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            conn.settimeout(10)
+            deadline = time.time() + 10
+            while True:
+                try:
+                    connect_unix(conn, sock)
+                    break
+                except OSError:
+                    if time.time() > deadline:
+                        raise
+                    time.sleep(0.05)
+            conn.sendall(f"PORT {port}\nGET /health HTTP/1.0\r\nHost: 127.0.0.1\r\n\r\n".encode())
+            while conn.recv(4096):
+                pass
+            conn.close()
+
+        def wait_for(text: str) -> str:
+            deadline = time.time() + 10
+            body = ""
+            while time.time() < deadline:
+                body = log.read_text(encoding="utf-8") if log.exists() else ""
+                if text in body:
+                    break
+                time.sleep(0.05)
+            return body
+
+        ask(dead)
+        body = wait_for(f"upstream down port {dead}")
+        self.assertIn(f"upstream down port {dead}", body)
+        self.assertNotIn(f"denied port {dead}", body)
+        ask(other)
+        body = wait_for(f"denied port {other}")
+        self.assertIn(f"denied port {other}", body)
+        self.assertNotIn(f"upstream down port {other}", body)
+
+    def test_py312_glob_fallback_takes_another_patch(self) -> None:
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location("h2sandbox_py312", SANDBOX)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        uv = self.box.home / ".local" / "share" / "uv" / "python"
+        prefix = uv / "cpython-3.12.99-linux-x86_64-gnu"
+        (prefix / "bin").mkdir(parents=True)
+        # Stands in for a real interpreter: the probe only reads sys.base_prefix.
+        write_script(prefix / "bin" / "python3.12", f"""
+            #!/bin/sh
+            echo {prefix}
+        """)
+        self.assertFalse((uv / "cpython-3.12.12-linux-x86_64-gnu").exists())
+        got = mod.resolve_py312(None, str(self.box.home))
+        self.assertEqual(got, Path(os.path.realpath(prefix)))
+        shutil.rmtree(prefix)
+        with self.assertRaises(SystemExit):
+            mod.resolve_py312(None, str(self.box.home))
+
+    def _sbun_argv(self, **extra: str) -> list[str]:
+        """sbun's argv to sandbox.py, caught by a python3 shim on PATH."""
+        shim = self.box.root / "pyshim"
+        shim.mkdir(exist_ok=True)
+        log = self.box.root / "sandbox-argv"
+        log.unlink(missing_ok=True)
+        write_script(shim / "python3", f"""
+            #!/bin/sh
+            case "$1" in
+              */sandbox.py) printf '%s\\n' "$@" > {log}; exit 0 ;;
+            esac
+            exec {PY} "$@"
+        """)
+        env = self.box.env(
+            PATH=f"{shim}:{os.environ.get('PATH', '')}",
+            HARNESS2_RELAY_PORT="18111",
+            HARNESS2_RUNS_DIR=str(self.box.runs),
+            **extra,
+        )
+        env.pop("HARNESS2_BUN_TRACE", None)
+        if "HARNESS2_HELDOUT" not in extra:
+            env.pop("HARNESS2_HELDOUT", None)
+        proc = run([str(SBUN), "go"], env, timeout=30)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        return log.read_text(encoding="utf-8").splitlines()
+
+    def test_sbun_heldout_passes_heldout_and_not_runs(self) -> None:
+        argv = self._sbun_argv(HARNESS2_HELDOUT="a1")
+        i = argv.index("--heldout")
+        self.assertEqual(argv[i + 1], "a1")
+        self.assertNotIn("--runs", argv)
+        argv = self._sbun_argv()
+        self.assertNotIn("--heldout", argv)
+        i = argv.index("--runs")
+        self.assertEqual(argv[i + 1], str(self.box.runs))
+
+    def test_runs_or_state_under_tmp_or_run_is_named(self) -> None:
+        ws = self.box.ws()
+        tag = f"h2-never-created-{os.getpid()}"
+        for flag, root in (("--runs", "/tmp"), ("--state", "/tmp"), ("--runs", "/run")):
+            with self.subTest(flag=flag, root=root):
+                target = Path(root) / tag
+                args = self.box.args(ws, ["/bin/sh", "-c", f"echo ran > {ws}/marker"])
+                args[args.index(flag) + 1] = str(target)
+                proc = run(args, self.box.env(), timeout=20)
+                self.assertEqual(proc.returncode, 2, proc.stderr)
+                label = flag.lstrip("-")
+                self.assertIn(f"BLOCKED: {label} under {root}", proc.stderr)
+                self.assertNotIn("preflight rc=", proc.stderr)
+                self.assertFalse(target.exists())
+                self.assertFalse((ws / "marker").exists())
 
     def _root_0700(self) -> str | None:
         candidates = [

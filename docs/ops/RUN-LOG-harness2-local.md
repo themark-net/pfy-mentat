@@ -326,6 +326,8 @@ Relay: 288 POSTs, temperature 0 and seed 230 on every one (`relay_posts_bad_temp
 
 Receipt committed: `pipelines/dogfood/harness2-local/receipt.json` in `c26ad1a204177ae8b3fc4b7025513c86cab24194`. Code sha inside the receipt is `fb2d5dc` (the prompt fix). The server was left up for N4 and N6.
 
+Receipt provenance (Reviewer n2, recorded at the CI-fix commit): the committed receipt is hand-assembled, not a single `drive.py` output. `drive.py` writes one receipt per invocation (`--only heldout` for a1 and a2, the chain run for step c), each with `heldout_score` and `heldout_harness`. The committed file merges those runs by hand into `bases.a1`, `bases.a2` and `heldout_score` (step c), and adds host measurements `drive.py` never writes (`relay_posts*`, `prompt_token_peak`, `truncated_calls`, `llama_server_pid`, the memory fields, `wall`, `gate`, `gate_reason`, `harness_diff`, `adopted_run`). `propose.py` reads a different shape: `receipt["heldout"]["a1" | "a2" | "c"]` and `receipt["relay_log"]` (the raw relay POST lines). No `drive.py` path writes either key. On the committed receipt `gate_finding()` returns `gain` only because `heldout` is missing (the KeyError branch), which happens to match the real finding (gain 0). A real +2 run could not push a proposal branch until a merge step writes `heldout.{a1,a2,c}` and `relay_log` from the three drive receipts and `$W/tmp/state/relay.log`. That merge step is not built. This is documented rather than fixed in this commit.
+
 ### Item 6 close: N6 sbun exec
 
 state: DONE as part of check N6, committed before the catalog row.
@@ -349,6 +351,20 @@ N1, N2, N3, N5 were already PASS (see the sections above and the handoff). N4 an
 N4 PASS. Capture `tmp/host-only/n4-mount.txt` (mtime 2026-10-20 14:51:42 -0700). A sandbox call with `--heldout a1 --expose 18111 --allow 18111` and workspace `tmp/heldout-runs/a1/tmp/n4-mount` printed: `/lib32` is a symlink to `usr/lib32` (host `/usr/lib32` exists; PY312 realpath is `/home/mark/.local/share/uv/python/cpython-3.12.12-linux-x86_64-gnu/bin/python3.12`). Inside the child, `tmp/harness2-runs` does not exist, `tmp/heldout-runs/a1` exists, `heldout-runs/c` and `heldout-runs/a2` do not. Mounts: `/usr` ro, the PY312 tree ro, `tmp/harness2` ro, `tmp/heldout-runs/a1` ro, that call's workspace rw, `tmp/state` ro. `tmp/harness2-runs/_audit/PINS.json` matches the receipt pins (harness2, OpenCode, stripped sha256 `ab0ee29bbe75b46d33248729f9c4dd61376ec357275c8debf6efdb4d296e1b7e`, seed 230, temperature 0, ctx 32768).
 
 N6 PASS. Evidence is the item 6 close above. Command: `tmp/harness2/.venv/bin/python tmp/h1c-n6.py` with `examples/harness2-local/env.sh` sourced and `PYTHONPATH=examples/harness2-local`. Short walls of 12 s are only in that check.
+
+### CI fix: Reviewer and Tester FAIL of d8b92fd
+
+Cause: eval-structural run 39540683605 red on both G0 jobs (main `4641585` green). A fresh CI checkout has no staged `tmp/harness2`, ubuntu-latest has no bwrap, and the nimo runner's checkout (`~/actions-runner/_work/pfy-mentat/pfy-mentat`) pushes two test socket paths past the 107-byte sun_path.
+
+- `pfy_adapter.py` imports harness2 lazily (`_harness2()`, called from `PfyAdapter.__init__`), so `drive.py` and `EndpointTests` import without a stage.
+- `SandboxTests.setUp` skips with a named reason when bwrap is missing or cannot build a namespace sandbox (except the tests in `NO_BWRAP`, which never reach bwrap), and skips the two `PfyAdapter` executor tests when harness2 is not staged. `DriveTests` skips when harness2 is not staged, and the bwrap-needing ones without bwrap.
+- Long AF_UNIX paths: test binds and connects go through an `O_PATH` fd on the parent dir (`/proc/self/fd/N/name`), host side and inside the sandbox child, so the socket stays at the path under test. Nothing is skipped for length.
+- `sandbox.py` names a `--runs`, `--state` or `--harness` dir under /tmp or /run (`BLOCKED: runs under /tmp ...`) instead of the later `preflight rc=1`.
+- New tests and the mutant each one kills (all checked by hand on nimo): relay `upstream down port` line (n3), tie adopts via `drive.adopts()` (n4), `task_files` writes train only (n5), `test_sbun_unknown_relay_port_exits_2` now gives a valid py312, runs, state and harness and asserts `call.json` is never written, plus a live-port control (N06, `exit 2` to `port=8766`), `resolve_py312` glob fallback (N03), stage.sh glob fallback in `--dry-run` (N09), sbun `--heldout` argv via a python3 shim (N08), the /tmp refusal message.
+- Dead code removed: `drive.git_sha` empty `if` (n6); the `HARNESS2_W` fallback in `PfyAdapter.execute` (n6), since `drive.main()` sets `HARNESS2_HELDOUT_ROOT` before any held-out call and `_run_dir()` already required it.
+- n1: the read-only prune comment in `sandbox.py`, the drop-in and D7 no longer claim a pruned socket is unreachable (see D7 correction).
+
+Local suite on nimo: staged 617 OK (skipped=4); fresh clone without a stage 617 OK (skipped=14); same clone with bwrap off PATH 617 OK (skipped=51).
 
 ### D25 note
 

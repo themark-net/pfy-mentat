@@ -640,12 +640,15 @@ def preflight_mode(call_path: str) -> int:
             continue
         ro = "ro" in opts.split(",")
         if ro:
-            # Read-only mount: nothing can create a socket there during the
-            # call, so a dir we cannot list (not ours, and not readable or not
-            # searchable) is pruned instead of failing find with rc 1. A
-            # socket hidden in such a dir is also unreachable to the sandboxed
-            # uid. Writable mounts get no such prune: an unreadable dir there
-            # makes find fail and the preflight blocks.
+            # Read-only mount: the sandboxed uid cannot create a socket there
+            # during the call, so a dir we cannot list (not ours, and not
+            # readable or not searchable) is pruned instead of failing find
+            # with rc 1. This is a known gap, not a proof: a not-searchable
+            # dir is unreachable, but a searchable, unreadable one (mode 751
+            # root, like /etc/sssd) is skipped while a host socket inside it
+            # stays connectable by name, since connect() needs only search
+            # permission. Writable mounts get no such prune: an unreadable dir
+            # there makes find fail and the preflight blocks.
             cmd = [
                 "find", mnt, "-xdev",
                 "(", "-path", "/proc", "-o", "-path", "/sys", ")", "-prune",
@@ -750,6 +753,15 @@ def _refuse_ephemeral_checkout(wt: Path) -> None:
             die(f"BLOCKED: checkout under {root}")
 
 
+def _refuse_ephemeral_bind(label: str, path: Path) -> None:
+    """A runs, state or harness dir under /tmp or /run is shadowed by the
+    sandbox's own tmpfs there. Name it, instead of a bare preflight rc=1."""
+    real = Path(os.path.realpath(path))
+    for root in ("/tmp", "/run"):
+        if real == Path(root) or str(real).startswith(root + os.sep):
+            die(f"BLOCKED: {label} under {root} (the sandbox mounts its own tmpfs there): {path}")
+
+
 def host_main(argv: list[str]) -> int:
     opt = _parse_cli(argv)
     bwrap = shutil.which("bwrap")
@@ -765,6 +777,8 @@ def host_main(argv: list[str]) -> int:
     else:
         runs = Path(opt["runs"] or (wt / "tmp" / "harness2-runs")).resolve()
     state = Path(opt["state"] or (wt / "tmp" / "state")).resolve()
+    for label, path in (("runs", runs), ("state", state), ("harness", harness)):
+        _refuse_ephemeral_bind(label, path)
     cmd = list(opt["cmd"])
     if opt["real_bun"]:
         cmd = [opt["real_bun"], *cmd]

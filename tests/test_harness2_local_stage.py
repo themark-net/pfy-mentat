@@ -369,6 +369,27 @@ class StageScriptTests(HomeWatch):
                 self.assertNotIn(bad, text)
             self.assertFalse((work / "wt" / "tmp" / "harness2").exists())
 
+    def test_dry_run_picks_another_312_patch_without_the_override(self):
+        # No HARNESS2_PY312 and no 3.12.12: the glob fallback must find 3.12.9.
+        with tempfile.TemporaryDirectory(dir=_scratch()) as tmp:
+            work = Path(tmp)
+            env = self._stub_env(work)
+            env.pop("HARNESS2_PY312")
+            other = Path(env["HOME"]) / ".local/share/uv/python/cpython-3.12.9-linux-x86_64-gnu/bin/python3.12"
+            self.assertTrue(other.is_file())
+            proc = subprocess.run(
+                ["bash", str(STAGE), "--dry-run"],
+                cwd=ROOT,
+                env=env,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            step = [line for line in proc.stdout.splitlines() if line.startswith("2. ")]
+            self.assertEqual(len(step), 1, proc.stdout)
+            self.assertIn(f"realpath {other}", step[0])
+            self.assertNotIn("cpython-3.12.12", step[0])
+
     def test_stub_tools_see_state_caches_and_home_stays(self):
         with tempfile.TemporaryDirectory(dir=_scratch()) as tmp:
             work = Path(tmp)
