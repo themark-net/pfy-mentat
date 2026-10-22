@@ -15,7 +15,7 @@
   - The smoke turns Chrome's sandbox off (`--no-sandbox`) because bwrap is the sandbox there and only a local page loads. On nimo with real sites, keep Chrome's sandbox on.
 - **Extracted Repos / Tools**: https://github.com/TickTockBent/charlotte · https://www.npmjs.com/package/@ticktockbent/charlotte · https://pptr.dev/ (puppeteer) · https://github.com/puppeteer/puppeteer/tree/main/packages/browsers
 - **TOOLS.md Link**: None yet. I0 awareness. No TOOLS.md row, no `data/tools.json` row.
-- **Smoke**: `python3 examples/x-intake-local/smoke_140_142.py --entry charlotte`. Looks up `$CHARLOTTE_DIR`, then `tmp/charlotte`; Node 20+ from `$CHARLOTTE_NODE`, then `tmp/charlotte/node/bin/node`, then PATH; Chrome from `$CHARLOTTE_CHROME`, then `tmp/charlotte/chrome/chrome`, then `chromium`, `chromium-browser`, `google-chrome`, `google-chrome-stable`. Version pinned to 0.8.0 (`$CHARLOTTE_VERSION`). Receipt: `pipelines/smoke/charlotte/latest.json`.
+- **Smoke**: `python3 examples/x-intake-local/smoke_140_142.py --entry charlotte`. Looks up `$CHARLOTTE_DIR`, then `tmp/charlotte`; Node 20+ from `$CHARLOTTE_NODE`, then `tmp/charlotte/node/bin/node`, then PATH; Chrome from `$CHARLOTTE_CHROME`, then `tmp/charlotte/chrome/chrome`, then `chromium`, `chromium-browser`, `google-chrome`, `google-chrome-stable`. A `$CHARLOTTE_NODE` or `$CHARLOTTE_CHROME` that is not an executable file exits 2 (no fallback). Version pinned to 0.8.0 (`$CHARLOTTE_VERSION`). Receipt: `pipelines/smoke/charlotte/latest.json`.
 - **Non-goals**: No `npm install -g`, no client config edits, no HTTP mode, no Docker image, no live site, no `dev_serve` (it starts a server), no puppeteer download into `~/.cache`.
 - **How this fails / how we recover**:
 
@@ -23,7 +23,7 @@
 |------|----------------|----------|
 | Local file read | A prompt-injected page or task makes the agent open `file:///home/...` | Run Charlotte under bwrap or Sandlock with only the worktree; never with `~` visible |
 | Orphaned Chrome or profile | The server is killed and Chromium or its temp profile stays | Close stdin, then SIGTERM; run under a process group or `--die-with-parent` |
-| Version gap | `main` is 111 commits past 0.8.0; behaviour differs from the README | Pin the npm version; re-read the changelog before an upgrade |
+| Version gap | `main` is 111 commits past the `v0.8.0` tag (107 past the published commit); behaviour differs from the README | Pin the npm version; re-read the changelog before an upgrade |
 | Chrome mismatch | A system Chrome far from puppeteer's 148 breaks CDP calls | Use Chrome for Testing at puppeteer's pin under `tmp/` |
 
 - **Status**: Cataloged I0. Smoke PASS on the Grok Bot box; not staged on nimo. Possible eval-auto trial for local-model browsing (see the handoff).

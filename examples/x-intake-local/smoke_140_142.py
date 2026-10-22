@@ -11,7 +11,9 @@ provider key is ever seen; a timeout SIGKILLs the process group, grandchildren i
 when bwrap works. No smoke calls a model, adds a key, opens a network listener, runs an installer (`npm install -g`,
 `claude mcp add`, `tracekit init`/`up`, `uvx`) or touches an agent's MCP config. The two MCP servers (Chiasmus,
 Charlotte) are spoken to over stdio by a small stdlib driver that the smoke starts; the driver starts the server.
-PFY_XINTAKE_TIMEOUT (float seconds, > 0) overrides the 600s per-command timeout.
+PFY_XINTAKE_TIMEOUT (float seconds, > 0) overrides the 600s per-command timeout; any other value (`abc`, 0, -1,
+nan) exits 2 before anything runs. An explicit $CHIASMUS_NODE, $CHARLOTTE_NODE or $CHARLOTTE_CHROME that is not an
+executable file exits 2 too, instead of falling back to the default lookup.
 Real HOME: each entry fingerprints the real-HOME paths the tool could write (chiasmus: ~/.chiasmus, ~/.cache/chiasmus;
 tracekit: ~/.tracekit-client, ~/.tracekit-signer, ~/.local/share/tracekit; charlotte: ~/.cache/puppeteer) with
 smoke_128_130.home_sig() before the run and again in a finally, also on timeout or a crash. Any created, deleted or
@@ -66,6 +68,7 @@ import argparse
 import hashlib
 import io
 import json
+import math
 import os
 import re
 import shutil
@@ -129,15 +132,38 @@ def watched(entry: str, body, r: dict) -> int:
         if changed:
             r["real_home_changed"] = changed
         r["checks"] = checks
-    if code is not None:
+    if code is not None:   # an early exit (e.g. 2 for a pin or Node floor) still FAILs when the real HOME changed
         if not checks["real_home_untouched"]:
-            r["reason"] = f"{r.get('reason', '')}; {home_note(entry, r)}"
+            r["reason"] = "; ".join(x for x in (r.get("reason"), home_note(entry, r)) if x)
             return 1
         return code
     code = finish(r, checks, r.pop("_ok_reason", ""))
     if not checks["real_home_untouched"]:
         r["reason"] += f"; {home_note(entry, r)}"
     return code
+
+
+def bad_override(*names: str) -> str | None:
+    """An env override that names no executable file is an operator error: exit 2 rather than a silent fallback."""
+    for n in names:
+        v = os.environ.get(n)
+        if v and not (os.path.isfile(v) and os.access(v, os.X_OK)):
+            return f"${n} is set to {v!r}, which is not an executable file (unset it to use the default lookup)"
+    return None
+
+
+def timeout_problem() -> str | None:
+    """PFY_XINTAKE_TIMEOUT must be a finite number of seconds > 0 when set; tmo() would quietly use 600 s instead."""
+    raw = os.environ.get("PFY_XINTAKE_TIMEOUT", "")
+    if not raw:
+        return None
+    try:
+        v = float(raw)
+    except ValueError:
+        v = math.nan
+    if math.isfinite(v) and v > 0:
+        return None
+    return f"PFY_XINTAKE_TIMEOUT={raw[:40]!r} is not a number of seconds > 0"
 
 
 def node_major(node: str, home: str, cwd: str) -> int | None:
@@ -274,6 +300,10 @@ def smoke_chiasmus(r: dict) -> int:
         r["reason"] = ("chiasmus not found ($CHIASMUS_DIR or tmp/chiasmus with node_modules/chiasmus/dist/mcp-server.js); "
                        "`npm install --prefix` it there with --ignore-scripts, see the handoff. Never `npm install -g` "
                        "or `claude mcp add`")
+        return 2
+    bad = bad_override("CHIASMUS_NODE")
+    if bad:
+        r["reason"] = bad
         return 2
     if not node:
         r["reason"] = "node not found ($CHIASMUS_NODE, tmp/chiasmus/node/bin/node, PATH)"
@@ -603,6 +633,10 @@ def smoke_charlotte(r: dict) -> int:
                        "node_modules/@ticktockbent/charlotte/dist/index.js); `npm install --prefix` it there with "
                        "PUPPETEER_SKIP_DOWNLOAD=1, see the handoff. Never `npm install -g`")
         return 2
+    bad = bad_override("CHARLOTTE_NODE", "CHARLOTTE_CHROME")
+    if bad:
+        r["reason"] = bad
+        return 2
     if not node:
         r["reason"] = "node not found ($CHARLOTTE_NODE, tmp/charlotte/node/bin/node, PATH)"
         return 2
@@ -700,6 +734,10 @@ def main() -> int:
     receipt = {"entry": a.entry, "script": "examples/x-intake-local/smoke_140_142.py",
                "started": time.strftime("%Y-%m-%dT%H:%M:%S%z")}
     fn = {"chiasmus": smoke_chiasmus, "tracekit": smoke_tracekit, "charlotte": smoke_charlotte}[a.entry]
+    bad = timeout_problem()
+    if bad:
+        receipt["reason"] = bad
+        return write(a.entry, receipt, 2)
     try:
         code = fn(receipt)
     except Exception as e:  # TimeoutError or any crash still writes a FAIL receipt (watched() saved the checks)

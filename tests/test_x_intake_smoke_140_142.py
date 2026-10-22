@@ -1,6 +1,7 @@
 """Entries 140-142 smokes (Chiasmus, Tracekit, Charlotte): pins and missing prereqs exit 2, wrong solver answers, a
 leaky policy, an unverifiable or over-trusting bundle, a page tool that leaks detail or breaks the form, misplaced
-writes and real-HOME changes FAIL, timeouts FAIL with the real-HOME check kept.
+writes and real-HOME changes FAIL, timeouts FAIL with the real-HOME check kept. Every one of the 46 checks the smoke
+records has a test here that turns it false (body_completed and real_home_untouched through the timeout and plant tests).
 
 Each tool is a small Python stub (shebang = this interpreter) that behaves like the real thing for what the smoke does;
 knobs are baked into the stub text because the smoke gives its children a clean env. Chiasmus and Charlotte are Node
@@ -22,6 +23,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = "examples/x-intake-local/smoke_140_142.py"
@@ -113,7 +115,7 @@ def call(name, args):
         for x, y in re.findall(r"edge\((\w+), (\w+)\)", args["input"]):
             edges.setdefault(x, set()).add(y)
         x, y = re.match(r"reach\((\w+), (\w+)\)", args["query"]).groups()
-        ok = reach(edges, x, y) or K.get("prolog_always_true")
+        ok = (reach(edges, x, y) or K.get("prolog_always_true")) and not K.get("prolog_never_true")
         return {"status": "success", "answers": [{"bindings": {}, "formatted": "true"}] if ok else []}
     if name == "chiasmus_graph":
         defs, calls = graph(args["files"])
@@ -122,7 +124,7 @@ def call(name, args):
             dead = [d for d in defs if d not in called]
             return {"analysis": "dead-code", "result": defs if K.get("all_dead") else dead}
         if args["analysis"] == "reachability":
-            ok = reach(calls, args["from"], args["to"]) or K.get("reach_always")
+            ok = (reach(calls, args["from"], args["to"]) or K.get("reach_always")) and not K.get("reach_never")
             return {"analysis": "reachability", "result": {"reachable": bool(ok)}}
         if args["analysis"] == "impact":
             res = sorted(d for d in defs if reach(calls, d, args["target"]))
@@ -141,8 +143,11 @@ def handle(method, p):
         return {"protocolVersion": "2025-06-18", "capabilities": {"tools": {}},
                 "serverInfo": {"name": "chiasmus", "version": K.get("server_version", "0.1.40")}}
     if method == "tools/list":
-        return {"tools": [{"name": t} for t in (TOOLS[:-1] if K.get("fewer_tools") else TOOLS)]}
+        names = TOOLS[:-1] if K.get("fewer_tools") else TOOLS + ["chiasmus_search"] if K.get("more_tools") else TOOLS
+        return {"tools": [{"name": t} for t in names]}
     if method == "tools/call":
+        if K.get("die_on_graph") and p["name"] == "chiasmus_graph":
+            sys.exit(3)
         if K.get("mutate_fixture") and p["name"] == "chiasmus_graph":
             open(p["arguments"]["files"][0], "a").write("\n")
         return text(call(p["name"], p["arguments"]))
@@ -188,7 +193,7 @@ def snap(detail):
     if K.get("swap_labels"):
         s["interactive"][0]["label"] = "Look up"
     if detail == "full":
-        s["text"] = page["body"] + (" Result for " + page.get("q", "") if page.get("submitted") else "")
+        s["text"] = ("" if K.get("full_no_text") else page["body"]) + (" Result for " + page.get("q", "") if page.get("submitted") else "")
     return s
 
 
@@ -260,7 +265,9 @@ def policy(cmd):
     if K.get("allow_all"):
         return "allow", []
     if "rm -rf" in cmd or "| sh" in cmd:
-        return "deny", ["TK-D001"]
+        return "deny", [] if K.get("no_rules") else ["TK-D001"]
+    if K.get("deny_safe") and cmd in ("ls", "git status"):
+        return "deny", ["TK-D999"]
     if cmd.count('"') % 2:
         return "ask", ["TK-SHELL-PARSE"]
     return "allow", []
@@ -363,11 +370,14 @@ SVC = [None]
 
 
 def export_final(store, run_id, witness, out):
+    if K.get("export_fails"):
+        raise RuntimeError("export failed")
     svc = SVC[0]
     prev, lines = "", []
+    seps = None if K.get("spaced_json") else (",", ":")
     for i, ev in enumerate(svc.events):
         s = sig(svc.vkey, prev, ev)
-        lines.append(json.dumps({"seq": i, "prev": prev, "event": ev, "sig": s}, separators=(",", ":")))
+        lines.append(json.dumps({"seq": i, "prev": prev, "event": ev, "sig": s}, separators=seps))
         prev = s
     files = {"runs/run1.jsonl": ("\n".join(lines) + "\n").encode(),
              "checkpoints/w.json": json.dumps({"log": svc.vkey, "witness": witness.vkey}).encode()}
@@ -410,7 +420,7 @@ for i, r in enumerate(recs):
     sig_ok &= r["sig"] == sig(cp["log"], r["prev"], r["event"]) or bool(K.get("skip_sig"))
     chain_ok &= (r["seq"] == i and r["prev"] == prev) or bool(K.get("skip_sig"))
     prev = r["sig"]
-add("signatures", sig_ok)
+add("signatures", sig_ok and not (K.get("reject_good") and a[-1].endswith("run.tkb")))
 add("run chain", chain_ok)
 gaps = [r["event"]["type"] for r in recs if r["event"]["type"] == "approval.binding_mismatch"]
 checks.append({"check": "gaps", "status": "warn" if gaps else "pass", "detail": " ".join(gaps)})
@@ -583,6 +593,46 @@ class ChiasmusTests(Base):
         self.assertEqual(code, 1)
         self.assertIn("chiasmus driver timeout after 3s", r["reason"])
 
+    def test_crashing_server_fails_driver_report(self) -> None:
+        code, r = self.go(die_on_graph=True)
+        self.assert_failed(code, r, "driver_report")
+        self.assertIn("server closed stdout", r["driver_tail"])
+
+    def test_prolog_never_true_fails(self) -> None:
+        code, r = self.go(prolog_never_true=True)
+        self.assert_failed(code, r, "prolog_proves_reach")
+        self.assertTrue(r["checks"]["prolog_refutes_reverse"], r)
+
+    def test_reach_never_fails(self) -> None:
+        code, r = self.go(reach_never=True)
+        self.assert_failed(code, r, "reachability_true")
+        self.assertTrue(r["checks"]["reachability_false"], r)
+
+    def test_extra_tool_fails(self) -> None:
+        self.assert_failed(*self.go(more_tools=True), "exact_9_tools")
+
+    def test_bad_node_override_exits_2(self) -> None:
+        extra = self.stub()
+        extra["CHIASMUS_NODE"] = str(self.base / "no-such-node")
+        code, r = self.run_entry("chiasmus", self.env(**extra))
+        self.assertEqual(code, 2, r)
+        self.assertIn("$CHIASMUS_NODE", r["reason"])
+        self.assertNotIn("checks", r)
+
+    def test_non_numeric_timeout_exits_2(self) -> None:
+        for bad in ("abc", "0", "-1", "nan"):
+            with self.subTest(timeout=bad):
+                code, r = self.go(timeout=bad)
+                self.assertEqual(code, 2, r)
+                self.assertIn("PFY_XINTAKE_TIMEOUT", r["reason"])
+                self.assertNotIn("checks", r)
+
+    def test_early_exit_2_with_real_home_change_fails(self) -> None:
+        code, r = self.go(no_bwrap=True, node="20.19.2", plant=self.plant_home(".chiasmus"))
+        self.assertEqual(code, 1, r)
+        self.assertIn("Node 22+", r["reason"])
+        self.assert_home_changed(r, ".chiasmus")
+
 
 # ---------------------------------------------------------------- tracekit
 class TracekitTests(Base):
@@ -677,6 +727,32 @@ class TracekitTests(Base):
         self.assertEqual(code, 1)
         self.assert_home_changed(r, ".local/share/tracekit")
 
+    def test_driver_error_fails_driver_report(self) -> None:
+        code, r = self.go(export_fails=True)
+        self.assert_failed(code, r, "driver_report")
+        self.assertIn("export failed", r["driver_tail"])
+
+    def test_safe_call_denied_fails(self) -> None:
+        code, r = self.go(deny_safe=True)
+        self.assert_failed(code, r, "safe_calls_allowed")
+        self.assertTrue(r["checks"]["destructive_calls_denied"], r)
+
+    def test_denial_without_rule_fails(self) -> None:
+        code, r = self.go(no_rules=True)
+        self.assert_failed(code, r, "destructive_calls_denied")
+        self.assertTrue(r["checks"]["safe_calls_allowed"], r)
+
+    def test_good_bundle_rejected_fails(self) -> None:
+        code, r = self.go(reject_good=True)
+        self.assert_failed(code, r, "bundle_verifies")
+        self.assertTrue(r["checks"]["flipped_decision_fails_signatures"], r)
+
+    def test_untamperable_layout_fails_tamper_copies(self) -> None:
+        code, r = self.go(spaced_json=True)
+        self.assert_failed(code, r, "tamper_copies_made")
+        self.assertNotIn("flipped", r["verify"])
+        self.assertTrue(r["checks"]["dropped_record_fails"], r)
+
     def test_signer_in_temp_home_fails(self) -> None:
         self.assert_failed(*self.go(signer_home=True), "home_untouched")
 
@@ -755,6 +831,42 @@ class CharlotteTests(Base):
 
     def test_no_submit_fails(self) -> None:
         self.assert_failed(*self.go(no_submit=True), "submit_handler_ran")
+
+    def test_full_without_body_text_fails(self) -> None:
+        code, r = self.go(full_no_text=True)
+        self.assert_failed(code, r, "full_has_body_text")
+        self.assertTrue(r["checks"]["submit_handler_ran"], r)
+
+    def test_bad_node_override_exits_2(self) -> None:
+        extra = self.stub()
+        extra["CHARLOTTE_NODE"] = str(self.base / "no-such-node")
+        code, r = self.run_entry("charlotte", self.env(**extra))
+        self.assertEqual(code, 2, r)
+        self.assertIn("$CHARLOTTE_NODE", r["reason"])
+
+    def test_bad_chrome_override_exits_2(self) -> None:
+        extra = self.stub()
+        not_exec = self.base / "chrome-not-exec"
+        not_exec.write_text("")
+        extra["CHARLOTTE_CHROME"] = str(not_exec)
+        code, r = self.run_entry("charlotte", self.env(**extra))
+        self.assertEqual(code, 2, r)
+        self.assertIn("$CHARLOTTE_CHROME", r["reason"])
+
+    def test_missing_chrome_exits_2(self) -> None:
+        # In process, because the runner may have a system Chrome on the fixed PATH (nimo and ubuntu-latest do).
+        sys.path.insert(0, str(ROOT / "examples/x-intake-local"))
+        import smoke_140_142 as m
+        extra = self.stub(chrome=False)
+        env = {k: v for k, v in os.environ.items() if not k.startswith("CHARLOTTE_")}
+        env.update(extra)
+        r: dict = {}
+        with mock.patch.dict(os.environ, env, clear=True), mock.patch.object(m, "TMP", self.base), \
+                mock.patch.object(m.shutil, "which", return_value=None):
+            code = m.smoke_charlotte(r)
+        self.assertEqual(code, 2, r)
+        self.assertIsNone(r["chrome"])
+        self.assertIn("no Chrome/Chromium", r["reason"])
 
     def test_unstable_ids_fail(self) -> None:
         self.assert_failed(*self.go(unstable_ids=True), "ids_stable")

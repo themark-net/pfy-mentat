@@ -226,6 +226,8 @@ Tracekit's driver runs in the venv and starts a same-user dev signer on a Unix s
 runs `tracekit verify` on the export and on tampered copies it makes itself. No `npm install -g`, client config edit,
 `tracekit init`/`up`, HTTP mode, live site or model call. All three FAIL if their temp HOME is written and fingerprint
 the real-HOME paths the tool could write (`~/.chiasmus`, `~/.cache/chiasmus`; `~/.tracekit-client`, `~/.tracekit-signer`,
-`~/.local/share/tracekit`; `~/.cache/puppeteer`) before the run and again in a finally, as for 128-130.
+`~/.local/share/tracekit`; `~/.cache/puppeteer`) before the run and again in a finally, as for 128-130. An explicit
+`$CHIASMUS_NODE`, `$CHARLOTTE_NODE` or `$CHARLOTTE_CHROME` that is not an executable file exits 2 instead of falling
+back. `PFY_XINTAKE_TIMEOUT` overrides the 600s per-command timeout; a value that is not a number > 0 exits 2.
 
 Not wired into CI or Make.
