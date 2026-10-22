@@ -206,4 +206,26 @@ written and fingerprint the real-HOME paths the tool could write (`~/.neatroots`
 `~/.config/opencode/opencode-skill-creator-update-check.json`, `~/.cache/opencode/packages/opencode-skill-creator@latest`)
 before the run and again in a finally, as for 128-130.
 
+Entries 140-142 (`smoke_140_142.py`):
+
+```sh
+python3 examples/x-intake-local/smoke_140_142.py --entry chiasmus   # pinned 0.1.40, MCP over stdio: Z3, Prolog, call graph
+python3 examples/x-intake-local/smoke_140_142.py --entry tracekit   # pinned 1.4.1, dev signer in the temp dir + offline verify
+python3 examples/x-intake-local/smoke_140_142.py --entry charlotte  # pinned 0.8.0, core profile on a file:// fixture form
+```
+
+Chiasmus reads `$CHIASMUS_DIR`, then `tmp/chiasmus` (an `npm install --prefix ... --ignore-scripts --omit=optional`
+tree), and Node 22+ from `$CHIASMUS_NODE`, then `tmp/chiasmus/node/bin/node`, then PATH. Tracekit reads `$TRACEKIT_VENV`,
+then `tmp/tracekit/venv` (a venv with `tracekit-ai==1.4.1`; `tracekit` on PyPI is another project). Charlotte reads
+`$CHARLOTTE_DIR`, then `tmp/charlotte` (an `npm install --prefix` tree made with `PUPPETEER_SKIP_DOWNLOAD=1`), Node 20+
+from `$CHARLOTTE_NODE`, then `tmp/charlotte/node/bin/node`, then PATH, and a browser from `$CHARLOTTE_CHROME`, then
+`tmp/charlotte/chrome/chrome`, then `chromium`/`google-chrome` on the system PATH. The two MCP servers are driven over
+stdio by a stdlib driver the smoke starts (Chiasmus with `CHIASMUS_HOME`/`CHIASMUS_CACHE_DIR` in the temp dir;
+Charlotte with `TMPDIR` and `XDG_*` there, `--no-sandbox` inside bwrap, stopped by closing stdin and then SIGTERM).
+Tracekit's driver runs in the venv and starts a same-user dev signer on a Unix socket in the temp dir; the smoke then
+runs `tracekit verify` on the export and on tampered copies it makes itself. No `npm install -g`, client config edit,
+`tracekit init`/`up`, HTTP mode, live site or model call. All three FAIL if their temp HOME is written and fingerprint
+the real-HOME paths the tool could write (`~/.chiasmus`, `~/.cache/chiasmus`; `~/.tracekit-client`, `~/.tracekit-signer`,
+`~/.local/share/tracekit`; `~/.cache/puppeteer`) before the run and again in a finally, as for 128-130.
+
 Not wired into CI or Make.

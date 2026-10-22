@@ -123,6 +123,10 @@ pipelines/smoke/headson/
 pipelines/smoke/neatroots/
 pipelines/smoke/teammates/
 pipelines/smoke/skillcreator/
+# 140-142 receipts.
+pipelines/smoke/chiasmus/
+pipelines/smoke/tracekit/
+pipelines/smoke/charlotte/
 
 # agentdescent-trial promote temp files
 examples/agentdescent-trial/.results.new-*/
