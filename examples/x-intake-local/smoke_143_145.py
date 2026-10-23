@@ -30,26 +30,27 @@ Any change FAILs (exit 1) and is listed in real_home_changed. Only those paths a
                TMPDIR) go to temp dirs; the temp HOME may hold only .local/share/{applications,pki} from Chrome.
   gitai        $GITAI_DIR, else ~/DEVELOP/pfy-mentat/tmp/gitai (a `git clone --branch v0.3.1` of
                github.com/feder-cr/git-ai, HEAD pinned to GITAI_COMMIT) with `make build` already run there by hand
-               (_build/bin/gitaly, gitaly-hooks, gitaly-ssh, graft, graft-cache). The smoke runs the repo's own
+               (_build/bin/gitaly, gitaly-hooks, gitaly-ssh, graft, graft-cache; `gitaly --version` must print
+               "Gitaly, version 0.3.1", $GITAI_VERSION overrides, else exit 2). The smoke runs the repo's own
                examples/graft/quickstart.sh in a temp work dir with a `make` shim that only accepts `-C <repo> build`
                and does nothing (the binaries are prebuilt; the smoke never builds). Needs git and openssl on the
                system PATH. Checks: exit 0; "denied as expected" printed; in the temp bare repo main holds README.md
                "hello graft" and not the denied "nope" line, and feature/demo holds feature.txt. Temp HOME empty.
-               NOT verified on the box: it can't build Gitaly (no make, meson, ninja or Go 1.26), so this path has
+               NOT verified on the box: it can't build Gitaly (Go 1.27.2 but no make, meson or ninja), so this path has
                only been exercised with stubs.
   muxin        $MUXIN_BIN, else ~/DEVELOP/pfy-mentat/tmp/muxin/Muxin/muxin, else `muxin` on PATH (the v0.6.0
                linux-x86_64 release tarball unpacked; never its install.sh). Binary sha256 pinned to MUXIN_SHA256
                and `muxin --version` to MUXIN_VERSION. $MUXIN_LIB_DIR, when set, becomes LD_LIBRARY_PATH (for hosts
-               missing libxkbcommon-x11 or libxcb-xkb). MUXIN_HOME, XDG_STATE_HOME and XDG_CONFIG_HOME point at temp
+               missing libxkbcommon-x11 or libxcb-xkb; a --version that fails exits 2). MUXIN_HOME, XDG_STATE_HOME and XDG_CONFIG_HOME point at temp
                dirs. Checks: `muxin paths` resolves under MUXIN_HOME; `muxin machines --demo --json` lists exactly the
                9 demo machines; `muxin mcp --demo` over stdio reports serverInfo muxin at the pin, at least 80 tools
                with run_on_machines and cloud_destroy marked destructiveHint and status marked readOnlyHint; status
                summarises 9 machines; get_machine forge returns it; an unknown id returns not_found naming the known
                ids; a call with a wrong argument name returns invalid; run_on_machines on forge in demo mode returns
                succeeded; the server exits on stdin EOF. Nothing reaches a real machine (demo data, no network). The
-               temp HOME stays empty (a probe without XDG_STATE_HOME set saw 0.6.0's MCP server write
-               $HOME/.local/state/gh/device-id, so XDG_STATE_HOME is pinned to a temp dir and ~/.local/state/gh
-               is watched).
+               temp HOME stays empty. A probe without XDG_STATE_HOME set saw $HOME/.local/state/gh/device-id appear;
+               that file is gh's own (Muxin has no device-id code, but it runs the host's gh), so XDG_STATE_HOME is
+               pinned to a temp dir and ~/.local/state/gh is watched.
 """
 from __future__ import annotations
 
@@ -57,6 +58,7 @@ import argparse
 import hashlib
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -71,6 +73,7 @@ from smoke_140_142 import (CHROMES, MCP_CLIENT, SYS_PATH, _body, bad_override, i
 
 TASTE_PIN = "6010f91a9935f1c167dfc500fb1a475681892e6b"
 GITAI_PIN = "914e481ef057ca7b9dc9a5a7338d96bca16790e1"
+GITAI_VERSION = "0.3.1"
 MUXIN_PIN = "0.6.0"
 MUXIN_SHA = "b51e6fda3911d181f6bd188bd375d846eeaface64a060888dcfe14201fd3264d"
 WATCH = {"taste-skill": (".taste-skill",),
@@ -86,6 +89,12 @@ INSPECT_WANT = {"gradient", "emoji", "eyebrow"}
 DEMO_MACHINES = ["beacon", "dev-1", "forge", "harbor", "orbit", "pebble", "sandbox", "vault", "win-test"]
 CHROME_LEFTOVERS = (".local/share/applications", ".local/share/pki")
 GITAI_BINS = ("gitaly", "gitaly-hooks", "gitaly-ssh", "graft", "graft-cache")
+
+
+def chrome_leftover(rel: str) -> bool:
+    """A temp-HOME path Chrome may leave: the .local and .local/share parents, or a path at or under one of
+    CHROME_LEFTOVERS on a path boundary (so .local/share/pkiX does not pass)."""
+    return rel in (".local", ".local/share") or any(rel == c or rel.startswith(c + "/") for c in CHROME_LEFTOVERS)
 
 
 def watch_dirs(entry: str) -> str:
@@ -264,8 +273,7 @@ def _taste(r: dict, node: str, git: str, chrome: str, d: Path, skill: Path, want
         checks["fixtures_untouched"] = tree_hash(site) == fx_sig
         rel = sorted(str(p.relative_to(home)) for p in home.rglob("*"))
         r["home_files"] = rel[:20]
-        checks["home_only_chrome_leftovers"] = all(
-            x in (".local", ".local/share") or x.startswith(CHROME_LEFTOVERS) for x in rel)
+        checks["home_only_chrome_leftovers"] = all(chrome_leftover(x) for x in rel)
     r["_ok_reason"] = ("lint flags the slop fixture and passes the clean one, missing path exits 2; seeded draw menu "
                        "deterministic and write-free; full draw writes direction.json and history only to temp; "
                        "headless Chrome inspect fails the slop page with screenshots, no profile left; watched "
@@ -276,7 +284,7 @@ def _taste(r: dict, node: str, git: str, chrome: str, d: Path, skill: Path, want
 # ---------------------------------------------------------------- gitai
 MAKE_SHIM = r'''#!/bin/sh
 # pfy smoke: the binaries are prebuilt; accept only `make -C <repo> build` and do nothing.
-[ "$1" = "-C" ] && [ "$2" = "__REPO__" ] && [ "$3" = "build" ] && [ "$#" = 3 ] && exit 0
+[ "$1" = "-C" ] && [ "$2" = __REPO__ ] && [ "$3" = "build" ] && [ "$#" = 3 ] && exit 0
 echo "pfy make shim: refusing $*" >&2
 exit 97
 '''
@@ -300,10 +308,11 @@ def smoke_gitai(r: dict) -> int:
         r["reason"] = f"{', '.join(n for n, v in need.items() if not v)} needed in {SYS_PATH}"
         return 2
     want = pinned(r, "GITAI_COMMIT", GITAI_PIN, lower=True)
-    return watched("gitai", lambda rr, checks: _gitai(rr, need, d, script, want, checks), r)
+    want_v = pinned(r, "GITAI_VERSION", GITAI_VERSION)
+    return watched("gitai", lambda rr, checks: _gitai(rr, need, d, script, want, want_v, checks), r)
 
 
-def _gitai(r: dict, need: dict, d: Path, script: Path, want: str, checks: dict) -> int | None:
+def _gitai(r: dict, need: dict, d: Path, script: Path, want: str, want_v: str, checks: dict) -> int | None:
     with tempfile.TemporaryDirectory(prefix="pfy-gitai-") as tdn:
         td = Path(tdn)
         home, work, shim, ntmp = td / "home", td / "work", td / "shim", td / "tmp"
@@ -314,7 +323,15 @@ def _gitai(r: dict, need: dict, d: Path, script: Path, want: str, checks: dict) 
         if head.lower() != want:
             r["reason"] = f"gitai HEAD is {head!r}, not {want} (set $GITAI_COMMIT)"
             return 2
-        (shim / "make").write_text(MAKE_SHIM.replace("__REPO__", str(d)), encoding="utf-8")
+        gv = iso([str(d / "_build/bin/gitaly"), "--version"], "gitaly --version", home=str(home), cwd=tdn,
+                 path=SYS_PATH, bwrap_writable=[tdn])
+        first = (gv.stdout.strip().splitlines() or [""])[0].strip()
+        r["gitaly_version"] = first[:200]
+        if gv.returncode != 0 or first != f"Gitaly, version {want_v}":
+            r["reason"] = (f"_build/bin/gitaly --version is {first!r} (exit {gv.returncode}), not 'Gitaly, version "
+                           f"{want_v}'; rebuild at the v{want_v} tag by hand (set $GITAI_VERSION)")
+            return 2
+        (shim / "make").write_text(MAKE_SHIM.replace("__REPO__", shlex.quote(str(d))), encoding="utf-8")
         (shim / "make").chmod(0o755)
         gitx = {"GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull, "TMPDIR": str(ntmp)}
         p = iso([need["bash"], str(script), str(work)], "graft quickstart", home=str(home), cwd=tdn,
@@ -408,8 +425,7 @@ def _muxin(r: dict, mux: str, python: str, lib: str | None, want: str, checks: d
         r["version_out"] = (v.stdout + v.stderr).strip()[:200]
         if v.returncode != 0:
             r["reason"] = f"muxin --version exited {v.returncode} (missing X libraries? set $MUXIN_LIB_DIR)"
-            checks["version_runs"] = False
-            return None
+            return 2
         if v.stdout.strip() != f"muxin {want}":
             r["reason"] = f"muxin --version is {v.stdout.strip()!r}, not muxin {want} (set $MUXIN_VERSION)"
             return 2

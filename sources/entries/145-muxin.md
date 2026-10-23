@@ -8,7 +8,7 @@
 - **Fit on nimo**: Yes. A 0.6.0 x86_64 release binary, no GPU, no keys; the GUI needs X libraries (`libxkbcommon-x11`, `libxcb-xkb`) that a desktop host like nimo should already have. Config and state go to `~/.config/muxin` unless `MUXIN_HOME` is set. Unpack under `~/DEVELOP/pfy-mentat/tmp/muxin`; never its `install.sh`.
 - **Verified on the Grok Bot box** (release tarball checked against SHA256SUMS.txt; the two missing X libraries extracted from .debs into /tmp and passed via `LD_LIBRARY_PATH`, nothing installed; bubblewrap with no network, temp HOME, `MUXIN_HOME` and `XDG_STATE_HOME` in the temp dir): smoke PASS. `muxin --version` is 0.6.0; `muxin paths` resolves under `MUXIN_HOME`; `machines --demo --json` lists exactly 9 simulated machines. `muxin mcp --demo` over stdio reports serverInfo muxin 0.6.0 and 89 tools, 17 marked `destructiveHint` (among them `run_on_machines`, `cloud_destroy`, `vm_destroy`, `process_signal`, `remove_machine`) and `status` read-only. `status` summarised "9 machines, 8 runners: 4 working, 3 idle, 1 offline"; `get_machine forge` returned it; an unknown id returned `not_found` listing the known ids; a wrong argument name returned `invalid`; a demo `run_on_machines` returned `succeeded` with simulated output; the server exited on stdin EOF. Hand mutants (8 expected machines, a run on an unknown id) each FAILed.
 - **Findings**:
-  - **In an earlier probe without `XDG_STATE_HOME`, the MCP server wrote `$HOME/.local/state/gh/device-id`** (a GitHub CLI-style device id) even in demo mode. The smoke points `XDG_STATE_HOME` at a temp dir and watches the real `~/.local/state/gh`.
+  - **Muxin uses the host's GitHub CLI login.** An earlier probe without `XDG_STATE_HOME` saw `$HOME/.local/state/gh/device-id` appear, but Muxin has no device-id code; that file is written by `gh` itself. Outside demo mode Muxin uses the host's `gh` login (`src/github/mod.rs:353`, `:862`, `:966-975`) and finds `gh` at hard-coded paths even when it is off PATH (`:978-998`), so any trial on nimo would read Mark's GitHub token unless the trial user has no `gh` login. The smoke points `XDG_STATE_HOME` at a temp dir and watches the real `~/.local/state/gh`.
   - **`--demo` goes after the subcommand** (`muxin machines --demo`, `muxin mcp --demo`).
   - **17 of 89 tools are destructive** across every host it knows. Any trial must expose only the read-only tools to agents (or run with no real hosts configured) until a gate exists.
   - A source build of v0.6.0 failed on the box's rustc 1.85.1 (dependencies need newer); use the checked release binary.
@@ -22,7 +22,8 @@
 |------|----------------|----------|
 | Destructive tools | An agent calls `run_on_machines` or `vm_destroy` on a real host | Read-only tool allowlist in the trial; destructive calls go through Sysadmin and Mark |
 | SSH key exposure | Muxin holds keys for every host | Trial with a dedicated read-only user per host, never Mark's keys |
-| State outside HOME config | Writes to `~/.local/state/gh` or `~/.config/muxin` | `MUXIN_HOME` and `XDG_STATE_HOME` under `tmp/muxin`; the smoke watches both |
+| State outside HOME config | `gh` (run by Muxin) writes `~/.local/state/gh`, or Muxin writes `~/.config/muxin` | `MUXIN_HOME` and `XDG_STATE_HOME` under `tmp/muxin`; the smoke watches both |
+| Host GitHub token | Outside demo mode Muxin runs the host `gh` (hard-coded paths, even off PATH) and reads Mark's token | Trial only as a user with no `gh` login |
 | Young project | 0.x release; tool names change | Binary sha pin; re-check the tool list on bump |
 
-- **Status**: Cataloged I0. Smoke PASS on the Grok Bot box; not staged on nimo. Eval-auto candidate as Sysadmin's read-only fleet view (see the handoff).
+- **Status**: Cataloged I0. Smoke PASS on the Grok Bot box; not staged on nimo. Eval-auto candidate as Sysadmin's read-only fleet view (see the handoff); the trial is on hold until the pfy-mentat MVP lands.

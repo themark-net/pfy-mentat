@@ -243,10 +243,11 @@ then `tmp/taste-skill/node/bin/node`, then PATH, and a browser from `$TASTE_CHRO
 the system PATH (handed over as `CHROME_PATH`), with `TASTE_SKILL_HISTORY`, `TASTE_SKILL_TMP`, `TMPDIR` and `XDG_*` in
 the temp dir. gitai reads `$GITAI_DIR`, then `tmp/gitai` (a clone of v0.3.1 where `make build` was run by hand) and runs
 the repo's `examples/graft/quickstart.sh` in a temp work dir with a `make` shim that accepts only `-C <repo> build` and
-does nothing; it exits 2 until the five `_build/bin` binaries exist. Muxin reads `$MUXIN_BIN`, then
+does nothing; it exits 2 until the five `_build/bin` binaries exist and `gitaly --version` prints `Gitaly, version 0.3.1`
+(`$GITAI_VERSION`). Muxin reads `$MUXIN_BIN`, then
 `tmp/muxin/Muxin/muxin`, then PATH (the release tarball unpacked, never `install.sh`), checks the binary sha256 and
 version, sets `MUXIN_HOME`, `XDG_STATE_HOME` and `XDG_CONFIG_HOME` to temp dirs (`$MUXIN_LIB_DIR` becomes
-`LD_LIBRARY_PATH` when set) and drives `muxin mcp --demo` over stdio with the stdlib driver from 140-142; only demo data
+`LD_LIBRARY_PATH` when set; a `--version` that can't run exits 2) and drives `muxin mcp --demo` over stdio with the stdlib driver from 140-142; only demo data
 is used. No skill install, build, installer, real host, account or model call. All three fingerprint the real-HOME
 paths the tool could write (`~/.taste-skill`; `~/.config/graft`, `~/.cache/graft`; `~/.config/muxin`,
 `~/.local/state/gh`) before the run and again in a finally, as for 128-130. Bad overrides and `PFY_XINTAKE_TIMEOUT`

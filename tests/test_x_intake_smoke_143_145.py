@@ -16,6 +16,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -26,6 +27,8 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = "examples/x-intake-local/smoke_143_145.py"
 _RECEIPTS = tempfile.TemporaryDirectory(prefix="pfy-xintake-143-receipts-")
 RECEIPT_DIR = Path(_RECEIPTS.name)
+SYS_PATH = "/usr/local/bin:/usr/bin:/bin"
+CHROMES = ("chromium", "chromium-browser", "google-chrome", "google-chrome-stable")
 GIT = ["git", "-c", "user.name=t", "-c", "user.email=t@example.com", "-c", "init.defaultBranch=main"]
 
 
@@ -126,6 +129,8 @@ sys.exit(9)
 # fake muxin
 MUXIN = PRELUDE + r'''
 if a == ["--version"]:
+    if "need_lib" in K and os.environ.get("LD_LIBRARY_PATH") != K["need_lib"]:
+        sys.exit(127)
     print("muxin " + K.get("version", "0.6.0"))
     sys.exit(K.get("version_rc", 0))
 time.sleep(K.get("sleep", 0))
@@ -312,7 +317,61 @@ class TasteTests(Base):
         extra["TASTE_CHROME"] = str(self.base / "no-chrome")
         code, r = self.run_entry("taste-skill", self.env(**extra))
         self.assertEqual(code, 2)
-        self.assertIn("$TASTE_CHROME", r["reason"])
+        self.assertIn("$TASTE_CHROME is set to", r["reason"])
+        self.assertIn("not an executable file", r["reason"])
+
+    def test_bad_node_override_exits_2_even_with_node_on_path(self) -> None:
+        extra = self.stub()
+        extra["TASTE_NODE"] = str(self.base / "no-node")
+        code, r = self.run_entry("taste-skill", self.env(**extra, PATH=str(self.base / "bin")))
+        self.assertEqual(code, 2, r)
+        self.assertIn("$TASTE_NODE is set to", r["reason"])
+        self.assertIn("not an executable file", r["reason"])
+
+    def test_checkout_without_git_dir_exits_2(self) -> None:
+        extra = self.stub()
+        shutil.rmtree(Path(extra["TASTE_SKILL_DIR"]) / ".git")
+        code, r = self.run_entry("taste-skill", self.env(**extra))
+        self.assertEqual(code, 2, r)
+        self.assertIn("taste-skill not found", r["reason"])
+
+    def test_no_node_exits_2(self) -> None:
+        extra = self.stub()
+        del extra["TASTE_NODE"]
+        code, r = self.run_entry("taste-skill", self.env(no_bwrap=True, **extra))
+        self.assertEqual(code, 2, r)
+        self.assertIn("node ($TASTE_NODE", r["reason"])
+
+    def test_no_chrome_exits_2(self) -> None:
+        found = [c for c in CHROMES if shutil.which(c, path=SYS_PATH)]
+        if found:
+            self.skipTest(f"a system Chrome is on {SYS_PATH} ({found[0]}), so the no-Chrome path can't be reached")
+        extra = self.stub()
+        del extra["TASTE_CHROME"]
+        code, r = self.run_entry("taste-skill", self.env(**extra))
+        self.assertEqual(code, 2, r)
+        self.assertIn("no Chrome/Chromium", r["reason"])
+
+    def test_early_exit_2_with_real_home_change_fails(self) -> None:
+        code, r = self.go(no_bwrap=True, node="20.19.2", plant=self.plant_home(".taste-skill"))
+        self.assertEqual(code, 1, r)
+        self.assertIn("Node 22+", r["reason"])
+        self.assertIn("~/.taste-skill", r["reason"])
+        self.assertEqual(r["real_home_changed"], ["~/.taste-skill"])
+
+    def plant_temp_home(self, rel: str) -> str:
+        return (f"import os; p = os.path.join(os.environ['HOME'], {rel!r}); os.makedirs(p, exist_ok=True); "
+                "open(os.path.join(p, 'evil'), 'w').write('x')")
+
+    def test_temp_home_local_outside_share_fails(self) -> None:
+        code, r = self.go(plant=self.plant_temp_home(".local/state"))
+        self.assert_failed(code, r, "home_only_chrome_leftovers")
+        self.assertIn(".local/state/evil", r["home_files"])
+
+    def test_temp_home_pki_lookalike_fails(self) -> None:
+        code, r = self.go(plant=self.plant_temp_home(".local/share/pkiX"))
+        self.assert_failed(code, r, "home_only_chrome_leftovers")
+        self.assertIn(".local/share/pkiX/evil", r["home_files"])
 
     def test_wrong_skill_name_fails(self) -> None:
         self.assert_failed(*self.go(skill_name="something-else"), "skill_frontmatter_name")
@@ -384,14 +443,17 @@ class TasteTests(Base):
 class GitaiTests(Base):
     def stub(self, *, make: str = 'make -C "$repo_root" build', plant: str = "", main: str = "hello graft\\n",
              feature: str = "feature\\n", denied: str = "denied as expected", rc: int = 0,
-             bins: tuple = ("gitaly", "gitaly-hooks", "gitaly-ssh", "graft", "graft-cache")) -> dict[str, str]:
-        d = self.base / "gitai"
+             bins: tuple = ("gitaly", "gitaly-hooks", "gitaly-ssh", "graft", "graft-cache"),
+             gitaly_version: str = "0.3.1", dirname: str = "gitai") -> dict[str, str]:
+        d = self.base / dirname
         qs = d / "examples/graft/quickstart.sh"
         qs.parent.mkdir(parents=True)
         qs.write_text(QUICKSTART.replace("__MAKE__", make).replace("__PLANT__", plant).replace("__MAIN__", main)
                       .replace("__FEATURE__", feature).replace("__DENIED__", denied).replace("__RC__", str(rc)))
         for b in bins:
-            _write_stub(d / "_build/bin" / b, {}, "")
+            body = ('import sys\nif sys.argv[1:] == ["--version"]:\n    print("Gitaly, version " + K["v"])\n'
+                    '    print("GO version:   go1.26.0")\n') if b == "gitaly" else ""
+            _write_stub(d / "_build/bin" / b, {"v": gitaly_version}, body)
         sha = _git_repo(d)
         return {"GITAI_DIR": str(d), "GITAI_COMMIT": sha}
 
@@ -429,6 +491,22 @@ class GitaiTests(Base):
 
     def test_nonzero_exit_fails(self) -> None:
         self.assert_failed(*self.go(rc=3), "quickstart_exit_0")
+
+    def test_gitaly_version_mismatch_exits_2(self) -> None:
+        code, r = self.go(gitaly_version="0.3.0")
+        self.assertEqual(code, 2, r)
+        self.assertIn("Gitaly, version 0.3.0", r["reason"])
+        self.assertIn("v0.3.1 tag", r["reason"])
+        self.assertNotIn("rc", r)
+
+    def test_make_shim_matches_repo_path_with_shell_metachars(self) -> None:
+        code, r = self.go(dirname='git ai $HOME "q"')
+        self.assert_passed(code, r)
+
+    def test_real_home_cache_write_fails(self) -> None:
+        code, r = self.go(no_bwrap=True, plant=f'mkdir -p "{self.home}/.cache/graft" && touch "{self.home}/.cache/graft/x"')
+        self.assertEqual(code, 1, r)
+        self.assertEqual(r["real_home_changed"], ["~/.cache/graft"])
 
     def test_no_denial_fails(self) -> None:
         self.assert_failed(*self.go(denied="landed"), "policy_denied_builder")
@@ -473,10 +551,19 @@ class MuxinTests(Base):
         self.assertEqual(code, 2)
         self.assertIn("muxin not found", r["reason"])
 
-    def test_bad_override_exits_2(self) -> None:
-        code, r = self.run_entry("muxin", self.env(MUXIN_BIN=str(self.base / "nope")))
-        self.assertEqual(code, 2)
-        self.assertIn("$MUXIN_BIN", r["reason"])
+    def test_bad_override_exits_2_even_with_muxin_on_path(self) -> None:
+        extra = self.stub()
+        extra["MUXIN_BIN"] = str(self.base / "nope")
+        code, r = self.run_entry("muxin", self.env(**extra, PATH=str(self.base / "bin")))
+        self.assertEqual(code, 2, r)
+        self.assertIn("$MUXIN_BIN is set to", r["reason"])
+        self.assertIn("not an executable file", r["reason"])
+
+    def test_lib_dir_becomes_ld_library_path(self) -> None:
+        lib = self.base / "libs"
+        lib.mkdir()
+        code, r = self.run_entry("muxin", self.env(MUXIN_LIB_DIR=str(lib), **self.stub(need_lib=str(lib))))
+        self.assert_passed(code, r)
 
     def test_bad_lib_dir_exits_2(self) -> None:
         code, r = self.run_entry("muxin", self.env(MUXIN_LIB_DIR=str(self.base / "nolib"), **self.stub()))
@@ -495,8 +582,11 @@ class MuxinTests(Base):
         self.assertEqual(code, 2)
         self.assertIn("0.5.9", r["reason"])
 
-    def test_version_crash_fails(self) -> None:
-        self.assert_failed(*self.go(version_rc=127), "version_runs")
+    def test_version_crash_exits_2(self) -> None:
+        code, r = self.go(version_rc=127)
+        self.assertEqual(code, 2, r)
+        self.assertIn("MUXIN_LIB_DIR", r["reason"])
+        self.assertTrue(r["checks"]["real_home_untouched"])
 
     def test_paths_outside_fails(self) -> None:
         self.assert_failed(*self.go(paths_home=True), "paths_under_muxin_home")
@@ -545,6 +635,11 @@ class MuxinTests(Base):
         code, r = self.go(no_bwrap=True, plant=self.plant_home(".config/muxin"))
         self.assertEqual(code, 1, r)
         self.assertIn("~/.config/muxin", r["reason"])
+
+    def test_real_home_gh_state_write_fails(self) -> None:
+        code, r = self.go(no_bwrap=True, plant=self.plant_home(".local/state/gh"))
+        self.assertEqual(code, 1, r)
+        self.assertEqual(r["real_home_changed"], ["~/.local/state/gh"])
 
     def test_timeout_fails(self) -> None:
         extra = self.stub(sleep=5)
