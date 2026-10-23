@@ -127,6 +127,10 @@ pipelines/smoke/skillcreator/
 pipelines/smoke/chiasmus/
 pipelines/smoke/tracekit/
 pipelines/smoke/charlotte/
+# 143-145 receipts.
+pipelines/smoke/taste-skill/
+pipelines/smoke/gitai/
+pipelines/smoke/muxin/
 
 # agentdescent-trial promote temp files
 examples/agentdescent-trial/.results.new-*/

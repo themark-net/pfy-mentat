@@ -230,4 +230,26 @@ the real-HOME paths the tool could write (`~/.chiasmus`, `~/.cache/chiasmus`; `~
 `$CHIASMUS_NODE`, `$CHARLOTTE_NODE` or `$CHARLOTTE_CHROME` that is not an executable file exits 2 instead of falling
 back. `PFY_XINTAKE_TIMEOUT` overrides the 600s per-command timeout; a value that is not a number > 0 exits 2.
 
+Entries 143-145 (`smoke_143_145.py`):
+
+```sh
+python3 examples/x-intake-local/smoke_143_145.py --entry taste-skill  # pinned commit 6010f91, lint + seeded draw + headless Chrome inspect
+python3 examples/x-intake-local/smoke_143_145.py --entry gitai        # pinned v0.3.1, repo quickstart on prebuilt binaries (exit 2 unbuilt)
+python3 examples/x-intake-local/smoke_143_145.py --entry muxin        # pinned 0.6.0 binary sha, demo fleet + MCP over stdio
+```
+
+taste-skill reads `$TASTE_SKILL_DIR`, then `tmp/taste-skill` (a git clone, HEAD pinned), Node 22+ from `$TASTE_NODE`,
+then `tmp/taste-skill/node/bin/node`, then PATH, and a browser from `$TASTE_CHROME`, then `chromium`/`google-chrome` on
+the system PATH (handed over as `CHROME_PATH`), with `TASTE_SKILL_HISTORY`, `TASTE_SKILL_TMP`, `TMPDIR` and `XDG_*` in
+the temp dir. gitai reads `$GITAI_DIR`, then `tmp/gitai` (a clone of v0.3.1 where `make build` was run by hand) and runs
+the repo's `examples/graft/quickstart.sh` in a temp work dir with a `make` shim that accepts only `-C <repo> build` and
+does nothing; it exits 2 until the five `_build/bin` binaries exist. Muxin reads `$MUXIN_BIN`, then
+`tmp/muxin/Muxin/muxin`, then PATH (the release tarball unpacked, never `install.sh`), checks the binary sha256 and
+version, sets `MUXIN_HOME`, `XDG_STATE_HOME` and `XDG_CONFIG_HOME` to temp dirs (`$MUXIN_LIB_DIR` becomes
+`LD_LIBRARY_PATH` when set) and drives `muxin mcp --demo` over stdio with the stdlib driver from 140-142; only demo data
+is used. No skill install, build, installer, real host, account or model call. All three fingerprint the real-HOME
+paths the tool could write (`~/.taste-skill`; `~/.config/graft`, `~/.cache/graft`; `~/.config/muxin`,
+`~/.local/state/gh`) before the run and again in a finally, as for 128-130. Bad overrides and `PFY_XINTAKE_TIMEOUT`
+behave as for 140-142.
+
 Not wired into CI or Make.
