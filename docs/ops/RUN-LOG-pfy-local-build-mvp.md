@@ -97,5 +97,33 @@ Each mutant was applied, the named test failed, and the source was restored. Not
 - RED: run check_cmd against the fixture instead of the produced worktree -> test_solve_mode_passes_all_eight
 
 - item 3: IN PROGRESS. Gate re-check 2026-10-26T07:28:01Z (earlier snapshot 2026-10-26T07:26:15Z also passed). STOP absent. `ollama ps` header only (no loaded model). `ps -eo comm` llama-server count 0. Only ollama process is pid 4879 `/usr/local/bin/ollama serve`. MemTotal 112641192 kB, MemAvailable 66283992 kB (63.213 GiB), SwapFree 44484 kB (0.042 GiB), sum 63.256 GiB, need 40 GiB (22 GB model plus KV plus margin), headroom 23.256 GiB, gate PASS. `qwen3.6:35b` listed at 22621314381 bytes (21.07 GiB), under the 30 GiB cap. opencode 1.18.32.
-- item 3 live start: 2026-10-26T07:29:40Z, `timeout 90m python3 -u scripts/pfy_local_build_eval.py --model qwen3.6:35b --require-live`, shell pid 2815674. `free -g` at start: Mem available 63, Swap used 7 of 8. While loaded (2026-10-26T07:30:27Z): `ollama ps` shows `qwen3.6:35b` id `a7eb95c53bcf`, 23 GB, 100% GPU, CONTEXT 262144. 262144 is above 16384, so no `context_warning` and Ollama was not reconfigured. First task is `t01-fix-off-by-one`. Stamp `20261026T072940388555Z`. Result not in yet.
+- item 3 live start: 2026-10-26T07:29:40Z, `timeout 90m python3 -u scripts/pfy_local_build_eval.py --model qwen3.6:35b --require-live`, shell pid 2815674. `free -g` at start: Mem available 63, Swap used 7 of 8. While loaded (2026-10-26T07:30:27Z): `ollama ps` shows `qwen3.6:35b` id `a7eb95c53bcf`, 23 GB, 100% GPU, CONTEXT 262144. 262144 is above 16384, so no `context_warning` and Ollama was not reconfigured. Stamp `20261026T072940388555Z`.
+- item 3: DONE. Eval exit 0 at 2026-10-26T07:39:12Z. Pass rate 8/8 (1.0). Total 571.668 s, mean 71.459 s. No task failed. No `context_warning`. Raw receipts stay gitignored under `pipelines/dogfood/build-local-eval/20261026T072940388555Z/`.
 - item 4: pending
+
+## Live result
+
+Host `nimo`, model `qwen3.6:35b`, endpoint `127.0.0.1:11434`, stamp `20261026T072940388555Z`. Skip none. CONTEXT while loaded: 262144. `context_warning`: no.
+
+| id | status | reason | wall_s | tests before | tests after |
+|---|---|---|---|---|---|
+| t01-fix-off-by-one | PASS | ok | 94.830 | exit 1, failed 1 | exit 0, passed 2 |
+| t02-add-function | PASS | ok | 57.580 | exit 1, errors 1 | exit 0, passed 3 |
+| t03-rename-symbol | PASS | ok | 78.778 | exit 1, errors 1 | exit 0, passed 3 |
+| t04-fix-mutable-default | PASS | ok | 66.103 | exit 1, failed 1 | exit 0, passed 2 |
+| t05-add-cli-flag | PASS | ok | 41.559 | exit 1, errors 1 | exit 0, passed 2 |
+| t06-parse-duration | PASS | ok | 69.653 | exit 1, errors 3 | exit 0, passed 4 |
+| t07-remove-dead-code | PASS | ok | 60.889 | exit 1, failed 1 | exit 0, passed 3 |
+| t08-fix-unicode-strip | PASS | ok | 102.276 | exit 1, failed 1 | exit 0, passed 2 |
+
+Passed 8, failed 0, blocked 0, not-run none. Each task's `tests_before.exit` was 1 and `tests_after.exit` was 0. t08 receipt `unloaded` is true (this eval loaded the model on t01, kept it, unloaded on the last task).
+
+Exit check 2026-10-26T07:39:19Z:
+
+- `ollama ps`: header only. At 07:39:12Z the same model still showed `Stopping...`. Seven seconds later it was gone. Nothing this run loaded remains.
+- `opencode` comm count: 0. `pgrep -af tmp/local-build` matched this Grok session's own prompt text (pids 2613149 and 2613152), not an opencode or build child.
+- `free -g` after unload: Mem available 86, used 20, Swap used 7 of 8. Start was Mem available 63, used 44, Swap used 7 of 8. SwapFree after was 712 kB, the same full-swap condition as the gate (start SwapFree 44484 kB). The model memory was released. Available is above the start reading.
+
+## Decisions (item 3)
+
+- Record the live summary in this log and leave receipts gitignored | commit the stamp directory | the drop-in says commit the summary under `docs/ops` and leave raw receipts and agent logs gitignored
