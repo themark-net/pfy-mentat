@@ -87,7 +87,7 @@ Each mutant was applied, the named test failed, and the source was restored. Not
 ## Items
 
 - item 1: DONE. Commit `b63d8d011ebe95558c35101c2f62d1a23975f861` (`pfy-local-build: item 1 headless local build`). Behavior suite `tests.test_pfy_build_local`: 25 tests OK. Pushed to `origin/bot/mvp-local-build`.
-- item 2: DONE. `eval/local-build/` (8 fixtures) and `scripts/pfy_local_build_eval.py` (`./pfy eval-local-build`). `tests.test_pfy_local_build_eval`: 13 tests OK.
+- item 2: DONE. Commit `fbbaf90bc5a245d5ca69f274b610c68f369f3664` (`pfy-local-build: item 2 coding eval fixture and runner`). `eval/local-build/` (8 fixtures) and `scripts/pfy_local_build_eval.py` (`./pfy eval-local-build`). `tests.test_pfy_local_build_eval`: 13 tests OK. Pushed to `origin/bot/mvp-local-build`.
 
 ### Item 2 RED
 
@@ -96,5 +96,5 @@ Each mutant was applied, the named test failed, and the source was restored. Not
 - RED: read the pass rate from the stub exit code instead of the receipts -> test_delete_tests_is_zero_and_the_reason_comes_from_the_receipt
 - RED: run check_cmd against the fixture instead of the produced worktree -> test_solve_mode_passes_all_eight
 
-- item 3: pending
+- item 3: IN PROGRESS. Gate re-check 2026-10-26T07:28:01Z (earlier snapshot 2026-10-26T07:26:15Z also passed). STOP absent. `ollama ps` header only (no loaded model). `ps -eo comm` llama-server count 0. Only ollama process is pid 4879 `/usr/local/bin/ollama serve`. MemTotal 112641192 kB, MemAvailable 66283992 kB (63.213 GiB), SwapFree 44484 kB (0.042 GiB), sum 63.256 GiB, need 40 GiB (22 GB model plus KV plus margin), headroom 23.256 GiB, gate PASS. `qwen3.6:35b` listed at 22621314381 bytes (21.07 GiB), under the 30 GiB cap. opencode 1.18.32. Live command not started in this log line; the next docs update records the result.
 - item 4: pending
