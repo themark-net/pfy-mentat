@@ -24,6 +24,7 @@ Ready-to-paste prompts that move the heavy work from bots to Grok Build. On 2026
 | eval (done 2026-10-19) | [hermes-eval.md](hermes-eval.md) | `~/DEVELOP/pfy-mentat` | Hermes Agent vs current local path, Entry 134 | No (BEST_EFFORT, not a Feature GO) | Finished. Do not start another copy while a bench holds Ollama |
 | **H1 (founder HIGH, 2026-10-19)** | [harness2-local.md](harness2-local.md) | `~/DEVELOP/pfy-mentat` (worktree `tmp/h1-harness2`, branch `bot/h1-harness2`) | Harness² fully local (own `llama-server`, `qwen3.6:35b`): pinned stage, network-limited sandbox, 48-case decision adapter, edits land only on a `bot/h2-proposal-*` branch. 2026-10-20 live result: held-out gain 0, receipt `pipelines/dogfood/harness2-local/receipt.json`, no proposal branch | Grok Bot launches it on nimo; no spend | Yes: `qwen3.6:35b`, quiet host, run alone |
 | **H2 (founder HIGH, 2026-10-19)** | [skill-discovery.md](skill-discovery.md) | `~/DEVELOP/pfy-mentat` (worktree `tmp/build-skill-discovery`) | Free local discover: index Monid's MIT connector registry, our catalog, public SKILL.md sets and the MCP registry; local-model ranking; intake stubs; Monid paid runs OFF | Grok Bot launches it on nimo after H1; paid runs need a separate founder OK | Short rerank only, after H1 |
+| **MVP-1** | [pfy-local-build-mvp.md](pfy-local-build-mvp.md) | `~/DEVELOP/pfy-mentat` (worktree `tmp/mvp-local-build`, branch `bot/mvp-local-build`) | Headless `./pfy build --local`: a local-model build-only run to a tested branch, plus an 8-task coding eval. Live on nimo 2026-10-26: 8/8 PASS, 572s, `qwen3.6:35b`. Not a Feature GO | No | Yes, item 3 only, quiet host |
 
 Why atg-framework first: your Build context is already warm on that repo. Its first part (client + mock PoC suite) runs now without touching the GLM bench. And its result decides whether the pfy-mentat slice can promote ATG past I1.
 
@@ -35,6 +36,7 @@ Repo path and mandatory reads · its own worktree and branch (never the founder 
 
 ## Changelog
 
+- 2026-10-25: added `pfy-local-build-mvp.md` (MVP-1): headless `./pfy build --local` on `bot/mvp-local-build`. No founder gate. Loads a model only in item 3 on a quiet host. Not a Feature GO.
 - 2026-10-19: added `skill-discovery.md` (H2, founder HIGH): free local discover over open registries; Monid paid runs stay off.
 - 2026-10-19: added `harness2-local.md` (H1, founder HIGH): Harness² on local models only, sandboxed, proposals as a branch for Tester and Reviewer.
 - 2026-10-20: H1 live run finished on `bot/h1-harness2`. Held-out gain 0 (15/16 vs 15/16). Receipt `pipelines/dogfood/harness2-local/receipt.json`. Entry 136 moved from I0 to I1. Not a Feature GO.

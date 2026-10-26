@@ -99,7 +99,7 @@ Each mutant was applied, the named test failed, and the source was restored. Not
 - item 3: IN PROGRESS. Gate re-check 2026-10-26T07:28:01Z (earlier snapshot 2026-10-26T07:26:15Z also passed). STOP absent. `ollama ps` header only (no loaded model). `ps -eo comm` llama-server count 0. Only ollama process is pid 4879 `/usr/local/bin/ollama serve`. MemTotal 112641192 kB, MemAvailable 66283992 kB (63.213 GiB), SwapFree 44484 kB (0.042 GiB), sum 63.256 GiB, need 40 GiB (22 GB model plus KV plus margin), headroom 23.256 GiB, gate PASS. `qwen3.6:35b` listed at 22621314381 bytes (21.07 GiB), under the 30 GiB cap. opencode 1.18.32.
 - item 3 live start: 2026-10-26T07:29:40Z, `timeout 90m python3 -u scripts/pfy_local_build_eval.py --model qwen3.6:35b --require-live`, shell pid 2815674. `free -g` at start: Mem available 63, Swap used 7 of 8. While loaded (2026-10-26T07:30:27Z): `ollama ps` shows `qwen3.6:35b` id `a7eb95c53bcf`, 23 GB, 100% GPU, CONTEXT 262144. 262144 is above 16384, so no `context_warning` and Ollama was not reconfigured. Stamp `20261026T072940388555Z`.
 - item 3: DONE. Eval exit 0 at 2026-10-26T07:39:12Z. Pass rate 8/8 (1.0). Total 571.668 s, mean 71.459 s. No task failed. No `context_warning`. Raw receipts stay gitignored under `pipelines/dogfood/build-local-eval/20261026T072940388555Z/`.
-- item 4: pending
+- item 4: DONE. Handoff, drop-in row MVP-1, changelog dated 2026-10-25, and TODO section MVP local build with MVP-2 todo. Final suite: Ran 842 tests in 531.297s, FAILED (failures=1, skipped=16). The only failure is the baseline environmental `test_relative_outdir_log_path_safe` (`TMPDIR` inside the repo). 0 new failures. Local CI: `run_structural.py` exit 1 for that same check; every other `run:` step exit 0. `pipelines/eval/golden.latest.md` restored. Exit: goal met (DONE). STOP absent.
 
 ## Live result
 
@@ -127,3 +127,8 @@ Exit check 2026-10-26T07:39:19Z:
 ## Decisions (item 3)
 
 - Record the live summary in this log and leave receipts gitignored | commit the stamp directory | the drop-in says commit the summary under `docs/ops` and leave raw receipts and agent logs gitignored
+
+## Decisions (item 4)
+
+- TODO row lives in a new "MVP local build" section as MVP-2 | add T-0128 to the Active table | the file already uses slice tables at the top, and a new T-id would sit in the issue-synced range
+- Record structural exit 1 as the known TMPDIR failure | edit `test_relative_outdir_log_path_safe` | that failure was already red at the base when `TMPDIR` is inside the repo, and this slice adds no new failure
