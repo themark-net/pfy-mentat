@@ -1,0 +1,1 @@
+Implement parse_duration. parse_duration('1h30m') is 5400, '2m' is 120, and '45s' is 45. Do not edit tests.

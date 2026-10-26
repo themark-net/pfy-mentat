@@ -1,0 +1,20 @@
+diff --git a/src/a.py b/src/a.py
+index 4f84bd4..29c2952 100644
+--- a/src/a.py
++++ b/src/a.py
+@@ -1,2 +1,2 @@
+-def old_name(value):
++def new_name(value):
+     return value + 1
+diff --git a/src/b.py b/src/b.py
+index 12d1ab7..04d07ad 100644
+--- a/src/b.py
++++ b/src/b.py
+@@ -1,5 +1,5 @@
+-from src.a import old_name
++from src.a import new_name
+ 
+ 
+ def twice(value):
+-    return old_name(old_name(value))
++    return new_name(new_name(value))

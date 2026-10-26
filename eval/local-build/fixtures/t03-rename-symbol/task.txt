@@ -1,0 +1,1 @@
+Rename old_name to new_name in src. The tests must pass and the old name must be gone.

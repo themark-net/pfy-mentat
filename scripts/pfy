@@ -160,6 +160,8 @@ pfy — simple setup & launch for the pfy-mentat stack
   pfy build --local "<task>" [--repo DIR] [--base REF] [--model TAG] [--dry-run]
                           headless local-model build in a tmp worktree (no push, no PR);
                           receipt under pipelines/dogfood/build-local/
+  pfy eval-local-build [--only ID] [--limit N] [--model TAG] [--timeout SEC] [--require-live]
+                          offline coding eval for pfy build --local (stub or local model)
   pfy toolset matrix      toolset × harness grid: implemented|partial|stub (ADR-0017; honest, most cells stub)
   pfy toolset list|plan <toolset> --harness <h> [--lane local|cloud] [--env|--brief]
   pfy toolset apply <toolset> --harness <h> [--yes]   dry-run unless --yes; writes only $PFY_STATE_DIR / harness home
@@ -2154,6 +2156,7 @@ main() {
     catalog) cmd_catalog "$@" ;;
     launch) cmd_launch "$@" ;;
     build) cmd_build "$@" ;;
+    eval-local-build) exec python3 "$ROOT/scripts/pfy_local_build_eval.py" "$@" ;;
     decision|jev) cmd_decision "$@" ;;
     toolset|toolsets) exec python3 "$ROOT/pfylib/cli.py" toolset "$@" ;;
     hedge) exec python3 "$ROOT/pfylib/cli.py" hedge "$@" ;;

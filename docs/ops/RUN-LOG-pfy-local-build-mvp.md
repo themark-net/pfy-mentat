@@ -43,6 +43,9 @@ Risks:
 - Do not pass opencode `--auto` | pass it so prompts cannot hang | the drop-in forbids approval-bypass flags
 - Bash patterns `* /*`, `*>/*`, and `*..*` are deny, on top of `external_directory: deny` | `external_directory` alone | opencode 1.18.32 denies write/edit outside the git worktree, and it does not apply that rule to a shell redirect. The patterns block the redirect. `python3 -m unittest discover -s tests -t .` does not match them
 - Child HOME may sit under the user home because the repo does | require `Path.home()` to be absent from parents | on nimo the worktree is under `/home/mark`, so the check is "HOME is not the real home directory"
+- Eval refuses to start below 8 GiB (`SKIP: mem-guard`) | use the build's 32 GiB floor as the skip | 10 GiB must still enter task 1 and return BLOCKED. The build floor stays 32
+- `reference.patch` is not copied into the task repo | copy the whole fixture | the agent must not apply the known-good patch
+- A task passes only when the receipt says PASS and `check_cmd` exits 0 | trust the build process exit code | deleting a test can leave the test command at exit 0 while the receipt says `tests-regressed`
 
 ## Opencode check
 
@@ -83,7 +86,15 @@ Each mutant was applied, the named test failed, and the source was restored. Not
 
 ## Items
 
-- item 1: DONE (behavior suite `tests.test_pfy_build_local`: 25 tests OK). Commit message `pfy-local-build: item 1 headless local build`.
-- item 2: pending
+- item 1: DONE. Commit `b63d8d011ebe95558c35101c2f62d1a23975f861` (`pfy-local-build: item 1 headless local build`). Behavior suite `tests.test_pfy_build_local`: 25 tests OK. Pushed to `origin/bot/mvp-local-build`.
+- item 2: DONE. `eval/local-build/` (8 fixtures) and `scripts/pfy_local_build_eval.py` (`./pfy eval-local-build`). `tests.test_pfy_local_build_eval`: 13 tests OK.
+
+### Item 2 RED
+
+- RED: reference.patch for t01 is a no-op -> test_every_fixture_fails_before_the_patch_and_passes_after
+- RED: count a SKIP or BLOCKED as PASS -> test_missing_opencode_skips, test_low_memory_blocks_the_first_task_and_stops
+- RED: read the pass rate from the stub exit code instead of the receipts -> test_delete_tests_is_zero_and_the_reason_comes_from_the_receipt
+- RED: run check_cmd against the fixture instead of the produced worktree -> test_solve_mode_passes_all_eight
+
 - item 3: pending
 - item 4: pending

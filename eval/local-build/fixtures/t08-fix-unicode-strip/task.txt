@@ -1,0 +1,1 @@
+normalize() must strip surrounding whitespace and casefold. normalize('  Cafe  ') style input with the accented e must match the casefolded word, and a tab-and-newline wrapped Hi must become hi.

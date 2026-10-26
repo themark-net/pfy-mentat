@@ -72,10 +72,27 @@ Exit codes: 0 PASS or a clean dry-run, 1 FAIL, 2 usage or missing tool (`no-open
 
 On FAIL, TIMEOUT, and BLOCKED there is no branch and no commit. The worktree is kept when one was created.
 
+## Eval
+
+```text
+./pfy eval-local-build [--only ID] [--limit N] [--model TAG] [--endpoint URL]
+    [--timeout SEC] [--test-timeout SEC] [--require-live]
+```
+
+Same command: `python3 scripts/pfy_local_build_eval.py`.
+
+Fixtures live in `eval/local-build/fixtures/<id>/` with `tasks.json`. Each task fails its tests and its `check_cmd` before `reference.patch` and passes both after. The patch is not copied into the repo the agent sees.
+
+The runner writes `pipelines/dogfood/build-local-eval/<stamp>/summary.json` and `summary.md` (gitignored). Exit 0 if it finished, including a low pass rate or a skip. Exit 1 if the runner broke. Exit 2 if `--require-live` and a skip fired.
+
+Skips, printed as `SKIP: <reason>`: `opencode-missing`, `ollama-unreachable`, `model-missing <tag>`, `mem-guard <gib>`, `busy-host <model>`. A BLOCKED task stops the run. Later tasks are `not-run`. A skip or a BLOCKED task is not a pass.
+
+Tasks stay on one model load: every build uses `--keep-model`, and the last build uses `--unload-at-end` only if this eval loaded the model. A model that was already loaded is left loaded.
+
 ## Status
 
-- item 1: DONE in this worktree, behavior tests green (25). RED lines are in `docs/ops/RUN-LOG-pfy-local-build-mvp.md`.
-- item 2: not started
-- item 3: not started. Live model load only after items 1 and 2 are committed, and only behind the quiet-host gates.
+- item 1: DONE. `b63d8d011ebe95558c35101c2f62d1a23975f861`. 25 behavior tests. Pushed.
+- item 2: DONE in this worktree. 13 behavior tests. RED lines are in the run log. Commit follows this handoff update.
+- item 3: not started. Live model load only after item 2 is pushed, and only behind the quiet-host gates.
 - item 4: this handoff is the running copy. Final SHA, test counts, local CI, and the replace-Grok-Build line land at the end.
 - Exit: none yet. STOP file absent.
