@@ -157,6 +157,9 @@ pfy — simple setup & launch for the pfy-mentat stack
   pfy build -p "<prompt>" [--cwd DIR] [--dry-run]
                           jev toolset (local) + decision shadow + grok -p (plain);
                           prints session id + usage; receipt under pipelines/dogfood/build/
+  pfy build --local "<task>" [--repo DIR] [--base REF] [--model TAG] [--dry-run]
+                          headless local-model build in a tmp worktree (no push, no PR);
+                          receipt under pipelines/dogfood/build-local/
   pfy toolset matrix      toolset × harness grid: implemented|partial|stub (ADR-0017; honest, most cells stub)
   pfy toolset list|plan <toolset> --harness <h> [--lane local|cloud] [--env|--brief]
   pfy toolset apply <toolset> --harness <h> [--yes]   dry-run unless --yes; writes only $PFY_STATE_DIR / harness home
@@ -1795,7 +1798,15 @@ cmd_build() {
   # D1 friction: wrap grok -p with local jev toolset + decision shadow + plain output-format.
   # Usage: pfy build -p "<prompt>" [--cwd DIR] [--dry-run]
   #        pfy build --prompt-file FILE [--cwd DIR] [--dry-run]
+  #        pfy build --local "<task>"   headless local build (scripts/pfy_build_local.py)
   # Default preamble is trimmed (#263). PFY_BUILD_FULL_PREAMBLE=1 inlines full jev skill bodies.
+  # --local anywhere in argv. exec so SIGTERM reaches the runner, not the shell.
+  local arg
+  for arg in "$@"; do
+    if [[ "$arg" == "--local" ]]; then
+      exec python3 "$ROOT/scripts/pfy_build_local.py" "$@"
+    fi
+  done
   if [[ "${1:-}" == "-h" || "${1:-}" == "--help" || "${1:-}" == "help" ]]; then
     python3 "$ROOT/scripts/pfy_build_p.py" --help
     return 0
