@@ -253,4 +253,20 @@ paths the tool could write (`~/.taste-skill`; `~/.config/graft`, `~/.cache/graft
 `~/.local/state/gh`) before the run and again in a finally, as for 128-130. Bad overrides and `PFY_XINTAKE_TIMEOUT`
 behave as for 140-142.
 
+Entries 146-147 (`smoke_146_147.py`):
+
+```sh
+python3 examples/x-intake-local/smoke_146_147.py --entry skill-up  # pinned v0.14.0 binary sha, custom local-command engine eval (1 PASS, 1 FAIL by design)
+python3 examples/x-intake-local/smoke_146_147.py --entry hiroute   # pinned v0.3.1 archive/manifest/installer shas, temp-HOME install, daemon + loopback gateway fails closed
+```
+
+skill-up reads `$SKILLUP_BIN`, then `tmp/skill-up/skill-up`, then PATH, and grades a fixture skill whose engine is a python
+stub run as `engine.custom` (no model, docker or OpenSandbox), with TMPDIR and XDG_CONFIG_HOME in the temp dir. hiroute
+reads `$HIROUTE_DIR`, then `tmp/hiroute` (release archive, its `.json` manifest and `standalone.py`), needs bwrap, runs the
+installer only into a throwaway temp HOME (it would otherwise write `~/.local`, a systemd user unit and skills into
+`~/.agents/skills` and `~/.claude/skills`) and checks the daemon, the 127.0.0.1 gateway (503/401 with nothing configured)
+and the routing/decision commands. Both fingerprint the real-HOME paths the tool could write (`~/.skill-up`,
+`~/.config/skill-up`; the eight HiRoute install paths) before the run and again in a finally. `HIROUTE_TERM_WAIT`
+(default 45 s) bounds the wait after SIGTERM. `PFY_XINTAKE_TIMEOUT` and bad overrides behave as for 140-142.
+
 Not wired into CI or Make.
