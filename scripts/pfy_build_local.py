@@ -6,11 +6,16 @@ or committed. Work happens in a detached git worktree under ``<repo>/tmp/``.
 Nothing is pushed and no PR is opened.
 
 Exit codes:
-  0  PASS, or a clean --dry-run
-  1  FAIL (no-change, tests, protected path, interrupt, mem-edge, runner-crash)
-  2  usage, or opencode / the model is missing
+  0  PASS, or a clean --dry-run, or --reap
+  1  FAIL (no-change, tests, protected path, tampered tests, interrupt, mem-edge, runner-crash)
+  2  usage, or opencode is missing
   3  TIMEOUT (agent)
-  4  BLOCKED by a guard (memory, busy host, model size, cloud tag, lock)
+  4  BLOCKED (memory, busy host, ps error, model size, cloud tag, lock, no-model, no-sandbox)
+
+A SIGKILL of this process cannot write a receipt. The pid file under
+<repo>/tmp/local-build.pids.json is the recovery handle: the next run, and
+`pfy build --local --reap`, signal that process group and write ABORTED for
+any build-local directory that has no receipt.
 
 Receipt schema: pfy-local-build/1
 """
@@ -20,16 +25,19 @@ from __future__ import annotations
 import argparse
 import fcntl
 import fnmatch
+import hashlib
 import json
 import os
 import re
 import shlex
 import shutil
 import signal
+import socket
 import subprocess
 import sys
 import threading
 import time
+import traceback
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
@@ -63,7 +71,7 @@ WATCH_SECONDS = 10.0
 KILL_GRACE_SECONDS = 5.0
 
 _SECRET_EQ = re.compile(
-    r"(?i)\b([A-Za-z0-9_]*(?:TOKEN|KEY|SECRET|PASSWORD)[A-Za-z0-9_]*)\s*=\s*(\S+)"
+    r"(?i)\b([A-Za-z0-9_]*(?:TOKEN|KEY|SECRET|PASSWORD)[A-Za-z0-9_]*)\s*([:=])\s*(\S+)"
 )
 _BEARER = re.compile(r"(?i)(bearer\s+)([A-Za-z0-9._\-]{8,})")
 _SK = re.compile(r"\b((?:sk|ghp)_[A-Za-z0-9]{8,})\b")
@@ -78,6 +86,8 @@ class State:
         self.interrupted = False
         self.mem_edge = False
         self.proc: subprocess.Popen | None = None
+        self.pgid: int | None = None
+        self.pid_path: Path | None = None
         self.min_avail: float | None = None
         self.lock_fd = None
 
@@ -102,7 +112,7 @@ def redact(text: str) -> str:
         return ""
 
     def _eq(match: re.Match) -> str:
-        return match.group(1) + "=" + _mask(match.group(2))
+        return match.group(1) + match.group(2) + _mask(match.group(3))
 
     text = _SECRET_EQ.sub(_eq, text)
     text = _BEARER.sub(lambda m: m.group(1) + _mask(m.group(2)), text)
@@ -238,6 +248,12 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--test-timeout", type=float, default=None, help="test command seconds")
     parser.add_argument("--min-free-gb", type=float, default=None, help="MemAvailable+SwapFree floor")
     parser.add_argument("--protect", action="append", default=[], help="glob the agent must not change")
+    parser.add_argument(
+        "--writable-test",
+        action="append",
+        default=[],
+        help="test path the task may change (repeatable). Other test files stay hashed",
+    )
     parser.add_argument("--prompt-file", default=None, help="read the task from this file")
     parser.add_argument("--receipt-dir", default=None, help="directory for receipt.json")
     parser.add_argument("--keep-worktree", action="store_true", help="keep the worktree after PASS")
@@ -249,6 +265,16 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
         action="store_true",
         help="unload the requested model at the end if the agent started",
     )
+    parser.add_argument(
+        "--reap",
+        action="store_true",
+        help="kill stale local-build process groups, unload a model this runner loaded, write ABORTED receipts",
+    )
+    parser.add_argument(
+        "--unsafe-no-sandbox",
+        action="store_true",
+        help="run the agent without bwrap when bwrap is unavailable (recorded on the receipt)",
+    )
     args = parser.parse_args(argv)
     if args.task and args.prompt_file:
         raise UsageError("PASS one task string or --prompt-file, not both")
@@ -258,6 +284,15 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
         if not path.is_file():
             raise UsageError("prompt file not found: %s" % path)
         task = path.read_text(encoding="utf-8")
+    if args.reap and (not task or not str(task).strip()):
+        args.task_text = ""
+        args.model_name = _pick_str(args.model, "PFY_LOCAL_BUILD_MODEL", DEFAULT_MODEL)
+        args.endpoint_raw = _pick_str(args.endpoint, "LOCAL_OPENAI_BASE_URL", DEFAULT_ENDPOINT)
+        args.test_cmd_s = _pick_str(args.test_cmd, "PFY_LOCAL_BUILD_TEST_CMD", DEFAULT_TEST_CMD)
+        args.timeout_s = _pick_float(args.timeout, "PFY_LOCAL_BUILD_TIMEOUT", DEFAULT_TIMEOUT)
+        args.test_timeout_s = _pick_float(args.test_timeout, "PFY_LOCAL_BUILD_TEST_TIMEOUT", DEFAULT_TEST_TIMEOUT)
+        args.min_free = _pick_float(args.min_free_gb, "PFY_LOCAL_BUILD_MIN_FREE_GB", DEFAULT_MIN_FREE_GB)
+        return args
     if not task or not str(task).strip():
         raise UsageError("a task string or --prompt-file is required")
     args.task_text = str(task)
@@ -318,33 +353,63 @@ def _child_env(extra: dict[str, str]) -> dict[str, str]:
     return _scrub(os.environ, **forwarded)
 
 
-def _signal_group(proc: subprocess.Popen, sig: int) -> bool:
-    if proc.poll() is not None:
-        return True
-    try:
-        os.killpg(proc.pid, sig)
-        return True
-    except (ProcessLookupError, PermissionError, OSError):
-        try:
-            os.kill(proc.pid, sig)
-        except OSError:
-            return False
+def _group_alive(pgid: int) -> bool:
+    if not pgid or pgid <= 0:
         return False
+    try:
+        os.killpg(pgid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    except OSError:
+        return False
+    return True
 
 
-def _kill_group(proc: subprocess.Popen) -> None:
-    if proc.poll() is not None:
+def _signal_pgid(pgid: int, sig: int) -> None:
+    if not pgid or pgid <= 0 or pgid == os.getpgrp():
         return
-    _signal_group(proc, signal.SIGTERM)
+    try:
+        os.killpg(pgid, sig)
+    except (ProcessLookupError, PermissionError, OSError):
+        pass
+
+
+def _kill_pgid(pgid: int | None) -> None:
+    """TERM the whole group, then SIGKILL. Leader state does not matter."""
+    if not pgid or pgid <= 0 or pgid == os.getpgrp():
+        return
+    if not _group_alive(pgid):
+        return
+    _signal_pgid(pgid, signal.SIGTERM)
     deadline = time.monotonic() + KILL_GRACE_SECONDS
     while time.monotonic() < deadline:
-        if proc.poll() is not None:
+        if not _group_alive(pgid):
             return
         time.sleep(0.05)
-    _signal_group(proc, signal.SIGKILL)
+    if _group_alive(pgid):
+        _signal_pgid(pgid, signal.SIGKILL)
+
+
+def _remember_pgid(state: State, pgid: int) -> None:
+    state.pgid = pgid
+    path = state.pid_path
+    if path is None:
+        return
     try:
-        proc.wait(timeout=5)
-    except subprocess.TimeoutExpired:
+        current = {}
+        if path.is_file():
+            current = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(current, dict):
+            current = {}
+        current["pid"] = os.getpid()
+        current["pgid"] = os.getpgrp()
+        current["agent_pgid"] = pgid
+        tmp = path.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(current), encoding="utf-8")
+        os.replace(tmp, path)
+    except (OSError, json.JSONDecodeError):
         pass
 
 
@@ -374,28 +439,51 @@ def run_bounded(cmd: list[str], env: dict, cwd: Path, timeout: float, state: Sta
         text=True,
         start_new_session=True,
     )
+    try:
+        pgid = os.getpgid(proc.pid)
+    except (ProcessLookupError, PermissionError, OSError):
+        pgid = proc.pid
     state.proc = proc
+    _remember_pgid(state, pgid)
     box: dict = {}
     reader = threading.Thread(target=_drain, args=(proc, box), daemon=True)
     reader.start()
     deadline = time.monotonic() + timeout
     status = "done"
-    while reader.is_alive():
+    while True:
         if state.interrupted:
             status = "interrupted"
-            _kill_group(proc)
+            _kill_pgid(pgid)
             break
         if state.mem_edge:
             status = "mem-edge"
-            _kill_group(proc)
+            _kill_pgid(pgid)
             break
         if time.monotonic() >= deadline:
             status = "timeout"
-            _kill_group(proc)
+            _kill_pgid(pgid)
+            break
+        # The leader can exit and leave children holding the pipes.
+        # Reap the group now so a background child cannot sit out the timeout.
+        if proc.poll() is not None:
+            _kill_pgid(pgid)
+            status = "done"
+            break
+        if not reader.is_alive():
+            status = "done"
             break
         time.sleep(0.05)
-    reader.join(timeout=10)
+    if reader.is_alive():
+        reader.join(timeout=2)
+    if reader.is_alive():
+        _kill_pgid(pgid)
+        try:
+            proc.kill()
+        except OSError:
+            pass
+        reader.join(timeout=2)
     state.proc = None
+    state.pgid = None
     return status, box.get("code"), box.get("out") or "", box.get("err") or ""
 
 
@@ -412,10 +500,16 @@ def parse_unittest_counts(text: str) -> dict | None:
     failed_m = re.search(r"failures=(\d+)", text)
     errors_m = re.search(r"errors=(\d+)", text)
     skipped_m = re.search(r"skipped=(\d+)", text)
+    if not skipped_m:
+        skipped_m = re.search(r"(\d+)\s+skipped\b", text or "")
+    xfail_m = re.search(r"xfailed=(\d+)", text or "")
+    if not xfail_m:
+        xfail_m = re.search(r"(\d+)\s+xfailed\b", text or "")
     failed = int(failed_m.group(1)) if failed_m else 0
     errors = int(errors_m.group(1)) if errors_m else 0
     skipped = int(skipped_m.group(1)) if skipped_m else 0
-    passed = max(0, ran - failed - errors - skipped)
+    xfailed = int(xfail_m.group(1)) if xfail_m else 0
+    passed = max(0, ran - failed - errors - skipped - xfailed)
     sec_m = re.search(r"Ran \d+ tests? in ([0-9.]+)s", text)
     seconds = float(sec_m.group(1)) if sec_m else None
     return {
@@ -423,6 +517,7 @@ def parse_unittest_counts(text: str) -> dict | None:
         "failed": failed,
         "errors": errors,
         "skipped": skipped,
+        "xfailed": xfailed,
         "ran": ran,
         "seconds": seconds,
     }
@@ -435,13 +530,22 @@ def _total(counts: dict | None) -> int | None:
 
 
 def judge_tests(before: dict, after: dict) -> str | None:
-    """None means the gate passed. Otherwise a FAIL reason."""
+    """None means the gate passed. Otherwise a FAIL reason.
+
+    A new skip or xfail is a failure even when the process exit is 0.
+    Skipped and xfailed tests are not passing tests.
+    """
     if not after.get("started"):
         return "test-cmd-failed-to-start"
-    if after.get("exit") != 0:
-        return "tests-failed"
     after_counts = after.get("counts")
     before_counts = before.get("counts")
+    if after_counts is not None and before_counts is not None:
+        if int(after_counts.get("skipped") or 0) > int(before_counts.get("skipped") or 0):
+            return "tests-failed"
+        if int(after_counts.get("xfailed") or 0) > int(before_counts.get("xfailed") or 0):
+            return "tests-failed"
+    if after.get("exit") != 0:
+        return "tests-failed"
     if after_counts is not None and before_counts is not None:
         if _total(after_counts) < _total(before_counts):
             return "tests-regressed"
@@ -498,18 +602,36 @@ def run_tests(cmd_s: str, cwd: Path, env: dict, timeout: float, state: State) ->
     return _test_record(cmd_s, True, code if code is not None else 1, text, elapsed)
 
 
+def _norm_rel(path: str) -> str:
+    """Normalise a repo-relative path. Does not strip leading dots."""
+    text = (path or "").replace("\\", "/").strip()
+    while text.startswith("./"):
+        text = text.removeprefix("./")
+    if not text:
+        return ""
+    normalized = os.path.normpath(text).replace("\\", "/")
+    if normalized == ".":
+        return ""
+    return normalized
+
+
 def _protected(path: str, patterns: list[str]) -> bool:
-    rel = path.replace("\\", "/").lstrip("./")
+    rel = _norm_rel(path)
+    if not rel:
+        return False
+    name = Path(rel).name
     for pattern in patterns:
-        pat = pattern.replace("\\", "/").strip()
+        pat = _norm_rel(pattern)
         if not pat:
             continue
-        if fnmatch.fnmatch(rel, pat) or fnmatch.fnmatch(Path(rel).name, pat):
+        if fnmatch.fnmatch(rel, pat) or fnmatch.fnmatch(name, pat):
             return True
         if pat.endswith("/**"):
             prefix = pat[:-3].rstrip("/")
             if rel == prefix or rel.startswith(prefix + "/"):
                 return True
+        if "**" in pat and fnmatch.fnmatch(rel, pat.replace("**", "*")):
+            return True
     return False
 
 
@@ -534,13 +656,12 @@ def files_changed(worktree: Path, env: dict) -> list[str]:
 
 
 def _ensure_tmp_excluded(worktree: Path, env: dict) -> None:
+    """Append tmp ignores to this worktree's git dir only, never the common dir."""
     (worktree / "tmp").mkdir(parents=True, exist_ok=True)
-    raw = _git(worktree, ["rev-parse", "--git-path", "info/exclude"], env=env)
-    if raw.returncode != 0:
+    raw = _git(worktree, ["rev-parse", "--path-format=absolute", "--git-dir"], env=env)
+    if raw.returncode != 0 or not (raw.stdout or "").strip():
         return
-    path = Path((raw.stdout or "").strip())
-    if not path.is_absolute():
-        path = (worktree / path).resolve()
+    path = Path((raw.stdout or "").strip()) / "info" / "exclude"
     path.parent.mkdir(parents=True, exist_ok=True)
     text = path.read_text(encoding="utf-8") if path.exists() else ""
     lines = [ln.strip() for ln in text.splitlines()]
@@ -618,40 +739,25 @@ def _tag_of(model: str, tags: list[dict]) -> dict | None:
 
 
 def _ps_names(root: str) -> list[str] | None:
+    """Loaded model names, or None when /api/ps cannot be trusted.
+
+    None is fail-closed. A 500, a network error, or a non-JSON body is not
+    an empty host. There is no `ollama ps` fallback.
+    """
     try:
         status, data = _http_json("GET", root.rstrip("/") + "/api/ps", timeout=3)
     except (urllib.error.URLError, TimeoutError, OSError, ValueError, json.JSONDecodeError):
-        status, data = 0, None
-    if status == 200 and isinstance(data, dict):
-        names = []
-        for item in data.get("models") or []:
-            if isinstance(item, str) and item.strip():
-                names.append(item.strip())
-            elif isinstance(item, dict):
-                name = item.get("name") or item.get("model") or ""
-                if str(name).strip():
-                    names.append(str(name).strip())
-        return names
-    try:
-        proc = subprocess.run(
-            ["ollama", "ps"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-            check=False,
-            stdin=subprocess.DEVNULL,
-        )
-    except (OSError, subprocess.TimeoutExpired):
         return None
-    text = (proc.stdout or "").strip()
-    lines = [ln for ln in text.splitlines() if ln.strip()]
-    if len(lines) < 2:
-        return []
+    if status != 200 or not isinstance(data, dict):
+        return None
     names = []
-    for ln in lines[1:]:
-        parts = re.split(r"\s{2,}", ln.strip())
-        if parts and parts[0] and parts[0].lower() != "name":
-            names.append(parts[0])
+    for item in data.get("models") or []:
+        if isinstance(item, str) and item.strip():
+            names.append(item.strip())
+        elif isinstance(item, dict):
+            name = item.get("name") or item.get("model") or ""
+            if str(name).strip():
+                names.append(str(name).strip())
     return names
 
 
@@ -781,9 +887,8 @@ def _summary(status: str, reason: str, branch: str | None, receipt: Path) -> str
 def _install_signals(state: State) -> None:
     def _handle(signum, _frame):
         state.interrupted = True
-        proc = state.proc
-        if proc is not None and proc.poll() is None:
-            _signal_group(proc, signal.SIGTERM)
+        if state.pgid:
+            _signal_pgid(state.pgid, signal.SIGTERM)
 
     signal.signal(signal.SIGTERM, _handle)
     signal.signal(signal.SIGINT, _handle)
@@ -798,9 +903,8 @@ def _watchdog(stop: threading.Event, state: State) -> None:
             state.min_avail = min(state.min_avail, avail)
         if avail < MEM_EDGE_GIB:
             state.mem_edge = True
-            proc = state.proc
-            if proc is not None and proc.poll() is None:
-                _signal_group(proc, signal.SIGTERM)
+            if state.pgid:
+                _signal_pgid(state.pgid, signal.SIGTERM)
             return
 
 
@@ -813,6 +917,813 @@ def _git_env(base_env: dict[str, str]) -> dict[str, str]:
     return env
 
 
+PUSH_BLOCKED_URL = "file:///pfy-local-build-push-blocked"
+_CONFIG_BASENAMES = {
+    "conftest.py",
+    "pytest.ini",
+    "tox.ini",
+    "phpunit.xml",
+    "phpunit.xml.dist",
+    "unittest.cfg",
+    "jest.config.js",
+    "jest.config.ts",
+    "vitest.config.ts",
+}
+_ENTRY = """\
+import os
+import socket
+import subprocess
+import sys
+import threading
+import time
+
+sock_path = sys.argv[1]
+port = int(sys.argv[2])
+cmd = sys.argv[4:]
+
+
+def splice(left, right):
+    def pump(src, dst):
+        try:
+            while True:
+                data = src.recv(65536)
+                if not data:
+                    break
+                dst.sendall(data)
+        except OSError:
+            pass
+        finally:
+            try:
+                dst.shutdown(socket.SHUT_WR)
+            except OSError:
+                pass
+
+    left_to_right = threading.Thread(target=pump, args=(left, right), daemon=True)
+    right_to_left = threading.Thread(target=pump, args=(right, left), daemon=True)
+    left_to_right.start()
+    right_to_left.start()
+
+
+def serve(ready):
+    srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    try:
+        srv.bind(("127.0.0.1", port))
+        srv.listen(16)
+    except OSError:
+        ready.set()
+        return
+    srv.settimeout(0.3)
+    ready.set()
+    while True:
+        try:
+            conn, _addr = srv.accept()
+        except socket.timeout:
+            continue
+        except OSError:
+            break
+        unix = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        try:
+            unix.connect(sock_path)
+        except OSError:
+            conn.close()
+            continue
+        threading.Thread(target=splice, args=(conn, unix), daemon=True).start()
+
+
+ready = threading.Event()
+threading.Thread(target=serve, args=(ready,), daemon=True).start()
+ready.wait(2)
+raise SystemExit(subprocess.call(cmd))
+"""
+
+
+class SandboxUnavailable(Exception):
+    pass
+
+
+class PreparedSandbox:
+    def __init__(self, argv: list[str], mode: str, bridge, link: Path | None = None) -> None:
+        self.argv = argv
+        self.mode = mode
+        self.bridge = bridge
+        self.link = link
+
+    def close(self) -> None:
+        if self.bridge is not None:
+            self.bridge.close()
+            self.bridge = None
+        if self.link is not None:
+            try:
+                if self.link.is_symlink() or self.link.exists():
+                    self.link.unlink()
+            except OSError:
+                pass
+            self.link = None
+
+
+class _Bridge:
+    def __init__(self) -> None:
+        self.stop = threading.Event()
+        self.sock_path: Path | None = None
+        self._srv = None
+
+    def start(self, sock_path: Path, port: int) -> None:
+        self.sock_path = sock_path
+        if sock_path.exists():
+            sock_path.unlink()
+        srv = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        srv.bind(str(sock_path))
+        os.chmod(sock_path, 0o600)
+        srv.listen(32)
+        srv.settimeout(0.2)
+        self._srv = srv
+
+        def loop() -> None:
+            while not self.stop.is_set():
+                try:
+                    conn, _addr = srv.accept()
+                except socket.timeout:
+                    continue
+                except OSError:
+                    break
+                try:
+                    tcp = socket.create_connection(("127.0.0.1", port), timeout=3)
+                except OSError:
+                    conn.close()
+                    continue
+                # The 3s cap is only the handshake. A model load is silent
+                # longer than that, and a leftover timeout aborts the response.
+                tcp.settimeout(None)
+                threading.Thread(target=_splice_sockets, args=(conn, tcp), daemon=True).start()
+            try:
+                srv.close()
+            except OSError:
+                pass
+
+        threading.Thread(target=loop, daemon=True).start()
+
+    def close(self) -> None:
+        self.stop.set()
+        if self._srv is not None:
+            try:
+                self._srv.close()
+            except OSError:
+                pass
+        if self.sock_path is not None and self.sock_path.exists():
+            try:
+                self.sock_path.unlink()
+            except OSError:
+                pass
+
+
+def _splice_sockets(left: socket.socket, right: socket.socket) -> None:
+    def pump(src: socket.socket, dst: socket.socket) -> None:
+        try:
+            while True:
+                data = src.recv(65536)
+                if not data:
+                    break
+                dst.sendall(data)
+        except OSError:
+            pass
+        finally:
+            try:
+                dst.shutdown(socket.SHUT_WR)
+            except OSError:
+                pass
+
+    left_to_right = threading.Thread(target=pump, args=(left, right), daemon=True)
+    right_to_left = threading.Thread(target=pump, args=(right, left), daemon=True)
+    left_to_right.start()
+    right_to_left.start()
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _is_test_path(rel: str) -> bool:
+    parts = [part for part in _norm_rel(rel).split("/") if part]
+    if not parts:
+        return False
+    name = parts[-1]
+    if name.startswith("test_") or name.endswith("_test.py") or name.endswith("_test.go"):
+        return True
+    dirs = parts[:-1]
+    return any(part in ("tests", "test") for part in dirs)
+
+
+def _is_test_config(rel: str, full: Path, test_cmd: str) -> bool:
+    name = Path(rel).name
+    if name in _CONFIG_BASENAMES:
+        return True
+    cmd = (test_cmd or "").lower()
+    if name in ("pyproject.toml", "setup.cfg"):
+        try:
+            text = full.read_text(encoding="utf-8", errors="replace").lower()
+        except OSError:
+            return False
+        if "pytest" in cmd and "pytest" in text:
+            return True
+        if "unittest" in cmd and "unittest" in text:
+            return True
+    try:
+        tokens = shlex.split(test_cmd or "")
+    except ValueError:
+        tokens = []
+    for token in tokens:
+        if _norm_rel(token) == _norm_rel(rel):
+            return True
+    return False
+
+
+def snapshot_tests(worktree: Path, test_cmd: str) -> dict[str, str]:
+    """Hash test files and the test command's config at the base tree."""
+    found: dict[str, str] = {}
+    if not worktree.is_dir():
+        return found
+    for dirpath, dirnames, filenames in os.walk(worktree):
+        dirnames[:] = [
+            name
+            for name in dirnames
+            if name not in {".git", "tmp", "__pycache__"} and not name.endswith(".home")
+        ]
+        for name in filenames:
+            if name.endswith(".pyc"):
+                continue
+            full = Path(dirpath) / name
+            try:
+                rel = _norm_rel(str(full.relative_to(worktree)))
+            except ValueError:
+                continue
+            if not rel or rel.startswith("tmp/"):
+                continue
+            if not (_is_test_path(rel) or _is_test_config(rel, full, test_cmd)):
+                continue
+            try:
+                found[rel] = _sha256_file(full)
+            except OSError:
+                continue
+    return found
+
+
+def tests_tampered(worktree: Path, snapshot: dict[str, str], writable: list[str]) -> list[str]:
+    bad = []
+    for rel, digest in snapshot.items():
+        if writable and _protected(rel, writable):
+            continue
+        path = worktree / rel
+        if not path.is_file():
+            bad.append(rel)
+            continue
+        try:
+            if _sha256_file(path) != digest:
+                bad.append(rel)
+        except OSError:
+            bad.append(rel)
+    return bad
+
+
+def _runtime_dir() -> Path | None:
+    """A short writable directory for the Ollama socket.
+
+    AF_UNIX paths are limited to 108 bytes. A worktree under this repo is
+    already longer than that, so the socket cannot live at the worktree path.
+    """
+    candidates = []
+    env_dir = os.environ.get("XDG_RUNTIME_DIR")
+    if env_dir:
+        candidates.append(Path(env_dir))
+    candidates.append(Path("/run/user") / str(os.getuid()))
+    for cand in candidates:
+        try:
+            cand.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            continue
+        if cand.is_dir() and os.access(cand, os.W_OK):
+            return cand
+    return None
+
+
+def _socket_link(worktree: Path) -> tuple[Path, Path]:
+    """Symlink a short runtime name at the worktree and return (link, socket).
+
+    The socket inode stays in the worktree tmp. The name used for bind() is
+    the short link, which also fits inside the sandbox via the host /run mount.
+    """
+    runtime = _runtime_dir()
+    if runtime is None:
+        raise SandboxUnavailable("no short runtime dir for the ollama socket")
+    for old in runtime.glob("pfy-lb-*"):
+        if old.is_symlink() and not old.exists():
+            try:
+                old.unlink()
+            except OSError:
+                pass
+    link = runtime / ("pfy-lb-%s-%s" % (os.getpid(), _stamp()[-6:]))
+    if link.is_symlink() or link.exists():
+        link.unlink()
+    link.symlink_to(worktree.resolve())
+    sock = link / "tmp" / "ollama.sock"
+    if len(str(sock)) >= 108:
+        link.unlink()
+        raise SandboxUnavailable("ollama socket path is too long")
+    return link, sock
+
+
+def bwrap_works() -> bool:
+    cached = getattr(bwrap_works, "_cached", None)
+    if cached is not None:
+        return bool(cached)
+    ok = False
+    if shutil.which("bwrap"):
+        try:
+            proc = subprocess.run(
+                [
+                    "bwrap",
+                    "--ro-bind",
+                    "/",
+                    "/",
+                    "--dev",
+                    "/dev",
+                    "--proc",
+                    "/proc",
+                    "--tmpfs",
+                    "/tmp",
+                    "--unshare-net",
+                    "--",
+                    "true",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=15,
+                check=False,
+            )
+            ok = proc.returncode == 0
+        except (OSError, subprocess.TimeoutExpired):
+            ok = False
+    setattr(bwrap_works, "_cached", ok)
+    return ok
+
+
+def _loopback_port(endpoint: str | None) -> int | None:
+    if not endpoint:
+        return None
+    host = endpoint.strip().split("://", 1)[-1].split("/", 1)[0]
+    name = host
+    port: int | None = None
+    if host.startswith("["):
+        name = host[1:].split("]", 1)[0]
+        rest = host.split("]", 1)[-1]
+        if rest.startswith(":"):
+            try:
+                port = int(rest[1:])
+            except ValueError:
+                return None
+    elif ":" in host:
+        name, port_s = host.rsplit(":", 1)
+        try:
+            port = int(port_s)
+        except ValueError:
+            return None
+    if name not in ("127.0.0.1", "localhost", "::1"):
+        return None
+    return port or 80
+
+
+def _abs_git_path(repo: Path, flag: str) -> Path | None:
+    proc = _git(repo, ["rev-parse", "--path-format=absolute", flag])
+    text = (proc.stdout or "").strip() if proc.returncode == 0 else ""
+    if not text:
+        proc = _git(repo, ["rev-parse", flag])
+        text = (proc.stdout or "").strip() if proc.returncode == 0 else ""
+    if not text:
+        return None
+    path = Path(text)
+    if not path.is_absolute():
+        path = (repo / path).resolve()
+    return path
+
+
+def hide_paths(repo: Path, worktree: Path, extra: list[str] | None = None) -> list[str]:
+    """Directories the sandbox must not see. The worktree is bound back afterwards."""
+    candidates: list[Path] = []
+    home = Path.home()
+    for rel in (".ssh", Path(".config") / "gh", ".grok", Path(".config") / "git"):
+        candidates.append(home / rel)
+    for flag in ("--git-common-dir", "--git-dir"):
+        found = _abs_git_path(repo, flag)
+        if found is not None:
+            candidates.append(found)
+            if found.name == ".git":
+                candidates.append(found.parent)
+    for item in extra or []:
+        candidates.append(Path(item))
+    wt = worktree.resolve()
+    seen: set[str] = set()
+    out: list[str] = []
+    for cand in candidates:
+        try:
+            if not cand.exists() or not cand.is_dir():
+                continue
+            resolved = cand.resolve()
+        except OSError:
+            continue
+        if resolved == Path("/") or resolved == wt or wt in resolved.parents:
+            continue
+        text = str(resolved)
+        if text in seen:
+            continue
+        seen.add(text)
+        out.append(text)
+    return out
+
+
+def _sandbox_hides(hide: list[str], worktree: Path) -> list[str]:
+    """tmpfs the hidden dirs. Recreate the worktree path if a parent was covered.
+
+    bwrap will not bind onto a path that a parent tmpfs removed. --dir puts
+    the mountpoint back, then the caller bind-mounts the worktree.
+    """
+    wt = worktree.resolve()
+    dirs: list[Path] = []
+    for raw in hide:
+        path = Path(raw)
+        try:
+            if path.is_dir():
+                dirs.append(path.resolve())
+        except OSError:
+            continue
+    dirs.sort(key=lambda path: len(path.parts))
+    kept: list[Path] = []
+    for path in dirs:
+        if any(earlier == path or earlier in path.parents for earlier in kept):
+            continue
+        kept.append(path)
+    argv: list[str] = []
+    for path in kept:
+        argv.extend(["--tmpfs", str(path)])
+    covered = [path for path in kept if path in wt.parents]
+    if covered:
+        ancestor = min(covered, key=lambda path: len(path.parts))
+        current = ancestor
+        for part in wt.relative_to(ancestor).parts:
+            current = current / part
+            argv.extend(["--dir", str(current)])
+    return argv
+
+
+def _gitconfig_binds(worktree: Path) -> list[tuple[str, str]]:
+    target = Path.home() / ".gitconfig"
+    if not target.is_file():
+        return []
+    empty = worktree / "tmp" / "empty-gitconfig"
+    empty.parent.mkdir(parents=True, exist_ok=True)
+    empty.write_text("", encoding="utf-8")
+    return [(str(empty), str(target))]
+
+
+def prepare_sandbox(
+    cmd: list[str],
+    worktree: Path,
+    *,
+    hide: list[str],
+    endpoint: str | None,
+    extra_rw: list[Path] | None = None,
+    unsafe: bool = False,
+) -> PreparedSandbox:
+    """Build the agent argv. Loopback Ollama is proxied over a unix socket.
+
+    --unshare-net has no route to the host's 127.0.0.1. A socket under the
+    worktree tmp bridges that one port. A non-loopback endpoint cannot use
+    that bridge, so the sandbox shares the net namespace and the git lockdown
+    still applies. bwrap missing raises SandboxUnavailable unless unsafe.
+    """
+    worktree = Path(worktree)
+    (worktree / "tmp").mkdir(parents=True, exist_ok=True)
+    port = _loopback_port(endpoint)
+    share_net = bool(endpoint) and port is None
+    if not bwrap_works():
+        if not unsafe:
+            raise SandboxUnavailable("bwrap is not usable")
+        return PreparedSandbox(list(cmd), "unsafe-no-sandbox", None, None)
+    bridge = None
+    link = None
+    run_cmd = list(cmd)
+    if port is not None and not share_net:
+        link, sock = _socket_link(worktree)
+        bridge = _Bridge()
+        try:
+            bridge.start(sock, port)
+        except OSError:
+            try:
+                link.unlink()
+            except OSError:
+                pass
+            raise
+        entry = worktree / "tmp" / "pfy-sandbox-entry.py"
+        entry.write_text(_ENTRY, encoding="utf-8")
+        run_cmd = ["python3", str(entry), str(sock), str(port), "--", *run_cmd]
+    argv = [
+        shutil.which("bwrap") or "bwrap",
+        "--die-with-parent",
+        "--ro-bind",
+        "/",
+        "/",
+        "--dev",
+        "/dev",
+        "--proc",
+        "/proc",
+        "--tmpfs",
+        "/tmp",
+    ]
+    argv.extend(_sandbox_hides(hide, worktree))
+    for src, dest in _gitconfig_binds(worktree):
+        argv.extend(["--ro-bind", src, dest])
+    argv.extend(["--bind", str(worktree), str(worktree)])
+    for extra in extra_rw or []:
+        extra_path = Path(extra)
+        try:
+            if extra_path.is_dir() and extra_path.resolve() != worktree.resolve():
+                argv.extend(["--bind", str(extra_path), str(extra_path)])
+        except OSError:
+            continue
+    if share_net:
+        argv.append("--share-net")
+        mode = "bwrap-share-net"
+    else:
+        argv.append("--unshare-net")
+        mode = "bwrap-unshare-net"
+    argv.extend(["--chdir", str(worktree), "--"])
+    argv.extend(run_cmd)
+    return PreparedSandbox(argv, mode, bridge, link)
+
+
+def run_sandboxed(
+    cmd: list[str],
+    worktree: Path,
+    hide: list[str] | None = None,
+    *,
+    endpoint: str | None = None,
+    timeout: float = 30,
+    env: dict | None = None,
+) -> subprocess.CompletedProcess:
+    """Run cmd in the agent sandbox. Tests use this. The runner uses prepare_sandbox."""
+    prepared = prepare_sandbox(
+        cmd,
+        Path(worktree),
+        hide=list(hide or []),
+        endpoint=endpoint,
+        unsafe=False,
+    )
+    try:
+        return subprocess.run(
+            prepared.argv,
+            cwd=str(worktree),
+            env=env,
+            text=True,
+            capture_output=True,
+            timeout=timeout,
+            check=False,
+        )
+    finally:
+        prepared.close()
+
+
+def _git_config_file(cfg: Path, key: str, value: str) -> None:
+    subprocess.run(
+        ["git", "config", "--file", str(cfg), key, value],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def lockdown_env(worktree: Path) -> dict[str, str]:
+    hooks = worktree / "tmp" / "empty-hooks"
+    hooks.mkdir(parents=True, exist_ok=True)
+    empty = worktree / "tmp" / "empty-gitconfig"
+    if not empty.exists():
+        empty.write_text("", encoding="utf-8")
+    return {
+        "GIT_CONFIG_NOSYSTEM": "1",
+        "GIT_CONFIG_GLOBAL": str(empty),
+        "GIT_CONFIG_COUNT": "3",
+        "GIT_CONFIG_KEY_0": "remote.origin.pushurl",
+        "GIT_CONFIG_VALUE_0": PUSH_BLOCKED_URL,
+        "GIT_CONFIG_KEY_1": "core.hooksPath",
+        "GIT_CONFIG_VALUE_1": str(hooks),
+        "GIT_CONFIG_KEY_2": "credential.helper",
+        "GIT_CONFIG_VALUE_2": "",
+    }
+
+
+def isolate_worktree_git(worktree: Path) -> bytes | None:
+    """Point a linked worktree at a sandbox git dir for the agent.
+
+    The common config of the repo that owns the worktree is not edited.
+    The sandbox has this worktree's files and no remotes, so git apply and
+    git status work. pushurl is invalid, hooks are an empty directory, and
+    there is no credential helper. The caller restores the saved bytes.
+    That restore drops the sandbox commit. It is not the product commit.
+    """
+    link = worktree / ".git"
+    if not link.is_file():
+        return None
+    saved = link.read_bytes()
+    sandbox = worktree / "tmp" / "git-sandbox"
+    if sandbox.exists():
+        shutil.rmtree(sandbox, ignore_errors=True)
+    subprocess.run(
+        ["git", "init", "-q", "-b", "main", str(sandbox)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    git_dir = sandbox / ".git"
+    hooks = worktree / "tmp" / "empty-hooks"
+    hooks.mkdir(parents=True, exist_ok=True)
+    cfg = git_dir / "config"
+    _git_config_file(cfg, "user.email", AUTHOR_EMAIL)
+    _git_config_file(cfg, "user.name", AUTHOR_NAME)
+    _git_config_file(cfg, "remote.origin.pushurl", PUSH_BLOCKED_URL)
+    _git_config_file(cfg, "core.hooksPath", str(hooks))
+    _git_config_file(cfg, "credential.helper", "")
+    link.write_text("gitdir: %s\n" % git_dir.resolve(), encoding="utf-8")
+    # Seed only when the gitfile really points at the sandbox. A failed swap
+    # must not stage files into the caller's common git dir.
+    shown = subprocess.run(
+        ["git", "-C", str(worktree), "rev-parse", "--absolute-git-dir"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if (shown.stdout or "").strip() != str(git_dir.resolve()):
+        return saved
+    subprocess.run(
+        ["git", "-C", str(worktree), "add", "-A", "--", ".", ":!tmp"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(worktree),
+            "commit",
+            "-q",
+            "--allow-empty",
+            "-m",
+            "sandbox base",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return saved
+
+
+def restore_worktree_git(worktree: Path, saved: bytes | None) -> None:
+    if not saved:
+        return
+    link = worktree / ".git"
+    if link.is_dir() and not link.is_symlink():
+        shutil.rmtree(link, ignore_errors=True)
+    elif link.exists() or link.is_symlink():
+        try:
+            link.unlink()
+        except OSError:
+            pass
+    link.write_bytes(saved)
+
+
+def _write_aborted(repo: Path) -> list[str]:
+    notes = []
+    base = repo / "pipelines" / "dogfood" / "build-local"
+    if not base.is_dir():
+        return notes
+    for entry in sorted(base.iterdir()):
+        if not entry.is_dir() or (entry / "receipt.json").is_file():
+            continue
+        _write_receipt(
+            entry / "receipt.json",
+            {
+                "schema": SCHEMA,
+                "id": entry.name,
+                "status": "ABORTED",
+                "reason": "no-receipt",
+                "exit_code": EXIT_FAIL,
+                "finished_at": _now(),
+            },
+        )
+        notes.append(entry.name)
+    return notes
+
+
+def reap_stale(repo: Path) -> list[str]:
+    """Kill groups left by a SIGKILL'd runner and write missing receipts.
+
+    A live pid is left alone: the lock means it is not one of our runs, and
+    the pid may have been recycled. A dead pid's recorded group is signalled.
+    """
+    notes: list[str] = []
+    pid_path = repo / "tmp" / "local-build.pids.json"
+    if pid_path.is_file():
+        try:
+            data = json.loads(pid_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            data = {}
+        if not isinstance(data, dict):
+            data = {}
+        try:
+            pid = int(data.get("pid") or 0)
+        except (TypeError, ValueError):
+            pid = 0
+        if pid and pid != os.getpid() and not _alive(pid):
+            for key in ("agent_pgid", "pgid"):
+                try:
+                    pg = int(data.get(key) or 0)
+                except (TypeError, ValueError):
+                    pg = 0
+                _kill_pgid(pg)
+            if data.get("loaded_by_run") and data.get("ollama_root") and data.get("model"):
+                unload_model(str(data["ollama_root"]), str(data["model"]))
+            notes.append("reaped %s" % pid)
+        if pid != os.getpid():
+            try:
+                pid_path.unlink()
+            except OSError:
+                pass
+    for name in _write_aborted(repo):
+        notes.append("aborted %s" % name)
+    return notes
+
+
+def _reap_only(args) -> int:
+    try:
+        repo = resolve_repo(args.repo)
+    except UsageError as exc:
+        print("FAIL: %s" % exc, file=sys.stderr)
+        return EXIT_USAGE
+    lock_path = repo / "tmp" / "local-build.lock"
+    fd = _acquire_lock(lock_path)
+    if fd is None:
+        print("BLOCKED: another run", file=sys.stderr)
+        return EXIT_BLOCKED
+    try:
+        notes = reap_stale(repo)
+        print("reaped: %s" % (", ".join(notes) or "none"))
+        return EXIT_OK
+    finally:
+        try:
+            lock_path.unlink()
+        except OSError:
+            pass
+        _release_lock(fd)
+
+
+def _write_pidfile(path: Path, payload: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(payload), encoding="utf-8")
+    os.replace(tmp, path)
+
+
+def _mark_loaded(state: State, loaded_by_run: bool) -> None:
+    path = state.pid_path
+    if path is None or not path.is_file():
+        return
+    try:
+        current = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(current, dict):
+            return
+        current["loaded_by_run"] = loaded_by_run
+        _write_pidfile(path, current)
+    except (OSError, json.JSONDecodeError):
+        pass
+
+
+def _cleanup_runtime(home: Path | None, lock_path: Path | None, pid_path: Path | None) -> None:
+    if home is not None and home.exists():
+        shutil.rmtree(home, ignore_errors=True)
+    if pid_path is not None and pid_path.exists():
+        try:
+            pid_path.unlink()
+        except OSError:
+            pass
+    if lock_path is not None and lock_path.exists():
+        try:
+            lock_path.unlink()
+        except OSError:
+            pass
+
+
 def build_local(argv: list[str] | None = None) -> int:
     state = State()
     _install_signals(state)
@@ -821,6 +1732,9 @@ def build_local(argv: list[str] | None = None) -> int:
     except UsageError as exc:
         print("FAIL: %s" % exc, file=sys.stderr)
         return EXIT_USAGE
+
+    if args.reap and not args.task_text:
+        return _reap_only(args)
 
     started = time.monotonic()
     started_at = _now()
@@ -847,13 +1761,25 @@ def build_local(argv: list[str] | None = None) -> int:
     base_sha = None
     repo = None
     ollama_root = None
+    sandbox_mode = None
+    lock_path: Path | None = None
+    pid_path: Path | None = None
+    git_saved: bytes | None = None
+    prepared: PreparedSandbox | None = None
+    test_snapshot: dict[str, str] = {}
     mem_start = read_meminfo()
     state.min_avail = mem_available_gib(mem_start)
     stop_watch = threading.Event()
     watcher = None
 
     def finish() -> int:
-        nonlocal unloaded
+        nonlocal unloaded, git_saved, prepared
+        if git_saved is not None and worktree is not None:
+            restore_worktree_git(worktree, git_saved)
+            git_saved = None
+        if prepared is not None:
+            prepared.close()
+            prepared = None
         finished_at = _now()
         if receipt_path is not None:
             payload = {
@@ -884,6 +1810,7 @@ def build_local(argv: list[str] | None = None) -> int:
                 },
                 "opencode_version": opencode_version,
                 "agent_log": None if agent_log is None else str(agent_log),
+                "sandbox": sandbox_mode,
                 "started_at": started_at,
                 "finished_at": finished_at,
             }
@@ -901,6 +1828,7 @@ def build_local(argv: list[str] | None = None) -> int:
                     _write_receipt(receipt_path, current)
                 except (OSError, json.JSONDecodeError):
                     pass
+        _cleanup_runtime(home, lock_path, pid_path)
         _release_lock(state.lock_fd)
         state.lock_fd = None
         return exit_code
@@ -925,13 +1853,17 @@ def build_local(argv: list[str] | None = None) -> int:
         else:
             receipt_dir = repo / "pipelines" / "dogfood" / "build-local" / stamp
         receipt_path = receipt_dir / "receipt.json"
-        receipt_dir.mkdir(parents=True, exist_ok=True)
 
         lock_path = repo / "tmp" / "local-build.lock"
         state.lock_fd = _acquire_lock(lock_path)
         if state.lock_fd is None:
+            receipt_dir.mkdir(parents=True, exist_ok=True)
             status, reason, exit_code = "BLOCKED", "another run", EXIT_BLOCKED
             return finish()
+        # The previous runner may have been SIGKILL'd. Reap before this dir exists
+        # so an empty directory from that run becomes ABORTED, not this one.
+        reap_stale(repo)
+        receipt_dir.mkdir(parents=True, exist_ok=True)
 
         if state.interrupted:
             status, reason, exit_code = "FAIL", "interrupted", EXIT_FAIL
@@ -955,11 +1887,11 @@ def build_local(argv: list[str] | None = None) -> int:
 
         tags, tag_err = _ollama_tags(ollama_root)
         if tag_err or tags is None:
-            status, reason, exit_code = "BLOCKED", "no-model", EXIT_USAGE
+            status, reason, exit_code = "BLOCKED", "no-model", EXIT_BLOCKED
             return finish()
         tag = _tag_of(args.model_name, tags)
         if tag is None:
-            status, reason, exit_code = "BLOCKED", "no-model", EXIT_USAGE
+            status, reason, exit_code = "BLOCKED", "no-model", EXIT_BLOCKED
             return finish()
         size = _model_size(tag)
         if size is not None and size > MAX_MODEL_BYTES:
@@ -968,7 +1900,8 @@ def build_local(argv: list[str] | None = None) -> int:
 
         loaded = _ps_names(ollama_root)
         if loaded is None:
-            loaded = []
+            status, reason, exit_code = "BLOCKED", "busy-host", EXIT_BLOCKED
+            return finish()
         others = [name for name in loaded if not _same_model(name, args.model_name)]
         if others:
             status, reason, exit_code = "BLOCKED", "busy-host", EXIT_BLOCKED
@@ -1000,8 +1933,7 @@ def build_local(argv: list[str] | None = None) -> int:
         opencode_version = redact(((ver.stdout or "") + (ver.stderr or "")).strip().splitlines()[0] if (ver.stdout or ver.stderr) else "") or None
 
         wt_path = repo / "tmp" / ("local-build-%s-%s" % (stamp, slug))
-        home = repo / "tmp" / ("local-build-%s-%s.home" % (stamp, slug))
-        if wt_path.exists() or home.exists():
+        if wt_path.exists():
             status, reason, exit_code = "FAIL", "worktree-exists", EXIT_FAIL
             return finish()
         (repo / "tmp").mkdir(parents=True, exist_ok=True)
@@ -1010,8 +1942,23 @@ def build_local(argv: list[str] | None = None) -> int:
             status, reason, exit_code = "FAIL", "worktree-failed", EXIT_FAIL
             return finish()
         worktree = wt_path
+        home = worktree / "tmp" / "opencode.home"
         _ensure_tmp_excluded(worktree, _child_env({"TMPDIR": str(worktree / "tmp")}))
         (worktree / "tmp").mkdir(parents=True, exist_ok=True)
+        pid_path = repo / "tmp" / "local-build.pids.json"
+        state.pid_path = pid_path
+        _write_pidfile(
+            pid_path,
+            {
+                "pid": os.getpid(),
+                "pgid": os.getpgrp(),
+                "agent_pgid": None,
+                "model": args.model_name,
+                "ollama_root": ollama_root,
+                "loaded_by_run": False,
+                "receipt_dir": str(receipt_dir),
+            },
+        )
 
         test_env = _child_env(
             {
@@ -1037,14 +1984,43 @@ def build_local(argv: list[str] | None = None) -> int:
             status, reason, exit_code = "FAIL", "test-cmd-failed-to-start", EXIT_FAIL
             return finish()
 
+        test_snapshot = snapshot_tests(worktree, args.test_cmd_s)
         config = _write_config(home, openai_base, args.model_name)
+        try:
+            shutil.copy(config, receipt_dir / "opencode.json")
+        except OSError:
+            pass
         child = _opencode_env(home, worktree, openai_base, config)
+        child.update(lockdown_env(worktree))
         prompt = _agent_prompt(args.task_text, args.test_cmd_s)
         cmd = [binary, "run", "--pure", "--model", "ollama/%s" % args.model_name, "--variant", "none", prompt]
+        git_saved = isolate_worktree_git(worktree)
+        try:
+            prepared = prepare_sandbox(
+                cmd,
+                worktree,
+                hide=hide_paths(repo, worktree),
+                endpoint=openai_base,
+                unsafe=bool(args.unsafe_no_sandbox),
+            )
+        except SandboxUnavailable:
+            status, reason, exit_code = "BLOCKED", "no-sandbox", EXIT_BLOCKED
+            return finish()
+        sandbox_mode = prepared.mode
+        if sandbox_mode == "bwrap-unshare-net":
+            port = _loopback_port(openai_base)
+            if port:
+                child["OPENAI_BASE_URL"] = "http://127.0.0.1:%d/v1" % port
         agent_started = True
+        _mark_loaded(state, not model_was_loaded)
         agent_t0 = time.monotonic()
-        run_status, _code, out, err = run_bounded(cmd, child, worktree, args.timeout_s, state)
+        run_status, _code, out, err = run_bounded(prepared.argv, child, worktree, args.timeout_s, state)
         agent_seconds = time.monotonic() - agent_t0
+        prepared.close()
+        prepared = None
+        if git_saved is not None:
+            restore_worktree_git(worktree, git_saved)
+            git_saved = None
         agent_log = receipt_dir / "agent.log"
         agent_log.write_text(
             "----- stdout -----\n%s\n----- stderr -----\n%s\n" % (redact(out), redact(err)),
@@ -1081,6 +2057,21 @@ def build_local(argv: list[str] | None = None) -> int:
         if gate:
             status, reason, exit_code = "FAIL", gate, EXIT_FAIL
             return finish()
+        tampered = tests_tampered(worktree, test_snapshot, list(args.writable_test or []))
+        if tampered:
+            status, reason, exit_code = "FAIL", "tests-tampered", EXIT_FAIL
+            return finish()
+        again = run_tests(args.test_cmd_s, worktree, test_env, args.test_timeout_s, state)
+        if again.get("aborted") == "interrupted" or state.interrupted:
+            status, reason, exit_code = "FAIL", "interrupted", EXIT_FAIL
+            return finish()
+        if again.get("aborted") == "mem-edge" or state.mem_edge:
+            status, reason, exit_code = "FAIL", "mem-edge", EXIT_FAIL
+            return finish()
+        flaky = judge_tests(tests_before, again)
+        if flaky:
+            status, reason, exit_code = "FAIL", "tests-flaky", EXIT_FAIL
+            return finish()
         if run_status == "timeout":
             status, reason, exit_code = "TIMEOUT", "timeout", EXIT_TIMEOUT
             return finish()
@@ -1114,6 +2105,7 @@ def build_local(argv: list[str] | None = None) -> int:
         status, reason, exit_code = "BLOCKED", "usage", EXIT_USAGE
         return finish()
     except Exception:
+        traceback.print_exc()
         status, reason, exit_code = "FAIL", "runner-crash", EXIT_FAIL
         return finish()
     finally:

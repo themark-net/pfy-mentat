@@ -3,49 +3,49 @@
     {
       "id": "t01-fix-off-by-one",
       "test_cmd": "python3 -m unittest discover -s tests -t .",
-      "protect": [],
+      "protect": ["tests/*", "conftest.py", "pytest.ini", "pyproject.toml", "setup.cfg", "tox.ini"],
       "check_cmd": "python3 -m unittest discover -s tests -t ."
     },
     {
       "id": "t02-add-function",
       "test_cmd": "python3 -m unittest discover -s tests -t .",
-      "protect": ["tests/*"],
+      "protect": ["tests/*", "conftest.py", "pytest.ini", "pyproject.toml", "setup.cfg", "tox.ini"],
       "check_cmd": "python3 -m unittest discover -s tests -t ."
     },
     {
       "id": "t03-rename-symbol",
       "test_cmd": "python3 -m unittest discover -s tests -t .",
-      "protect": [],
+      "protect": ["tests/*", "conftest.py", "pytest.ini", "pyproject.toml", "setup.cfg", "tox.ini"],
       "check_cmd": "python3 -c \"import pathlib,sys; bad=any('old_name' in p.read_text(encoding='utf-8') for p in pathlib.Path('src').rglob('*.py')); sys.exit(1 if bad else 0)\""
     },
     {
       "id": "t04-fix-mutable-default",
       "test_cmd": "python3 -m unittest discover -s tests -t .",
-      "protect": [],
+      "protect": ["tests/*", "conftest.py", "pytest.ini", "pyproject.toml", "setup.cfg", "tox.ini"],
       "check_cmd": "python3 -m unittest discover -s tests -t ."
     },
     {
       "id": "t05-add-cli-flag",
       "test_cmd": "python3 -m unittest discover -s tests -t .",
-      "protect": ["tests/*"],
+      "protect": ["tests/*", "conftest.py", "pytest.ini", "pyproject.toml", "setup.cfg", "tox.ini"],
       "check_cmd": "python3 -m unittest discover -s tests -t ."
     },
     {
       "id": "t06-parse-duration",
       "test_cmd": "python3 -m unittest discover -s tests -t .",
-      "protect": ["tests/*"],
+      "protect": ["tests/*", "conftest.py", "pytest.ini", "pyproject.toml", "setup.cfg", "tox.ini"],
       "check_cmd": "python3 -m unittest discover -s tests -t ."
     },
     {
       "id": "t07-remove-dead-code",
       "test_cmd": "python3 -m unittest discover -s tests -t .",
-      "protect": [],
+      "protect": ["tests/*", "conftest.py", "pytest.ini", "pyproject.toml", "setup.cfg", "tox.ini"],
       "check_cmd": "python3 -c \"import pathlib,sys; bad=any('dead_code' in p.read_text(encoding='utf-8') for p in pathlib.Path('src').rglob('*.py')); sys.exit(1 if bad else 0)\""
     },
     {
       "id": "t08-fix-unicode-strip",
       "test_cmd": "python3 -m unittest discover -s tests -t .",
-      "protect": [],
+      "protect": ["tests/*", "conftest.py", "pytest.ini", "pyproject.toml", "setup.cfg", "tox.ini"],
       "check_cmd": "python3 -m unittest discover -s tests -t ."
     }
   ]

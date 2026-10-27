@@ -158,7 +158,11 @@ pfy — simple setup & launch for the pfy-mentat stack
                           jev toolset (local) + decision shadow + grok -p (plain);
                           prints session id + usage; receipt under pipelines/dogfood/build/
   pfy build --local "<task>" [--repo DIR] [--base REF] [--model TAG] [--dry-run]
+                          [--reap] [--unsafe-no-sandbox]
                           headless local-model build in a tmp worktree (no push, no PR);
+                          bubblewrap sandbox, or BLOCKED no-sandbox when bwrap is missing;
+                          --reap kills a stale group and writes ABORTED receipts;
+                          no-model is BLOCKED exit 4; no-opencode stays exit 2;
                           receipt under pipelines/dogfood/build-local/
   pfy eval-local-build [--only ID] [--limit N] [--model TAG] [--timeout SEC] [--require-live]
                           offline coding eval for pfy build --local (stub or local model)

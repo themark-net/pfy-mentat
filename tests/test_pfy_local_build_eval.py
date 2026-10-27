@@ -13,6 +13,24 @@ import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+def _bwrap_ok() -> bool:
+    if not shutil.which("bwrap"):
+        return False
+    try:
+        proc = subprocess.run(
+            ["bwrap", "--ro-bind", "/", "/", "--dev", "/dev", "--proc", "/proc", "--tmpfs", "/tmp", "--unshare-net", "--", "true"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return proc.returncode == 0
+
+
+BWRAP_OK = _bwrap_ok()
+
 ROOT = Path(__file__).resolve().parents[1]
 SCRATCH = ROOT / "tmp" / "local-build-eval-tests"
 FIXTURES = ROOT / "eval" / "local-build" / "fixtures"
@@ -33,9 +51,17 @@ if argv[0] != "run":
     raise SystemExit(0)
 marker = os.environ.get("PFY_STUB_MARKER")
 if marker:
-    Path(marker).parent.mkdir(parents=True, exist_ok=True)
-    Path(marker).write_text("started\n", encoding="utf-8")
+    try:
+        Path(marker).parent.mkdir(parents=True, exist_ok=True)
+        Path(marker).write_text("started\n", encoding="utf-8")
+    except OSError:
+        pass
 root = Path.cwd()
+try:
+    (root / "tmp").mkdir(parents=True, exist_ok=True)
+    (root / "tmp" / "pfy-agent-started").write_text("started\n", encoding="utf-8")
+except OSError:
+    pass
 scenario = os.environ.get("PFY_LOCAL_BUILD_SCENARIO", "noop")
 task_id = (root / "task.id").read_text(encoding="utf-8").strip() if (root / "task.id").is_file() else ""
 if scenario == "solve":
@@ -43,7 +69,10 @@ if scenario == "solve":
     if allow and task_id not in allow:
         raise SystemExit(0)
     patch = Path(os.environ["PFY_STUB_FIXTURES"]) / task_id / "reference.patch"
-    subprocess.check_call(["git", "apply", str(patch)], cwd=root)
+    applied = subprocess.run(["git", "apply", str(patch)], cwd=root, capture_output=True, text=True)
+    if applied.returncode != 0:
+        sys.stderr.write(applied.stderr or applied.stdout or "git apply failed\n")
+        raise SystemExit(applied.returncode)
 elif scenario == "break":
     target = next(root.joinpath("src").glob("*.py"))
     target.write_text("def broken(:\n", encoding="utf-8")
@@ -54,6 +83,16 @@ elif scenario == "delete-tests":
 elif scenario == "protect":
     path = root / "tests" / "test_task.py"
     path.write_text(path.read_text(encoding="utf-8") + "\n# touched\n", encoding="utf-8")
+elif scenario == "cheat-asserts":
+    for path in root.joinpath("tests").glob("test_*.py"):
+        lines = []
+        for line in path.read_text(encoding="utf-8").splitlines(True):
+            if "self.assert" in line and "assertTrue(True)" not in line:
+                indent = line[: len(line) - len(line.lstrip())]
+                lines.append(indent + "self.assertTrue(True)\n")
+            else:
+                lines.append(line)
+        path.write_text("".join(lines), encoding="utf-8")
 raise SystemExit(0)
 """
 
@@ -79,6 +118,10 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, json.dumps(payload).encode())
             return
         if self.path.startswith("/api/ps"):
+            code = getattr(self.server, "ps_code", 200)
+            if code != 200:
+                self._send(code, b'{"error":"ps"}')
+                return
             self._send(200, json.dumps({"models": self.server.ps}).encode())
             return
         if self.path.startswith("/v1/models"):
@@ -168,6 +211,7 @@ class EvalRunnerTests(unittest.TestCase):
         self.port = self.httpd.server_address[1]
         self.addCleanup(self.httpd.shutdown)
         self.addCleanup(self.httpd.server_close)
+        self.addCleanup(shutil.rmtree, self.tmp, True)
 
     def write_mem(self, available_gib, swap_free_gib, swap_total_gib):
         self.mem.write_text(
@@ -196,6 +240,8 @@ class EvalRunnerTests(unittest.TestCase):
                 "PYTHONDONTWRITEBYTECODE": "1",
             }
         )
+        if not BWRAP_OK:
+            env["PFY_LOCAL_BUILD_UNSAFE_NO_SANDBOX"] = "1"
         env.update(extra)
         return env
 
@@ -230,7 +276,11 @@ class EvalRunnerTests(unittest.TestCase):
         return proc
 
     def summary(self, proc):
-        self.assertIn("summary: ", proc.stdout + proc.stderr) if "SKIP:" in proc.stdout else None
+        blob = proc.stdout + proc.stderr
+        if "SKIP:" in proc.stdout:
+            self.assertIn("summary: ", blob)
+        else:
+            self.assertIn("summary=", blob)
         text = proc.stdout + "\n" + proc.stderr
         path = None
         for line in text.splitlines():
@@ -257,7 +307,7 @@ class EvalRunnerTests(unittest.TestCase):
 
     def test_do_nothing_is_zero_of_eight(self):
         proc = self.run_eval("noop")
-        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertEqual(proc.returncode, 1, proc.stdout + proc.stderr)
         data, _path = self.summary(proc)
         self.assertEqual(data["passed"], 0)
         self.assertEqual(data["failed"], 8)
@@ -265,28 +315,27 @@ class EvalRunnerTests(unittest.TestCase):
 
     def test_break_tests_is_zero_of_eight(self):
         proc = self.run_eval("break")
-        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertEqual(proc.returncode, 1, proc.stdout + proc.stderr)
         data, _path = self.summary(proc)
         self.assertEqual(data["passed"], 0)
         self.assertEqual(data["failed"], 8)
 
     def test_delete_tests_is_zero_and_the_reason_comes_from_the_receipt(self):
         proc = self.run_eval("delete-tests")
-        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertEqual(proc.returncode, 1, proc.stdout + proc.stderr)
         data, _path = self.summary(proc)
         self.assertEqual(data["passed"], 0)
         self.assertEqual(data["failed"], 8)
         by_id = {row["id"]: row for row in data["tasks"]}
         for task_id in ("t01-fix-off-by-one", "t04-fix-mutable-default", "t08-fix-unicode-strip"):
-            self.assertEqual(by_id[task_id]["reason"], "tests-regressed", task_id)
+            self.assertEqual(by_id[task_id]["reason"], "protected-path-changed", task_id)
             receipt = json.loads(Path(by_id[task_id]["receipt"]).read_text(encoding="utf-8"))
             self.assertEqual(receipt["status"], "FAIL")
-            self.assertEqual(receipt["reason"], "tests-regressed")
-            self.assertEqual(receipt["tests_after"]["exit"], 0)
+            self.assertEqual(receipt["reason"], "protected-path-changed")
 
     def test_protected_edits_fail_the_protected_tasks(self):
         proc = self.run_eval("protect")
-        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertEqual(proc.returncode, 1, proc.stdout + proc.stderr)
         data, _path = self.summary(proc)
         by_id = {row["id"]: row for row in data["tasks"]}
         for task_id in PROTECTED:
@@ -297,7 +346,7 @@ class EvalRunnerTests(unittest.TestCase):
         solved = ["t01-fix-off-by-one", "t02-add-function", "t03-rename-symbol", "t04-fix-mutable-default", "t05-add-cli-flag"]
         failed = ["t06-parse-duration", "t07-remove-dead-code", "t08-fix-unicode-strip"]
         proc = self.run_eval("solve", env_extra={"PFY_STUB_SOLVE_IDS": ",".join(solved)})
-        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertEqual(proc.returncode, 1, proc.stdout + proc.stderr)
         data, _path = self.summary(proc)
         self.assertEqual(data["passed"], 5)
         self.assertEqual(data["failed"], 3)
@@ -339,7 +388,7 @@ class EvalRunnerTests(unittest.TestCase):
     def test_low_memory_blocks_the_first_task_and_stops(self):
         self.write_mem(10, 0, 64)
         proc = self.run_eval("solve")
-        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertEqual(proc.returncode, 1, proc.stdout + proc.stderr)
         data, _path = self.summary(proc)
         self.assertEqual(len(data["tasks"]), 1)
         self.assertEqual(data["tasks"][0]["status"], "BLOCKED")
@@ -352,8 +401,8 @@ class EvalRunnerTests(unittest.TestCase):
     def test_a_second_run_writes_a_new_stamp(self):
         first = self.run_eval("noop", extra=["--limit", "1"])
         second = self.run_eval("noop", extra=["--limit", "1"])
-        self.assertEqual(first.returncode, 0, first.stdout + first.stderr)
-        self.assertEqual(second.returncode, 0, second.stdout + second.stderr)
+        self.assertEqual(first.returncode, 1, first.stdout + first.stderr)
+        self.assertEqual(second.returncode, 1, second.stdout + second.stderr)
         _data1, path1 = self.summary(first)
         _data2, path2 = self.summary(second)
         self.assertNotEqual(path1, path2)
@@ -369,6 +418,32 @@ class EvalRunnerTests(unittest.TestCase):
         data, _path = self.summary(up)
         self.assertEqual(data["passed"], 1)
         self.assertIsNone(data["skip"])
+
+    def test_every_task_has_a_real_protect_list(self):
+        self.assertEqual(len(TASKS), 8)
+        self.assertEqual(PROTECTED, {row["id"] for row in TASKS})
+        for row in TASKS:
+            self.assertIn("tests/*", row["protect"])
+
+    def test_cheat_asserts_scores_zero_on_t01_t04_t08(self):
+        proc = self.run_eval("cheat-asserts")
+        self.assertEqual(proc.returncode, 1, proc.stdout + proc.stderr)
+        data, _path = self.summary(proc)
+        self.assertEqual(data["passed"], 0)
+        self.assertEqual(data["failed"], 8)
+        by_id = {row["id"]: row for row in data["tasks"]}
+        for task_id in ("t01-fix-off-by-one", "t04-fix-mutable-default", "t08-fix-unicode-strip"):
+            self.assertEqual(by_id[task_id]["status"], "FAIL", task_id)
+            self.assertIn(by_id[task_id]["reason"], ("protected-path-changed", "tests-tampered"))
+
+    def test_ps_error_skips_closed(self):
+        self.httpd.ps_code = 500
+        proc = self.run_eval("solve", extra=["--limit", "1"])
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertIn("SKIP: busy-host unknown", proc.stdout)
+        data, _path = self.summary(proc)
+        self.assertEqual(data["skip"], "busy-host unknown")
+        self.assertEqual(data["tasks"], [])
 
 
 if __name__ == "__main__":

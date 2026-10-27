@@ -3,9 +3,13 @@
 
 Copies each fixture into a fresh git repo under <repo>/tmp/, runs the local
 build, then runs that task's check_cmd in the produced worktree. A task PASS
-needs a PASS receipt and a zero check_cmd. Exit 0 if the runner finished,
-including a low pass rate or a named skip. Exit 1 if the runner itself broke.
-Exit 2 when --require-live turns a skip into a hard stop.
+needs a PASS receipt and a zero check_cmd. Exit 0 when every scored task
+passed, or when the run is a named skip. Exit 1 when pass is below
+passed+failed+blocked, or when the runner itself broke. Exit 2 when
+--require-live turns a skip into a hard stop.
+
+PFY_LOCAL_BUILD_UNSAFE_NO_SANDBOX=1 forwards --unsafe-no-sandbox. That is the
+same opt-in as the build flag. Without it, a missing bwrap is BLOCKED.
 
 The only network is the configured loopback endpoint. A BLOCKED task stops
 the run. Later tasks are not-run. They are not failures and not passes.
@@ -134,6 +138,8 @@ def _preflight(model: str, endpoint: str) -> str | None:
     if free < EVAL_START_FLOOR_GB:
         return "mem-guard %.3f" % free
     names = BUILD._ps_names(root)
+    if names is None:
+        return "busy-host unknown"
     if names:
         others = [name for name in names if not BUILD._same_model(name, model)]
         if others:
@@ -211,6 +217,8 @@ def _one_task(task: dict, repo_dir: Path, endpoint: str, model: str, timeout: fl
         cmd.extend(["--protect", pattern])
     if unload:
         cmd.append("--unload-at-end")
+    if os.environ.get("PFY_LOCAL_BUILD_UNSAFE_NO_SANDBOX") == "1":
+        cmd.append("--unsafe-no-sandbox")
     proc = subprocess.run(cmd, cwd=repo_dir, text=True, capture_output=True, check=False)
     receipt_path = receipt_dir / "receipt.json"
     if not receipt_path.is_file():
@@ -352,10 +360,13 @@ def main(argv: list[str] | None = None) -> int:
                 break
         payload = _blank(stamp, model, endpoint, None, rows, not_run)
         _write_summary(summary_path, payload)
+        scored = payload["passed"] + payload["failed"] + payload["blocked"]
         print(
             "pass %s/%s rate=%s summary=%s"
-            % (payload["passed"], payload["passed"] + payload["failed"] + payload["blocked"], payload["pass_rate"], summary_path)
+            % (payload["passed"], scored, payload["pass_rate"], summary_path)
         )
+        if payload["passed"] < scored:
+            return 1
         return 0
     except Exception:
         traceback.print_exc()
