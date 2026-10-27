@@ -63,3 +63,79 @@ Choice: new commits on `bot/mvp-local-build`, then `git push origin HEAD:bot/mvp
 ## D15: Bridge timeout is the handshake only
 
 Choice: `create_connection(..., timeout=3)` then `settimeout(None)` before splicing. A regression test sleeps 4 seconds before the upstream writes a body. | Alternative: raise the timeout to a few minutes and leave it on the socket. | A model load sends no bytes for longer than 3 seconds. The first live rerun (`20261027T030049105086Z`) failed three tasks at about 83 seconds with `Cannot connect to API` and an empty `ollama ps`. After the clear, a sandboxed `opencode run` returned `pong`.
+
+# Fix round 2 (2026-10-27)
+
+Tester FAIL at `42fcc229`. Reviewer notes in `docs/ops/GATE-NOTES-fix2.md` are included. Same worktree and branch. No question was sent.
+
+## D16: One lead, same files
+
+Choice: implement blockers 1 through 6 in this worktree, serially. | Alternative: one subagent per blocker. | All six share `scripts/pfy_build_local.py` and `tests/test_pfy_build_local.py`. Parallel editors would collide. The launch forbids any other checkout.
+
+## D17: The test gate uses the agent profile with no Ollama bridge
+
+Choice: `tests_before`, `tests_after`, the repeat run, and the archive recheck call `prepare_sandbox(..., endpoint=None)`. That is `--unshare-net`, a read-only root, no push remote, and a scrubbed env. The agent still gets the loopback splice. | Alternative: a second, weaker profile for tests, or leave tests on the host. | GATE-NOTES R1 showed `src/__init__.py` writing the main checkout, creating a branch, pushing, and opening TCP during the gate. The receipt said `bwrap-unshare-net` while the tests were not in bwrap.
+
+## D18: Pid, ipc, and uts on every sandbox
+
+Choice: after `--unshare-net` or `--share-net`, always add `--unshare-pid`, `--unshare-ipc`, and `--unshare-uts`. `--die-with-parent` stays the second bwrap argument. `bwrap_works()` probes those flags. Liveness of a daemon is a heartbeat file inside the worktree, not `kill` of a namespace pid. `tearDown` SIGKILLs only processes whose cmdline contains that case's tmp path, and never pid 1. | Alternative: `killpg` only, or host-kill the pid printed inside the namespace. | `setsid` and a double fork survive `killpg`. A namespace pid is not a host pid. Signalling it can hit an unrelated host process.
+
+## D19: No summary is a failed gate
+
+Choice: `judge_tests` returns `tests-failed` when the command did not start, the exit is not 0, or either side has no counts. A higher skip, xfail, deselect, error, or failed count is `tests-failed`. A lower passed or ran count is `tests-regressed`. Unittest, a pytest summary line, and junit xml are the parsers. There is no `None` fallthrough on exit 0. | Alternative: keep treating an unknown runner as a pass. | That is how `os._exit(0)`, a conftest that exits 0, and `pytest -q` without a summary became PASS. Pytest is not installed for the default Python here. The deselect proof is `tools/fake_pytest.py` plus the parser. Nothing was apt-installed.
+
+## D20: Gate filenames are hashed wherever they appear
+
+Choice: hash `conftest.py`, `pytest.ini`, `tox.ini`, `setup.cfg`, `pyproject.toml`, `sitecustomize.py`, `usercustomize.py`, `.gitignore`, and `.gitattributes`, including files the agent creates. A change or a new file is `tests-tampered` after the count judge. | Alternative: hash only paths that existed before the run, or only the repo root. | A new `conftest.py` was outside `snapshot_tests`. Unittest does not load `conftest.py`, so the hash is what stops it. An eval task that also lists those names in `--protect` can still report `protected-path-changed` first. The product default has an empty protect list, so the hash is the gate that matters there.
+
+## D21: Force-add, then recheck the commit
+
+Choice: `git add -A -f` with path excludes for `tmp`, `__pycache__`, `*.pyc`, and `.pytest_cache`. The commit env is the scrubbed git env and does not carry the lockdown `GIT_CONFIG_*` values. Then `git archive` of that SHA is extracted under `<repo>/tmp/recheck-<sha12>` and the test command runs in the sandbox against `tests_before`. On failure, `git reset --hard HEAD~1` runs before the `local/<slug>-<stamp>` branch is created, and the reason is `commit-recheck-failed`. An interrupt during the recheck rolls back to `interrupted`. | Alternative: `git add -A` without `-f`, or trust the worktree tests. | A helper listed in `.gitignore` is skipped by `git add -A`. Removing `-f` on this box failed `test_ignored_helper_is_in_the_commit` with `commit-failed` (exit 1), not a silent PASS. The force add is what puts `src/helper.py` in the commit. The archive recheck is the second gate. Do not use `/tmp` for the recheck tree.
+
+## D22: Rehash immediately before git add
+
+Choice: take `tree_digest` right after the flaky judge, return if the agent had already timed out, then take a second digest. A mismatch is `worktree-changed-after-gate`. The digest ignores `tmp`, `.git`, `__pycache__`, `.pytest_cache`, names ending in `.home`, `*.pyc`, `*.pyo`, and paths under `tmp/`. | Alternative: only the namespace, or only a late test run. | The two hashes sit next to each other on purpose. `test_setsid_daemon_cannot_rewrite_after_the_gate` proves the namespace dies (the run finishes in under 20 seconds and the committed blob is the fix). A mutant that deletes only the second hash and keeps `--unshare-pid` still passes that test. Say that in the handoff.
+
+## D23: Runtime dir reasons, and a short worktree socket only when XDG is unset
+
+Choice: if `XDG_RUNTIME_DIR` is set and the path is under `/tmp` or `/var/tmp`, reason `runtime-dir-in-tmp`. If it is set but missing or not writable, reason `no-runtime-dir`, with no fallback. The same checks apply to `/run/user/$UID` when XDG is unset. The direct socket `worktree/tmp/ollama.sock` is used only when that fallback reason is `no-runtime-dir`, XDG is empty, and the path is shorter than 108 bytes. Otherwise a too-long symlink path is reason `socket-path`. | Alternative: always fall back to the worktree socket, or accept a runtime dir under `/tmp`. | The sandbox tmpfs-hides `/tmp`, so a socket there does not reach the host listener. An explicit bad XDG must not silently change paths. A typical fixture worktree socket is 109 bytes and must stay `no-runtime-dir`. The successful fallback test uses a short tree `tmp/s/w` (73 bytes). This box has `/run/user/1000`, so production runs still use the short symlink.
+
+## D24: Resolve the test command on the host
+
+Choice: if `argv[0]` is not an executable file and is not on `PATH`, record `started=False` before bwrap. | Alternative: let bwrap report the missing binary. | bwrap hides `FileNotFoundError`, so the reason became `tests-failed` instead of `test-cmd-failed-to-start`.
+
+## D25: Reap writes the pid file's receipt dir
+
+Choice: when the recorded pid is dead and `receipt_dir` has no `receipt.json`, write `ABORTED` / `no-receipt` there (create the directory if needed), then scan `pipelines/dogfood/build-local/`. | Alternative: scan only the default tree. | `test_sigkill_of_pfy_kills_the_sandbox_and_reap_writes_aborted` uses a receipt dir outside that tree.
+
+## D26: R1 is closed by an `__init__.py` payload
+
+Choice: the sandbox probe writes the side effect in `src/__init__.py` (TCP to the test listener and to `1.1.1.1:53`, write into a scratch main, `git push`, and branch `pwned`) and fixes `src/calc.py` so the tests can pass. The scratch main is under the test tmp, not `~/DEVELOP/pfy-mentat`. | Alternative: put the payload only in `calc.py`, or list R1 as a known gap. | GATE-NOTES says the side effect must be in `src/__init__.py` and must not be listed as a gap.
+
+## D27: Assertion monkeypatch stays a gap
+
+Choice: document that production code can still patch `unittest.TestCase` or `TestResult` from `src`. Close `os._exit(0)` and a new `sitecustomize.py`. Do not add `-I` or `-S` in this round. | Alternative: run the gate under `python -I -S` and a pristine copy of the tests. | That changes the default test command and can break imports. The drop-in says do what is cheap and document the rest.
+
+## D28: Unsafe mode warns, and it also unsandboxes the gate
+
+Choice: print `WARN: --unsafe-no-sandbox is on and bwrap is not usable, so this run is not sandboxed` once, only when the flag is set and `bwrap_works()` is false. A working bwrap still sandboxes the agent and the gate. Document that the flag also leaves `run_tests` unsandboxed. | Alternative: make the flag a no-op for the gate, or warn on every run. | The flag's meaning is "proceed without a sandbox when bwrap is missing". Hiding that the gate follows it would be a new hole. Tests that need bwrap already skip with a reason when it is unusable. `command()` adds the flag only when the test process's own `bwrap_works()` is false.
+
+## D29: Redact the extra secret shapes
+
+Choice: PEM blocks become `[redacted-private-key]` before the other substitutions. `PASSWD` joins the assignment pattern. `Authorization: Basic` and `AKIA` plus 16 alphanumerics are masked like the existing key pattern (length 4 or less becomes `***`, otherwise the first 4 characters plus `***`). | Alternative: drop the whole line. | The existing receipt tests assert the masked form.
+
+## D30: Wait for both pid files before SIGTERM
+
+Choice: `test_sigterm_interrupts_and_releases_the_lock` polls for `orphan-child.pid`, `orphan-parent.pid`, and both heartbeats, then sends SIGTERM. The same wait is used by the other orphan scenarios. | Alternative: sleep a fixed second. | Ubuntu CI failed because the marker arrives before the stub writes the pid file. A local mutant that signalled as soon as the marker appeared still passed here in 2.347 s: the stub won the race on this box. The red evidence is that CI quote plus the waiter. The waiter stays.
+
+## D31: Do not rewrite the pre-existing suite failures
+
+Choice: document them. Python 3.14.4: 916 tests, 612.110 s, failures=1, skipped=16. The failure is `test_relative_outdir_log_path_safe` because `TMPDIR` is `$PWD/tmp/scratch`, inside the repo. Python 3.12.12: 916 tests, 538.420 s, failures=21, skipped=16. Twenty are `tests.test_harness2_local_sandbox` (`FileNotFoundError` on the uv interpreter path, which lives under the home that sandbox hides). The twenty-first is the same outdir case. Python 3.13 is absent. Hedge and lab_stage did not fail (Ollama was up). The local module was 61 tests, OK, 70.965 s. The stub cheater is `EvalRunnerTests.test_cheat_asserts_scores_zero_on_t01_t04_t08` (the class is not `EvalTests`): 1 test, OK, 2.733 s, score 0. | Alternative: point `TMPDIR` at `/tmp`, or edit `tests/test_local_bench.py` and the harness sandbox. | `/tmp` is forbidden. Those failures are not in the fix-2 diff.
+
+## D33: Quote only this run's 8/8
+
+Choice: the fix-2 rate is stamp `20261027T070700973123Z`, eval exit 0, 8/8, 617.949 s, mean 77.244 s, `bwrap-unshare-net` on every task, context 262144 while loaded. t08 `unloaded` is true. | Alternative: reuse the fix-1 stamp `20261027T031008578576Z`. | That run did not have the pid namespace or the sandboxed gate.
+
+## D32: Two small edits after the 61-test run
+
+Choice: if the socket link is `None` (the direct-socket fallback), do not call `unlink` on it when `bind` fails. The module docstring says reap also writes the pid file's receipt dir. | Alternative: leave the `AttributeError` on that rare path. | The long-path test never takes the direct socket, so the bug was not hit. These two lines were not in the 61-test run. Re-run the runtime-dir and socket tests after the live eval, before the commit.

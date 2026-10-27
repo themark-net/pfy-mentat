@@ -151,3 +151,16 @@ Exit check 2026-10-26T07:39:19Z:
 - Offline stub cheater scores 0 (`test_cheat_asserts_scores_zero_on_t01_t04_t08`).
 - Decisions: `docs/ops/AUTONOMOUS-DECISIONS-2026-10-26.md`. Summary: `eval/local-build/live-20261027T031008578576Z.md`. Raw receipts gitignored.
 - Push: `git push origin HEAD:bot/mvp-local-build`. Not main.
+
+## Fix round 2 (Tester FAIL at 42fcc229)
+
+Overview: Close the six gate blockers from docs/build-dropins/pfy-local-build-mvp-fix2.md on bot/mvp-local-build. New commits only. No rebase, no force-push, no PR, no merge to main, no /tmp, no em dashes.
+
+Phases:
+- gate-judge | scripts/pfy_build_local.py, tests/test_pfy_build_local.py | pytest and junit counts, unknown runner is FAIL, new gate files are tests-tampered, os._exit(0) is FAIL | none | lead
+- gate-sandbox | same files | tests_before, tests_after, and the repeat run use the bwrap profile; unshare pid, ipc, uts; rehash before add; git add -A -f; fresh-tree recheck | gate-judge | lead
+- proofs | same files plus docs/ops | red mutants, full suite, live 8/8, handoff, push | gate-sandbox | lead
+
+Risks: the blockers share one runner, so parallel editors would collide. The lead implements them in order. A namespace pid must not be signalled on the host. Pytest is not installed here, so the deselect proof is a pytest-format command plus the parser.
+
+state: DONE | local module 61 OK in 70.965 s, then the runtime-dir and socket tests re-run after the unlink guard | py3.14 916 tests, 1 known outdir failure, 612.110 s | py3.12 916 tests, 21 known failures, 538.420 s | cheat score 0 in 2.733 s | live stamp 20261027T070700973123Z exit 0, 8/8, 617.949 s, bwrap-unshare-net, context 262144, t08 unloaded true | gh present, not authenticated, eval-structural is for the caller | push origin HEAD:bot/mvp-local-build | err: none

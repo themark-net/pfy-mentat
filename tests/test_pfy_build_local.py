@@ -37,6 +37,7 @@ STUB = r"""#!/usr/bin/env python3
 import json
 import os
 import signal
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -93,6 +94,14 @@ def _pid(name, pid):
     target = external if name == "orphan-child.pid" else external + ".parent"
     _mark(Path(target), str(pid))
 
+def _beat(name):
+    _mark(root / "tmp" / name, str(time.time()))
+
+def _loop(name):
+    while True:
+        _beat(name)
+        time.sleep(0.2)
+
 scenario = os.environ.get("PFY_LOCAL_BUILD_SCENARIO", "noop")
 if scenario == "hang":
     signal.signal(signal.SIGTERM, signal.SIG_IGN)
@@ -100,19 +109,16 @@ if scenario == "hang":
     if pid == 0:
         signal.signal(signal.SIGTERM, signal.SIG_IGN)
         _pid("orphan-child.pid", os.getpid())
-        while True:
-            time.sleep(0.2)
+        _loop("orphan-child.heartbeat")
     _pid("orphan-parent.pid", os.getpid())
-    while True:
-        time.sleep(0.2)
+    _loop("orphan-parent.heartbeat")
 if scenario == "orphan-ignore-child":
     pid = os.fork()
     if pid == 0:
         signal.signal(signal.SIGTERM, signal.SIG_IGN)
         _pid("orphan.pid", os.getpid())
         _mark(root / "tmp" / "orphan.ready", "1\n")
-        while True:
-            time.sleep(0.2)
+        _loop("orphan.heartbeat")
     _wait_ready(root / "tmp" / "orphan.ready")
     raise SystemExit(0)
 if scenario == "orphan-background":
@@ -120,8 +126,7 @@ if scenario == "orphan-background":
     if pid == 0:
         _pid("orphan.pid", os.getpid())
         _mark(root / "tmp" / "orphan.ready", "1\n")
-        while True:
-            time.sleep(0.2)
+        _loop("orphan.heartbeat")
     _wait_ready(root / "tmp" / "orphan.ready")
     raise SystemExit(0)
 if scenario == "orphan-grandchild":
@@ -132,8 +137,7 @@ if scenario == "orphan-grandchild":
             signal.signal(signal.SIGTERM, signal.SIG_IGN)
             _pid("orphan.pid", os.getpid())
             _mark(root / "tmp" / "orphan.ready", "1\n")
-            while True:
-                time.sleep(0.2)
+            _loop("orphan.heartbeat")
         os._exit(0)
     _wait_ready(root / "tmp" / "orphan.ready")
     raise SystemExit(0)
@@ -169,6 +173,79 @@ elif scenario == "dotfile":
         calc.write_text(calc.read_text(encoding="utf-8").replace("return a + b + 1", "return a + b"), encoding="utf-8")
     if ci.exists():
         ci.write_text(ci.read_text(encoding="utf-8") + "# touched\n", encoding="utf-8")
+elif scenario == "exit-zero" and calc.exists():
+    calc.write_text("import os\nos._exit(0)\n", encoding="utf-8")
+elif scenario == "conftest-exit" and calc.exists():
+    calc.write_text(calc.read_text(encoding="utf-8").replace("return a + b + 1", "return a + b"), encoding="utf-8")
+    (root / "conftest.py").write_text("import os\nos._exit(0)\n", encoding="utf-8")
+elif scenario == "pytest-deselect":
+    (root / "pytest.ini").write_text("[pytest]\naddopts = --deselect tests/test_calc.py\n", encoding="utf-8")
+elif scenario == "ignore-star" and calc.exists():
+    calc.write_text("from src.helper import add_impl\ndef add(a, b):\n    return add_impl(a, b)\n", encoding="utf-8")
+    (root / "src" / "helper.py").write_text("def add_impl(a, b):\n    return a + b\n", encoding="utf-8")
+    (root / ".gitignore").write_text("*\n", encoding="utf-8")
+elif scenario == "ignored-helper" and calc.exists():
+    calc.write_text("from src.helper import add_impl\ndef add(a, b):\n    return add_impl(a, b)\n", encoding="utf-8")
+    (root / "src" / "helper.py").write_text("def add_impl(a, b):\n    return a + b\n", encoding="utf-8")
+elif scenario == "sandbox-attack" and calc.exists():
+    target = os.environ.get("PFY_STUB_ATTACK_FILE") or ""
+    port = os.environ.get("PFY_STUB_ATTACK_PORT") or "9"
+    bare = os.environ.get("PFY_STUB_ATTACK_BARE") or ""
+    repo_path = os.environ.get("PFY_STUB_ATTACK_REPO") or ""
+    (root / "src" / "__init__.py").write_text(
+        "import socket, subprocess\n"
+        "notes = []\n"
+        "try:\n"
+        "    s = socket.create_connection(('127.0.0.1', %s), 2)\n"
+        "    s.close()\n"
+        "    notes.append('tcp=ok')\n"
+        "except Exception:\n"
+        "    notes.append('tcp=fail')\n"
+        "try:\n"
+        "    s = socket.create_connection(('1.1.1.1', 53), 2)\n"
+        "    s.close()\n"
+        "    notes.append('ext=ok')\n"
+        "except Exception:\n"
+        "    notes.append('ext=fail')\n"
+        "try:\n"
+        "    open(%r, 'w').write('PWNED\\n')\n"
+        "    notes.append('write=ok')\n"
+        "except Exception:\n"
+        "    notes.append('write=fail')\n"
+        "try:\n"
+        "    proc = subprocess.run(['git','-c','remote.origin.url=%s','-c','remote.origin.pushurl=%s','push','origin','HEAD'], timeout=5)\n"
+        "    notes.append('push=ok' if proc.returncode == 0 else 'push=fail')\n"
+        "except Exception:\n"
+        "    notes.append('push=fail')\n"
+        "try:\n"
+        "    proc = subprocess.run(['git','-C',%r,'branch','pwned'], timeout=5)\n"
+        "    notes.append('branch=ok' if proc.returncode == 0 else 'branch=fail')\n"
+        "except Exception:\n"
+        "    notes.append('branch=fail')\n"
+        "try:\n"
+        "    open('tmp/attack-result.txt','w').write('\\n'.join(notes) + '\\n')\n"
+        "except Exception:\n"
+        "    pass\n" % (port, target, bare, bare, repo_path),
+        encoding="utf-8",
+    )
+    calc.write_text("def add(a, b):\n    return a + b\n", encoding="utf-8")
+elif scenario == "late-rewrite" and calc.exists():
+    calc.write_text(calc.read_text(encoding="utf-8").replace("return a + b + 1", "return a + b"), encoding="utf-8")
+    pid = os.fork()
+    if pid == 0:
+        os.setsid()
+        grand = os.fork()
+        if grand == 0:
+            started = time.time()
+            while True:
+                _beat("daemon.heartbeat")
+                if time.time() - started >= 24:
+                    calc.write_text("def add(a, b):\n    return 0\n", encoding="utf-8")
+                    _mark(root / "tmp" / "daemon-rewrote", "1\n")
+                    os._exit(0)
+                time.sleep(0.2)
+        os._exit(0)
+    _wait_ready(root / "tmp" / "daemon.heartbeat")
 raise SystemExit(0)
 """
 
@@ -345,14 +422,22 @@ class LocalBuildTests(unittest.TestCase):
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def _kill_noted_orphans(self):
-        if not self.repo.exists():
+        # A pid written inside the sandbox is a namespace pid. Signalling that
+        # number on the host can hit an unrelated process. Match the cmdline.
+        if not self.tmp.exists():
             return
-        for path in self.repo.glob("tmp/local-build-*/tmp/orphan*.pid"):
-            try:
-                pid = int(path.read_text(encoding="utf-8").strip())
-            except (OSError, ValueError):
+        needle = str(self.tmp).encode()
+        for entry in Path("/proc").iterdir():
+            if not entry.name.isdigit():
                 continue
-            if pid > 1 and not _dead(pid):
+            pid = int(entry.name)
+            if pid <= 1 or pid == os.getpid():
+                continue
+            try:
+                cmd = (entry / "cmdline").read_bytes()
+            except OSError:
+                continue
+            if needle in cmd:
                 try:
                     os.kill(pid, signal.SIGKILL)
                 except OSError:
@@ -465,6 +550,36 @@ class LocalBuildTests(unittest.TestCase):
         self.assertTrue(found, name)
         return int(found[0].read_text(encoding="utf-8").strip())
 
+    def wait_worktree_file(self, name, seconds=10):
+        deadline = time.monotonic() + seconds
+        while time.monotonic() < deadline:
+            found = list(self.repo.glob("tmp/local-build-*/tmp/%s" % name))
+            if found and found[0].is_file() and found[0].stat().st_size > 0:
+                return found[0]
+            time.sleep(0.05)
+        return None
+
+    def assert_quiet(self, path, pause=0.8):
+        self.assertIsNotNone(path)
+        first = path.read_text(encoding="utf-8")
+        time.sleep(pause)
+        second = path.read_text(encoding="utf-8")
+        self.assertEqual(first, second, path)
+
+    def commit_base(self, message="base update"):
+        subprocess.check_call(["git", "-C", str(self.repo), "add", "-A"], stdout=subprocess.DEVNULL)
+        subprocess.check_call(
+            ["git", "-C", str(self.repo), "commit", "-m", message],
+            stdout=subprocess.DEVNULL,
+        )
+        subprocess.check_call(
+            ["git", "-C", str(self.repo), "push", "origin", "HEAD:main"],
+            stdout=subprocess.DEVNULL,
+        )
+        self.head0 = _git(self.repo, "rev-parse", "HEAD").strip()
+        self.status0 = _git(self.repo, "status", "--porcelain")
+        self.refs0 = subprocess.check_output(["git", "ls-remote", str(self.bare)], text=True)
+
     def stub_report(self, receipt_dir):
         log = (receipt_dir / "agent.log").read_text(encoding="utf-8")
         for line in log.splitlines():
@@ -567,10 +682,10 @@ class LocalBuildTests(unittest.TestCase):
         self.assertEqual(data["status"], "TIMEOUT")
         self.assertEqual(data["reason"], "timeout")
         self.assertEqual(_unloads(self.httpd), 1)
-        child = self.worktree_pid("orphan-child.pid")
-        parent = self.worktree_pid("orphan-parent.pid")
-        self.assertTrue(_dead(child))
-        self.assertTrue(_dead(parent))
+        child = self.wait_worktree_file("orphan-child.heartbeat", seconds=2)
+        parent = self.wait_worktree_file("orphan-parent.heartbeat", seconds=2)
+        self.assert_quiet(child)
+        self.assert_quiet(parent)
 
     def test_sigterm_interrupts_and_releases_the_lock(self):
         cmd, receipt = self.command("hang", extra=["--timeout", "30"])
@@ -584,6 +699,14 @@ class LocalBuildTests(unittest.TestCase):
             start_new_session=True,
         )
         self.assertTrue(self.wait_started(proc), "agent did not start")
+        # The started marker is written before the child pid file. Wait for
+        # the pid file itself so SIGTERM cannot land in that gap.
+        self.assertIsNotNone(self.wait_worktree_file("orphan-child.pid"), "orphan-child.pid")
+        self.assertIsNotNone(self.wait_worktree_file("orphan-parent.pid"), "orphan-parent.pid")
+        child_beat = self.wait_worktree_file("orphan-child.heartbeat")
+        parent_beat = self.wait_worktree_file("orphan-parent.heartbeat")
+        self.assertIsNotNone(child_beat, "orphan-child.heartbeat")
+        self.assertIsNotNone(parent_beat, "orphan-parent.heartbeat")
         os.kill(proc.pid, signal.SIGTERM)
         try:
             out, err = proc.communicate(timeout=20)
@@ -595,10 +718,8 @@ class LocalBuildTests(unittest.TestCase):
         data = self.receipt(subprocess.CompletedProcess(cmd, proc.returncode, out, err), receipt)
         self.assertEqual(data["reason"], "interrupted")
         self.assertIsNone(data["commit"])
-        child = self.worktree_pid("orphan-child.pid")
-        parent = self.worktree_pid("orphan-parent.pid")
-        self.assertTrue(_dead(child))
-        self.assertTrue(_dead(parent))
+        self.assert_quiet(child_beat)
+        self.assert_quiet(parent_beat)
         lock = open(self.repo / "tmp" / "local-build.lock", "a+", encoding="utf-8")
         try:
             import fcntl
@@ -911,8 +1032,8 @@ class LocalBuildTests(unittest.TestCase):
         data = self.assert_no_commit(proc, receipt)
         self.assertEqual(data["reason"], "no-change")
         self.assertLess(data["agent_seconds"], limit)
-        pid = self.worktree_pid("orphan.pid")
-        self.assertTrue(_dead(pid), scenario)
+        beat = self.wait_worktree_file("orphan.heartbeat", seconds=2)
+        self.assert_quiet(beat)
         return data
 
     def test_orphan_ignore_child_is_reaped(self):
@@ -1060,6 +1181,7 @@ class LocalBuildTests(unittest.TestCase):
         data2 = self.receipt(proc2, receipt2)
         self.assertEqual(data2["sandbox"], "unsafe-no-sandbox")
         self.assertEqual(data2["reason"], "no-change")
+        self.assertIn("not sandboxed", proc2.stderr or "")
 
     def test_unsafe_flag_does_not_disable_a_working_bwrap(self):
         if not BUILD.bwrap_works():
@@ -1067,6 +1189,213 @@ class LocalBuildTests(unittest.TestCase):
         proc, receipt = self.run_build("noop", extra=["--unsafe-no-sandbox"])
         data = self.receipt(proc, receipt)
         self.assertTrue(str(data["sandbox"]).startswith("bwrap"), data["sandbox"])
+
+    def test_os_exit_in_src_is_not_a_pass(self):
+        proc, receipt = self.run_build("exit-zero")
+        self.assertEqual(proc.returncode, 1, proc.stdout + proc.stderr)
+        data = self.assert_no_commit(proc, receipt)
+        self.assertEqual(data["reason"], "tests-failed")
+
+    def test_new_conftest_does_not_commit(self):
+        proc, receipt = self.run_build("conftest-exit")
+        self.assertEqual(proc.returncode, 1, proc.stdout + proc.stderr)
+        data = self.assert_no_commit(proc, receipt)
+        self.assertEqual(data["reason"], "tests-tampered")
+
+    def test_pytest_deselect_is_not_a_pass(self):
+        tools = self.repo / "tools"
+        tools.mkdir()
+        (tools / "fake_pytest.py").write_text(
+            "import sys\n"
+            "from pathlib import Path\n"
+            "root = Path(__file__).resolve().parents[1]\n"
+            "sys.path.insert(0, str(root))\n"
+            "ini = root / 'pytest.ini'\n"
+            "text = ini.read_text(encoding='utf-8') if ini.is_file() else ''\n"
+            "if '--deselect' in text:\n"
+            "    print('1 deselected, 1 passed in 0.01s')\n"
+            "    raise SystemExit(0)\n"
+            "from src.calc import add\n"
+            "failed = 1 if add(1, 1) != 2 else 0\n"
+            "if failed:\n"
+            "    print('1 failed, 1 passed in 0.01s')\n"
+            "    raise SystemExit(1)\n"
+            "print('2 passed in 0.01s')\n",
+            encoding="utf-8",
+        )
+        self.commit_base("add a pytest-summary command")
+        proc, receipt = self.run_build(
+            "pytest-deselect",
+            extra=["--test-cmd", "python3 tools/fake_pytest.py"],
+        )
+        self.assertEqual(proc.returncode, 1, proc.stdout + proc.stderr)
+        data = self.assert_no_commit(proc, receipt)
+        self.assertEqual(data["reason"], "tests-failed")
+
+    def test_gitignore_star_does_not_commit(self):
+        proc, receipt = self.run_build("ignore-star")
+        self.assertEqual(proc.returncode, 1, proc.stdout + proc.stderr)
+        data = self.assert_no_commit(proc, receipt)
+        self.assertEqual(data["reason"], "tests-tampered")
+
+    def test_ignored_helper_is_in_the_commit(self):
+        ignore = self.repo / ".gitignore"
+        ignore.write_text(ignore.read_text(encoding="utf-8") + "helper.py\n", encoding="utf-8")
+        self.commit_base("ignore helper.py")
+        proc, receipt = self.run_build("ignored-helper")
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        data = self.receipt(proc, receipt)
+        self.assertEqual(data["status"], "PASS")
+        shown = _git(self.repo, "show", "%s:src/helper.py" % data["commit"])
+        self.assertIn("def add_impl", shown)
+        calc = _git(self.repo, "show", "%s:src/calc.py" % data["commit"])
+        self.assertIn("add_impl", calc)
+
+    def test_sandboxed_tests_block_push_write_and_tcp(self):
+        if not BUILD.bwrap_works():
+            self.skipTest("SKIP: bwrap-missing; confinement was not demonstrated")
+        main = self.tmp / "main-checkout"
+        main.mkdir()
+        secret = main / "secret.txt"
+        secret.write_text("SECRET\n", encoding="utf-8")
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.bind(("127.0.0.1", 0))
+        sock.listen(1)
+        port = sock.getsockname()[1]
+        accepted = []
+
+        def _accept():
+            sock.settimeout(1)
+            deadline = time.monotonic() + 45
+            while time.monotonic() < deadline:
+                try:
+                    conn, _addr = sock.accept()
+                except socket.timeout:
+                    continue
+                except OSError:
+                    return
+                accepted.append(1)
+                conn.close()
+
+        thread = threading.Thread(target=_accept, daemon=True)
+        thread.start()
+        self.addCleanup(sock.close)
+        proc, receipt = self.run_build(
+            "sandbox-attack",
+            extra=["--keep-worktree"],
+            env_extra={
+                "PFY_STUB_ATTACK_FILE": str(secret),
+                "PFY_STUB_ATTACK_PORT": str(port),
+                "PFY_STUB_ATTACK_BARE": str(self.bare),
+                "PFY_STUB_ATTACK_REPO": str(self.repo),
+            },
+            timeout=90,
+        )
+        sock.close()
+        thread.join(timeout=2)
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        data = self.receipt(proc, receipt)
+        self.assertEqual(data["status"], "PASS")
+        self.assertEqual(data["tests_after"]["exit"], 0)
+        self.assertEqual(secret.read_text(encoding="utf-8"), "SECRET\n")
+        self.assertEqual(accepted, [])
+        bare = subprocess.check_output(
+            ["git", "--git-dir", str(self.bare), "rev-parse", "refs/heads/main"],
+            text=True,
+        ).strip()
+        self.assertEqual(bare, self.refs0.split()[0] if self.refs0.strip() else bare)
+        self.assertEqual(
+            subprocess.check_output(["git", "ls-remote", str(self.bare)], text=True),
+            self.refs0,
+        )
+        self.assertNotIn("pwned", _git(self.repo, "branch", "--list"))
+        result = (Path(data["worktree"]) / "tmp" / "attack-result.txt").read_text(encoding="utf-8")
+        self.assertIn("tcp=fail", result)
+        self.assertIn("ext=fail", result)
+        self.assertIn("write=fail", result)
+        self.assertIn("push=fail", result)
+        self.assertIn("branch=fail", result)
+
+    def test_setsid_daemon_cannot_rewrite_after_the_gate(self):
+        if not BUILD.bwrap_works():
+            self.skipTest("SKIP: bwrap-missing; confinement was not demonstrated")
+        started = time.monotonic()
+        proc, receipt = self.run_build("late-rewrite", extra=["--keep-worktree"], timeout=40)
+        elapsed = time.monotonic() - started
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertLess(elapsed, 20, proc.stdout + proc.stderr)
+        data = self.receipt(proc, receipt)
+        self.assertEqual(data["status"], "PASS")
+        shown = _git(self.repo, "show", "%s:src/calc.py" % data["commit"])
+        self.assertIn("return a + b\n", shown)
+        self.assertNotIn("return 0", shown)
+        work = Path(data["worktree"])
+        beat = work / "tmp" / "daemon.heartbeat"
+        self.assertTrue(beat.is_file(), proc.stdout + proc.stderr)
+        self.assert_quiet(beat)
+        self.assertFalse((work / "tmp" / "daemon-rewrote").exists())
+        self.assertIn("return a + b", (work / "src" / "calc.py").read_text(encoding="utf-8"))
+
+    def test_sigkill_of_pfy_kills_the_sandbox_and_reap_writes_aborted(self):
+        if not BUILD.bwrap_works():
+            self.skipTest("SKIP: bwrap-missing; confinement was not demonstrated")
+        receipt = self.tmp / "custom-receipt"
+        cmd, _ignored = self.command("hang", extra=["--timeout", "60", "--receipt-dir", str(receipt)])
+        proc = subprocess.Popen(
+            cmd,
+            cwd=self.repo,
+            env=self.env("hang"),
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            start_new_session=True,
+        )
+        beat = None
+        try:
+            deadline = time.monotonic() + 25
+            while time.monotonic() < deadline and beat is None:
+                if proc.poll() is not None:
+                    break
+                beat = self.wait_worktree_file("orphan-child.heartbeat", seconds=0.3)
+            out = err = ""
+            self.assertIsNotNone(beat, "sandbox child did not heartbeat")
+            os.kill(proc.pid, signal.SIGKILL)
+            proc.wait(timeout=5)
+            self.assert_quiet(beat)
+        finally:
+            if proc.poll() is None:
+                os.kill(proc.pid, signal.SIGKILL)
+                proc.wait(timeout=5)
+        reap = subprocess.run(
+            [str(ROOT / "pfy"), "build", "--local", "--reap", "--repo", str(self.repo)],
+            cwd=self.repo,
+            env=self.env("noop"),
+            text=True,
+            capture_output=True,
+            timeout=20,
+        )
+        self.assertEqual(reap.returncode, 0, reap.stdout + reap.stderr)
+        aborted = json.loads((receipt / "receipt.json").read_text(encoding="utf-8"))
+        self.assertEqual(aborted["status"], "ABORTED")
+        self.assertEqual(aborted["reason"], "no-receipt")
+
+    def test_missing_runtime_dir_is_not_reported_as_missing_bwrap(self):
+        missing = self.tmp / "no-such-runtime"
+        proc, receipt = self.run_build("fix", env_extra={"XDG_RUNTIME_DIR": str(missing)})
+        self.assertEqual(proc.returncode, 4, proc.stdout + proc.stderr)
+        data = self.receipt(proc, receipt)
+        self.assertEqual(data["reason"], "no-runtime-dir")
+        self.assertNotIn("no-sandbox", data["reason"])
+        self.assert_agent_did_not_start()
+        self.assertIn("runtime dir", (proc.stderr or "").lower())
+
+    def test_runtime_dir_under_system_tmp_is_blocked(self):
+        proc, receipt = self.run_build("fix", env_extra={"XDG_RUNTIME_DIR": "/tmp"})
+        self.assertEqual(proc.returncode, 4, proc.stdout + proc.stderr)
+        data = self.receipt(proc, receipt)
+        self.assertEqual(data["reason"], "runtime-dir-in-tmp")
+        self.assert_agent_did_not_start()
+        self.assertIn("/tmp", proc.stderr or "")
 
 
 class CloudBuildUnchangedTests(unittest.TestCase):
@@ -1134,6 +1463,17 @@ class GateTests(unittest.TestCase):
         masked = BUILD.redact("password: x")
         self.assertEqual(masked, "password:***")
         self.assertNotIn("x", masked.split(":", 1)[-1])
+        passwd = BUILD.redact("passwd=hunter2")
+        self.assertNotIn("hunter2", passwd)
+        basic = BUILD.redact("Authorization: Basic dXNlcjpwYXNzMTIz")
+        self.assertNotIn("dXNlcjpwYXNzMTIz", basic)
+        self.assertIn("Basic", basic)
+        akia = BUILD.redact("key AKIAIOSFODNN7EXAMPLE end")
+        self.assertNotIn("AKIAIOSFODNN7EXAMPLE", akia)
+        pem = "-----BEGIN RSA PRIVATE KEY-----\nMIIBogIBAAJB\n-----END RSA PRIVATE KEY-----"
+        hidden = BUILD.redact(pem)
+        self.assertNotIn("MIIBogIBAAJB", hidden)
+        self.assertIn("redacted-private-key", hidden)
 
     def test_protected_matches_dot_directories_and_dot_slash(self):
         self.assertTrue(BUILD._protected(".github/workflows/ci.yml", [".github/*"]))
@@ -1159,6 +1499,83 @@ class GateTests(unittest.TestCase):
             "counts": {"ran": 2, "failed": 0, "errors": 0, "skipped": 0, "xfailed": 1, "passed": 1},
         }
         self.assertEqual(BUILD.judge_tests(before, xfailed), "tests-failed")
+
+    def test_exit_without_a_summary_and_pytest_counts_fail_closed(self):
+        before = {
+            "started": True,
+            "exit": 1,
+            "counts": {
+                "ran": 2,
+                "passed": 1,
+                "failed": 1,
+                "errors": 0,
+                "skipped": 0,
+                "xfailed": 0,
+                "deselected": 0,
+            },
+        }
+        quiet = {"started": True, "exit": 0, "counts": None}
+        self.assertEqual(BUILD.judge_tests(before, quiet), "tests-failed")
+        deselected = {
+            "started": True,
+            "exit": 0,
+            "counts": {
+                "ran": 1,
+                "passed": 1,
+                "failed": 0,
+                "errors": 0,
+                "skipped": 0,
+                "xfailed": 0,
+                "deselected": 1,
+            },
+        }
+        self.assertEqual(BUILD.judge_tests(before, deselected), "tests-failed")
+        failed = BUILD.parse_test_counts("1 failed, 1 passed in 0.02s\n")
+        self.assertEqual(failed["failed"], 1)
+        self.assertEqual(failed["passed"], 1)
+        summary = BUILD.parse_test_counts("===== 1 deselected, 1 passed in 0.01s =====\n")
+        self.assertEqual(summary["deselected"], 1)
+        self.assertEqual(summary["passed"], 1)
+        xml = BUILD.parse_test_counts(
+            '<testsuite name="pytest" tests="2" failures="0" errors="0" skipped="1"></testsuite>\n'
+        )
+        self.assertEqual(xml["skipped"], 1)
+        self.assertEqual(xml["passed"], 1)
+        uni = BUILD.parse_test_counts("Ran 2 tests in 0.01s\nOK\n")
+        self.assertEqual(uni["ran"], 2)
+        self.assertEqual(uni["passed"], 2)
+        self.assertEqual(uni["deselected"], 0)
+
+    def test_new_gate_files_anywhere_are_tampered(self):
+        root = SCRATCH / "gate-files"
+        if root.exists():
+            shutil.rmtree(root)
+        (root / "tests").mkdir(parents=True)
+        (root / "tests" / "test_calc.py").write_text("x\n", encoding="utf-8")
+        (root / ".gitignore").write_text("tmp/\n", encoding="utf-8")
+        snap = BUILD.snapshot_tests(root, "python3 -m pytest -q")
+        self.assertIn(".gitignore", snap)
+        names = [
+            "conftest.py",
+            "pytest.ini",
+            "tox.ini",
+            "setup.cfg",
+            "pyproject.toml",
+            "sitecustomize.py",
+            "usercustomize.py",
+            ".gitattributes",
+        ]
+        for name in names:
+            path = root / "pkg" / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("cheat\n", encoding="utf-8")
+            bad = BUILD.tests_tampered(root, snap, [])
+            self.assertIn("pkg/" + name, [item.replace("\\", "/") for item in bad], name)
+            path.unlink()
+        (root / ".gitignore").write_text("*\n", encoding="utf-8")
+        bad = BUILD.tests_tampered(root, snap, [])
+        self.assertIn(".gitignore", bad)
+        shutil.rmtree(root, ignore_errors=True)
 
 
 class SandboxEscapeTests(unittest.TestCase):
@@ -1278,6 +1695,49 @@ class SandboxEscapeTests(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
         self.assertIn("fixture:small", proc.stdout)
 
+    def test_worktree_socket_is_used_when_the_runtime_dir_is_missing(self):
+        real = BUILD._runtime_dir
+
+        def missing():
+            raise BUILD.SandboxUnavailable("runtime dir is missing", reason="no-runtime-dir")
+
+        BUILD._runtime_dir = missing
+        saved = os.environ.pop("XDG_RUNTIME_DIR", None)
+        short = ROOT / "tmp" / "s" / "w"
+        try:
+            with self.assertRaises(BUILD.SandboxUnavailable) as raised:
+                BUILD._socket_link(self.work)
+            self.assertEqual(raised.exception.reason, "no-runtime-dir")
+            direct = short / "tmp" / "ollama.sock"
+            if len(str(direct)) >= 108:
+                self.skipTest("SKIP: worktree socket path is too long to show the fallback")
+            if short.exists():
+                shutil.rmtree(short)
+            short.mkdir(parents=True)
+            httpd = _serve(tags=[{"name": "fixture:small", "size": 10}])
+            self.addCleanup(httpd.shutdown)
+            self.addCleanup(httpd.server_close)
+            port = httpd.server_address[1]
+            proc = BUILD.run_sandboxed(
+                [
+                    "python3",
+                    "-c",
+                    "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:%d/api/tags', timeout=5).read().decode())"
+                    % port,
+                ],
+                short,
+                hide=self.hide,
+                endpoint="http://127.0.0.1:%d/v1" % port,
+                timeout=20,
+            )
+            self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+            self.assertIn("fixture:small", proc.stdout)
+        finally:
+            BUILD._runtime_dir = real
+            if saved is not None:
+                os.environ["XDG_RUNTIME_DIR"] = saved
+            shutil.rmtree(ROOT / "tmp" / "s", ignore_errors=True)
+
     def test_loopback_bridge_waits_for_a_slow_upstream(self):
         # The connect timeout must not abort a response that has not started.
         # A model load is quiet for longer than that handshake.
@@ -1328,6 +1788,36 @@ class SandboxEscapeTests(unittest.TestCase):
         thread.join(timeout=16)
         self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
         self.assertIn("SLOWOK", proc.stdout)
+
+    def test_host_pid_is_not_killed_from_inside(self):
+        sleeper = subprocess.Popen(["sleep", "30"], start_new_session=True)
+        self.addCleanup(lambda: sleeper.poll() is not None or sleeper.kill())
+        proc = BUILD.run_sandboxed(
+            [
+                "python3",
+                "-c",
+                "import os,sys\n"
+                "pid=int(sys.argv[1])\n"
+                "visible=os.path.exists('/proc/%d' % pid)\n"
+                "err=''\n"
+                "try:\n"
+                "    os.kill(pid, 9)\n"
+                "except OSError as exc:\n"
+                "    err=type(exc).__name__\n"
+                "print('visible', int(visible))\n"
+                "print('err', err)\n",
+                str(sleeper.pid),
+            ],
+            self.work,
+            hide=self.hide,
+            timeout=20,
+        )
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertIsNone(sleeper.poll(), "host sleep was killed")
+        self.assertIn("visible 0", proc.stdout)
+        self.assertIn("ProcessLookupError", proc.stdout)
+        sleeper.kill()
+        sleeper.wait(timeout=5)
 
 
 if __name__ == "__main__":

@@ -10,12 +10,14 @@ Exit codes:
   1  FAIL (no-change, tests, protected path, tampered tests, interrupt, mem-edge, runner-crash)
   2  usage, or opencode is missing
   3  TIMEOUT (agent)
-  4  BLOCKED (memory, busy host, ps error, model size, cloud tag, lock, no-model, no-sandbox)
+  4  BLOCKED (memory, busy host, ps error, model size, cloud tag, lock, no-model,
+           no-sandbox, no-runtime-dir, runtime-dir-in-tmp, socket-path)
 
 A SIGKILL of this process cannot write a receipt. The pid file under
 <repo>/tmp/local-build.pids.json is the recovery handle: the next run, and
 `pfy build --local --reap`, signal that process group and write ABORTED for
-any build-local directory that has no receipt.
+any build-local directory that has no receipt, and for the pid file's receipt
+dir when that receipt is missing.
 
 Receipt schema: pfy-local-build/1
 """
@@ -71,10 +73,16 @@ WATCH_SECONDS = 10.0
 KILL_GRACE_SECONDS = 5.0
 
 _SECRET_EQ = re.compile(
-    r"(?i)\b([A-Za-z0-9_]*(?:TOKEN|KEY|SECRET|PASSWORD)[A-Za-z0-9_]*)\s*([:=])\s*(\S+)"
+    r"(?i)\b([A-Za-z0-9_]*(?:TOKEN|KEY|SECRET|PASSWORD|PASSWD)[A-Za-z0-9_]*)\s*([:=])\s*(\S+)"
 )
 _BEARER = re.compile(r"(?i)(bearer\s+)([A-Za-z0-9._\-]{8,})")
+_BASIC = re.compile(r"(?i)(authorization\s*:\s*basic\s+)(\S+)")
 _SK = re.compile(r"\b((?:sk|ghp)_[A-Za-z0-9]{8,})\b")
+_AKIA = re.compile(r"\b(AKIA[0-9A-Z]{16})\b")
+_PEM = re.compile(
+    r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----.*?-----END [A-Z0-9 ]*PRIVATE KEY-----",
+    re.DOTALL,
+)
 
 
 class UsageError(Exception):
@@ -114,9 +122,12 @@ def redact(text: str) -> str:
     def _eq(match: re.Match) -> str:
         return match.group(1) + match.group(2) + _mask(match.group(3))
 
+    text = _PEM.sub("[redacted-private-key]", text)
     text = _SECRET_EQ.sub(_eq, text)
     text = _BEARER.sub(lambda m: m.group(1) + _mask(m.group(2)), text)
+    text = _BASIC.sub(lambda m: m.group(1) + _mask(m.group(2)), text)
     text = _SK.sub(lambda m: _mask(m.group(1)), text)
+    text = _AKIA.sub(lambda m: _mask(m.group(1)), text)
     return text
 
 
@@ -518,9 +529,103 @@ def parse_unittest_counts(text: str) -> dict | None:
         "errors": errors,
         "skipped": skipped,
         "xfailed": xfailed,
+        "deselected": 0,
         "ran": ran,
         "seconds": seconds,
     }
+
+
+def _strip_ansi(text: str) -> str:
+    return re.sub(r"\x1b\[[0-9;]*m", "", text or "")
+
+
+def _count_record(passed: int, failed: int, errors: int, skipped: int, xfailed: int, deselected: int, seconds: float | None) -> dict:
+    ran = passed + failed + errors + skipped + xfailed
+    return {
+        "passed": passed,
+        "failed": failed,
+        "errors": errors,
+        "skipped": skipped,
+        "xfailed": xfailed,
+        "deselected": deselected,
+        "ran": ran,
+        "seconds": seconds,
+    }
+
+
+def _parse_pytest_summary(text: str) -> dict | None:
+    chosen = None
+    chosen_line = ""
+    for line in text.splitlines():
+        if not re.search(r"\bin\s+[0-9.]+\s*s\b", line):
+            continue
+        found = list(
+            re.finditer(
+                r"(\d+)\s+(passed|failed|errors|error|skipped|xfailed|xpassed|deselected)\b",
+                line,
+                re.I,
+            )
+        )
+        if found:
+            chosen = found
+            chosen_line = line
+    if not chosen:
+        return None
+    counts = {"passed": 0, "failed": 0, "errors": 0, "skipped": 0, "xfailed": 0, "deselected": 0}
+    for match in chosen:
+        num = int(match.group(1))
+        word = match.group(2).lower()
+        if word in ("error", "errors"):
+            counts["errors"] = num
+        elif word == "xpassed":
+            continue
+        elif word in counts:
+            counts[word] = num
+    sec_m = re.search(r"\bin\s+([0-9.]+)\s*s", chosen_line)
+    seconds = float(sec_m.group(1)) if sec_m else None
+    return _count_record(
+        counts["passed"],
+        counts["failed"],
+        counts["errors"],
+        counts["skipped"],
+        counts["xfailed"],
+        counts["deselected"],
+        seconds,
+    )
+
+
+def _parse_junit(text: str) -> dict | None:
+    chunks = re.findall(r"<testsuite\b([^>]*)>", text, re.I)
+    totals = {"tests": 0, "failures": 0, "errors": 0, "skipped": 0}
+    saw = False
+    for chunk in chunks:
+        # <testsuites> does not match <testsuite\b because the next char is a word.
+        attrs = dict(re.findall(r'([A-Za-z]+)="(\d+)"', chunk))
+        if "tests" not in attrs:
+            continue
+        saw = True
+        for key in totals:
+            totals[key] += int(attrs.get(key) or 0)
+    if not saw:
+        return None
+    ran = totals["tests"]
+    failed = totals["failures"]
+    errors = totals["errors"]
+    skipped = totals["skipped"]
+    passed = max(0, ran - failed - errors - skipped)
+    return _count_record(passed, failed, errors, skipped, 0, 0, None)
+
+
+def parse_test_counts(text: str) -> dict | None:
+    """Unittest, a pytest summary line, or junit xml. None if nothing parseable."""
+    clean = _strip_ansi(text)
+    uni = parse_unittest_counts(clean)
+    if uni is not None:
+        return uni
+    pytest_counts = _parse_pytest_summary(clean)
+    if pytest_counts is not None:
+        return pytest_counts
+    return _parse_junit(clean)
 
 
 def _total(counts: dict | None) -> int | None:
@@ -532,35 +637,30 @@ def _total(counts: dict | None) -> int | None:
 def judge_tests(before: dict, after: dict) -> str | None:
     """None means the gate passed. Otherwise a FAIL reason.
 
-    A new skip or xfail is a failure even when the process exit is 0.
-    Skipped and xfailed tests are not passing tests.
+    A new skip, xfail, deselect, or error is a failure even when the process
+    exit is 0. Exit 0 with no parseable summary is a failure, so a runner
+    that calls os._exit(0) does not pass. Passed count must not fall.
     """
     if not after.get("started"):
         return "test-cmd-failed-to-start"
-    after_counts = after.get("counts")
-    before_counts = before.get("counts")
-    if after_counts is not None and before_counts is not None:
-        if int(after_counts.get("skipped") or 0) > int(before_counts.get("skipped") or 0):
-            return "tests-failed"
-        if int(after_counts.get("xfailed") or 0) > int(before_counts.get("xfailed") or 0):
-            return "tests-failed"
     if after.get("exit") != 0:
         return "tests-failed"
-    if after_counts is not None and before_counts is not None:
-        if _total(after_counts) < _total(before_counts):
-            return "tests-regressed"
-        if after_counts["failed"] > before_counts["failed"] or after_counts["errors"] > before_counts["errors"]:
+    after_counts = after.get("counts")
+    before_counts = before.get("counts")
+    if not after_counts or not before_counts:
+        return "tests-failed"
+    for key in ("skipped", "xfailed", "deselected", "errors", "failed"):
+        if int(after_counts.get(key) or 0) > int(before_counts.get(key) or 0):
             return "tests-failed"
-        return None
-    before_total = _total(before_counts) or 0
-    before_bad = before.get("exit") not in (0, None)
-    if before_bad or before_total >= 1:
-        return None
-    return "tests-failed"
+    if int(after_counts.get("passed") or 0) < int(before_counts.get("passed") or 0):
+        return "tests-regressed"
+    if _total(after_counts) < _total(before_counts):
+        return "tests-regressed"
+    return None
 
 
 def _test_record(cmd: str, started: bool, exit_code: int | None, text: str, seconds: float) -> dict:
-    counts = parse_unittest_counts(text) if started else None
+    counts = parse_test_counts(text) if started else None
     return {
         "cmd": cmd,
         "exit": exit_code,
@@ -574,19 +674,54 @@ def _test_record(cmd: str, started: bool, exit_code: int | None, text: str, seco
     }
 
 
-def run_tests(cmd_s: str, cwd: Path, env: dict, timeout: float, state: State) -> dict:
+def run_tests(
+    cmd_s: str,
+    cwd: Path,
+    env: dict,
+    timeout: float,
+    state: State,
+    *,
+    repo: Path | None = None,
+    unsafe: bool = False,
+) -> dict:
+    """Run the gate command. With a repo, use the agent bwrap profile.
+
+    The profile is --unshare-net with no Ollama bridge, the main checkout not
+    writable, and no push credentials. --unsafe-no-sandbox leaves the command
+    unsandboxed only when bwrap itself is missing.
+    """
     argv = shlex.split(cmd_s)
     if not argv:
         return _test_record(cmd_s, False, None, "empty test command", 0.0)
+    if not _command_resolves(argv, cwd, env):
+        return _test_record(cmd_s, False, None, "command not found", 0.0)
+    prepared = None
+    run_argv = argv
+    run_env = dict(env)
+    if repo is not None:
+        prepared = prepare_sandbox(
+            argv,
+            cwd,
+            hide=hide_paths(repo, cwd),
+            endpoint=None,
+            unsafe=unsafe,
+        )
+        run_argv = prepared.argv
+        run_env.update(lockdown_env(cwd))
+        run_env["GIT_TERMINAL_PROMPT"] = "0"
     started = time.monotonic()
     try:
-        status, code, out, err = run_bounded(argv, env, cwd, timeout, state)
-    except FileNotFoundError:
-        return _test_record(cmd_s, False, None, "command not found", 0.0)
-    except OSError as exc:
-        if getattr(exc, "errno", None) == 2:
+        try:
+            status, code, out, err = run_bounded(run_argv, run_env, cwd, timeout, state)
+        except FileNotFoundError:
             return _test_record(cmd_s, False, None, "command not found", 0.0)
-        return _test_record(cmd_s, False, None, str(exc), 0.0)
+        except OSError as exc:
+            if getattr(exc, "errno", None) == 2:
+                return _test_record(cmd_s, False, None, "command not found", 0.0)
+            return _test_record(cmd_s, False, None, str(exc), 0.0)
+    finally:
+        if prepared is not None:
+            prepared.close()
     elapsed = time.monotonic() - started
     text = (out or "") + ("\n" + err if err else "")
     if status == "timeout":
@@ -597,9 +732,18 @@ def run_tests(cmd_s: str, cwd: Path, env: dict, timeout: float, state: State) ->
         rec = _test_record(cmd_s, True, code, text, elapsed)
         rec["aborted"] = status
         return rec
-    # File-not-found from a missing executable is an OSError before Popen returns
-    # in normal cases. A shell-less missing argv[0] raises FileNotFoundError.
     return _test_record(cmd_s, True, code if code is not None else 1, text, elapsed)
+
+
+def _command_resolves(argv: list[str], cwd: Path, env: dict) -> bool:
+    """True when argv[0] exists on the host. bwrap hides a missing exec."""
+    program = argv[0]
+    if os.path.sep in program:
+        candidate = Path(program)
+        if not candidate.is_absolute():
+            candidate = cwd / candidate
+        return candidate.is_file() and os.access(candidate, os.X_OK)
+    return shutil.which(program, path=env.get("PATH")) is not None
 
 
 def _norm_rel(path: str) -> str:
@@ -929,6 +1073,19 @@ _CONFIG_BASENAMES = {
     "jest.config.ts",
     "vitest.config.ts",
 }
+# Always hashed, including files the agent creates. A new conftest or a
+# rewritten .gitignore must not be able to change the gate.
+_GATE_BASENAMES = {
+    "conftest.py",
+    "pytest.ini",
+    "tox.ini",
+    "setup.cfg",
+    "pyproject.toml",
+    "sitecustomize.py",
+    "usercustomize.py",
+    ".gitignore",
+    ".gitattributes",
+}
 _ENTRY = """\
 import os
 import socket
@@ -999,7 +1156,9 @@ raise SystemExit(subprocess.call(cmd))
 
 
 class SandboxUnavailable(Exception):
-    pass
+    def __init__(self, message: str, reason: str = "no-sandbox") -> None:
+        super().__init__(message)
+        self.reason = reason
 
 
 class PreparedSandbox:
@@ -1118,6 +1277,10 @@ def _is_test_path(rel: str) -> bool:
     return any(part in ("tests", "test") for part in dirs)
 
 
+def _is_gate_file(rel: str) -> bool:
+    return Path(rel).name in _GATE_BASENAMES
+
+
 def _is_test_config(rel: str, full: Path, test_cmd: str) -> bool:
     name = Path(rel).name
     if name in _CONFIG_BASENAMES:
@@ -1163,7 +1326,7 @@ def snapshot_tests(worktree: Path, test_cmd: str) -> dict[str, str]:
                 continue
             if not rel or rel.startswith("tmp/"):
                 continue
-            if not (_is_test_path(rel) or _is_test_config(rel, full, test_cmd)):
+            if not (_is_test_path(rel) or _is_test_config(rel, full, test_cmd) or _is_gate_file(rel)):
                 continue
             try:
                 found[rel] = _sha256_file(full)
@@ -1186,39 +1349,73 @@ def tests_tampered(worktree: Path, snapshot: dict[str, str], writable: list[str]
                 bad.append(rel)
         except OSError:
             bad.append(rel)
+    current = snapshot_tests(worktree, "")
+    for rel in current:
+        if rel in snapshot or rel in bad:
+            continue
+        if not _is_gate_file(rel):
+            continue
+        if writable and _protected(rel, writable):
+            continue
+        bad.append(rel)
     return bad
 
 
-def _runtime_dir() -> Path | None:
+def _under_system_tmp(path: Path) -> bool:
+    """True when path is /tmp or a child of it. The sandbox tmpfs hides /tmp."""
+    raw = str(path)
+    if raw == "/tmp" or raw.startswith("/tmp/"):
+        return True
+    try:
+        resolved = path.resolve()
+    except OSError:
+        return False
+    system = Path("/tmp").resolve()
+    return resolved == system or system in resolved.parents
+
+
+def _runtime_dir() -> Path:
     """A short writable directory for the Ollama socket.
 
     AF_UNIX paths are limited to 108 bytes. A worktree under this repo is
     already longer than that, so the socket cannot live at the worktree path.
+    A dir under /tmp is refused: the sandbox mounts a fresh tmpfs there and
+    the agent would lose the socket. When XDG_RUNTIME_DIR is set and unusable,
+    this does not fall back, so the receipt can name the runtime dir.
     """
-    candidates = []
-    env_dir = os.environ.get("XDG_RUNTIME_DIR")
+    env_dir = (os.environ.get("XDG_RUNTIME_DIR") or "").strip()
     if env_dir:
-        candidates.append(Path(env_dir))
-    candidates.append(Path("/run/user") / str(os.getuid()))
-    for cand in candidates:
-        try:
-            cand.mkdir(parents=True, exist_ok=True)
-        except OSError:
-            continue
+        cand = Path(env_dir)
+        if _under_system_tmp(cand):
+            raise SandboxUnavailable("runtime dir is under /tmp", reason="runtime-dir-in-tmp")
         if cand.is_dir() and os.access(cand, os.W_OK):
             return cand
-    return None
+        raise SandboxUnavailable("runtime dir is missing", reason="no-runtime-dir")
+    fallback = Path("/run/user") / str(os.getuid())
+    if _under_system_tmp(fallback):
+        raise SandboxUnavailable("runtime dir is under /tmp", reason="runtime-dir-in-tmp")
+    if fallback.is_dir() and os.access(fallback, os.W_OK):
+        return fallback
+    raise SandboxUnavailable("runtime dir is missing", reason="no-runtime-dir")
 
 
-def _socket_link(worktree: Path) -> tuple[Path, Path]:
+def _socket_link(worktree: Path) -> tuple[Path | None, Path]:
     """Symlink a short runtime name at the worktree and return (link, socket).
 
     The socket inode stays in the worktree tmp. The name used for bind() is
     the short link, which also fits inside the sandbox via the host /run mount.
+    When no runtime dir exists and the worktree path itself fits in 108 bytes,
+    bind the socket in the worktree tmp. An explicit XDG_RUNTIME_DIR does not
+    fall back.
     """
-    runtime = _runtime_dir()
-    if runtime is None:
-        raise SandboxUnavailable("no short runtime dir for the ollama socket")
+    direct = worktree / "tmp" / "ollama.sock"
+    try:
+        runtime = _runtime_dir()
+    except SandboxUnavailable as exc:
+        xdg = (os.environ.get("XDG_RUNTIME_DIR") or "").strip()
+        if exc.reason == "no-runtime-dir" and not xdg and len(str(direct)) < 108:
+            return None, direct
+        raise
     for old in runtime.glob("pfy-lb-*"):
         if old.is_symlink() and not old.exists():
             try:
@@ -1232,7 +1429,7 @@ def _socket_link(worktree: Path) -> tuple[Path, Path]:
     sock = link / "tmp" / "ollama.sock"
     if len(str(sock)) >= 108:
         link.unlink()
-        raise SandboxUnavailable("ollama socket path is too long")
+        raise SandboxUnavailable("ollama socket path is too long", reason="socket-path")
     return link, sock
 
 
@@ -1256,6 +1453,10 @@ def bwrap_works() -> bool:
                     "--tmpfs",
                     "/tmp",
                     "--unshare-net",
+                    "--unshare-pid",
+                    "--unshare-ipc",
+                    "--unshare-uts",
+                    "--die-with-parent",
                     "--",
                     "true",
                 ],
@@ -1410,7 +1611,13 @@ def prepare_sandbox(
     share_net = bool(endpoint) and port is None
     if not bwrap_works():
         if not unsafe:
-            raise SandboxUnavailable("bwrap is not usable")
+            raise SandboxUnavailable("bwrap is not usable", reason="no-sandbox")
+        if not getattr(prepare_sandbox, "_warned_unsafe", False):
+            print(
+                "WARN: --unsafe-no-sandbox is on and bwrap is not usable, so this run is not sandboxed",
+                file=sys.stderr,
+            )
+            setattr(prepare_sandbox, "_warned_unsafe", True)
         return PreparedSandbox(list(cmd), "unsafe-no-sandbox", None, None)
     bridge = None
     link = None
@@ -1422,7 +1629,8 @@ def prepare_sandbox(
             bridge.start(sock, port)
         except OSError:
             try:
-                link.unlink()
+                if link is not None:
+                    link.unlink()
             except OSError:
                 pass
             raise
@@ -1459,6 +1667,9 @@ def prepare_sandbox(
     else:
         argv.append("--unshare-net")
         mode = "bwrap-unshare-net"
+    # Pid namespace so a setsid or double-fork child dies with bwrap, and so
+    # the agent cannot see or signal host pids. ipc and uts go with it.
+    argv.extend(["--unshare-pid", "--unshare-ipc", "--unshare-uts"])
     argv.extend(["--chdir", str(worktree), "--"])
     argv.extend(run_cmd)
     return PreparedSandbox(argv, mode, bridge, link)
@@ -1655,6 +1866,27 @@ def reap_stale(repo: Path) -> list[str]:
             if data.get("loaded_by_run") and data.get("ollama_root") and data.get("model"):
                 unload_model(str(data["ollama_root"]), str(data["model"]))
             notes.append("reaped %s" % pid)
+            receipt_dir = str(data.get("receipt_dir") or "").strip()
+            if receipt_dir:
+                dest = Path(receipt_dir) / "receipt.json"
+                if not dest.is_file():
+                    try:
+                        dest.parent.mkdir(parents=True, exist_ok=True)
+                    except OSError:
+                        pass
+                    if dest.parent.is_dir():
+                        _write_receipt(
+                            dest,
+                            {
+                                "schema": SCHEMA,
+                                "id": dest.parent.name,
+                                "status": "ABORTED",
+                                "reason": "no-receipt",
+                                "exit_code": EXIT_FAIL,
+                                "finished_at": _now(),
+                            },
+                        )
+                        notes.append("aborted %s" % dest.parent.name)
         if pid != os.getpid():
             try:
                 pid_path.unlink()
@@ -1686,6 +1918,92 @@ def _reap_only(args) -> int:
         except OSError:
             pass
         _release_lock(fd)
+
+
+def tree_digest(worktree: Path) -> str:
+    """Hash the worktree the gate just accepted. tmp and bytecode are excluded."""
+    digest = hashlib.sha256()
+    files: list[tuple[str, Path]] = []
+    skip_dirs = {".git", "tmp", "__pycache__", ".pytest_cache"}
+    if not worktree.is_dir():
+        return digest.hexdigest()
+    for dirpath, dirnames, filenames in os.walk(worktree):
+        dirnames[:] = [name for name in dirnames if name not in skip_dirs and not name.endswith(".home")]
+        for name in filenames:
+            if name.endswith(".pyc") or name.endswith(".pyo"):
+                continue
+            full = Path(dirpath) / name
+            try:
+                rel = _norm_rel(str(full.relative_to(worktree)))
+            except ValueError:
+                continue
+            if not rel or rel.startswith("tmp/"):
+                continue
+            files.append((rel, full))
+    for rel, full in sorted(files):
+        digest.update(rel.encode())
+        digest.update(b"\0")
+        try:
+            digest.update(full.read_bytes())
+        except OSError:
+            digest.update(b"")
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
+def _materialize_commit(worktree: Path, sha: str, dest: Path) -> bool:
+    """Extract the commit into dest. This is the tree git will serve, not the worktree."""
+    dest.mkdir(parents=True, exist_ok=True)
+    archived = subprocess.run(
+        ["git", "-C", str(worktree), "archive", sha],
+        capture_output=True,
+        check=False,
+    )
+    if archived.returncode != 0 or not archived.stdout:
+        return False
+    extracted = subprocess.run(
+        ["tar", "-x", "-C", str(dest)],
+        input=archived.stdout,
+        capture_output=True,
+        check=False,
+    )
+    return extracted.returncode == 0
+
+
+def _rollback_head(worktree: Path, env: dict) -> None:
+    _git(worktree, ["reset", "--hard", "HEAD~1"], env=env)
+
+
+def _recheck_commit(
+    repo: Path,
+    worktree: Path,
+    sha: str,
+    cmd: str,
+    env: dict,
+    timeout: float,
+    state: State,
+    before: dict,
+    unsafe: bool,
+) -> str | None:
+    """Run the gate on a fresh extract of sha. None means it passed."""
+    if not sha:
+        return "fail"
+    dest = repo / "tmp" / ("recheck-" + sha[:12])
+    if dest.exists():
+        shutil.rmtree(dest, ignore_errors=True)
+    try:
+        if not _materialize_commit(worktree, sha, dest):
+            return "fail"
+        rec = run_tests(cmd, dest, env, timeout, state, repo=repo, unsafe=unsafe)
+        if rec.get("aborted") == "interrupted" or state.interrupted:
+            return "interrupted"
+        if rec.get("aborted") == "mem-edge" or state.mem_edge:
+            return "fail"
+        if judge_tests(before, rec):
+            return "fail"
+        return None
+    finally:
+        shutil.rmtree(dest, ignore_errors=True)
 
 
 def _write_pidfile(path: Path, payload: dict) -> None:
@@ -1973,7 +2291,15 @@ def build_local(argv: list[str] | None = None) -> int:
         watcher = threading.Thread(target=_watchdog, args=(stop_watch, state), daemon=True)
         watcher.start()
 
-        tests_before = run_tests(args.test_cmd_s, worktree, test_env, args.test_timeout_s, state)
+        tests_before = run_tests(
+            args.test_cmd_s,
+            worktree,
+            test_env,
+            args.test_timeout_s,
+            state,
+            repo=repo,
+            unsafe=bool(args.unsafe_no_sandbox),
+        )
         if tests_before.get("aborted") == "interrupted" or state.interrupted:
             status, reason, exit_code = "FAIL", "interrupted", EXIT_FAIL
             return finish()
@@ -2003,8 +2329,9 @@ def build_local(argv: list[str] | None = None) -> int:
                 endpoint=openai_base,
                 unsafe=bool(args.unsafe_no_sandbox),
             )
-        except SandboxUnavailable:
-            status, reason, exit_code = "BLOCKED", "no-sandbox", EXIT_BLOCKED
+        except SandboxUnavailable as exc:
+            print("BLOCKED: %s" % exc, file=sys.stderr)
+            status, reason, exit_code = "BLOCKED", exc.reason, EXIT_BLOCKED
             return finish()
         sandbox_mode = prepared.mode
         if sandbox_mode == "bwrap-unshare-net":
@@ -2049,7 +2376,15 @@ def build_local(argv: list[str] | None = None) -> int:
             status, reason, exit_code = "FAIL", "protected-path-changed", EXIT_FAIL
             return finish()
 
-        tests_after = run_tests(args.test_cmd_s, worktree, test_env, args.test_timeout_s, state)
+        tests_after = run_tests(
+            args.test_cmd_s,
+            worktree,
+            test_env,
+            args.test_timeout_s,
+            state,
+            repo=repo,
+            unsafe=bool(args.unsafe_no_sandbox),
+        )
         if tests_after.get("aborted") == "interrupted" or state.interrupted:
             status, reason, exit_code = "FAIL", "interrupted", EXIT_FAIL
             return finish()
@@ -2061,7 +2396,15 @@ def build_local(argv: list[str] | None = None) -> int:
         if tampered:
             status, reason, exit_code = "FAIL", "tests-tampered", EXIT_FAIL
             return finish()
-        again = run_tests(args.test_cmd_s, worktree, test_env, args.test_timeout_s, state)
+        again = run_tests(
+            args.test_cmd_s,
+            worktree,
+            test_env,
+            args.test_timeout_s,
+            state,
+            repo=repo,
+            unsafe=bool(args.unsafe_no_sandbox),
+        )
         if again.get("aborted") == "interrupted" or state.interrupted:
             status, reason, exit_code = "FAIL", "interrupted", EXIT_FAIL
             return finish()
@@ -2072,20 +2415,62 @@ def build_local(argv: list[str] | None = None) -> int:
         if flaky:
             status, reason, exit_code = "FAIL", "tests-flaky", EXIT_FAIL
             return finish()
+        gated_tree = tree_digest(worktree)
         if run_status == "timeout":
             status, reason, exit_code = "TIMEOUT", "timeout", EXIT_TIMEOUT
+            return finish()
+        if tree_digest(worktree) != gated_tree:
+            status, reason, exit_code = "FAIL", "worktree-changed-after-gate", EXIT_FAIL
             return finish()
 
         commit_env = _git_env(test_env)
         title = " ".join(args.task_text.split())[:80] or "task"
         message = "%s\n\nreceipt: %s\n" % (title, stamp + "-" + slug)
-        committed = _git(worktree, ["add", "-A"], env=commit_env)
+        # -f so a gitignore cannot drop a file the tests imported. tmp and
+        # bytecode stay out. .gitignore itself is a gate file and is hashed.
+        committed = _git(
+            worktree,
+            [
+                "add",
+                "-A",
+                "-f",
+                "--",
+                ".",
+                ":!tmp",
+                ":!**/__pycache__",
+                ":!**/*.pyc",
+                ":!.pytest_cache",
+                ":!**/.pytest_cache",
+            ],
+            env=commit_env,
+        )
         if committed.returncode != 0:
             status, reason, exit_code = "FAIL", "commit-failed", EXIT_FAIL
             return finish()
         committed = _git(worktree, ["commit", "-m", message], env=commit_env)
         if committed.returncode != 0:
             status, reason, exit_code = "FAIL", "commit-failed", EXIT_FAIL
+            return finish()
+        sha_now = _git(worktree, ["rev-parse", "HEAD"], env=commit_env)
+        commit_sha = (sha_now.stdout or "").strip()
+        recheck_status = _recheck_commit(
+            repo,
+            worktree,
+            commit_sha,
+            args.test_cmd_s,
+            test_env,
+            args.test_timeout_s,
+            state,
+            tests_before,
+            bool(args.unsafe_no_sandbox),
+        )
+        if recheck_status == "interrupted" or state.interrupted:
+            _rollback_head(worktree, commit_env)
+            status, reason, exit_code = "FAIL", "interrupted", EXIT_FAIL
+            return finish()
+        if recheck_status:
+            _rollback_head(worktree, commit_env)
+            status, reason, exit_code = "FAIL", "commit-recheck-failed", EXIT_FAIL
             return finish()
         branch_name = "local/%s-%s" % (slug, stamp)
         made = _git(worktree, ["branch", branch_name, "HEAD"], env=commit_env)
@@ -2099,6 +2484,10 @@ def build_local(argv: list[str] | None = None) -> int:
         status, reason, exit_code = "PASS", "ok", EXIT_OK
         if not args.keep_worktree:
             _git(repo, ["worktree", "remove", str(worktree)])
+        return finish()
+    except SandboxUnavailable as exc:
+        print("BLOCKED: %s" % exc, file=sys.stderr)
+        status, reason, exit_code = "BLOCKED", exc.reason, EXIT_BLOCKED
         return finish()
     except UsageError as exc:
         print("FAIL: %s" % exc, file=sys.stderr)
