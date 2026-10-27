@@ -1,0 +1,28 @@
+### Entry 146: skill-up: declarative evals for Agent Skills and agents, with a custom local-command engine
+
+- **URL**: https://github.com/alibaba/skill-up (Apache-2.0, Go). Release `v0.14.0` (2026-10-20, tag commit `53f6daecf4ac79e4e53ea53f3fe17dac3114debb`); `skill-up_0.14.0_linux_amd64.tar.gz` sha256 `307f2082ce5489c61f6a01ce6c78225dfd3974b4b54227426b87e1b6330dbfc9` (matches the GitHub release asset digest); the `skill-up` binary in it sha256 `5b1bdd0a30f57653c8f6a3a679e992b29982fe18709b2556d53a6f9ea1c85ab6`.
+- **Date**: 2026-10-26 (daily X intake, window 2026-10-23T00:50Z to 2026-10-27T00:40Z; post 2026-10-23 22:11 PT)
+- **Source / Poster**: @DanKornas, https://x.com/DanKornas/status/2113860880592966054 (repo link in the reply https://x.com/DanKornas/status/2113861056422457601)
+- **Summary / Key Claims** (upstream README; their claims except where marked verified): a CLI that evaluates Agent Skills, agents and their workspaces. An `eval.yaml` names an environment (`none`, `docker` or OpenSandbox), an engine (Qoder CLI, Claude Code, Codex built in, or a user-defined `engine.custom` local command or HTTP service), and case files with prompts and expectations (rule checks, scripts, Agent Judge). It grades responses and workspace changes, writes json/junit/html reports, supports baselines (with vs without a skill), repeated iterations for flakiness, and a `skill-upper` skill that reads failed reports and repairs or expands cases.
+- **Why it matters here**: pfy-mentat's H1 (harness2 self-improvement) and H2 (skill discovery) both need a repeatable way to say "this skill or harness change made the agent better on these cases". skill-up's custom local-command engine means any harness that can read a JSON SessionInput file and print `{"exit_code", "final_message"}` can be graded, so the same case set could score Grok Build, pfy-mentat with Grok, and pfy-mentat with a local model side by side, which is the DevBot trial Mark asked for before pfy-mentat becomes the default.
+- **Fit on nimo**: Yes, verified. A static Go release binary, no GPU, no keys for the custom-engine path (built-in engines and Agent Judge need a model). Staged at `~/DEVELOP/pfy-mentat/tmp/skill-up/skill-up` (tarball digest checked); smoke PASS on nimo.
+- **Verified on the Grok Bot box and on nimo** (temp HOME, TMPDIR and XDG_CONFIG_HOME in a temp dir, bubblewrap with no network): smoke PASS on both. `skill-up --version` prints `skill-up version 0.14.0`. On a fixture skill (environment `none`, no skills, no MCP, engine `engine.custom` with `transport: local` running a python stub that answers `pong-7` only when the prompt contains "ping"), `validate evals/eval.yaml` prints "eval.yaml is valid (loaded 2 case(s))"; `run <skill> --output-dir <dir>` exits 1 with "Results: 1 passed, 1 failed, 0 errors"; `iteration-1/result.json` has ping-pass PASS (response `pong-7`) and hello-fail FAIL with evidence `output does not contain "pong-7"`; the stub received a SessionInput file per case with `case_id`, `messages`, `variant`, `workspace`, `max_turns`, `timeout_seconds`. The temp HOME stayed empty and the fixture was unchanged.
+- **Findings**:
+  - **`validate` takes the eval.yaml path**, not the skill dir (`validate <dir>` errors "read ...: is a directory"); `run` takes the skill dir. Without `--output-dir` reports go to `<skill>-workspace/` next to the skill dir.
+  - **Exit 1 when any case fails** ("Error: one or more cases failed"), so a CI gate can use the exit code directly.
+  - It creates temp workspaces with `os.MkdirTemp` (`/tmp/skill-up-*`, `skill-up-session-*`); set TMPDIR. It looks for credentials at `~/.skill-up/credentials.yaml` and user config at `$XDG_CONFIG_HOME/skill-up/` (or `~/.config/skill-up/`); the smoke watches both real-HOME paths.
+  - Without a `SKILL.md` above the eval dir it warns and falls back to the parent dir; the fixture carries a minimal `SKILL.md`.
+- **Extracted Repos / Tools**: https://github.com/alibaba/skill-up · https://github.com/alibaba/skill-up/releases/tag/v0.14.0 · `docs/design/custom-engine.md` in the repo
+- **TOOLS.md Link**: None yet. I0 awareness. No TOOLS.md row, no `data/tools.json` row.
+- **Smoke**: `python3 examples/x-intake-local/smoke_146_147.py --entry skill-up`. Looks up `$SKILLUP_BIN`, then `tmp/skill-up/skill-up`, then PATH; binary sha256 (`$SKILLUP_SHA256`) and version (`$SKILLUP_VERSION`) pinned. No model, provider, docker or OpenSandbox runtime. Receipt: `pipelines/smoke/skill-up/latest.json`.
+- **Non-goals**: No built-in engine (Claude Code, Codex, Qoder), no Agent Judge, no API key, no `skill-up init`, no `skill-upper` loop, no docker or OpenSandbox runtime.
+- **How this fails / how we recover**:
+
+| Risk | How it fails | Recovery |
+|------|----------------|----------|
+| Judge cost | Agent Judge or built-in engines call a paid model | Custom local engine and rule/script checks only until Mark OKs a judge model; a local model as judge is the default ask |
+| Writes outside the run | Reports land next to the skill dir, temp dirs in /tmp | Always pass `--output-dir` and TMPDIR under `tmp/`; the smoke checks the fixture is unchanged |
+| Real-HOME config | `~/.skill-up/credentials.yaml` or `~/.config/skill-up` read or written | Temp HOME and XDG_CONFIG_HOME; the smoke watches both real paths |
+| Young project | 0.x, weekly releases, schema `v1alpha1` | Binary sha pin; re-check the custom-engine contract on bump |
+
+- **Status**: Cataloged I0. Smoke PASS on the Grok Bot box and on nimo (staged under `tmp/skill-up`). **Eval-auto trial candidate**: the scoring harness for the pfy-mentat vs Grok Build trial (see the handoff); on hold behind the MVP and H1.
