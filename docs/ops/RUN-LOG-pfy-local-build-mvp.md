@@ -132,3 +132,22 @@ Exit check 2026-10-26T07:39:19Z:
 
 - TODO row lives in a new "MVP local build" section as MVP-2 | add T-0128 to the Active table | the file already uses slice tables at the top, and a new T-id would sit in the issue-synced range
 - Record structural exit 1 as the known TMPDIR failure | edit `test_relative_outdir_log_path_safe` | that failure was already red at the base when `TMPDIR` is inside the repo, and this slice adds no new failure
+
+## Fix round 1 (gate FAIL at e63a95b2)
+
+- Start of this repair: branch `bot/mvp-local-build` in `tmp/mvp-local-build`. Merge of `origin/main` `2f2b20e` is `008c7b2` (catalog only). No rebase, no force-push, no PR, no merge to main.
+- Lead implemented B1 through B4 in this worktree. They share `scripts/pfy_build_local.py`.
+- Python 3.14.4: 901 tests, 623.379 s, failures=1, skipped=16. The failure is `test_relative_outdir_log_path_safe` because `TMPDIR` is inside the repo.
+- Python 3.12.12 (uv prefix): 901 tests, 552.107 s, failures=21, skipped=16. One is that same outdir case. Twenty are `tests.test_harness2_local_sandbox`: the child execs `sys.executable`, and the uv binary lives under the home that sandbox hides. The same tree passed those tests under `/usr/bin/python3`. Python 3.13 is not installed.
+- Hedge detector and lab_stage did not fail (Ollama was up).
+- RED: remove the test-file hash -> `test_rewriting_asserts_to_true_does_not_commit` (exit 0, assertion 0 != 1).
+- RED: remove the kill on leader exit and the post-loop kill -> `test_orphan_background_does_not_block` (TimeoutExpired at 25 s).
+- RED: `run_sandboxed` returns the raw argv -> `test_push_forms_and_secret_write_do_not_leak` (bare SHA changed).
+- RED: leave the 3 s connect timeout on the proxied socket -> `test_loopback_bridge_waits_for_a_slow_upstream` (RemoteDisconnected, 4.110 s).
+- First live rerun `20261027T030049105086Z` aborted. t01, t02, t03 `FAIL` `no-change` at about 83 s. OpenCode: socket closed. `ollama ps` empty. Cause was that timeout. Stopped at t04.
+- Probe after the fix: sandboxed `opencode run` returned `pong`, exit 0. Context 262144.
+- Post-fix live start: `timeout 90m python3 -u scripts/pfy_local_build_eval.py --model qwen3.6:35b --require-live`. Stamp `20261027T031008578576Z`. Eval exit 0. Pass 8/8. Total 608.235 s. Mean 76.029 s. Sandbox `bwrap-unshare-net` on every task. Tests before exit 1, after exit 0. No `context_warning`.
+- The probe had loaded the model, so receipts say `unloaded` false. After the summary was saved, `ollama stop qwen3.6:35b`. `ollama ps` empty.
+- Offline stub cheater scores 0 (`test_cheat_asserts_scores_zero_on_t01_t04_t08`).
+- Decisions: `docs/ops/AUTONOMOUS-DECISIONS-2026-10-26.md`. Summary: `eval/local-build/live-20261027T031008578576Z.md`. Raw receipts gitignored.
+- Push: `git push origin HEAD:bot/mvp-local-build`. Not main.

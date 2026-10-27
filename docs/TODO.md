@@ -26,7 +26,7 @@ Branch `bot/mvp-local-build`. Not a Feature GO. Catalog HOLD 70-75 stays. Handof
 
 | ID | Item | Status |
 |----|------|--------|
-| MVP-1 | Headless `./pfy build --local` plus the offline coding eval | done (live 8/8 on `qwen3.6:35b`, 572s) |
+| MVP-1 | Headless `./pfy build --local` plus the offline coding eval | done after fix 1 (gate FAIL at e63a95b repaired on `bot/mvp-local-build`; post-fix live 8/8 on `qwen3.6:35b`, 608s, stamp `20261027T031008578576Z`; the earlier 572s 8/8 was before the test gate) |
 | MVP-2 | Use `pfy build --local` for a real build-only task from this file, and compare with cloud Build on cost and pass rate | todo |
 
 
