@@ -11,8 +11,9 @@ Binary: $SKILLSPECTOR_BIN, else ~/DEVELOP/pfy-mentat/tmp/skillspector/.venv/bin/
 on PATH. `--version` must report SKILLSPECTOR_VERSION (default 2.12.0) or the smoke exits 2.
 The smoke writes two fixture skills in a temp dir (a benign one and one with a prompt injection, curl|bash, and
 credential exfiltration) and runs `scan <dir> --no-llm --format json -o <file>` for each with a clean env, a temp
-HOME/TMPDIR and a timeout ($PFY_XINTAKE_TIMEOUT, default 120 s). Under bwrap (when it works) the scan has no network,
-so the OSV lookup takes its offline fallback. Checks: benign exits 0, recommendation SAFE, 0 issues, llm_requested
+HOME/TMPDIR and a timeout ($PFY_XINTAKE_TIMEOUT, default 120 s). The scan runs under bwrap with no network,
+so the OSV lookup takes its offline fallback. If bwrap is missing or that probe fails, the smoke exits 2 and does
+not run the scanner. Checks: benign exits 0, recommendation SAFE, 0 issues, llm_requested
 false; malicious exits non-zero, recommendation DO_NOT_INSTALL, score >= 70, and flags both the prompt-injection (P*)
 and supply-chain (SC*) families; the temp HOME stays empty; real-HOME paths ~/.skillspector, ~/.cache/skillspector
 and ~/.config/skillspector are unchanged.
@@ -86,13 +87,17 @@ def home_sig(home: Path) -> dict:
     return sig
 
 
-def run(binary: str, args: list[str], tmp: Path, sandbox: bool, timeout: float) -> subprocess.CompletedProcess:
+def run(binary: str, args: list[str], tmp: Path, timeout: float) -> subprocess.CompletedProcess:
     env = {"PATH": SYS_PATH, "HOME": str(tmp / "home"), "TMPDIR": str(tmp / "t"), "LANG": "C.UTF-8",
            "NO_COLOR": "1", "TERM": "dumb"}
-    cmd = [binary, *args]
-    if sandbox:
-        cmd = ["bwrap", "--ro-bind", "/", "/", "--dev", "/dev", "--bind", str(tmp), str(tmp),
-               "--unshare-net", "--die-with-parent", *cmd]
+    # Tests set this so a stub can write the process HOME and the real-home check has to notice.
+    # Leave it unset: --ro-bind keeps that tree read-only.
+    home_bind: list[str] = []
+    if os.environ.get("PFY_SMOKE_REAL_HOME_BIND") == "1":
+        home = str(Path.home())
+        home_bind = ["--bind", home, home]
+    cmd = ["bwrap", "--ro-bind", "/", "/", "--dev", "/dev", "--bind", str(tmp), str(tmp),
+           *home_bind, "--unshare-net", "--die-with-parent", binary, *args]
     return subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=timeout, start_new_session=True)
 
 
@@ -110,8 +115,10 @@ def main() -> int:
         rec["reason"] = "skillspector not staged (set SKILLSPECTOR_BIN or stage tmp/skillspector/.venv)"
         return finish(2, rec)
     rec["binary"] = binary
-    sandbox = bwrap_ok()
-    rec["sandbox"] = "bwrap --unshare-net" if sandbox else "none (network reachable; OSV may be queried)"
+    if not bwrap_ok():
+        rec["reason"] = "bwrap is not usable here; the scan must run with no network"
+        return finish(2, rec)
+    rec["sandbox"] = "bwrap --unshare-net"
     real_home = Path.home()
     before = home_sig(real_home)
     with tempfile.TemporaryDirectory(prefix="pfy-smoke-148-") as td:
@@ -121,7 +128,7 @@ def main() -> int:
         (tmp / "good" / "SKILL.md").write_text(GOOD, encoding="utf-8")
         (tmp / "bad" / "SKILL.md").write_text(BAD, encoding="utf-8")
         try:
-            v = run(binary, ["--version"], tmp, sandbox, timeout)
+            v = run(binary, ["--version"], tmp, timeout)
         except (OSError, subprocess.TimeoutExpired) as e:
             rec["reason"] = f"--version failed: {e}"
             return finish(2, rec)
@@ -134,7 +141,7 @@ def main() -> int:
             for name in ("good", "bad"):
                 out = tmp / "out" / f"{name}.json"
                 p = run(binary, ["scan", str(tmp / name), "--no-llm", "--format", "json", "-o", str(out)],
-                        tmp, sandbox, timeout)
+                        tmp, timeout)
                 rec["checks"][f"{name}_exit"] = p.returncode
                 reports[name] = json.loads(out.read_text(encoding="utf-8")) if out.exists() else None
         except subprocess.TimeoutExpired:

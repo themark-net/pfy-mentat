@@ -4,14 +4,14 @@ Daily X intake routine, window 2026-10-27T00:40Z to 2026-10-28T00:40Z. Sources: 
 
 | Entry | Tool | Why | Fits nimo? |
 |------|------|-----|------------|
-| 148 | [SkillSpector](https://github.com/NVIDIA/SkillSpector) (Apache-2.0, v2.12.0) | Static, offline security scanner for agent skills with a SAFE / DO_NOT_INSTALL verdict and exit code: the install gate H2 skill discovery lacks. **Eval-auto trial candidate** | Expected yes (pure Python, CPU). Smoke PASS on the box; not staged on nimo yet (smoke exits 2 there until it is) |
+| 148 | [SkillSpector](https://github.com/NVIDIA/SkillSpector) (Apache-2.0, v2.12.0) | Static, offline security scanner for agent skills. Exit 0 covers score <= 50 (SAFE and CAUTION); exit 1 is only above 50 or when a strict flag fires. A pre-install gate needs `--fail-on-findings` or a JSON check. **Eval-auto trial candidate** | Expected yes (pure Python, CPU). Smoke PASS on the box; not staged on nimo yet (smoke exits 2 there until it is) |
 
-Files: `sources/entries/148-skillspector.md`, `examples/x-intake-local/smoke_148.py` (self-contained, stdlib only), `tests/test_x_intake_smoke_148.py` (10 stub tests), `.gitignore` line for `pipelines/smoke/skillspector/`, and this handoff. No TOOLS.md rows, no `data/tools.json` rows. Written on the Grok Bot box and pushed through the GitHub connector (docs plus one stdlib script). No PR, per Mark's 2026-10-19 rule: gate this branch at its pinned head, then fast-forward `main`.
+Files: `sources/entries/148-skillspector.md`, `examples/x-intake-local/smoke_148.py` (self-contained, stdlib only), `tests/test_x_intake_smoke_148.py` (14 stub tests), `.gitignore` line for `pipelines/smoke/skillspector/`, and this handoff. No TOOLS.md rows, no `data/tools.json` rows. Written on the Grok Bot box and pushed through the GitHub connector (docs plus one stdlib script). No PR, per Mark's 2026-10-19 rule: gate this branch at its pinned head, then fast-forward `main`.
 
 ## How to gate
 
 ```sh
-python3 -m unittest tests.test_x_intake_smoke_148   # 10 tests, no SkillSpector needed
+python3 -m unittest tests.test_x_intake_smoke_148   # 14 tests, no SkillSpector needed
 python3 examples/x-intake-local/smoke_148.py         # exit 2 unless staged; PASS when staged
 python3 scripts/catalog_check.py
 ```
@@ -29,4 +29,4 @@ Checked on the box: smoke PASS (benign fixture SAFE score 0 exit 0; malicious fi
 
 ## Recommended next step (after the MVP)
 
-Stage SkillSpector on nimo and run `scan --no-llm` over every skill already imported through intake (`bootstrap/grok-cli/skills/`, Hermes skills) to size the false-positive rate, then wire it as a pre-install check in the H2 discovery path.
+Stage SkillSpector on nimo and run `scan --no-llm` over every skill already imported through intake (`bootstrap/grok-cli/skills/`, Hermes skills) to size the false-positive rate, then wire `scan --no-llm --fail-on-findings` (or a JSON check of the recommendation) as a pre-install check in the H2 discovery path.
