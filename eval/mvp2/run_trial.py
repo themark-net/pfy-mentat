@@ -124,6 +124,35 @@ def _free_gib() -> float:
     return kb / (1024.0 * 1024.0)
 
 
+def _unload_trial_model() -> bool:
+    """Drop qwen3.6:35b only. No-op when another model is resident."""
+    loaded = _loaded_models()
+    if not loaded or loaded == ["unreadable"]:
+        return False
+    prefix = MODEL.split(":")[0]
+    if any(not name.startswith(prefix) for name in loaded):
+        return False
+    body = json.dumps({
+        "model": MODEL,
+        "prompt": "",
+        "stream": False,
+        "keep_alive": 0,
+        "options": {"num_ctx": 512, "num_predict": 1},
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        "http://127.0.0.1:11434/api/generate",
+        data=body,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=90) as resp:
+            resp.read()
+    except (OSError, TimeoutError):
+        return False
+    return True
+
+
 def _loaded_models() -> list[str]:
     try:
         with urllib.request.urlopen("http://127.0.0.1:11434/api/ps", timeout=5) as resp:
@@ -354,6 +383,12 @@ def run_local(task: dict, keep_model: bool) -> dict:
             _save_result(payload)
             _say("ARM_DONE " + task["id"] + " L BLOCKED ps")
             return payload
+    if free < 32 and _unload_trial_model():
+        # The 21 GiB trial model was still resident from a prior arm. The 32 GiB
+        # floor is headroom to load it, so drop only that model and remeasure.
+        time.sleep(2)
+        free = _free_gib()
+        loaded = _loaded_models()
     if free < 32:
         payload = _blank(task, "L", planted)
         payload["status"] = "BLOCKED"
@@ -564,7 +599,7 @@ def main(argv: list[str]) -> int:
         arm = argv[2]
         task = _task(argv[3])
         if arm == "L":
-            run_local(task, keep_model=True)
+            run_local(task, keep_model=False)
             return 0
         if arm == "C":
             first = run_cloud(task, 1)
@@ -576,7 +611,8 @@ def main(argv: list[str]) -> int:
         _say("AUTH " + ("present" if _auth_exists() else "missing"))
         _say("FREE_GIB " + str(round(_free_gib(), 3)))
         for task in TASKS:
-            run_local(task, keep_model=True)
+            run_local(task, keep_model=False)
+        _unload_trial_model()
         _say("ALL_LOCAL_DONE")
         return 0
     if action == "all-cloud":
