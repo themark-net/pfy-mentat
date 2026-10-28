@@ -20,6 +20,16 @@ Branch `bot/h1-harness2`. Not a Feature GO. Catalog HOLD 70-75 stays. Run log: [
 | H1-7 | Docs and catalog row | done (Entry 136 I1, tier C, overall 59) |
 
 
+## MVP local build (2026-10-26)
+
+Branch `bot/mvp-local-build`. Not a Feature GO. Catalog HOLD 70-75 stays. Handoff: [HANDOFF-pfy-local-build-mvp.md](ops/HANDOFF-pfy-local-build-mvp.md).
+
+| ID | Item | Status |
+|----|------|--------|
+| MVP-1 | Headless `./pfy build --local` plus the offline coding eval | done after fix 2 (Tester FAIL at 42fcc229 closed on `bot/mvp-local-build`; live 8/8 on `qwen3.6:35b`, 617.949 s, stamp `20261027T070700973123Z`, sandbox `bwrap-unshare-net`; stub cheater scores 0; fix-1 8/8 was stamp `20261027T031008578576Z`) |
+| MVP-2 | Use `pfy build --local` for a real build-only task from this file, and compare with cloud Build on cost and pass rate | todo |
+
+
 ## G8 — Simple harness-agnostic launch (2026-07-31)
 
 | ID | Item | Status |

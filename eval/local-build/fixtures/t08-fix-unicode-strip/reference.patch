@@ -1,0 +1,8 @@
+diff --git a/src/clean.py b/src/clean.py
+index 9d6a980..b6422da 100644
+--- a/src/clean.py
++++ b/src/clean.py
+@@ -1,2 +1,2 @@
+ def normalize(text):
+-    return text
++    return " ".join(text.split()).casefold()

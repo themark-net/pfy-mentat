@@ -1,0 +1,21 @@
+diff --git a/src/duration.py b/src/duration.py
+index 0967dab..b45e732 100644
+--- a/src/duration.py
++++ b/src/duration.py
+@@ -1,2 +1,15 @@
+ def parse_duration(text):
+-    raise NotImplementedError(text)
++    units = {"h": 3600, "m": 60, "s": 1}
++    total = 0
++    num = ""
++    for ch in text.strip():
++        if ch.isdigit():
++            num += ch
++            continue
++        if ch not in units or not num:
++            raise ValueError(text)
++        total += int(num) * units[ch]
++        num = ""
++    if num:
++        raise ValueError(text)
++    return total

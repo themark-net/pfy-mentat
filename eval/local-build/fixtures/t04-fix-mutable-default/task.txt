@@ -1,0 +1,1 @@
+collect() must not share a list between calls. collect('a') is ['a'] and the next call collect('b') is ['b'].

@@ -1,0 +1,1 @@
+Add an argparse flag --upper. main(['--upper', 'Hi']) returns HI. Do not edit tests.

@@ -1,0 +1,17 @@
+diff --git a/src/cli.py b/src/cli.py
+index 7895b93..1e10684 100644
+--- a/src/cli.py
++++ b/src/cli.py
+@@ -4,9 +4,12 @@ import argparse
+ def build_parser():
+     parser = argparse.ArgumentParser(prog="echoer")
+     parser.add_argument("text")
++    parser.add_argument("--upper", action="store_true")
+     return parser
+ 
+ 
+ def main(argv):
+     args = build_parser().parse_args(argv)
++    if args.upper:
++        return args.text.upper()
+     return args.text

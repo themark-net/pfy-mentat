@@ -1,0 +1,11 @@
+diff --git a/src/work.py b/src/work.py
+index e92d7da..d55fe66 100644
+--- a/src/work.py
++++ b/src/work.py
+@@ -1,6 +1,2 @@
+ def live():
+     return 1
+-
+-
+-def dead_code():
+-    return 0

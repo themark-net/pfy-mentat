@@ -1,0 +1,20 @@
+diff --git a/src/text.py b/src/text.py
+index fa6e666..b72107e 100644
+--- a/src/text.py
++++ b/src/text.py
+@@ -1,2 +1,15 @@
+ def title_case(text):
+     return text.strip().title()
++
++
++def slugify(text):
++    out = []
++    dash = False
++    for ch in text.strip().lower():
++        if ch.isalnum():
++            out.append(ch)
++            dash = False
++        elif not dash:
++            out.append("-")
++            dash = True
++    return "".join(out).strip("-")
