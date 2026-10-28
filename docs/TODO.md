@@ -22,12 +22,12 @@ Branch `bot/h1-harness2`. Not a Feature GO. Catalog HOLD 70-75 stays. Run log: [
 
 ## MVP local build (2026-10-26)
 
-Branch `bot/mvp-local-build`. Not a Feature GO. Catalog HOLD 70-75 stays. Handoff: [HANDOFF-pfy-local-build-mvp.md](ops/HANDOFF-pfy-local-build-mvp.md).
+Branch `bot/mvp-local-build`. Not a Feature GO. Catalog HOLD 70-75 stays. Handoff: [HANDOFF-pfy-local-build-mvp.md](ops/HANDOFF-pfy-local-build-mvp.md). MVP-2 trial branch `bot/mvp2-trial`. Report: [eval/mvp2/REPORT.md](../eval/mvp2/REPORT.md).
 
 | ID | Item | Status |
 |----|------|--------|
 | MVP-1 | Headless `./pfy build --local` plus the offline coding eval | done after fix 2 (Tester FAIL at 42fcc229 closed on `bot/mvp-local-build`; live 8/8 on `qwen3.6:35b`, 617.949 s, stamp `20261027T070700973123Z`, sandbox `bwrap-unshare-net`; stub cheater scores 0; fix-1 8/8 was stamp `20261027T031008578576Z`) |
-| MVP-2 | Use `pfy build --local` for a real build-only task from this file, and compare with cloud Build on cost and pass rate | todo |
+| MVP-2 | Use `pfy build --local` for a real build-only task from this file, and compare with cloud Build on cost and pass rate | done on `bot/mvp2-trial` (gate local 5/6, cloud 6/6; review accept local 4/6, cloud 6/6; wall 1694 s vs 584 s; no-go as the default). Handoff: [HANDOFF-mvp2-trial.md](ops/HANDOFF-mvp2-trial.md) |
 
 
 ## G8 — Simple harness-agnostic launch (2026-07-31)
