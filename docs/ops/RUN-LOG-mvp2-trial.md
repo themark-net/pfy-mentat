@@ -18,7 +18,7 @@ See `docs/ops/AUTONOMOUS-DECISIONS-2026-10-27.md`.
 
 ## Phases
 
-- specs | proven red in bwrap on 997d892 (failures t1=1 t2=1 t3=1 t4=2 t5=1 t6=3, errors 0). Harness commit follows. Local arms not started.
-- local arms | done. Pass 4/6 (t1 t2 t3 t6). t4 gate pass, review reject (over-broad new label). t5 gate fail (receipt dir never set). Model unloaded. qwen not resident.
-- cloud arms | pending
-- handoff | pending
+- specs | proven red in bwrap on 997d892 (failures t1=1 t2=1 t3=1 t4=2 t5=1 t6=3, errors 0).
+- local arms | done. Gate 5/6 (t5 FAIL). Review accept 4/6 (t4 reject: overtime timeout labels ls/set/settings as new; t5 reject: PFY_SMOKE_RECEIPT_DIR never set). Wall 1694.0 s. Model unloaded.
+- cloud arms | done. Gate 6/6. Review accept 6/6. Wall 583.6 s. Attempts 1. modelCalls 51 across 6 sessions, turnCount 1 each. Weekly percent not readable.
+- handoff | done. No-go for local as the default. Report `eval/mvp2/REPORT.md`. Handoff `docs/ops/HANDOFF-mvp2-trial.md`. Patches stay under `eval/mvp2/patches/`.
