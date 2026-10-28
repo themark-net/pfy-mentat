@@ -1399,6 +1399,19 @@ def _runtime_dir() -> Path:
     raise SandboxUnavailable("runtime dir is missing", reason="no-runtime-dir")
 
 
+def _refuse_explicit_runtime_dir() -> None:
+    """Raise before a sandbox starts when XDG_RUNTIME_DIR is set and unusable.
+
+    A missing or /tmp runtime dir must not be reported as a missing bwrap.
+    An unset XDG is left to _socket_link, which may bind a short worktree
+    socket. That keeps "bwrap is not usable" for a caller that did not point
+    at a bad runtime dir.
+    """
+    if not (os.environ.get("XDG_RUNTIME_DIR") or "").strip():
+        return
+    _runtime_dir()
+
+
 def _socket_link(worktree: Path) -> tuple[Path | None, Path]:
     """Symlink a short runtime name at the worktree and return (link, socket).
 
@@ -1609,6 +1622,9 @@ def prepare_sandbox(
     (worktree / "tmp").mkdir(parents=True, exist_ok=True)
     port = _loopback_port(endpoint)
     share_net = bool(endpoint) and port is None
+    # Before the missing-bwrap return. Unsafe mode does not open the bridge.
+    if port is not None and not share_net and (bwrap_works() or not unsafe):
+        _refuse_explicit_runtime_dir()
     if not bwrap_works():
         if not unsafe:
             raise SandboxUnavailable("bwrap is not usable", reason="no-sandbox")
@@ -2287,6 +2303,10 @@ def build_local(argv: list[str] | None = None) -> int:
         )
         home.mkdir(parents=True, exist_ok=True)
         _prepare_home(home)
+        # Before the test gate. That gate has no Ollama bridge, so a bad
+        # explicit runtime dir would otherwise be reported as no-sandbox.
+        if _loopback_port(openai_base) is not None and not args.unsafe_no_sandbox:
+            _refuse_explicit_runtime_dir()
 
         watcher = threading.Thread(target=_watchdog, args=(stop_watch, state), daemon=True)
         watcher.start()

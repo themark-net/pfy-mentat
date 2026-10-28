@@ -138,7 +138,7 @@ Exit check 2026-10-26T07:39:19Z:
 - Start of this repair: branch `bot/mvp-local-build` in `tmp/mvp-local-build`. Merge of `origin/main` `2f2b20e` is `008c7b2` (catalog only). No rebase, no force-push, no PR, no merge to main.
 - Lead implemented B1 through B4 in this worktree. They share `scripts/pfy_build_local.py`.
 - Python 3.14.4: 901 tests, 623.379 s, failures=1, skipped=16. The failure is `test_relative_outdir_log_path_safe` because `TMPDIR` is inside the repo.
-- Python 3.12.12 (uv prefix): 901 tests, 552.107 s, failures=21, skipped=16. One is that same outdir case. Twenty are `tests.test_harness2_local_sandbox`: the child execs `sys.executable`, and the uv binary lives under the home that sandbox hides. The same tree passed those tests under `/usr/bin/python3`. Python 3.13 is not installed.
+- Python 3.12.12 (uv prefix): 901 tests, 552.107 s, failures=21, skipped=16. One is that same outdir case. Twenty are `tests.test_harness2_local_sandbox`: the child execs `sys.executable`, and the uv binary lives under the home that sandbox hides. The same tree passed those tests under `/usr/bin/python3`. Python 3.13 is not installed on this box.
 - Hedge detector and lab_stage did not fail (Ollama was up).
 - RED: remove the test-file hash -> `test_rewriting_asserts_to_true_does_not_commit` (exit 0, assertion 0 != 1).
 - RED: remove the kill on leader exit and the post-loop kill -> `test_orphan_background_does_not_block` (TimeoutExpired at 25 s).

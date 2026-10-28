@@ -21,6 +21,25 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRATCH = ROOT / "tmp" / "local-build-tests"
 
 
+def _direct_socket_dir() -> Path:
+    """A directory whose ollama.sock path is shorter than sun_path.
+
+    Repo tmp is used when that string fits. A deep checkout uses another
+    short writable directory that is not /tmp, because bwrap hides /tmp.
+    """
+    preferred = ROOT / "tmp" / "s" / "w"
+    if len(str(preferred / "tmp" / "ollama.sock")) < 108:
+        return preferred
+    parents = [Path("/run/user") / str(os.getuid()), Path("/dev/shm")]
+    for parent in parents:
+        if not parent.is_dir() or not os.access(parent, os.W_OK):
+            continue
+        dest = parent / ("pfy-w-%d" % os.getpid())
+        if len(str(dest / "tmp" / "ollama.sock")) < 108:
+            return dest
+    raise AssertionError("no short writable directory outside /tmp for the direct socket")
+
+
 def _load_build():
     path = ROOT / "scripts" / "pfy_build_local.py"
     spec = importlib.util.spec_from_file_location("pfy_build_local_under_test", path)
@@ -478,7 +497,7 @@ class LocalBuildTests(unittest.TestCase):
         env.update(extra)
         return env
 
-    def command(self, scenario, extra=None):
+    def command(self, scenario, extra=None, auto_unsafe=True):
         self._seq += 1
         receipt = self.repo / "tmp" / "receipts" / ("%s-%s" % (scenario, self._seq))
         cmd = [
@@ -505,14 +524,14 @@ class LocalBuildTests(unittest.TestCase):
         ]
         if extra:
             cmd.extend(extra)
-        if not BUILD.bwrap_works() and "--unsafe-no-sandbox" not in cmd:
+        if auto_unsafe and not BUILD.bwrap_works() and "--unsafe-no-sandbox" not in cmd:
             cmd.append("--unsafe-no-sandbox")
         return cmd, receipt
 
-    def run_build(self, scenario="fix", extra=None, env_extra=None, timeout=60):
+    def run_build(self, scenario="fix", extra=None, env_extra=None, timeout=60, auto_unsafe=True):
         if self.marker.exists():
             self.marker.unlink()
-        cmd, receipt = self.command(scenario, extra)
+        cmd, receipt = self.command(scenario, extra, auto_unsafe=auto_unsafe)
         proc = subprocess.run(
             cmd,
             cwd=self.repo,
@@ -1380,8 +1399,14 @@ class LocalBuildTests(unittest.TestCase):
         self.assertEqual(aborted["reason"], "no-receipt")
 
     def test_missing_runtime_dir_is_not_reported_as_missing_bwrap(self):
+        # Do not add --unsafe-no-sandbox. That flag skips the bridge, so the
+        # runtime-dir guard would never run on a host without bwrap.
         missing = self.tmp / "no-such-runtime"
-        proc, receipt = self.run_build("fix", env_extra={"XDG_RUNTIME_DIR": str(missing)})
+        proc, receipt = self.run_build(
+            "fix",
+            env_extra={"XDG_RUNTIME_DIR": str(missing)},
+            auto_unsafe=False,
+        )
         self.assertEqual(proc.returncode, 4, proc.stdout + proc.stderr)
         data = self.receipt(proc, receipt)
         self.assertEqual(data["reason"], "no-runtime-dir")
@@ -1390,7 +1415,11 @@ class LocalBuildTests(unittest.TestCase):
         self.assertIn("runtime dir", (proc.stderr or "").lower())
 
     def test_runtime_dir_under_system_tmp_is_blocked(self):
-        proc, receipt = self.run_build("fix", env_extra={"XDG_RUNTIME_DIR": "/tmp"})
+        proc, receipt = self.run_build(
+            "fix",
+            env_extra={"XDG_RUNTIME_DIR": "/tmp"},
+            auto_unsafe=False,
+        )
         self.assertEqual(proc.returncode, 4, proc.stdout + proc.stderr)
         data = self.receipt(proc, receipt)
         self.assertEqual(data["reason"], "runtime-dir-in-tmp")
@@ -1703,14 +1732,14 @@ class SandboxEscapeTests(unittest.TestCase):
 
         BUILD._runtime_dir = missing
         saved = os.environ.pop("XDG_RUNTIME_DIR", None)
-        short = ROOT / "tmp" / "s" / "w"
+        short = _direct_socket_dir()
         try:
+            # Longer than sun_path no matter how short the checkout is.
+            long = Path("/" + ("n" * 120) + "/work")
             with self.assertRaises(BUILD.SandboxUnavailable) as raised:
-                BUILD._socket_link(self.work)
+                BUILD._socket_link(long)
             self.assertEqual(raised.exception.reason, "no-runtime-dir")
-            direct = short / "tmp" / "ollama.sock"
-            if len(str(direct)) >= 108:
-                self.skipTest("SKIP: worktree socket path is too long to show the fallback")
+            self.assertLess(len(str(short / "tmp" / "ollama.sock")), 108)
             if short.exists():
                 shutil.rmtree(short)
             short.mkdir(parents=True)
@@ -1736,7 +1765,9 @@ class SandboxEscapeTests(unittest.TestCase):
             BUILD._runtime_dir = real
             if saved is not None:
                 os.environ["XDG_RUNTIME_DIR"] = saved
-            shutil.rmtree(ROOT / "tmp" / "s", ignore_errors=True)
+            shutil.rmtree(short, ignore_errors=True)
+            if short.parent == ROOT / "tmp" / "s":
+                shutil.rmtree(short.parent, ignore_errors=True)
 
     def test_loopback_bridge_waits_for_a_slow_upstream(self):
         # The connect timeout must not abort a response that has not started.
