@@ -19,6 +19,6 @@ See `docs/ops/AUTONOMOUS-DECISIONS-2026-10-27.md`.
 ## Phases
 
 - specs | proven red in bwrap on 997d892 (failures t1=1 t2=1 t3=1 t4=2 t5=1 t6=3, errors 0). Harness commit follows. Local arms not started.
-- local arms | starting, one arm at a time, model unloaded between arms so the 32 GiB floor still holds
+- local arms | done. Pass 4/6 (t1 t2 t3 t6). t4 gate pass, review reject (over-broad new label). t5 gate fail (receipt dir never set). Model unloaded. qwen not resident.
 - cloud arms | pending
 - handoff | pending
