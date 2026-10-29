@@ -138,6 +138,8 @@ pipelines/smoke/muxin/
 # 146-147 receipts.
 pipelines/smoke/skill-up/
 pipelines/smoke/hiroute/
+# 148 receipts.
+pipelines/smoke/skillspector/
 
 # agentdescent-trial promote temp files
 examples/agentdescent-trial/.results.new-*/

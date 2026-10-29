@@ -1,0 +1,28 @@
+### Entry 148: SkillSpector: NVIDIA's security scanner for agent skills (static mode, offline, CPU only)
+
+- **URL**: https://github.com/NVIDIA/SkillSpector (Apache-2.0, Python 3.12+). Checked at `HEAD` `e7172462caf367736645f66c1aa154ca5f9c64dc` (2026-10-27 10:50 PT), `skillspector --version` = `SkillSpector v2.12.0`.
+- **Date**: 2026-10-27 PT (daily X intake, window 2026-10-27T00:40Z to 2026-10-28T00:40Z; post 2026-10-27 10:58 PT; upstream commit 2026-10-27 10:50 PT)
+- **Source / Poster**: @alex_verem, https://x.com/alex_verem/status/2115140980563492968 (repo link in the reply https://x.com/alex_verem/status/2115140992819204146)
+- **Summary / Key Claims** (upstream README; their claims except where marked verified): scans an agent skill (Git repo, URL, zip, directory or single file) before install for 71 vulnerability patterns in 17 categories, including prompt injection, data exfiltration, privilege escalation, supply chain, memory poisoning, tool misuse, MCP least privilege and MCP tool poisoning. Static analysis (AST, taint tracking, YARA) plus optional LLM semantic review; 0-100 risk score with a SAFE / DO_NOT_INSTALL style recommendation; JSON, Markdown and SARIF output; baselines to suppress accepted findings; an MCP server mode and Pi / OpenCode extensions. Part of NVIDIA's Verified Skills pipeline; in their 31,132-skill dataset 26.1% had vulnerabilities and 5.2% looked malicious.
+- **Why it matters here**: Mark rates H2 (discovering and pulling in other people's skills and tools) high priority, and pfy-mentat's catalog intake already pulls skills from X. Every imported skill runs with the coding agent's access. A local install gate ("scan before a skill lands in `bootstrap/grok-cli/skills` or a Hermes skills dir") is the missing safety step for H2, and `--no-llm` mode needs no key.
+- **Fit on nimo**: Yes, expected: pure Python, CPU only, no GPU or NVIDIA dependency for static mode. Not yet staged on nimo; the smoke exits 2 until it is (`python3 -m venv ~/DEVELOP/pfy-mentat/tmp/skillspector/.venv && .../pip install git+https://github.com/NVIDIA/SkillSpector.git@e7172462caf367736645f66c1aa154ca5f9c64dc`, inside DEVELOP only).
+- **Verified on the Grok Bot box** (Python 3.13.5 venv under `/tmp`, scan run with `env -i`, temp HOME/TMPDIR, bubblewrap with no network): a benign fixture skill scores 0, `SAFE`, no issues, exit 0. A fixture with "ignore all previous instructions", `curl ... | bash` and reading `~/.ssh/id_rsa` / `~/.aws/credentials` to POST them scores 93 `CRITICAL`, `DO_NOT_INSTALL`, issues `P1, SC2, TM2, PE3, PE3`, exit 1. About 2 s per scan with the network cut (the OSV lookup falls back offline). Nothing written to HOME. Smoke PASS.
+- **Findings**:
+  - Exit 0 covers a score at or below 50, which is both SAFE and CAUTION. Exit 1 is only for a score above 50, or when a strict flag fires (`--fail-on-findings`, `--fail-on-incomplete`). On the pinned commit with `--no-llm`, a one-line `curl | bash` skill scored 40 CAUTION and exited 0, a credential-read skill scored 22 CAUTION and exited 0, and an ignore-all-previous-instructions skill was SAFE and exited 0. A pre-install gate needs `--fail-on-findings` or a JSON check of the recommendation.
+  - LLM review is opt-in (`SKILLSPECTOR_PROVIDER` plus a provider key); `--no-llm` keeps it free and local. Whether it can point at a local OpenAI-compatible endpoint (Ollama on nimo) for the semantic stage is unchecked.
+  - Static rules are pattern-based, so a clean score is a filter, not proof. Our own skills will need a baseline file for accepted findings.
+- **Extracted Repos / Tools**: https://github.com/NVIDIA/SkillSpector · https://github.com/NVIDIA/skills (signed skills catalog) · `docs/SUPPRESSION.md`, `docs/PI_EXTENSION.md`, `docs/OPENCODE_EXTENSION.md` upstream
+- **TOOLS.md Link**: None yet. I0 awareness. No TOOLS.md row, no `data/tools.json` row.
+- **Smoke**: `python3 examples/x-intake-local/smoke_148.py`. Reads `$SKILLSPECTOR_BIN`, else `tmp/skillspector/.venv/bin/skillspector`, else PATH; version pinned (`$SKILLSPECTOR_VERSION`, default 2.12.0); exit 2 when not staged or when bwrap is unusable (it does not scan with the network up). Receipt: `pipelines/smoke/skillspector/latest.json`. Tests: `python3 -m unittest tests.test_x_intake_smoke_148` (14 stub tests).
+- **Non-goals**: No LLM stage, no API key, no MCP server registration, no Pi/OpenCode extension install, no scanning of Mark's real skill dirs in this entry.
+- **How this fails / how we recover**:
+
+| Risk | How it fails | Recovery |
+|------|----------------|----------|
+| False negative | A malicious skill scores SAFE | Treat as one gate, not proof; keep human review on new third-party skills |
+| False positive | Our own skills get DO_NOT_INSTALL | Baseline file per skill set (`skillspector baseline`) |
+| CAUTION exits 0 | A one-line curl\|bash skill at score 40, or a credential read at 22, exits 0 | Gate with `--fail-on-findings`, or block unless the JSON recommendation is SAFE |
+| Network lookups | OSV query leaks skill dependency names | bwrap `--unshare-net`; the smoke exits 2 when bwrap is unusable. Offline fallback verified when the network is cut |
+| Upstream drift | Rules or JSON shape change | Pin the commit; smoke checks the recommendation and rule families |
+
+- **Status**: Cataloged I0. Smoke PASS on the Grok Bot box; not yet staged on nimo. **Eval-auto trial candidate** after the MVP: put `skillspector scan --no-llm --fail-on-findings` in front of H2 skill imports (exit 0 also covers CAUTION; the flag, or a JSON check of the recommendation, is the gate) and run it over the skills already pulled in through intake.
