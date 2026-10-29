@@ -5,6 +5,7 @@ Stubs are tiny Python scripts (shebang = this interpreter) with knobs baked in; 
 Issue objects use `id`, the same key the real tool emits."""
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import socket
@@ -16,6 +17,20 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "examples/x-intake-local/smoke_148.py"
+
+
+def _bwrap_usable() -> bool:
+    """Same probe the smoke uses (smoke_148.bwrap_ok), so the tests skip exactly when the smoke would exit 2."""
+    spec = importlib.util.spec_from_file_location("smoke_148_probe", SCRIPT)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.bwrap_ok()
+
+
+BWRAP_OK = _bwrap_usable()
+# Hosts without usable bwrap (ubuntu-latest CI) cannot demonstrate confinement; the scan paths skip there, like
+# test_pfy_build_local. The no-bwrap exit-2 contract is still asserted by test_no_bwrap_exits_2 on every host.
+needs_bwrap = unittest.skipUnless(BWRAP_OK, "SKIP: bwrap-missing; confinement was not demonstrated")
 
 STUB = r'''
 import json, socket, sys, os, pathlib
@@ -82,6 +97,7 @@ class Smoke148(unittest.TestCase):
             rec = json.loads((td / "r" / "latest.json").read_text())
             return p.returncode, rec
 
+    @needs_bwrap
     def test_pass(self):
         code, rec = self.run_smoke(dict(BASE))
         self.assertEqual(code, 0, rec)
@@ -95,29 +111,35 @@ class Smoke148(unittest.TestCase):
     def test_version_pin_exit_2(self):
         self.assertEqual(self.run_smoke(dict(BASE, version="9.9.9"))[0], 2)
 
+    @needs_bwrap
     def test_blind_scanner_fails(self):
         code, rec = self.run_smoke(dict(BASE, blind=True))
         self.assertEqual(code, 1)
         self.assertIn("bad_do_not_install", rec["failed"])
 
+    @needs_bwrap
     def test_missing_supply_chain_fails(self):
         code, rec = self.run_smoke(dict(BASE, ids=["P1", "TM2"]))
         self.assertEqual(code, 1)
         self.assertIn("bad_flags_supply_chain", rec["failed"])
 
+    @needs_bwrap
     def test_missing_prompt_injection_fails(self):
         code, rec = self.run_smoke(dict(BASE, ids=["PE3", "SC2"]))
         self.assertEqual(code, 1)
         self.assertIn("bad_flags_prompt_injection", rec["failed"])
 
+    @needs_bwrap
     def test_low_score_fails(self):
         code, rec = self.run_smoke(dict(BASE, score=40))
         self.assertIn("bad_score_ge_70", rec["failed"])
 
+    @needs_bwrap
     def test_bad_exit_zero_fails(self):
         code, rec = self.run_smoke(dict(BASE, bad_exit=0))
         self.assertIn("bad_exit_nonzero", rec["failed"])
 
+    @needs_bwrap
     def test_temp_home_write_fails(self):
         code, rec = self.run_smoke(dict(BASE, touch_home=True))
         self.assertEqual(code, 1)
@@ -129,6 +151,7 @@ class Smoke148(unittest.TestCase):
         self.assertEqual(code, 2, rec)
         self.assertIn("bwrap is not usable", rec["reason"])
 
+    @needs_bwrap
     def test_misreported_benign_fails(self):
         code, rec = self.run_smoke(dict(BASE, misreport_good=True))
         self.assertEqual(code, 1, rec)
@@ -137,6 +160,7 @@ class Smoke148(unittest.TestCase):
         self.assertTrue(rec["checks"]["good_report_written"], rec)
         self.assertNotIn("bad_do_not_install", rec["failed"])
 
+    @needs_bwrap
     def test_network_connect_attempt_stays_blocked(self):
         srv = socket.socket()
         srv.bind(("127.0.0.1", 0))
@@ -149,6 +173,7 @@ class Smoke148(unittest.TestCase):
         self.assertEqual(rec["sandbox"], "bwrap --unshare-net")
         self.assertTrue(rec["checks"]["temp_home_empty"], rec)
 
+    @needs_bwrap
     def test_real_home_write_fails(self):
         code, rec = self.run_smoke(dict(BASE, touch_real_home=True), {"PFY_SMOKE_REAL_HOME_BIND": "1"})
         self.assertEqual(code, 1, rec)
