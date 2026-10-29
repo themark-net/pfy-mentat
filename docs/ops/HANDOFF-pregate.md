@@ -2,7 +2,7 @@
 
 ## Status
 
-Branch `bot/pregate-check`, fix round 1 after Tester and Reviewer both FAILed `172f5df`. `origin/main` (`3278cfc`) is merged in. Not merged to main, and no gates requested by the implementer. Results for the pinned SHA are under "Verify" below.
+Branch `bot/pregate-check`, fix round 2 after Tester FAILed `6164cc6` (B4) and Reviewer filed F2 to F7. `origin/main` `8430e90` (x148 bwrap fix) is merged in. Not merged to main, and no gates requested by the implementer. Results for the pinned SHA are under "Verify" below.
 
 ## Goal
 
@@ -44,6 +44,19 @@ Should-fix items folded in:
 - ci-parity: a missing test file now FAILs, and comments no longer satisfy the static pin.
 - Removed: the unused STAMP variable, the stale "suite owns discover" comment and the unsourced weekly-usage figure. The summary notes that skip counts depend on the host.
 
+## Fix round 2 (gate findings on 6164cc6)
+
+- B4: an unresolvable `--base` exits 2 before any check (it used to skip the committed gate-file diff and PASS). gate-hash also FAILs if the base SHA is somehow missing.
+- PID reuse (Tester, Reviewer F4): `kill_tree` signals a PID only while it is still a direct child of this pregate, checked before TERM and again before KILL. A watchdog left behind by a SIGKILLed pregate finds its child reparented and does nothing.
+- Owner files: only `.owner-<7 hex>-<6 digits>` names are used; anything else (for example `.owner-..`) is ignored with a message, never removed.
+- More than one positional REF exits 2 (F6).
+- The summary says "no check ran to completion" only when nothing passed and nothing failed.
+- The prune message distinguishes "owner pid is gone" from "owner pid is alive but is not a pregate (pid reused)".
+- PREGATE.md documents the whitespace-path refusal, one pregate per host and the unknown-base exit.
+- Retention: the newest 20 run folders are kept (`PREGATE_KEEP_RUNS`); only run-id-named folders in `tmp/pregate-runs/` are pruned.
+- Usage (`--help`) prints only the header comment, not the `set -euo pipefail` line (F5).
+- This handoff: Isolation wording corrected (F2) and Verify rows marked by the code they ran on (F7).
+
 ## Verify
 
 ```bash
@@ -52,22 +65,24 @@ Should-fix items folded in:
 ./scripts/pregate.sh --only lnt            # expect exit 2
 ```
 
-Results on nimo for the code commit `412e970` (the follow-up commit only edits this handoff). Run folders are under `~/DEVELOP/pfy-mentat/tmp/pregate-runs/`. Times are PDT, 2026-10-29.
+Round 1 results. The "code" column says which pregate code ran: `412e970` or `pre-412e970` (the uncommitted working copy before that commit, F7). Round 2 results are further down. Run folders are under `~/DEVELOP/pfy-mentat/tmp/pregate-runs/`. Times are PDT, 2026-10-29.
 
-| run | expected | result | run folder |
-|---|---|---|---|
-| full, `412e970` (tip) | PASS once main is green | FAIL, rc 1, 1060 s: only ubuntu-parity fails (10 failures, all `tests.test_x_intake_smoke_148`, "bwrap is not usable here"); lint, ci-parity, gate-hash, eval-structural, orphans PASS | `412e970-20261029T084456Z-3441835` |
-| full, `997d892` (ubuntu CI green) | PASS | PASS, rc 0, 1060 s, ubuntu-parity included | `997d892-20261029T090236Z-3563052` |
-| `--only ci-parity 2fadea1` | FAIL | FAIL, rc 1, 8 s | `2fadea1-20261029T092016Z-3666349` |
-| `--only ubuntu-parity` on `4b85eb0` (local probe: 997d892 plus a 129bc85-style test that needs bwrap) | FAIL | FAIL, rc 1, 437 s, exactly 1 failure: `test_needs_bwrap` | `4b85eb0-20261029T084456Z-3441834` |
-| `--only lnt` | exit 2 | exit 2, "unknown check 'lnt'" | none |
-| `--only` with no value, bad SHA `deadbeef1234` | exit 2 | exit 2 | none |
-| gate-hash with a staged rename and a deleted test (`--in-place --allow-dirty`) | FAIL, no crash | FAIL listing the deleted, renamed and new paths | `fc3561e-20261029T084404Z-3429275` |
-| gate-hash on a local commit adding `conftest.py` and weakening an assert | FAIL plus review note | FAIL "committed A of gate file", NOTE for the edited test | `20fba52-20261029T084410Z-3433679` |
-| SIGTERM mid-run | rc 143, FAIL summary, own children stopped | as expected, worktree removed | `997d892-20261029T084138Z-*` |
-| SIGKILL, then next run | stale worktree pruned only once its processes are gone | pruned with "owner pid ... is gone" | none |
+| code | run | expected | result | run folder |
+|---|---|---|---|---|
+| 412e970 | full, `412e970` (tip) | PASS once main is green | FAIL, rc 1, 1060 s: only ubuntu-parity fails (10 failures, all `tests.test_x_intake_smoke_148`, "bwrap is not usable here"); lint, ci-parity, gate-hash, eval-structural, orphans PASS | `412e970-20261029T084456Z-3441835` |
+| 412e970 | full, `997d892` (ubuntu CI green) | PASS | PASS, rc 0, 1060 s, ubuntu-parity included | `997d892-20261029T090236Z-3563052` |
+| 412e970 | `--only ci-parity 2fadea1` | FAIL | FAIL, rc 1, 8 s | `2fadea1-20261029T092016Z-3666349` |
+| 412e970 | `--only ubuntu-parity` on `4b85eb0` (local probe: 997d892 plus a 129bc85-style test that needs bwrap) | FAIL | FAIL, rc 1, 437 s, exactly 1 failure: `test_needs_bwrap` | `4b85eb0-20261029T084456Z-3441834` |
+| 412e970 | `--only lnt` | exit 2 | exit 2, "unknown check 'lnt'" | none |
+| pre-412e970 | `--only` with no value, bad SHA `deadbeef1234` | exit 2 | exit 2 | none |
+| pre-412e970 | gate-hash with a staged rename and a deleted test (`--in-place --allow-dirty`) | FAIL, no crash | FAIL listing the deleted, renamed and new paths | `fc3561e-20261029T084404Z-3429275` |
+| pre-412e970 | gate-hash on a local commit adding `conftest.py` and weakening an assert | FAIL plus review note | FAIL "committed A of gate file", NOTE for the edited test | `20fba52-20261029T084410Z-3433679` |
+| pre-412e970 | SIGTERM mid-run | rc 143, FAIL summary, own children stopped | as expected, worktree removed | `997d892-20261029T084138Z-*` |
+| pre-412e970 | SIGKILL, then next run | stale worktree pruned only once its processes are gone | pruned with "owner pid ... is gone" | none |
 
-Tip FAIL is a real regression on main, not a pregate false positive: `3278cfc` added `tests/test_x_intake_smoke_148.py`, which needs bwrap, and GitHub "G0 (ubuntu-latest)" on `3278cfc` concluded failure (run 40835727021) while "G0 (self-hosted nimo)" passed. The tip goes green when the x148 owner fixes or skips that test without bwrap. This branch does not touch product tests.
+Tip FAIL is a real regression on main, not a pregate false positive: `3278cfc` added `tests/test_x_intake_smoke_148.py`, which needs bwrap, and GitHub "G0 (ubuntu-latest)" on `3278cfc` concluded failure (run 40835727021) while "G0 (self-hosted nimo)" passed. The tip goes green when the x148 owner fixes or skips that test without bwrap. This branch does not touch product tests. Fixed on main by `8430e90` (`bot/fix-x148-bwrap`), now merged here.
+
+ROUND2_PLACEHOLDER
 
 ## Dates (America/Los_Angeles)
 
@@ -75,6 +90,8 @@ Tip FAIL is a real regression on main, not a pregate false positive: `3278cfc` a
 - 2026-10-29, about 00:15 PDT: `172f5df` pushed.
 - 2026-10-29, about 00:20 to 01:10 PDT: Tester and Reviewer gated `172f5df`, both FAIL.
 - 2026-10-29, from about 01:15 PDT: fix round 1 (this file).
+- 2026-10-29, about 02:22 PDT: `6164cc6` pushed; Tester FAILed it on B4.
+- 2026-10-29, from about 03:18 PDT: fix round 2; `origin/main` `8430e90` merged in.
 
 ## Known gaps
 
@@ -84,14 +101,14 @@ Tip FAIL is a real regression on main, not a pregate false positive: `3278cfc` a
 - The watchdog stops pregate's own descendants. An orphan that has re-parented away is reported by the orphan check but never signalled.
 - A gate-file change in a commit FAILs gate-hash on purpose. A branch that legitimately edits `pyproject.toml` or similar needs a reviewer waiver.
 - `tmp/pregate-latest-summary.md` is overwritten by whichever run finishes last. Attach the run-folder copy.
-- Run folders under `tmp/pregate-runs/` are never auto-deleted.
+- Retention keeps 20 run folders, so evidence folders cited below can age out; copy a summary elsewhere to keep it.
 - A full run is about two discovers long (see Verify). Use `--only` for fast loops, but never attach a partial summary to a gate request.
-- The tip cannot be PASS until main fixes `tests/test_x_intake_smoke_148.py` on hosts without bwrap (x148 owner, red on ubuntu CI at `3278cfc`).
+- One pregate per host: concurrent runs are not coordinated.
 - `eval-structural.yml` is not triggered from here. This is local reproduction only.
 
 ## Isolation
 
-Work happened in `~/DEVELOP/pfy-mentat/tmp/pgfix` on `bot/pregate-check`. Mark's main checkout, `tmp/mvp2` and `tmp/x148` were not touched, and no other processes were signalled.
+Work happened in `~/DEVELOP/pfy-mentat/tmp/pgfix` on `bot/pregate-check`. Pregate is not invisible to the main checkout: its run worktrees (`tmp/pg/`), scratch (`tmp/pgs/`), run folders (`tmp/pregate-runs/`) and `tmp/pregate-latest-summary.md` live under the main checkout's gitignored `tmp/`, each run registers a worktree in the shared `.git/worktrees/`, and some tests write under the shared `.git` (for example `.git/opencode`). Tracked files in Mark's main checkout, `tmp/mvp2` and `tmp/x148` were not edited, and no processes other than pregate's own were signalled.
 
 ## Next (no-PR flow)
 

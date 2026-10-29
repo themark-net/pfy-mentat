@@ -22,7 +22,13 @@ From any pfy-mentat worktree that has this script:
 ./scripts/pregate.sh --base origin/main REF                # base for the committed gate-file diff (default)
 ```
 
-Environment knobs: `PREGATE_STEP_TIMEOUT` (seconds per check, default 2400) and `PREGATE_MAX_ROOT_LEN` (default 60).
+Environment knobs: `PREGATE_STEP_TIMEOUT` (seconds per check, default 2400), `PREGATE_MAX_ROOT_LEN` (default 60) and `PREGATE_KEEP_RUNS` (default 20).
+
+Limits:
+
+- One pregate per host at a time. Concurrent runs are not coordinated: they share `tmp/pregate-latest-summary.md`, compete for CPU (which can trip timing-sensitive tests), and two runs of the same SHA in the same second exit 2.
+- A repo path containing whitespace is refused (exit 2).
+- `--base` must resolve (default `origin/main`). An unknown base exits 2 instead of skipping the committed gate-file diff.
 
 ## Output
 
@@ -31,10 +37,10 @@ Environment knobs: `PREGATE_STEP_TIMEOUT` (seconds per check, default 2400) and 
   - `logs/<check>.log`: one log per check; every FAIL line names its log here
   - `receipts/structural.latest.md`, `receipts/golden.latest.md`: G0 receipts (tracked files are never rewritten)
 - Convenience pointer: `~/DEVELOP/pfy-mentat/tmp/pregate-latest-summary.md` (overwritten by whichever run finishes last; attach the run-folder copy instead)
-- Exit codes: 0 PASS; 1 FAIL, or no check passed; 2 usage or setup error (unknown check, missing `--only` value, bad ref, path too long, whitespace in path, dirty `--in-place`); 130/143 when interrupted by SIGINT/SIGTERM
-- Run folders are not deleted automatically. Remove old ones by hand when they pile up.
+- Exit codes: 0 PASS; 1 FAIL, or no check passed; 2 usage or setup error (unknown check, missing `--only` value, bad ref, unknown `--base`, more than one REF, path too long, whitespace in path, dirty `--in-place`); 130/143 when interrupted by SIGINT/SIGTERM
+- Retention: each run keeps the newest 20 run folders (`PREGATE_KEEP_RUNS`) and deletes older ones. Only folders in `tmp/pregate-runs/` whose name matches the run-id pattern are ever removed. Copy a summary elsewhere if it must outlive that.
 
-The work happens in a detached worktree at `~/DEVELOP/pfy-mentat/tmp/pg/<shortsha>-<HHMMSS>` with scratch, `PFY_STATE_DIR` and `TMPDIR` under `~/DEVELOP/pfy-mentat/tmp/pgs/`. Both are removed on exit unless `--keep-worktree`. Paths stay short because harness2 sandbox sockets must fit sun_path (108 bytes). Pregate refuses to start (exit 2) if either path is over 60 characters. On SIGINT/SIGTERM it stops only its own child processes, writes a FAIL summary and cleans up. A run killed with SIGKILL leaves a stale worktree, and the next run prunes it.
+The work happens in a detached worktree at `~/DEVELOP/pfy-mentat/tmp/pg/<shortsha>-<HHMMSS>` with scratch, `PFY_STATE_DIR` and `TMPDIR` under `~/DEVELOP/pfy-mentat/tmp/pgs/`. Both are removed on exit unless `--keep-worktree`. Paths stay short because harness2 sandbox sockets must fit sun_path (108 bytes). Pregate refuses to start (exit 2) if either path is over 60 characters. On SIGINT/SIGTERM it stops only its own child processes, writes a FAIL summary and cleans up. A run killed with SIGKILL leaves a stale worktree, and the next run prunes it once no live process uses it. The per-check watchdog only signals a process that is still a direct child of its pregate, so it never hits a reused PID or a child reparented after a SIGKILL.
 
 ## Checks
 
