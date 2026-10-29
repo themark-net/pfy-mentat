@@ -25,7 +25,11 @@ PATH=<PATH mirror without bwrap> python3 -m unittest -v tests.test_x_intake_smok
 scripts/pregate.sh <sha>    # from bot/pregate-check 6164cc6; full run incl. ubuntu-parity
 ```
 
-RESULTS_PLACEHOLDER
+Results for `7cea199` on nimo, 2026-10-29 PDT:
+
+- With bwrap: `tests.test_x_intake_smoke_148` 14 ok, 0 skipped.
+- With bwrap hidden from PATH: 4 ok, 10 skipped, OK.
+- Full pregate (`scripts/pregate.sh` from `bot/pregate-check` `6164cc6`): OVERALL=PASS, rc 0, 1062 s. lint, ci-parity, gate-hash, ubuntu-parity, eval-structural and orphans PASS; suite skipped by default. ubuntu-parity: Ran 930 tests, OK (skipped=89), where `3278cfc` had 10 failures. gate-hash NOTE: the edited test is listed for reviewer reading. Run folder `~/DEVELOP/pfy-mentat/tmp/pregate-runs/7cea199-20261029T092741Z-3702492/`.
 
 ## Known gaps
 
