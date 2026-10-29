@@ -52,7 +52,22 @@ Should-fix items folded in:
 ./scripts/pregate.sh --only lnt            # expect exit 2
 ```
 
-RESULTS_PLACEHOLDER
+Results on nimo for the code commit `412e970` (the follow-up commit only edits this handoff). Run folders are under `~/DEVELOP/pfy-mentat/tmp/pregate-runs/`. Times are PDT, 2026-10-29.
+
+| run | expected | result | run folder |
+|---|---|---|---|
+| full, `412e970` (tip) | PASS once main is green | FAIL, rc 1, 1060 s: only ubuntu-parity fails (10 failures, all `tests.test_x_intake_smoke_148`, "bwrap is not usable here"); lint, ci-parity, gate-hash, eval-structural, orphans PASS | `412e970-20261029T084456Z-3441835` |
+| full, `997d892` (ubuntu CI green) | PASS | PASS, rc 0, 1060 s, ubuntu-parity included | `997d892-20261029T090236Z-3563052` |
+| `--only ci-parity 2fadea1` | FAIL | FAIL, rc 1, 8 s | `2fadea1-20261029T092016Z-3666349` |
+| `--only ubuntu-parity` on `4b85eb0` (local probe: 997d892 plus a 129bc85-style test that needs bwrap) | FAIL | FAIL, rc 1, 437 s, exactly 1 failure: `test_needs_bwrap` | `4b85eb0-20261029T084456Z-3441834` |
+| `--only lnt` | exit 2 | exit 2, "unknown check 'lnt'" | none |
+| `--only` with no value, bad SHA `deadbeef1234` | exit 2 | exit 2 | none |
+| gate-hash with a staged rename and a deleted test (`--in-place --allow-dirty`) | FAIL, no crash | FAIL listing the deleted, renamed and new paths | `fc3561e-20261029T084404Z-3429275` |
+| gate-hash on a local commit adding `conftest.py` and weakening an assert | FAIL plus review note | FAIL "committed A of gate file", NOTE for the edited test | `20fba52-20261029T084410Z-3433679` |
+| SIGTERM mid-run | rc 143, FAIL summary, own children stopped | as expected, worktree removed | `997d892-20261029T084138Z-*` |
+| SIGKILL, then next run | stale worktree pruned only once its processes are gone | pruned with "owner pid ... is gone" | none |
+
+Tip FAIL is a real regression on main, not a pregate false positive: `3278cfc` added `tests/test_x_intake_smoke_148.py`, which needs bwrap, and GitHub "G0 (ubuntu-latest)" on `3278cfc` concluded failure (run 40835727021) while "G0 (self-hosted nimo)" passed. The tip goes green when the x148 owner fixes or skips that test without bwrap. This branch does not touch product tests.
 
 ## Dates (America/Los_Angeles)
 
@@ -71,6 +86,7 @@ RESULTS_PLACEHOLDER
 - `tmp/pregate-latest-summary.md` is overwritten by whichever run finishes last. Attach the run-folder copy.
 - Run folders under `tmp/pregate-runs/` are never auto-deleted.
 - A full run is about two discovers long (see Verify). Use `--only` for fast loops, but never attach a partial summary to a gate request.
+- The tip cannot be PASS until main fixes `tests/test_x_intake_smoke_148.py` on hosts without bwrap (x148 owner, red on ubuntu CI at `3278cfc`).
 - `eval-structural.yml` is not triggered from here. This is local reproduction only.
 
 ## Isolation
