@@ -82,7 +82,21 @@ Round 1 results. The "code" column says which pregate code ran: `412e970` or `pr
 
 Tip FAIL is a real regression on main, not a pregate false positive: `3278cfc` added `tests/test_x_intake_smoke_148.py`, which needs bwrap, and GitHub "G0 (ubuntu-latest)" on `3278cfc` concluded failure (run 40835727021) while "G0 (self-hosted nimo)" passed. The tip goes green when the x148 owner fixes or skips that test without bwrap. This branch does not touch product tests. Fixed on main by `8430e90` (`bot/fix-x148-bwrap`), now merged here.
 
-ROUND2_PLACEHOLDER
+Round 2 results on nimo, 2026-10-29 PDT. Pregate code: `b368c44` for the probes, `406591a` (code identical to the pinned SHA; the follow-up commit only edits this handoff) for the full runs.
+
+| run | expected | result | run folder |
+|---|---|---|---|
+| B4 repro: `--only gate-hash --base orgin/main` on local probe `0058370` (3278cfc plus a committed `conftest.py`) | exit 2 | exit 2, "unknown base ref: orgin/main" | none |
+| same probe, default base `origin/main` | FAIL | FAIL, rc 1: "committed A of gate file vs base 3278cfc: conftest.py" | `0058370-20261029T101939Z-3974084` |
+| two positional REFs | exit 2 | exit 2, "only one REF allowed" | none |
+| `--help` | header only | ends at the retention line, no `set -euo` | none |
+| `PREGATE_STEP_TIMEOUT=5 --only ubuntu-parity` | FAIL by watchdog, nothing left running | FAIL "timed out after 5s", no leftover processes | `b368c44-20261029T101954Z-3979115` |
+| a file named `.owner-..` in `tmp/pg` | ignored, `tmp/` untouched | "ignoring owner file with unexpected name", tmp intact | none |
+| retention with 3 old run-id-named dummies and one non-matching folder | dummies pruned to keep 20, other folder kept | as expected | none |
+| SIGKILL of pregate during ubuntu-parity, watchdog deadline passes | orphaned watchdog does not signal the reparented child | child still alive after the deadline (stopped by hand afterwards); next run pruned the stale worktree with "owner pid ... is gone" | `b368c44-20261029T102117Z-3998207` |
+| quick `--only lint,ci-parity,gate-hash` on `b368c44` | PASS | PASS, rc 0, 10 s | `b368c44-20261029T102007Z-3984293` |
+| full on `406591a`, first attempt (03:23 PDT) | PASS | FAIL: 1 failure in both ubuntu-parity and eval-structural, `test_pfylib_tmp_cleanup` saw `/tmp/pfy-*` dirs it did not create. GitHub eval-structural on main `8430e90` (run 40856889631, self-hosted nimo job) ran 03:21 to 03:41 PDT on the same host. The test passes alone (51 s), and the dirs were gone afterwards. Host interference, see "one pregate per host" | `406591a-20261029T102313Z-4017277` |
+| full on `406591a`, re-run on an idle host (03:51 PDT) | PASS | **PASS**, rc 0, 1061 s. lint, ci-parity, gate-hash, ubuntu-parity (930 tests, OK, skipped=89), eval-structural, orphans PASS; suite skipped by default | `406591a-20261029T105142Z-7565` |
 
 ## Dates (America/Los_Angeles)
 
@@ -103,7 +117,7 @@ ROUND2_PLACEHOLDER
 - `tmp/pregate-latest-summary.md` is overwritten by whichever run finishes last. Attach the run-folder copy.
 - Retention keeps 20 run folders, so evidence folders cited below can age out; copy a summary elsewhere to keep it.
 - A full run is about two discovers long (see Verify). Use `--only` for fast loops, but never attach a partial summary to a gate request.
-- One pregate per host: concurrent runs are not coordinated.
+- One pregate per host: concurrent runs are not coordinated. The self-hosted nimo GitHub runner also counts: a G0 job running on nimo can FAIL `test_pfylib_tmp_cleanup` (it globs the shared `/tmp`). Re-run when the runner is idle.
 - `eval-structural.yml` is not triggered from here. This is local reproduction only.
 
 ## Isolation
