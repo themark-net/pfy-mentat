@@ -1,81 +1,70 @@
 # Pregate (local, free)
 
-Run this **before** any Tester or Reviewer gate request. Attach the summary file. It catches the failure classes that burned ~49% of weekly Grok Bot usage on gate rounds (unsandboxed tests, red ubuntu CI, test-runner cheats, orphan processes).
+Run this before any Tester or Reviewer gate request and attach its summary. It catches the failure classes that cost past gate rounds: unsandboxed tests, red ubuntu CI, test-runner cheats, and orphan processes.
 
 ## Rule
 
-1. Run pregate on the branch tip (or the SHA you will gate).
-2. Attach `tmp/pregate-summary.md` (or the copy under the nested run dir) to the gate request.
-3. Do **not** spend Tester/Reviewer turns until overall is **PASS**, or until you have an explicit waiver for a documented known gap.
+1. Run pregate on the exact SHA you will gate (full run, no `--only`).
+2. Attach `~/DEVELOP/pfy-mentat/tmp/pregate-runs/<run-id>/pregate-summary.md` to the gate request. The path is printed on the last lines of the run.
+3. Do not spend Tester/Reviewer turns until overall is PASS, unless you have an explicit waiver for a documented known gap.
 
 ## How to run (nimo)
 
-From any pfy-mentat worktree that has this script (usually a bot branch worktree under `~/DEVELOP/pfy-mentat/tmp/…`):
+From any pfy-mentat worktree that has this script:
 
 ```bash
-# Clean isolated worktree at REF (default HEAD). Preferred.
-./scripts/pregate.sh
-./scripts/pregate.sh origin/main
-./scripts/pregate.sh 997d892
-
-# Already on the SHA and tree is clean:
-./scripts/pregate.sh --in-place
-
-# Dirty tree (dev only):
-./scripts/pregate.sh --in-place --allow-dirty
-
-# Keep the nested worktree for debugging:
-./scripts/pregate.sh --keep-worktree REF
-
-# One check only (lint|eval-structural|suite|ci-parity|orphans|gate-hash):
-./scripts/pregate.sh --only ci-parity 2fadea1
-
-# Quick pre-check in seconds (not for gate attachment); the long discover lives in eval-structural:
-for c in lint ci-parity gate-hash; do ./scripts/pregate.sh --only $c REF; done
-
-# Re-run unittest even though eval-structural already did:
-./scripts/pregate.sh --force-suite REF
+./scripts/pregate.sh                 # full run on HEAD in an isolated worktree
+./scripts/pregate.sh 3278cfc         # full run on a SHA or ref
+./scripts/pregate.sh --only lint,ci-parity,gate-hash REF   # fast loop (seconds), not for gate attachment
+./scripts/pregate.sh --keep-worktree REF                   # keep the run worktree for debugging
+./scripts/pregate.sh --in-place      # this checkout; HEAD must equal REF and the tree must be clean
+./scripts/pregate.sh --force-suite REF                     # also run the standalone suite check
+./scripts/pregate.sh --base origin/main REF                # base for the committed gate-file diff (default)
 ```
 
-Constraints (same as other nimo bot work):
-
-- Temps under the worktree `tmp/` or `~/DEVELOP/pfy-mentat/tmp/` — never `/tmp` for project scratch.
-- Never touch Mark’s dirty `~/DEVELOP/pfy-mentat` main checkout or other live worktrees.
-- No sudo, no system package changes.
-- Do not print or commit secrets; do not read `~/.grok/auth.json`.
+Environment knobs: `PREGATE_STEP_TIMEOUT` (seconds per check, default 2400) and `PREGATE_MAX_ROOT_LEN` (default 60).
 
 ## Output
 
-- **Summary:** `<run-root>/tmp/pregate-summary.md` and a pointer at `<invoking-repo>/tmp/pregate-latest-summary.md`
-- **Logs:** `<run-root>/tmp/pregate-logs/*.log`
-- **Exit:** `0` on overall PASS, `1` on any FAIL, `2` on usage/setup errors
+- Run folder (kept after the run): `~/DEVELOP/pfy-mentat/tmp/pregate-runs/<shortsha>-<UTC stamp>-<pid>/`
+  - `pregate-summary.md`: the file to attach
+  - `logs/<check>.log`: one log per check; every FAIL line names its log here
+  - `receipts/structural.latest.md`, `receipts/golden.latest.md`: G0 receipts (tracked files are never rewritten)
+- Convenience pointer: `~/DEVELOP/pfy-mentat/tmp/pregate-latest-summary.md` (overwritten by whichever run finishes last; attach the run-folder copy instead)
+- Exit codes: 0 PASS; 1 FAIL, or no check passed; 2 usage or setup error (unknown check, missing `--only` value, bad ref, path too long, whitespace in path, dirty `--in-place`); 130/143 when interrupted by SIGINT/SIGTERM
+- Run folders are not deleted automatically. Remove old ones by hand when they pile up.
 
-Nested runs land under `~/DEVELOP/pfy-mentat/tmp/pg/<shortsha>-<stamp>/` (short product tmp/pg/ so bwrap sockets fit sun_path) and are removed on exit unless `--keep-worktree`.
+The work happens in a detached worktree at `~/DEVELOP/pfy-mentat/tmp/pg/<shortsha>-<HHMMSS>` with scratch, `PFY_STATE_DIR` and `TMPDIR` under `~/DEVELOP/pfy-mentat/tmp/pgs/`. Both are removed on exit unless `--keep-worktree`. Paths stay short because harness2 sandbox sockets must fit sun_path (108 bytes). Pregate refuses to start (exit 2) if either path is over 60 characters. On SIGINT/SIGTERM it stops only its own child processes, writes a FAIL summary and cleans up. A run killed with SIGKILL leaves a stale worktree, and the next run prunes it.
 
 ## Checks
 
 | check | what it covers |
 |---|---|
-| **lint** | CI lint surface (this repo has no ruff job): launcher `100755`, `./pfy help`, `check_no_encoded_payloads`, `smoke_contract_lint`, `catalog_check`, `py_compile` of board/gui |
-| **eval-structural** | `.github/workflows/eval-structural.yml` G0 ubuntu steps, including the full `unittest discover` that `run_structural.py` runs (pfylib_unittests): structural + golden, gab/jev/launch-wizard selftests, toolset matrix/plan, hedge decide, launcher exec, encoded-payload scan |
-| **suite** | Standalone `python3 -m unittest discover -s tests -t .`. It is SKIPPED by default because eval-structural's `run_structural.py` already runs the same discover, sandbox tests included (916 tests on 997d892). Use `--force-suite` to run it again, or `--only suite` on its own. |
-| **ci-parity** | Curated PATH **without bwrap**; `PFY_STATE_DIR` like the ubuntu job; static + behavioral pin that runtime-dir tests pass `auto_unsafe=False` (catches the 2fadea1 ubuntu failure where those tests auto-added `--unsafe-no-sandbox`) |
-| **orphans** | Live processes whose argv references this run's root or scratch dir, plus `orphan*.pid` / heartbeat files there. Other worktrees' runs are ignored and never signalled. |
-| **gate-hash** | `tests/` and gate basenames (`conftest.py`, `sitecustomize.py`, `pytest.ini`, …) match git HEAD; no untracked gate/test cheats |
+| lint | The CI lint surface (this repo has no ruff job): launcher mode 100755, `py_compile` of board/gui, `bash -n scripts/pfy`, `./pfy help`, `check_no_encoded_payloads`, `smoke_contract_lint`, `catalog_check` |
+| ci-parity | bwrap hidden. A static pin that the two runtime-dir tests pass `auto_unsafe=False` (code only; comments do not count), plus a run of those two tests. Catches the 2fadea1 ubuntu failure in seconds. FAILs if the test file is missing |
+| gate-hash | `tests/` and gate files (`conftest.py`, `sitecustomize.py`, `pytest.ini`, ...) in the run tree match HEAD (catches modified, deleted, renamed, staged or untracked cheats with `--in-place`). Also FAILs on any committed add/modify/delete of a strict gate file vs the merge-base with `--base` (needs a reviewer waiver), and lists existing test files changed vs base as a NOTE for the reviewer |
+| ubuntu-parity | The full `python3 -m unittest discover -s tests -t .` with bwrap hidden: the caller's PATH mirrored minus `bwrap`, with `PFY_STATE_DIR` set as in the ubuntu job. Any test that passes only when bwrap is present fails here, as it would on ubuntu CI |
+| eval-structural | The G0 ubuntu job's steps with the host PATH: structural (which runs the full discover, with sandbox tests where bwrap works, as on the nimo runner), golden, gab/jev/launch-wizard selftests, catalog_check, toolset matrix/plan, hedge decide, launcher exec, encoded payloads |
+| suite | Standalone discover with the host PATH. Skipped by default because the two checks above already run it. Use `--force-suite` or `--only suite` |
+| orphans | Runs last. Compares a process snapshot taken before the checks with one taken after. Any new live process of this user whose argv or cwd is under this run's root or scratch FAILs, as do `orphan*.pid` / heartbeat files. Fails closed if `ps` fails. Other worktrees' processes are never matched or signalled |
 
-Past failure types from `GATE-NOTES-fix2.md` / `HANDOFF-pfy-local-build-mvp.md` mapped in:
+Every check has a watchdog (`PREGATE_STEP_TIMEOUT`). A hung step, such as an orphan holding the output pipe, is killed and reported as FAIL with its log.
 
-- Unsandboxed / `--unsafe-no-sandbox` auto-add → **ci-parity**
-- Red ubuntu CI / bwrap missing → **ci-parity** + **eval-structural** (full discover, with sandbox tests on a host with bwrap)
-- Test-runner cheats (new conftest/sitecustomize, untracked tests) → **gate-hash**
-- Orphan processes after SIGTERM / hang scenarios → **orphans**
-- Structural G0 drift → **eval-structural** + **lint**
+Unittest skip counts depend on the host (bwrap, grok, Ollama, Python version), so compare them only between runs on the same host.
+
+## Past failure types mapped to checks
+
+- Unsandboxed tests and the `--unsafe-no-sandbox` auto-add: ci-parity, ubuntu-parity
+- Red ubuntu CI because bwrap is missing: ubuntu-parity (full suite without bwrap) and ci-parity (fast pin). eval-structural alone does not cover this on a host with bwrap
+- Test-runner cheats (new conftest/sitecustomize, edited or deleted protected tests): gate-hash
+- Orphan processes and hangs: orphans, plus the per-check watchdog
+- Structural G0 drift: eval-structural, lint
 
 ## What pregate does not replace
 
 - Live model eval (`./pfy eval-local-build`)
-- Tester/Reviewer judgment on product gaps called out as known
-- Merging or pushing to `main`
+- Tester/Reviewer judgment, including reading the gate-hash NOTEs about edited tests
+- The ubuntu CI run itself: the Python version (3.12 on CI) and missing grok/Ollama are not emulated
 
 ## See also
 

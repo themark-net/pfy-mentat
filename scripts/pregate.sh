@@ -1,30 +1,38 @@
 #!/usr/bin/env bash
-# Local pre-gate for themark-net/pfy-mentat.
-# Catch Tester/Reviewer failure classes before spending bot gate rounds.
+# Local pre-gate for themark-net/pfy-mentat: catch Tester/Reviewer failure
+# classes on nimo before spending bot gate rounds. See docs/ops/PREGATE.md.
 #
 # Usage:
-#   ./scripts/pregate.sh [REF]
-#   ./scripts/pregate.sh --in-place [REF]   # run in current checkout (must be clean or --allow-dirty)
-#   ./scripts/pregate.sh --help
+#   ./scripts/pregate.sh [options] [REF]       REF defaults to HEAD
 #
-# REF defaults to HEAD. Creates an isolated worktree under ~/DEVELOP/pfy-mentat/tmp/pg/
-# unless --in-place. Writes tmp/pregate-summary.md and exits nonzero on FAIL.
+# Options:
+#   --only a,b        run only these checks (comma list); unknown names exit 2
+#   --force-suite     also run the standalone suite check (normally skipped)
+#   --base REF        base for the committed gate-file diff (default: origin/main)
+#   --in-place        run in this checkout (HEAD must equal REF; must be clean)
+#   --allow-dirty     with --in-place, allow a dirty tree (dev only)
+#   --keep-worktree   keep the run worktree and scratch for debugging
+#
+# Checks: lint ci-parity ubuntu-parity eval-structural suite orphans gate-hash
+# Logs and summary persist in ~/DEVELOP/pfy-mentat/tmp/pregate-runs/<run-id>/.
+# Exit: 0 PASS, 1 FAIL (or no check ran), 2 usage/setup error, 130/143 signal.
 set -euo pipefail
 
+ALL_CHECKS="lint ci-parity ubuntu-parity eval-structural suite orphans gate-hash"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 REF="HEAD"
+BASE_REF="origin/main"
 IN_PLACE=0
 ALLOW_DIRTY=0
 KEEP_WORKTREE=0
-SKIP_FULL=0
 FORCE_SUITE=0
 ONLY=""
+STEP_TIMEOUT="${PREGATE_STEP_TIMEOUT:-2400}"
+MAX_ROOT_LEN="${PREGATE_MAX_ROOT_LEN:-60}"
 
-usage() {
-  sed -n '2,14p' "$0" | sed 's/^# \?//'
-  exit "${1:-0}"
-}
+die2() { echo "pregate: $*" >&2; exit 2; }
+usage() { sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'; exit "${1:-0}"; }
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -32,501 +40,492 @@ while [[ $# -gt 0 ]]; do
     --in-place) IN_PLACE=1; shift ;;
     --allow-dirty) ALLOW_DIRTY=1; shift ;;
     --keep-worktree) KEEP_WORKTREE=1; shift ;;
-    --skip-full-suite) SKIP_FULL=1; shift ;;
     --force-suite) FORCE_SUITE=1; shift ;;
-    --only) ONLY="${2:-}"; shift 2 ;;
-    --) shift; break ;;
-    -*)
-      echo "unknown flag: $1" >&2
-      usage 2
-      ;;
-    *)
-      REF="$1"
-      shift
-      ;;
+    --only|--base)
+      if [[ $# -lt 2 || -z "$2" || "$2" == -* ]]; then die2 "$1 needs a value"; fi
+      if [[ "$1" == "--only" ]]; then ONLY="$2"; else BASE_REF="$2"; fi
+      shift 2 ;;
+    --) shift; [[ $# -gt 0 ]] && { REF="$1"; shift; }; break ;;
+    -*) echo "pregate: unknown flag: $1" >&2; usage 2 ;;
+    *) REF="$1"; shift ;;
   esac
 done
+[[ $# -eq 0 ]] || die2 "unexpected extra arguments: $*"
 
-cd "$REPO_ROOT"
-if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  echo "FAIL: not a git repo: $REPO_ROOT" >&2
-  exit 2
+if [[ -n "$ONLY" ]]; then
+  for c in ${ONLY//,/ }; do
+    [[ " $ALL_CHECKS " == *" $c "* ]] || die2 "unknown check '$c' (valid: $ALL_CHECKS)"
+  done
 fi
+[[ "$STEP_TIMEOUT" =~ ^[0-9]+$ ]] || die2 "PREGATE_STEP_TIMEOUT must be seconds"
 
-SHA="$(git rev-parse --verify "${REF}^{commit}")"
-SHORT="$(git rev-parse --short "$SHA")"
-STAMP="$(date -u +%Y%m%dT%H%M%S%N | cut -c1-20)Z"
+command -v git >/dev/null 2>&1 || die2 "git not found on PATH"
+command -v python3 >/dev/null 2>&1 || die2 "python3 not found on PATH"
+command -v ps >/dev/null 2>&1 || die2 "ps not found on PATH (orphan check needs it)"
+cd "$REPO_ROOT"
+git rev-parse --is-inside-work-tree >/dev/null 2>&1 || die2 "not a git repo: $REPO_ROOT"
+SHA="$(git rev-parse --verify --quiet "${REF}^{commit}")" || die2 "unknown ref or SHA: $REF"
+SHORT="${SHA:0:7}"
+GIT_COMMON="$(git rev-parse --path-format=absolute --git-common-dir)"
+MAIN_ROOT="$(dirname "$GIT_COMMON")"
 HOST="$(hostname -s 2>/dev/null || hostname)"
 
-RUN_ROOT=""
-CLEANUP_WORKTREE=""
+case "$MAIN_ROOT$REPO_ROOT" in
+  *[[:space:]]*) die2 "repo path contains whitespace; not supported: $MAIN_ROOT" ;;
+esac
+
+RUN_TS="$(date -u +%Y%m%dT%H%M%SZ)"
+HHMMSS="${RUN_TS:9:6}"
+RUN_ID="${SHORT}-${RUN_TS}-$$"
+PERSIST="$MAIN_ROOT/tmp/pregate-runs/$RUN_ID"
+LOG_DIR="$PERSIST/logs"
+RECEIPTS="$PERSIST/receipts"
+SUMMARY="$PERSIST/pregate-summary.md"
+PG_DIR="$MAIN_ROOT/tmp/pg"
+SCRATCH="$MAIN_ROOT/tmp/pgs/${SHORT}-${HHMMSS}"
+
 if [[ "$IN_PLACE" -eq 1 ]]; then
   RUN_ROOT="$REPO_ROOT"
-  if [[ "$ALLOW_DIRTY" -eq 0 ]]; then
-    if [[ -n "$(git status --porcelain)" ]]; then
-      echo "FAIL: working tree dirty; commit, stash, or pass --allow-dirty" >&2
-      exit 2
-    fi
+  if [[ "$ALLOW_DIRTY" -eq 0 && -n "$(git status --porcelain)" ]]; then
+    die2 "working tree dirty; commit, stash, or pass --allow-dirty"
   fi
-  # Ensure we are on the requested SHA when in-place and clean.
-  HEAD_SHA="$(git rev-parse HEAD)"
-  if [[ "$HEAD_SHA" != "$SHA" ]]; then
-    echo "FAIL: --in-place HEAD ($HEAD_SHA) != REF $SHA; check out the REF or omit --in-place" >&2
-    exit 2
-  fi
+  [[ "$(git rev-parse HEAD)" == "$SHA" ]] || die2 "--in-place HEAD != $SHA; check out the REF or omit --in-place"
 else
-  # Canonical product tmp/ keeps paths short enough for sun_path / bwrap sockets.
-  GIT_COMMON="$(git rev-parse --path-format=absolute --git-common-dir)"
-  MAIN_ROOT="$(dirname "$GIT_COMMON")"
-  # Keep under ~55 chars so harness2/bwrap sockets stay < sun_path (108).
-  # Example: /home/mark/DEVELOP/pfy-mentat/tmp/pg/997d892-064812
-  STAMP_SHORT="$(date -u +%H%M%S)"
-  RUN_ROOT="$MAIN_ROOT/tmp/pg/${SHORT}-${STAMP_SHORT}"
-  mkdir -p "$MAIN_ROOT/tmp/pg"
-  git worktree add --detach "$RUN_ROOT" "$SHA"
+  RUN_ROOT="$PG_DIR/${SHORT}-${HHMMSS}"
+fi
+
+# Unix socket paths (sun_path, 108 bytes) used by harness2 sandbox tests are
+# built under the run root and TMPDIR. Measured: 51-54 char roots pass, 76+ fail.
+for p in "$RUN_ROOT" "$SCRATCH"; do
+  if [[ ${#p} -gt $MAX_ROOT_LEN ]]; then
+    die2 "path too long (${#p} > $MAX_ROOT_LEN chars): $p. Use a checkout whose git common dir is short (e.g. ~/DEVELOP/pfy-mentat) or set PREGATE_MAX_ROOT_LEN."
+  fi
+done
+[[ "$IN_PLACE" -eq 1 || ! -e "$RUN_ROOT" ]] || die2 "run root already exists (concurrent run this second?): $RUN_ROOT"
+
+# --- process helpers: only ever touch this script's own descendants ---------
+descendants() {
+  local p
+  for p in $(ps -o pid= --ppid "$1" 2>/dev/null); do
+    descendants "$p"
+    echo "$p"
+  done
+}
+kill_tree() {
+  local pids
+  pids="$(descendants "$1") $1"
+  # shellcheck disable=SC2086
+  kill -TERM $pids 2>/dev/null || true
+  sleep 1
+  pids="$(descendants "$1") $1"
+  # shellcheck disable=SC2086
+  kill -KILL $pids 2>/dev/null || true
+}
+is_live_pregate() {
+  [[ -n "${1:-}" && -r "/proc/$1/cmdline" ]] && tr '\0' ' ' <"/proc/$1/cmdline" | grep -q 'pregate\.sh'
+}
+
+# PIDs of this user's processes whose cwd or argv is under any of the given dirs.
+procs_under() {
+  local pid cwd cmd d out=""
+  for pid in $(ps -u "$(id -un)" -o pid= 2>/dev/null); do
+    cwd="$(readlink "/proc/$pid/cwd" 2>/dev/null || true)"
+    cmd="$( { tr '\0' ' ' <"/proc/$pid/cmdline"; } 2>/dev/null || true)"
+    for d in "$@"; do
+      if [[ "$cwd/" == "$d/"* || "$cmd" == *"$d/"* ]]; then out+=" $pid"; break; fi
+    done
+  done
+  echo "$out"
+}
+
+# --- prune stale runs this script registered (owner pid gone, e.g. SIGKILL) --
+mkdir -p "$PG_DIR"
+for owner in "$PG_DIR"/.owner-*; do
+  [[ -e "$owner" ]] || continue
+  name="${owner##*/.owner-}"
+  opid="$(cat "$owner" 2>/dev/null || true)"
+  if is_live_pregate "$opid"; then continue; fi
+  busy="$(procs_under "$PG_DIR/$name" "$MAIN_ROOT/tmp/pgs/$name")"
+  if [[ -n "$busy" ]]; then
+    echo "pregate: stale run $PG_DIR/$name still has live processes (pids:$busy); not pruning, not signalling" >&2
+    continue
+  fi
+  echo "pregate: pruning stale run $PG_DIR/$name (owner pid ${opid:-?} is gone)"
+  git -C "$MAIN_ROOT" worktree remove --force "$PG_DIR/$name" >/dev/null 2>&1 || rm -rf "${PG_DIR:?}/$name"
+  rm -rf "$MAIN_ROOT/tmp/pgs/$name"
+  rm -f "$owner"
+done
+
+mkdir -p "$LOG_DIR" "$RECEIPTS"
+CLEANUP_WORKTREE=""
+OWNER_FILE=""
+if [[ "$IN_PLACE" -eq 0 ]]; then
+  OWNER_FILE="$PG_DIR/.owner-${SHORT}-${HHMMSS}"
+  echo "$$" >"$OWNER_FILE"
   CLEANUP_WORKTREE="$RUN_ROOT"
 fi
 
-OUT_DIR="$RUN_ROOT/tmp"
-mkdir -p "$OUT_DIR"
-SUMMARY="$OUT_DIR/pregate-summary.md"
-LOG_DIR="$OUT_DIR/pregate-logs"
-mkdir -p "$LOG_DIR"
-GIT_COMMON="$(git rev-parse --path-format=absolute --git-common-dir)"
-MAIN_ROOT="$(dirname "$GIT_COMMON")"
-# Scratch shares the short stamp; stays under product tmp/.
-STAMP_SHORT="${STAMP_SHORT:-$(date -u +%H%M%S)}"
-SHORT_SCRATCH="$MAIN_ROOT/tmp/pgs/${SHORT}-${STAMP_SHORT}"
-mkdir -p "$SHORT_SCRATCH"
+cleanup() {
+  if [[ -n "$CLEANUP_WORKTREE" && "$KEEP_WORKTREE" -eq 0 ]]; then
+    git -C "$MAIN_ROOT" worktree remove --force "$CLEANUP_WORKTREE" >/dev/null 2>&1 || rm -rf "$CLEANUP_WORKTREE"
+  fi
+  if [[ "$KEEP_WORKTREE" -eq 0 ]]; then rm -rf "$SCRATCH"; fi
+  # Normal exit (incl. --keep-worktree) drops the owner marker; only a run that
+  # never reached cleanup (SIGKILL) leaves one for the next run to prune.
+  if [[ -n "$OWNER_FILE" ]]; then rm -f "$OWNER_FILE"; fi
+}
+trap cleanup EXIT
 
 RESULTS=()
 FAIL_COUNT=0
 PASS_COUNT=0
 SKIP_COUNT=0
 START_EPOCH="$(date +%s)"
-STRUCTURAL_RAN_UNITTEST=0
+INTERRUPTED=""
 
 record() {
-  # record STATUS NAME DETAIL
   local status="$1" name="$2" detail="${3:-}"
   RESULTS+=("$status|$name|$detail")
   case "$status" in
     PASS) PASS_COUNT=$((PASS_COUNT + 1)) ;;
     FAIL) FAIL_COUNT=$((FAIL_COUNT + 1)) ;;
     SKIP) SKIP_COUNT=$((SKIP_COUNT + 1)) ;;
+    NOTE) ;;
   esac
-  printf '[%s] %s%s\n' "$status" "$name" "${detail:+ — $detail}"
+  printf '[%s] %s%s\n' "$status" "$name" "${detail:+: $detail}"
 }
 
 should_run() {
-  local name="$1"
-  if [[ -z "$ONLY" ]]; then return 0; fi
-  [[ "$ONLY" == "$name" ]]
+  [[ -z "$ONLY" ]] && return 0
+  [[ ",$ONLY," == *",$1,"* ]]
 }
 
-cleanup() {
-  if [[ -n "$CLEANUP_WORKTREE" && "$KEEP_WORKTREE" -eq 0 ]]; then
-    git -C "$REPO_ROOT" worktree remove --force "$CLEANUP_WORKTREE" >/dev/null 2>&1 || rm -rf "$CLEANUP_WORKTREE"
-  fi
-  if [[ -n "${SHORT_SCRATCH:-}" && "$KEEP_WORKTREE" -eq 0 ]]; then
-    rm -rf "$SHORT_SCRATCH"
+write_summary() {
+  local end wall overall row st name detail
+  end="$(date +%s)"; wall=$((end - START_EPOCH))
+  overall="PASS"
+  if [[ "$FAIL_COUNT" -gt 0 || "$PASS_COUNT" -eq 0 || -n "$INTERRUPTED" ]]; then overall="FAIL"; fi
+  {
+    echo "# Pregate summary"
+    echo
+    echo "- overall: **$overall**"
+    [[ "$PASS_COUNT" -eq 0 ]] && echo "- note: no check passed (nothing ran?), so this is not a PASS"
+    [[ -n "$INTERRUPTED" ]] && echo "- note: interrupted by SIG$INTERRUPTED"
+    echo "- ref: \`$REF\` = \`$SHA\`"
+    echo "- base for gate-file diff: \`$BASE_REF\`"
+    echo "- host: $HOST, python: $(python3 -V 2>&1), bwrap on host PATH: $(command -v bwrap >/dev/null && echo yes || echo no)"
+    echo "- started (local): $(date -d "@$START_EPOCH" '+%Y-%m-%d %H:%M %Z')"
+    echo "- wall seconds: $wall"
+    echo "- counts: pass=$PASS_COUNT fail=$FAIL_COUNT skip=$SKIP_COUNT"
+    echo "- run id: \`$RUN_ID\`"
+    echo "- logs: \`$LOG_DIR/\` (persist after the run)"
+    echo
+    echo "| status | check | detail |"
+    echo "|---|---|---|"
+    for row in "${RESULTS[@]}"; do
+      IFS='|' read -r st name detail <<<"$row"
+      echo "| $st | $name | ${detail//|/\\|} |"
+    done
+    echo
+    echo "Unittest skip counts depend on the host (bwrap, grok, Ollama, Python version), so compare them across runs on the same host only."
+    echo
+    echo "Attach this file to any Tester/Reviewer gate request. See docs/ops/PREGATE.md."
+  } >"$SUMMARY"
+  cp "$SUMMARY" "$MAIN_ROOT/tmp/pregate-latest-summary.md" 2>/dev/null || true
+  echo
+  echo "Summary: $SUMMARY"
+  echo "OVERALL=$overall wall=${wall}s pass=$PASS_COUNT fail=$FAIL_COUNT skip=$SKIP_COUNT"
+  [[ "$overall" == "PASS" ]]
+}
+
+on_signal() {
+  trap - INT TERM HUP
+  INTERRUPTED="$1"
+  echo "pregate: SIG$1 received; stopping this run's own child processes" >&2
+  kill_tree_children
+  record FAIL interrupted "SIG$1 before all checks finished"
+  write_summary || true
+  case "$1" in INT) exit 130 ;; TERM) exit 143 ;; *) exit 129 ;; esac
+}
+kill_tree_children() {
+  local c
+  for c in $(ps -o pid= --ppid $$ 2>/dev/null); do kill_tree "$c"; done
+}
+trap 'on_signal INT' INT
+trap 'on_signal TERM' TERM
+trap 'on_signal HUP' HUP
+
+# run_check NAME PASS_DETAIL FUNC: runs FUNC in a background subshell (so
+# signals reach our trap promptly), with a watchdog timeout; logs persist.
+run_check() {
+  local name="$1" pass_detail="$2" fn="$3" log="$LOG_DIR/$1.log" child wd rc
+  ( set -euo pipefail; "$fn" ) >"$log" 2>&1 </dev/null &
+  child=$!
+  ( sleep "$STEP_TIMEOUT"; echo "TIMEOUT: $name exceeded ${STEP_TIMEOUT}s" >>"$log"
+    touch "$LOG_DIR/$name.timeout"; kill_tree "$child" ) >/dev/null 2>&1 </dev/null &
+  wd=$!
+  set +e
+  wait "$child"
+  rc=$?
+  set -e
+  kill_tree "$wd" >/dev/null 2>&1
+  wait "$wd" 2>/dev/null || true
+  if [[ -e "$LOG_DIR/$name.timeout" ]]; then
+    record FAIL "$name" "timed out after ${STEP_TIMEOUT}s; see $log"
+  elif [[ $rc -eq 0 ]]; then
+    record PASS "$name" "$pass_detail"
+  else
+    record FAIL "$name" "exit $rc; see $log"
   fi
 }
-trap cleanup EXIT
 
+# --- create the isolated worktree --------------------------------------------
+if [[ "$IN_PLACE" -eq 0 ]]; then
+  git worktree add --detach "$RUN_ROOT" "$SHA" >"$LOG_DIR/worktree.log" 2>&1 \
+    || { cat "$LOG_DIR/worktree.log" >&2; die2 "git worktree add failed"; }
+fi
+mkdir -p "$SCRATCH"
 cd "$RUN_ROOT"
 
-# ---------------------------------------------------------------------------
-# Shared env for CI-like steps
-# ---------------------------------------------------------------------------
-STATE_DIR="$OUT_DIR/pfy-state"
-mkdir -p "$STATE_DIR"
-export PFY_STATE_DIR="$STATE_DIR"
-# Prefer short product tmp/ scratch; never /tmp for project temps.
-export TMPDIR="${SHORT_SCRATCH:-$OUT_DIR/scratch}"
-mkdir -p "$TMPDIR"
+# Snapshot our user's processes before any check (orphan before/after diff).
+ps -u "$(id -un)" -o pid= >"$LOG_DIR/ps-before.txt" 2>/dev/null || PS_BEFORE_FAILED=1
 
-# Curated PATH that hides bwrap (ubuntu runners often lack usable userns/bwrap).
-CI_PATH="$OUT_DIR/ci-path"
+export PFY_STATE_DIR="$SCRATCH/state"
+mkdir -p "$PFY_STATE_DIR"
+# TMPDIR: product tmp/ scratch, never /tmp. Exception: a checkout under
+# /workspace/* (box/agentcage) where scripts/pfy treats /workspace paths as the
+# cage tree and test_lab_stage false-fails; there the caller's TMPDIR is kept.
+case "$MAIN_ROOT" in
+  /workspace/*) TMPDIR_POLICY="inherited (repo under /workspace)" ;;
+  *) export TMPDIR="$SCRATCH/tmp"; mkdir -p "$TMPDIR"; TMPDIR_POLICY="$TMPDIR" ;;
+esac
+
+# PATH mirror without bwrap: every executable on the caller's PATH except bwrap,
+# so the only difference from the host is "bwrap unavailable" (ubuntu CI).
+CI_PATH="$SCRATCH/nobwrap-path"
 mkdir -p "$CI_PATH"
-for b in python3 git make bash sh true false uname mkdir ls cat cp mv rm chmod \
-         head tail grep sed awk tr cut sort uniq find xargs dirname basename \
-         mktemp sleep touch date env tee wc diff patch tar gzip unzip which id \
-         whoami getconf locale ps pgrep; do
-  for d in /usr/bin /bin /usr/local/bin; do
-    if [[ -x "$d/$b" && ! -e "$CI_PATH/$b" ]]; then
-      ln -sfn "$d/$b" "$CI_PATH/$b"
-      break
-    fi
+IFS=':' read -r -a _path_dirs <<<"$PATH"
+for d in "${_path_dirs[@]}"; do
+  [[ -d "$d" ]] || continue
+  for f in "$d"/*; do
+    b="${f##*/}"
+    [[ "$b" == bwrap || -e "$CI_PATH/$b" || -d "$f" || ! -x "$f" ]] && continue
+    ln -s "$f" "$CI_PATH/$b"
   done
 done
-# Deliberately do NOT link bwrap.
 
-# ---------------------------------------------------------------------------
-# Check: lint / static contract (what CI actually runs; no ruff in this repo)
-# ---------------------------------------------------------------------------
-if should_run lint; then
-  log="$LOG_DIR/lint.log"
-  set +e
-  (
-    set -euo pipefail
-    echo "== filemode =="
-    fail=0
-    for p in pfy scripts/pfy scripts/detect-local-runtime.sh; do
-      mode="$(git ls-files -s -- "$p" | awk '{print $1}')"
-      echo "$p gitmode=$mode"
-      if [[ "$mode" != "100755" ]]; then echo "FAIL: $p is ${mode:-missing}"; fail=1; fi
-      if [[ ! -x "$p" ]]; then echo "FAIL: $p not executable"; fail=1; fi
-    done
-    echo "== py_compile launchers =="
-    python3 -m py_compile scripts/pfy-board.py scripts/pfy-gui.py
-    echo "== bash -n scripts/pfy =="
-    bash -n scripts/pfy
-    echo "== ./pfy help =="
-    ./pfy help >/dev/null
-    echo "== check_no_encoded_payloads =="
-    python3 scripts/check_no_encoded_payloads.py --selftest
-    python3 scripts/check_no_encoded_payloads.py
-    echo "== smoke_contract_lint =="
-    python3 scripts/smoke_contract_lint.py
-    echo "== catalog_check =="
-    python3 scripts/catalog_check.py
-    exit "$fail"
-  ) >"$log" 2>&1
-  rc=$?
-  set -e
-  if [[ $rc -eq 0 ]]; then
-    record PASS lint "filemode + encoded-payloads + smoke_contract + catalog"
-  else
-    record FAIL lint "see $log (exit $rc)"
-  fi
-fi
+nobwrap_env() {
+  export PATH="$CI_PATH"
+  if command -v bwrap >/dev/null 2>&1; then echo "FAIL: bwrap still visible"; return 1; fi
+  echo "bwrap hidden: OK"
+}
 
-# ---------------------------------------------------------------------------
-# Check: eval-structural (reproduce .github/workflows/eval-structural.yml G0)
-# ---------------------------------------------------------------------------
-if should_run eval-structural; then
-  log="$LOG_DIR/eval-structural.log"
-  set +e
-  (
-    set -euo pipefail
-    # Mark before run_structural so a failing unittest does not re-run via suite.
-    touch "$LOG_DIR/structural-did-unittest"
-    python3 examples/eval-harness/run_structural.py --write-md pipelines/eval/structural.latest.md
-    python3 examples/eval-harness/run_golden.py --write-md pipelines/eval/golden.latest.md
-    PFY_GAB_OFFLINE=1 python3 scripts/pfy_gab_228.py --selftest
-    PFY_JEV_OFFLINE=1 python3 scripts/pfy_jev_230.py --selftest
-    python3 scripts/pfy_launch_wizard_225.py --selftest
-    # Unittest discover is owned by the "suite" check (same command CI uses).
-    # Re-running it here would double wall time; suite failure fails pregate.
-    python3 scripts/catalog_check.py
-    ./pfy toolset matrix
-    ./pfy toolset plan jev --harness opencode
-    ./pfy hedge decide --task bulk --local ready --budget 0
-    git ls-files -s -- pfy scripts/pfy
-    test -x pfy && test -x scripts/pfy
-    bash -n scripts/pfy
-    python3 -m py_compile scripts/pfy-board.py scripts/pfy-gui.py
-    ./pfy help >/dev/null
-    python3 scripts/check_no_encoded_payloads.py --selftest
-    python3 scripts/check_no_encoded_payloads.py
-  ) >"$log" 2>&1
-  rc=$?
-  set -e
-  if [[ -f "$LOG_DIR/structural-did-unittest" ]]; then
-    STRUCTURAL_RAN_UNITTEST=1
-  fi
-  if [[ $rc -eq 0 ]]; then
-    record PASS eval-structural "G0 ubuntu steps (structural/golden/selftests/toolset/hedge)"
-  else
-    record FAIL eval-structural "see $log (exit $rc)"
-  fi
-fi
+# --- checks ------------------------------------------------------------------
+check_lint() {
+  local fail=0 p mode
+  echo "== filemode =="
+  for p in pfy scripts/pfy scripts/detect-local-runtime.sh; do
+    mode="$(git ls-files -s -- "$p" | awk '{print $1}')"
+    echo "$p gitmode=$mode"
+    if [[ "$mode" != "100755" ]]; then echo "FAIL: $p is ${mode:-missing}"; fail=1; fi
+    if [[ ! -x "$p" ]]; then echo "FAIL: $p not executable"; fail=1; fi
+  done
+  echo "== launchers =="
+  python3 -m py_compile scripts/pfy-board.py scripts/pfy-gui.py
+  bash -n scripts/pfy
+  ./pfy help >/dev/null
+  echo "== encoded payloads =="
+  python3 scripts/check_no_encoded_payloads.py --selftest
+  python3 scripts/check_no_encoded_payloads.py
+  echo "== smoke_contract_lint =="
+  python3 scripts/smoke_contract_lint.py
+  echo "== catalog_check =="
+  python3 scripts/catalog_check.py
+  return "$fail"
+}
 
-# ---------------------------------------------------------------------------
-# Check: full test suite the way CI does (sandbox tests included on nimo)
-# ---------------------------------------------------------------------------
-if should_run suite; then
-  if [[ "$SKIP_FULL" -eq 1 ]]; then
-    record SKIP suite "--skip-full-suite"
-  elif [[ "$FORCE_SUITE" -eq 0 && "$STRUCTURAL_RAN_UNITTEST" -eq 1 ]]; then
-    record SKIP suite "covered by eval-structural run_structural (pass --force-suite to re-run)"
-  else
-    log="$LOG_DIR/suite.log"
-    BEFORE_ORPHANS="$LOG_DIR/orphans-before.txt"
-    ps -u "$(id -un)" -o pid=,ppid=,pgid=,cmd= >"$BEFORE_ORPHANS" 2>/dev/null || true
-    set +e
-    PFY_STATE_DIR="$STATE_DIR" TMPDIR="$TMPDIR" \
-      python3 -m unittest discover -s tests -t . >"$log" 2>&1
-    rc=$?
-    set -e
-    AFTER_ORPHANS="$LOG_DIR/orphans-after.txt"
-    ps -u "$(id -un)" -o pid=,ppid=,pgid=,cmd= >"$AFTER_ORPHANS" 2>/dev/null || true
-    if [[ $rc -eq 0 ]]; then
-      # Summarize counts from unittest output
-      tail_line="$(tail -n 5 "$log" | tr '\n' ' ')"
-      record PASS suite "$tail_line"
-    else
-      record FAIL suite "unittest exit $rc; see $log"
-    fi
-  fi
-fi
-
-# ---------------------------------------------------------------------------
-# Check: CI-parity (bwrap unavailable + PFY_STATE_DIR like ubuntu job)
-# ---------------------------------------------------------------------------
-if should_run ci-parity; then
-  log="$LOG_DIR/ci-parity.log"
-  set +e
-  (
-    set -euo pipefail
-    echo "== PATH without bwrap =="
-    export PATH="$CI_PATH"
-    command -v bwrap && { echo "FAIL: bwrap still on PATH"; exit 1; } || echo "bwrap hidden OK"
-    command -v python3
-    export PFY_STATE_DIR="$STATE_DIR/ci-parity"
-    mkdir -p "$PFY_STATE_DIR"
-    export TMPDIR="${SHORT_SCRATCH:-$OUT_DIR}/scratch-ci"
-    mkdir -p "$TMPDIR"
-    # Static guard from GATE-NOTES / fix2: runtime-dir tests must not auto-add
-    # --unsafe-no-sandbox (2fadea1 failed ubuntu CI because they did).
-    static_rc=0
-    python3 - <<'PY' || static_rc=1
-from pathlib import Path
+check_ci_parity() {
+  nobwrap_env
+  export PFY_STATE_DIR="$SCRATCH/state-ci"; mkdir -p "$PFY_STATE_DIR"
+  local static_rc=0
+  python3 - <<'PY' || static_rc=1
 import re, sys
+from pathlib import Path
 p = Path("tests/test_pfy_build_local.py")
 if not p.exists():
-    print("SKIP: no tests/test_pfy_build_local.py")
-    sys.exit(0)
+    print("FAIL: tests/test_pfy_build_local.py is missing")
+    sys.exit(1)
 text = p.read_text(encoding="utf-8")
-needed = [
-    "test_missing_runtime_dir_is_not_reported_as_missing_bwrap",
-    "test_runtime_dir_under_system_tmp_is_blocked",
-]
 fail = []
-for name in needed:
+for name in ("test_missing_runtime_dir_is_not_reported_as_missing_bwrap",
+             "test_runtime_dir_under_system_tmp_is_blocked"):
     m = re.search(rf"def {name}\(self\).*?(?=\n    def |\nclass |\Z)", text, re.S)
     if not m:
         fail.append(f"missing {name}")
         continue
-    body = m.group(0)
-    if "auto_unsafe=False" not in body:
-        fail.append(f"{name} does not pass auto_unsafe=False (CI will auto-add --unsafe-no-sandbox when bwrap is unusable)")
+    code = re.sub(r"#[^\n]*", "", m.group(0))  # a comment must not satisfy the pin
+    if "auto_unsafe=False" not in code:
+        fail.append(f"{name} does not pass auto_unsafe=False (CI auto-adds --unsafe-no-sandbox without bwrap)")
 if fail:
     print("FAIL ci-parity static:", "; ".join(fail))
     sys.exit(1)
 print("PASS static: runtime-dir tests pin auto_unsafe=False")
 PY
-    # Behavioral: run those two tests with bwrap hidden. On a bad tip they FAIL
-    # (wrong exit/reason) or incorrectly PASS under --unsafe-no-sandbox.
-    if [[ -f tests/test_pfy_build_local.py ]]; then
-      # Need git etc already in CI_PATH. Also need /proc for unittest.
-      # Run even when the static pin failed, so the log shows the real CI symptom.
-      python3 -m unittest \
-        tests.test_pfy_build_local.LocalBuildTests.test_missing_runtime_dir_is_not_reported_as_missing_bwrap \
-        tests.test_pfy_build_local.LocalBuildTests.test_runtime_dir_under_system_tmp_is_blocked \
-        -v
-    fi
-    exit "$static_rc"
-  ) >"$log" 2>&1
-  rc=$?
-  set -e
-  if [[ $rc -eq 0 ]]; then
-    record PASS ci-parity "bwrap-hidden PATH + runtime-dir auto_unsafe pin"
-  else
-    record FAIL ci-parity "see $log (exit $rc)"
-  fi
-fi
+  # Behavioral: run them with bwrap hidden even if the static pin failed.
+  python3 -m unittest -v \
+    tests.test_pfy_build_local.LocalBuildTests.test_missing_runtime_dir_is_not_reported_as_missing_bwrap \
+    tests.test_pfy_build_local.LocalBuildTests.test_runtime_dir_under_system_tmp_is_blocked
+  return "$static_rc"
+}
 
-# ---------------------------------------------------------------------------
-# Check: leftover child processes after suite (cheap scan)
-# ---------------------------------------------------------------------------
-if should_run orphans; then
-  log="$LOG_DIR/orphans.log"
-  set +e
-  (
-    # Look for leftover processes (local-build, stub agents, opencode) whose argv names this run's paths.
-    # Ignore this pregate process and its direct pipeline.
-    leak=0
-    while read -r pid cmd; do
-      [[ -z "${pid:-}" ]] && continue
-      case "$cmd" in
-        *pregate.sh*|*pregate-logs*) continue ;;
-      esac
-      # Match processes whose cwd or argv references our run root tmp receipts/agents.
-      # Only this run's paths: never flag (or touch) other worktrees' live runs.
-      if [[ "$cmd" == *"$RUN_ROOT/"* ]] || [[ -n "${SHORT_SCRATCH:-}" && "$cmd" == *"$SHORT_SCRATCH"* ]]; then
-        # Still alive?
-        if kill -0 "$pid" 2>/dev/null; then
-          echo "LEAK pid=$pid cmd=$cmd"
-          leak=1
-        fi
-      fi
-    done < <(ps -u "$(id -un)" -o pid=,cmd= 2>/dev/null || true)
-    # Heartbeat / orphan pid files left under run tmp
-    if find "$OUT_DIR" ${SHORT_SCRATCH:+"$SHORT_SCRATCH"} \( -name 'orphan*.pid' -o -name 'orphan*.heartbeat' \) 2>/dev/null | grep -q .; then
-      echo "LEAK: orphan pid/heartbeat files under $OUT_DIR"
-      find "$OUT_DIR" ${SHORT_SCRATCH:+"$SHORT_SCRATCH"} \( -name 'orphan*.pid' -o -name 'orphan*.heartbeat' \) 2>/dev/null || true
+check_ubuntu_parity() {
+  nobwrap_env
+  export PFY_STATE_DIR="$SCRATCH/state-ubuntu"; mkdir -p "$PFY_STATE_DIR"
+  python3 -m unittest discover -s tests -t .
+}
+
+check_eval_structural() {
+  # Same commands as the G0 ubuntu job; receipts go to the run folder so the
+  # tracked pipelines/eval/*.latest.md files are never rewritten (--in-place).
+  python3 examples/eval-harness/run_structural.py --write-md "$RECEIPTS/structural.latest.md"
+  python3 examples/eval-harness/run_golden.py --write-md "$RECEIPTS/golden.latest.md"
+  PFY_GAB_OFFLINE=1 python3 scripts/pfy_gab_228.py --selftest
+  PFY_JEV_OFFLINE=1 python3 scripts/pfy_jev_230.py --selftest
+  python3 scripts/pfy_launch_wizard_225.py --selftest
+  # run_structural above already ran the full unittest discover (host PATH,
+  # bwrap present on nimo); ubuntu-parity runs it again without bwrap.
+  python3 scripts/catalog_check.py
+  ./pfy toolset matrix
+  ./pfy toolset plan jev --harness opencode
+  ./pfy hedge decide --task bulk --local ready --budget 0
+  git ls-files -s -- pfy scripts/pfy
+  test -x pfy && test -x scripts/pfy
+  bash -n scripts/pfy
+  python3 -m py_compile scripts/pfy-board.py scripts/pfy-gui.py
+  ./pfy help >/dev/null
+  python3 scripts/check_no_encoded_payloads.py --selftest
+  python3 scripts/check_no_encoded_payloads.py
+}
+
+check_suite() {
+  export PFY_STATE_DIR="$SCRATCH/state-suite"; mkdir -p "$PFY_STATE_DIR"
+  python3 -m unittest discover -s tests -t .
+}
+
+check_orphans() {
+  if [[ -n "${PS_BEFORE_FAILED:-}" ]]; then echo "FAIL: ps snapshot before checks failed"; return 1; fi
+  local after own leak=0 pid cwd cmd
+  after="$(ps -u "$(id -un)" -o pid=)" || { echo "FAIL: ps failed; cannot prove no orphans"; return 1; }
+  [[ -n "$after" ]] || { echo "FAIL: ps returned nothing"; return 1; }
+  own=" $$ $BASHPID $(descendants $$ | tr '\n' ' ') "
+  for pid in $after; do
+    grep -qx "[[:space:]]*$pid" "$LOG_DIR/ps-before.txt" && continue
+    [[ "$own" == *" $pid "* ]] && continue
+    [[ -d "/proc/$pid" ]] || continue
+    cwd="$(readlink "/proc/$pid/cwd" 2>/dev/null || true)"
+    cmd="$( { tr '\0' ' ' <"/proc/$pid/cmdline"; } 2>/dev/null || true)"
+    if [[ "$cwd/" == "$RUN_ROOT/"* || "$cwd/" == "$SCRATCH/"* || "$cmd" == *"$RUN_ROOT/"* || "$cmd" == *"$SCRATCH/"* ]]; then
+      echo "LEAK pid=$pid cwd=$cwd cmd=$cmd"
       leak=1
     fi
-    exit "$leak"
-  ) >"$log" 2>&1
-  rc=$?
-  set -e
-  if [[ $rc -eq 0 ]]; then
-    record PASS orphans "no live processes referencing this run root; no orphan pid/heartbeat files"
-  else
-    record FAIL orphans "see $log"
+  done
+  if find "$RUN_ROOT/tmp" "$SCRATCH" \( -name 'orphan*.pid' -o -name 'orphan*.heartbeat' \) 2>/dev/null | grep .; then
+    echo "LEAK: orphan pid/heartbeat files above"
+    leak=1
   fi
-fi
+  [[ $leak -eq 0 ]] && echo "no new live processes under this run root/scratch (argv or cwd)"
+  return "$leak"
+}
 
-# ---------------------------------------------------------------------------
-# Check: protected / gate-file hash integrity vs git tree
-# ---------------------------------------------------------------------------
-if should_run gate-hash; then
-  log="$LOG_DIR/gate-hash.log"
-  set +e
-  (
-    set -euo pipefail
-    python3 - <<'PY'
-"""Fail if gate basenames in the worktree differ from git HEAD blobs.
-
-Mirrors scripts/pfy_build_local._GATE_BASENAMES: conftest/pytest.ini/sitecustomize
-etc. must match the committed tree. Also flag untracked gate files (test cheats).
-"""
-from __future__ import annotations
-import hashlib, subprocess, sys
+check_gate_hash() {
+  BASE_SHA="$(git rev-parse --verify --quiet "${BASE_REF}^{commit}" || true)"
+  BASE_SHA="$BASE_SHA" python3 - <<'PY'
+"""Worktree vs HEAD for tests/ and gate files, plus committed gate-file changes vs base."""
+import os, subprocess, sys
 from pathlib import Path
 
-GATE = {
-    "conftest.py", "pytest.ini", "tox.ini", "setup.cfg", "pyproject.toml",
-    "sitecustomize.py", "usercustomize.py", ".gitignore", ".gitattributes",
-}
-root = Path(".").resolve()
+GATE = {"conftest.py", "pytest.ini", "tox.ini", "setup.cfg", "pyproject.toml",
+        "sitecustomize.py", "usercustomize.py", ".gitignore", ".gitattributes"}
+STRICT = GATE - {".gitignore", ".gitattributes"}
 
-def sha256_bytes(data: bytes) -> str:
-    return hashlib.sha256(data).hexdigest()
+def git(*a):
+    return subprocess.run(["git", *a], check=True, capture_output=True).stdout
 
-# Tracked files
-tracked = subprocess.check_output(
-    ["git", "ls-files", "-z"], text=False
-).split(b"\0")
-fail = []
-seen = []
-for raw in tracked:
-    if not raw:
-        continue
-    rel = raw.decode("utf-8", "surrogateescape")
-    name = Path(rel).name
-    if name not in GATE and not rel.startswith("tests/"):
-        continue
-    # Hash all tests/ plus gate basenames anywhere
-    if name in GATE or rel.startswith("tests/"):
-        data = Path(rel).read_bytes()
-        blob = subprocess.check_output(["git", "show", f"HEAD:{rel}"])
-        if data != blob:
-            fail.append(f"modified vs HEAD: {rel}")
-        seen.append(rel)
+def names(raw):
+    return [r.decode("utf-8", "surrogateescape") for r in raw.split(b"\0") if r]
 
-# Untracked gate basenames (classic cheat: drop sitecustomize.py)
-untracked = subprocess.check_output(
-    ["git", "ls-files", "--others", "--exclude-standard", "-z"], text=False
-).split(b"\0")
-for raw in untracked:
-    if not raw:
-        continue
-    rel = raw.decode("utf-8", "surrogateescape")
-    # Ignore our own pregate outputs under tmp/
-    if rel.startswith("tmp/"):
-        continue
-    name = Path(rel).name
-    if name in GATE:
-        fail.append(f"untracked gate file: {rel}")
-    if rel.startswith("tests/") and rel.endswith(".py"):
-        fail.append(f"untracked test file: {rel}")
+def protected(rel):
+    return rel.startswith("tests/") or Path(rel).name in GATE
 
-print(f"checked {len(seen)} tracked test/gate paths")
+fail, notes = [], []
+head = {}
+for line in git("ls-tree", "-r", "-z", "HEAD").split(b"\0"):
+    if not line:
+        continue
+    meta, path = line.split(b"\t", 1)
+    rel = path.decode("utf-8", "surrogateescape")
+    if protected(rel):
+        head[rel] = meta.split()[2].decode()
+for rel, blob in head.items():
+    p = Path(rel)
+    if not p.exists():
+        fail.append(f"deleted or renamed vs HEAD: {rel}")
+    elif p.is_file() and git("hash-object", "--", rel).decode().strip() != blob:
+        fail.append(f"modified vs HEAD: {rel}")
+current = set(names(git("ls-files", "-z", "--cached", "--others", "--exclude-standard")))
+for rel in sorted(current - set(head)):
+    if rel.startswith("tmp/") or not protected(rel):
+        continue
+    if Path(rel).name in GATE or rel.endswith(".py"):
+        fail.append(f"new vs HEAD (staged or untracked): {rel}")
+
+base = os.environ.get("BASE_SHA", "")
+if base:
+    mb = git("merge-base", base, "HEAD").decode().strip()
+    raw = names(git("diff", "--name-status", "-z", "--no-renames", mb, "HEAD"))
+    for status, rel in zip(raw[0::2], raw[1::2]):
+        name = Path(rel).name
+        if name in STRICT:
+            fail.append(f"committed {status} of gate file vs base {mb[:7]}: {rel} (needs explicit reviewer waiver)")
+        elif name in GATE:
+            notes.append(f"committed {status} vs base: {rel}")
+        elif rel.startswith("tests/") and status in ("M", "D"):
+            notes.append(f"REVIEW: existing test {'modified' if status == 'M' else 'deleted'} vs base: {rel}")
+else:
+    notes.append("base ref not found; committed gate-file diff skipped")
+
+print(f"checked {len(head)} protected paths at HEAD")
+for n in notes:
+    print("NOTE", n)
 if fail:
     print("FAIL gate-hash:")
-    for line in fail:
-        print(" ", line)
+    for f in fail:
+        print(" ", f)
     sys.exit(1)
-print("PASS gate-hash: worktree matches git for tests/ and gate basenames; no untracked gate/test cheats")
+print("PASS gate-hash")
 PY
-  ) >"$log" 2>&1
-  rc=$?
-  set -e
-  if [[ $rc -eq 0 ]]; then
-    record PASS gate-hash "tests/ + gate basenames match HEAD; no untracked cheats"
+}
+
+# Order: fast checks first, then the two full discovers, then the after-scan.
+should_run lint && run_check lint "filemode, launchers, encoded payloads, smoke_contract, catalog" check_lint
+should_run ci-parity && run_check ci-parity "bwrap hidden; runtime-dir tests pin auto_unsafe=False and pass" check_ci_parity
+should_run gate-hash && run_check gate-hash "tests/ and gate files match HEAD; no committed gate-file change vs base" check_gate_hash
+should_run ubuntu-parity && run_check ubuntu-parity "full unittest discover with bwrap hidden" check_ubuntu_parity
+should_run eval-structural && run_check eval-structural "G0 ubuntu job steps incl. full discover with host PATH" check_eval_structural
+if should_run suite; then
+  if [[ "$FORCE_SUITE" -eq 1 || ",$ONLY," == *",suite,"* ]]; then
+    run_check suite "standalone unittest discover, host PATH" check_suite
   else
-    record FAIL gate-hash "see $log"
+    record SKIP suite "eval-structural and ubuntu-parity already run the discover; use --force-suite"
   fi
 fi
+should_run orphans && run_check orphans "no new live processes under the run root or scratch" check_orphans
 
-# ---------------------------------------------------------------------------
-# Write summary
-# ---------------------------------------------------------------------------
-END_EPOCH="$(date +%s)"
-WALL=$((END_EPOCH - START_EPOCH))
-OVERALL="PASS"
-if [[ "$FAIL_COUNT" -gt 0 ]]; then OVERALL="FAIL"; fi
-
-{
-  echo "# Pregate summary"
-  echo
-  echo "- **overall:** $OVERALL"
-  echo "- **ref:** \`$REF\` (\`$SHA\`)"
-  echo "- **host:** $HOST (America/Los_Angeles box clock)"
-  echo "- **run root:** \`$RUN_ROOT\`"
-  echo "- **wall seconds:** $WALL"
-  echo "- **counts:** pass=$PASS_COUNT fail=$FAIL_COUNT skip=$SKIP_COUNT"
-  echo
-  echo "## Checks"
-  echo
-  echo "| status | check | detail |"
-  echo "|---|---|---|"
-  for row in "${RESULTS[@]}"; do
-    IFS='|' read -r st name detail <<<"$row"
-    # escape pipes in detail
-    detail="${detail//|/\\|}"
-    echo "| $st | $name | $detail |"
-  done
-  echo
-  echo "## What each check covers"
-  echo
-  echo "| check | covers |"
-  echo "|---|---|"
-  echo "| lint | Operator filemode 100755, \`./pfy help\`, \`check_no_encoded_payloads\`, \`smoke_contract_lint\`, \`catalog_check\`, py_compile of board/gui (CI has no ruff; this is the lint surface). |"
-  echo "| eval-structural | Steps from \`.github/workflows/eval-structural.yml\` G0 ubuntu job, including run_structural's full unittest discover: structural + golden, gab/jev/launch-wizard selftests, toolset matrix/plan, hedge decide, launcher exec, encoded-payload scan. |"
-  echo "| suite | Full \`python3 -m unittest discover -s tests -t .\` with \`PFY_STATE_DIR\` under the run tmp (sandbox tests run when bwrap works). |"
-  echo "| ci-parity | Hides bwrap via curated PATH; sets \`PFY_STATE_DIR\` like the ubuntu job; static+behavioral pin that runtime-dir tests pass \`auto_unsafe=False\` (catches 2fadea1-class ubuntu CI failures). |"
-  echo "| orphans | After tests, scan for live processes whose argv references this run root or scratch dir, and orphan pid/heartbeat files there. |"
-  echo "| gate-hash | Worktree \`tests/\` and gate basenames (\`conftest.py\`, \`sitecustomize.py\`, …) must match git HEAD; no untracked gate/test files (test-runner cheat class). |"
-  echo
-  echo "## Logs"
-  echo
-  echo "Per-check logs: \`$LOG_DIR/\`"
-  echo
-  echo "## Rule"
-  echo
-  echo "Attach this summary before any Tester/Reviewer gate request. See \`docs/ops/PREGATE.md\`."
-} >"$SUMMARY"
-
-# Also copy summary path to a stable pointer under repo tmp when using nested run
-STABLE_DIR="${MAIN_ROOT:-$REPO_ROOT}/tmp"
-mkdir -p "$STABLE_DIR"
-STABLE="$STABLE_DIR/pregate-latest-summary.md"
-cp "$SUMMARY" "$STABLE" 2>/dev/null || true
-if [[ -n "${MAIN_ROOT:-}" && "$MAIN_ROOT" != "$REPO_ROOT" ]]; then
-  mkdir -p "$REPO_ROOT/tmp"
-  cp "$SUMMARY" "$REPO_ROOT/tmp/pregate-latest-summary.md" 2>/dev/null || true
+# Notes from gate-hash (e.g. modified tests vs base) go into the summary detail.
+if [[ -f "$LOG_DIR/gate-hash.log" ]] && grep -q '^NOTE REVIEW' "$LOG_DIR/gate-hash.log"; then
+  record NOTE gate-hash "$(grep -c '^NOTE REVIEW' "$LOG_DIR/gate-hash.log") existing test file(s) changed vs base; reviewer should read gate-hash.log"
 fi
+echo "TMPDIR: $TMPDIR_POLICY" >"$LOG_DIR/env.txt"
 
-echo
-echo "Wrote $SUMMARY"
-echo "OVERALL=$OVERALL wall=${WALL}s pass=$PASS_COUNT fail=$FAIL_COUNT skip=$SKIP_COUNT"
-
-if [[ "$OVERALL" != "PASS" ]]; then
-  exit 1
-fi
-exit 0
+trap - INT TERM HUP
+if write_summary; then exit 0; else exit 1; fi
