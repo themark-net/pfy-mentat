@@ -13,9 +13,13 @@
 #   --allow-dirty     with --in-place, allow a dirty tree (dev only)
 #   --keep-worktree   keep the run worktree and scratch for debugging
 #
+# One pregate per host at a time is the supported mode. Repo paths with
+# whitespace are refused (exit 2). An unresolvable --base exits 2.
+#
 # Checks: lint ci-parity ubuntu-parity eval-structural suite orphans gate-hash
 # Logs and summary persist in ~/DEVELOP/pfy-mentat/tmp/pregate-runs/<run-id>/.
-# Exit: 0 PASS, 1 FAIL (or no check ran), 2 usage/setup error, 130/143 signal.
+# Exit: 0 PASS, 1 FAIL (or no check passed), 2 usage/setup error, 130/143 signal.
+# Keeps the newest PREGATE_KEEP_RUNS (default 20) run folders.
 set -euo pipefail
 
 ALL_CHECKS="lint ci-parity ubuntu-parity eval-structural suite orphans gate-hash"
@@ -28,11 +32,14 @@ ALLOW_DIRTY=0
 KEEP_WORKTREE=0
 FORCE_SUITE=0
 ONLY=""
+REF_SET=0
 STEP_TIMEOUT="${PREGATE_STEP_TIMEOUT:-2400}"
 MAX_ROOT_LEN="${PREGATE_MAX_ROOT_LEN:-60}"
+KEEP_RUNS="${PREGATE_KEEP_RUNS:-20}"
+MAIN_PID=$$
 
 die2() { echo "pregate: $*" >&2; exit 2; }
-usage() { sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'; exit "${1:-0}"; }
+usage() { awk 'NR == 1 { next } /^#/ { sub(/^# ?/, ""); print; next } { exit }' "$0"; exit "${1:-0}"; }
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -45,9 +52,9 @@ while [[ $# -gt 0 ]]; do
       if [[ $# -lt 2 || -z "$2" || "$2" == -* ]]; then die2 "$1 needs a value"; fi
       if [[ "$1" == "--only" ]]; then ONLY="$2"; else BASE_REF="$2"; fi
       shift 2 ;;
-    --) shift; [[ $# -gt 0 ]] && { REF="$1"; shift; }; break ;;
+    --) shift; [[ $# -gt 0 ]] && { [[ "$REF_SET" -eq 0 ]] || die2 "only one REF allowed"; REF="$1"; shift; }; break ;;
     -*) echo "pregate: unknown flag: $1" >&2; usage 2 ;;
-    *) REF="$1"; shift ;;
+    *) [[ "$REF_SET" -eq 0 ]] || die2 "only one REF allowed (got '$REF' and '$1')"; REF="$1"; REF_SET=1; shift ;;
   esac
 done
 [[ $# -eq 0 ]] || die2 "unexpected extra arguments: $*"
@@ -58,6 +65,7 @@ if [[ -n "$ONLY" ]]; then
   done
 fi
 [[ "$STEP_TIMEOUT" =~ ^[0-9]+$ ]] || die2 "PREGATE_STEP_TIMEOUT must be seconds"
+[[ "$KEEP_RUNS" =~ ^[1-9][0-9]*$ ]] || die2 "PREGATE_KEEP_RUNS must be a positive integer"
 
 command -v git >/dev/null 2>&1 || die2 "git not found on PATH"
 command -v python3 >/dev/null 2>&1 || die2 "python3 not found on PATH"
@@ -66,6 +74,10 @@ cd "$REPO_ROOT"
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || die2 "not a git repo: $REPO_ROOT"
 SHA="$(git rev-parse --verify --quiet "${REF}^{commit}")" || die2 "unknown ref or SHA: $REF"
 SHORT="${SHA:0:7}"
+# B4: gate-hash diffs committed gate files vs this base; an unresolvable base
+# must not silently skip that diff, so it is a setup error.
+BASE_SHA="$(git rev-parse --verify --quiet "${BASE_REF}^{commit}")" || die2 "unknown base ref: $BASE_REF (fetch it or pass --base REF)"
+export BASE_SHA
 GIT_COMMON="$(git rev-parse --path-format=absolute --git-common-dir)"
 MAIN_ROOT="$(dirname "$GIT_COMMON")"
 HOST="$(hostname -s 2>/dev/null || hostname)"
@@ -111,12 +123,22 @@ descendants() {
     echo "$p"
   done
 }
+# True only while PID is still a direct child of this pregate (guards PID reuse:
+# after the child exits, or after pregate itself is SIGKILLed and the child is
+# reparented, the parent no longer matches and nothing is signalled).
+own_child() {
+  local pp
+  pp="$( { ps -o ppid= -p "$1" 2>/dev/null || true; } | tr -d ' ')"
+  [[ -n "$pp" && "$pp" == "$MAIN_PID" ]]
+}
 kill_tree() {
   local pids
+  own_child "$1" || return 0
   pids="$(descendants "$1") $1"
   # shellcheck disable=SC2086
   kill -TERM $pids 2>/dev/null || true
   sleep 1
+  own_child "$1" || return 0
   pids="$(descendants "$1") $1"
   # shellcheck disable=SC2086
   kill -KILL $pids 2>/dev/null || true
@@ -143,20 +165,37 @@ mkdir -p "$PG_DIR"
 for owner in "$PG_DIR"/.owner-*; do
   [[ -e "$owner" ]] || continue
   name="${owner##*/.owner-}"
+  if [[ ! "$name" =~ ^[0-9a-f]{7}-[0-9]{6}$ ]]; then
+    echo "pregate: ignoring owner file with unexpected name: $owner" >&2
+    continue
+  fi
   opid="$(cat "$owner" 2>/dev/null || true)"
   if is_live_pregate "$opid"; then continue; fi
+  if [[ "$opid" =~ ^[0-9]+$ && -d "/proc/$opid" ]]; then
+    why="owner pid $opid is alive but is not a pregate (pid reused)"
+  else
+    why="owner pid ${opid:-?} is gone"
+  fi
   busy="$(procs_under "$PG_DIR/$name" "$MAIN_ROOT/tmp/pgs/$name")"
   if [[ -n "$busy" ]]; then
     echo "pregate: stale run $PG_DIR/$name still has live processes (pids:$busy); not pruning, not signalling" >&2
     continue
   fi
-  echo "pregate: pruning stale run $PG_DIR/$name (owner pid ${opid:-?} is gone)"
+  echo "pregate: pruning stale run $PG_DIR/$name ($why)"
   git -C "$MAIN_ROOT" worktree remove --force "$PG_DIR/$name" >/dev/null 2>&1 || rm -rf "${PG_DIR:?}/$name"
   rm -rf "$MAIN_ROOT/tmp/pgs/$name"
   rm -f "$owner"
 done
 
 mkdir -p "$LOG_DIR" "$RECEIPTS"
+# Retention: keep the newest KEEP_RUNS run folders (this one included). Only
+# names matching the run-id pattern inside tmp/pregate-runs are ever removed.
+RUNS_DIR="$MAIN_ROOT/tmp/pregate-runs"
+mapfile -t _old_runs < <(find "$RUNS_DIR" -mindepth 1 -maxdepth 1 -type d -regextype posix-extended \
+  -regex '.*/[0-9a-f]{7}-[0-9]{8}T[0-9]{6}Z-[0-9]+' -printf '%T@ %p\n' | sort -rn | tail -n +"$((KEEP_RUNS + 1))" | cut -d' ' -f2-)
+for d in "${_old_runs[@]}"; do
+  if [[ -n "$d" && "$d" != "$PERSIST" && "$d" == "$RUNS_DIR/"* ]]; then rm -rf -- "$d"; fi
+done
 CLEANUP_WORKTREE=""
 OWNER_FILE=""
 if [[ "$IN_PLACE" -eq 0 ]]; then
@@ -209,10 +248,12 @@ write_summary() {
     echo "# Pregate summary"
     echo
     echo "- overall: **$overall**"
-    [[ "$PASS_COUNT" -eq 0 ]] && echo "- note: no check passed (nothing ran?), so this is not a PASS"
+    if [[ "$PASS_COUNT" -eq 0 && "$FAIL_COUNT" -eq 0 ]]; then
+      echo "- note: no check ran to completion, so this is not a PASS"
+    fi
     [[ -n "$INTERRUPTED" ]] && echo "- note: interrupted by SIG$INTERRUPTED"
     echo "- ref: \`$REF\` = \`$SHA\`"
-    echo "- base for gate-file diff: \`$BASE_REF\`"
+    echo "- base for gate-file diff: \`$BASE_REF\` = \`$BASE_SHA\`"
     echo "- host: $HOST, python: $(python3 -V 2>&1), bwrap on host PATH: $(command -v bwrap >/dev/null && echo yes || echo no)"
     echo "- started (local): $(date -d "@$START_EPOCH" '+%Y-%m-%d %H:%M %Z')"
     echo "- wall seconds: $wall"
@@ -438,8 +479,7 @@ check_orphans() {
 }
 
 check_gate_hash() {
-  BASE_SHA="$(git rev-parse --verify --quiet "${BASE_REF}^{commit}" || true)"
-  BASE_SHA="$BASE_SHA" python3 - <<'PY'
+  python3 - <<'PY'
 """Worktree vs HEAD for tests/ and gate files, plus committed gate-file changes vs base."""
 import os, subprocess, sys
 from pathlib import Path
@@ -492,7 +532,7 @@ if base:
         elif rel.startswith("tests/") and status in ("M", "D"):
             notes.append(f"REVIEW: existing test {'modified' if status == 'M' else 'deleted'} vs base: {rel}")
 else:
-    notes.append("base ref not found; committed gate-file diff skipped")
+    fail.append("base sha missing; committed gate-file diff cannot run")
 
 print(f"checked {len(head)} protected paths at HEAD")
 for n in notes:
