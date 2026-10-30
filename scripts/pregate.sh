@@ -382,6 +382,15 @@ check_lint() {
   python3 scripts/smoke_contract_lint.py
   echo "== catalog_check =="
   python3 scripts/catalog_check.py
+  echo "== workflow image pin =="
+  # GitHub-hosted jobs must pin the image ubuntu-parity mirrors (ubuntu-24.04:
+  # bwrap unusable there, so bwrap-gated tests skip). ubuntu-latest drifts.
+  if grep -nE '^[[:space:]]*runs-on:[[:space:]]*ubuntu-latest' .github/workflows/*.yml; then
+    echo "FAIL: unpinned ubuntu-latest above; pin ubuntu-24.04"; fail=1
+  fi
+  if ! grep -q 'ripgrep' .github/workflows/eval-structural.yml; then
+    echo "FAIL: eval-structural.yml does not install ripgrep"; fail=1
+  fi
   return "$fail"
 }
 
@@ -547,10 +556,10 @@ PY
 }
 
 # Order: fast checks first, then the two full discovers, then the after-scan.
-should_run lint && run_check lint "filemode, launchers, encoded payloads, smoke_contract, catalog" check_lint
+should_run lint && run_check lint "filemode, launchers, encoded payloads, smoke_contract, catalog, workflow image pin" check_lint
 should_run ci-parity && run_check ci-parity "bwrap hidden; runtime-dir tests pin auto_unsafe=False and pass" check_ci_parity
 should_run gate-hash && run_check gate-hash "tests/ and gate files match HEAD; no committed gate-file change vs base" check_gate_hash
-should_run ubuntu-parity && run_check ubuntu-parity "full unittest discover with bwrap hidden" check_ubuntu_parity
+should_run ubuntu-parity && run_check ubuntu-parity "full unittest discover with bwrap hidden (mirrors the pinned ubuntu-24.04 G0 job)" check_ubuntu_parity
 should_run eval-structural && run_check eval-structural "G0 ubuntu job steps incl. full discover with host PATH" check_eval_structural
 if should_run suite; then
   if [[ "$FORCE_SUITE" -eq 1 || ",$ONLY," == *",suite,"* ]]; then
