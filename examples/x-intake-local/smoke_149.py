@@ -8,13 +8,14 @@ Receipt: $PFY_SMOKE_RECEIPT_DIR/latest.json, else pipelines/smoke/mempalace/late
 never downloads a model, never calls an LLM.
 
 Binary: $MEMPALACE_BIN, else ~/DEVELOP/pfy-mentat/tmp/mempalace/.venv/bin/mempalace, else `mempalace` on PATH.
-`--version` must report MEMPALACE_VERSION (default 3.12.0) or the smoke exits 2.
+`--version` must report exactly MEMPALACE_VERSION (default 3.12.0) or the smoke exits 2.
 Model cache: the default embedder (ChromaDB's all-MiniLM-L6-v2 ONNX) must already sit in
 $MEMPALACE_HOME/.cache/chroma/onnx_models/all-MiniLM-L6-v2 (MEMPALACE_HOME default
 ~/DEVELOP/pfy-mentat/tmp/mempalace/home); without it the smoke exits 2 rather than fetch ~80 MB.
 The smoke copies that HOME into a temp dir, writes a two-note fixture project, then runs `init --yes`, `mine` and two
-`search` queries against a temp palace with a clean env and a timeout ($PFY_XINTAKE_TIMEOUT, default 180 s). Under
-bwrap (when it works) every step has no network. Checks: each step exits 0, mine files 2 drawers, each query ranks
+`search` queries against a temp palace with a clean env and a timeout ($PFY_XINTAKE_TIMEOUT, default 180 s). Every
+step runs under bwrap with no network and a read-only root; if bwrap is missing or unusable the smoke exits 2 and never
+runs MemPalace unsandboxed (same rule as Entry 148). Checks: each step exits 0, mine files 2 drawers, each query ranks
 the right note first, and real-HOME paths ~/.mempalace, ~/.config/mempalace and ~/.cache/chroma are unchanged.
 """
 from __future__ import annotations
@@ -88,15 +89,24 @@ def home_sig(home: Path) -> dict:
     return sig
 
 
-def run(binary: str, args: list[str], tmp: Path, sandbox: bool, timeout: float) -> subprocess.CompletedProcess:
+def run(binary: str, args: list[str], tmp: Path, timeout: float) -> subprocess.CompletedProcess:
     env = {"PATH": SYS_PATH, "HOME": str(tmp / "home"), "TMPDIR": str(tmp / "t"), "LANG": "C.UTF-8",
            "NO_COLOR": "1", "TERM": "dumb", "HF_HUB_OFFLINE": "1", "ANONYMIZED_TELEMETRY": "False"}
-    cmd = [binary, *args]
-    if sandbox:
-        cmd = ["bwrap", "--ro-bind", "/", "/", "--dev", "/dev", "--tmpfs", "/dev/shm", "--proc", "/proc",
-               "--bind", str(tmp), str(tmp), "--unshare-net", "--die-with-parent", *cmd]
+    # Tests set this so a stub can write the real HOME and the real-home check has to notice.
+    # Leave it unset: --ro-bind keeps that tree read-only.
+    home_bind: list[str] = []
+    if os.environ.get("PFY_SMOKE_REAL_HOME_BIND") == "1":
+        home = str(Path.home())
+        home_bind = ["--bind", home, home]
+    cmd = ["bwrap", "--ro-bind", "/", "/", "--dev", "/dev", "--tmpfs", "/dev/shm", "--proc", "/proc",
+           "--bind", str(tmp), str(tmp), *home_bind, "--unshare-net", "--die-with-parent", binary, *args]
     return subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=timeout, start_new_session=True,
                           stdin=subprocess.DEVNULL)
+
+
+def version_of(out: str) -> str | None:
+    m = re.search(r"\b(\d+\.\d+\.\d+[0-9A-Za-z.+-]*)", out)
+    return m.group(1) if m else None
 
 
 def top_source(out: str) -> str | None:
@@ -115,15 +125,17 @@ def main() -> int:
         return finish(2, rec)
     binary = find_bin()
     if not binary:
-        rec["reason"] = "mempalace not staged (set MEMPALACE_BIN or stage tmp/mempalace/.venv)"
+        rec["reason"] = "mempalace not staged (set MEMPALACE_BIN or stage ~/DEVELOP/pfy-mentat/tmp/mempalace/.venv)"
         return finish(2, rec)
     rec["binary"] = binary
     src_home = Path(os.environ.get("MEMPALACE_HOME") or Path.home() / "DEVELOP/pfy-mentat/tmp/mempalace/home")
     if not (src_home / MODEL_REL).is_dir():
         rec["reason"] = f"embedding model not cached at {src_home / MODEL_REL} (warm it once inside DEVELOP)"
         return finish(2, rec)
-    sandbox = bwrap_ok()
-    rec["sandbox"] = "bwrap --unshare-net" if sandbox else "none (network reachable)"
+    if not bwrap_ok():
+        rec["reason"] = "bwrap is not usable here; MemPalace must run with no network"
+        return finish(2, rec)
+    rec["sandbox"] = "bwrap --unshare-net"
     real_home = Path.home()
     before = home_sig(real_home)
     with tempfile.TemporaryDirectory(prefix="pfy-smoke-149-") as td:
@@ -136,23 +148,24 @@ def main() -> int:
             (proj / name).write_text(text, encoding="utf-8")
         palace = str(tmp / "palace")
         try:
-            v = run(binary, ["--version"], tmp, sandbox, timeout)
+            v = run(binary, ["--version"], tmp, timeout)
         except (OSError, subprocess.TimeoutExpired) as e:
             rec["reason"] = f"--version failed: {e}"
             return finish(2, rec)
         rec["version_output"] = (v.stdout + v.stderr).strip()[:200]
-        if PIN not in rec["version_output"]:
-            rec["reason"] = f"version pin {PIN} not in --version output"
+        rec["version"] = version_of(rec["version_output"])
+        if rec["version"] != PIN:
+            rec["reason"] = f"version pin {PIN} != --version {rec['version']}"
             return finish(2, rec)
         outs = {}
         try:
             for step, args in (("init", ["--palace", palace, "init", str(tmp / "proj"), "--yes"]),
                                ("mine", ["--palace", palace, "mine", str(tmp / "proj")])):
-                p = run(binary, args, tmp, sandbox, timeout)
+                p = run(binary, args, tmp, timeout)
                 rec["checks"][f"{step}_exit"] = p.returncode
                 outs[step] = p.stdout + p.stderr
             for i, q in enumerate(QUERIES):
-                p = run(binary, ["--palace", palace, "search", q, "--results", "2"], tmp, sandbox, timeout)
+                p = run(binary, ["--palace", palace, "search", q, "--results", "2"], tmp, timeout)
                 rec["checks"][f"q{i}_exit"] = p.returncode
                 outs[f"q{i}"] = p.stdout + p.stderr
         except subprocess.TimeoutExpired as e:

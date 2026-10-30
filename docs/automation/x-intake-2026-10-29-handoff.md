@@ -6,12 +6,12 @@ Daily X intake routine, window 2026-10-29T00:42Z to 2026-10-30T00:35Z. Sources: 
 |------|------|-----|------------|
 | 149 | [MemPalace](https://github.com/MemPalace/mempalace) (MIT, v3.12.0) | Local-first verbatim agent memory with wing/room scoped search, hybrid ranking, an MCP server and a published LongMemEval score. **Eval-auto trial candidate** against cass-memory (108) and ai-memory (132) | Expected yes (Python + ChromaDB, CPU embeddings). Smoke PASS on the box; not staged on nimo yet (smoke exits 2 there until it is) |
 
-Files: `sources/entries/149-mempalace.md`, `examples/x-intake-local/smoke_149.py` (self-contained, stdlib only), `tests/test_x_intake_smoke_149.py` (10 stub tests), `.gitignore` line for `pipelines/smoke/mempalace/`, and this handoff. No TOOLS.md rows, no `data/tools.json` rows. Written on the Grok Bot box and pushed through the GitHub connector. No PR, per Mark's 2026-10-19 rule: gate this branch at its pinned head, then fast-forward `main`.
+Files: `sources/entries/149-mempalace.md`, `examples/x-intake-local/smoke_149.py` (self-contained, stdlib only), `tests/test_x_intake_smoke_149.py` (18 stub tests after the B2 fix; see docs/ops/HANDOFF-x-intake-149-b2.md), `.gitignore` line for `pipelines/smoke/mempalace/`, and this handoff. No TOOLS.md rows, no `data/tools.json` rows. Written on the Grok Bot box and pushed through the GitHub connector. No PR, per Mark's 2026-10-19 rule: gate this branch at its pinned head, then fast-forward `main`.
 
 ## How to gate
 
 ```sh
-python3 -m unittest tests.test_x_intake_smoke_149   # 10 tests, no MemPalace needed
+python3 -m unittest tests.test_x_intake_smoke_149   # 18 tests, no MemPalace needed (sandbox tests skip without bwrap)
 python3 examples/x-intake-local/smoke_149.py         # exit 2 unless staged; PASS when staged
 python3 scripts/catalog_check.py
 ```
