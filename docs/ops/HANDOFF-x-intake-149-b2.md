@@ -31,6 +31,8 @@ Reviewer B2: `smoke_149.py` fell back to running MemPalace with no sandbox (netw
 python3 -m unittest tests.test_x_intake_smoke_149          # 18 OK on nimo (bwrap usable)
 ```
 
+Also run with bwrap hidden, as GitHub's ubuntu-24.04 G0 job does: `PATH=/nonexistent /usr/bin/python3 -m unittest tests.test_x_intake_smoke_149` gives 18 OK, 11 skipped. The first tip CI run (41003563965 at 2c777bd) failed `test_version_pin_is_exact` there because the version probe runs inside bwrap; that test now carries `needs_bwrap`.
+
 Mutation check on nimo (each mutant applied to smoke_149.py, suite run, file restored): all killed.
 
 | Mutant | Result |

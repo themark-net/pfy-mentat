@@ -180,7 +180,9 @@ class Smoke149(unittest.TestCase):
         self.assertEqual(code, 2, rec)
         self.assertEqual(rec["reason"], "bad PFY_XINTAKE_TIMEOUT")
 
+    @needs_bwrap
     def test_version_pin_is_exact(self):
+        # The version probe runs inside bwrap, so without it the smoke exits 2 on the bwrap reason first.
         for v in ("3.12.0.1", "13.12.0", "3.12.0rc1"):
             code, rec = self.run_smoke(dict(BASE, version=v))
             self.assertEqual(code, 2, (v, rec))
