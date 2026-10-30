@@ -4,7 +4,7 @@ Branch: `catalog/x-intake-149`. Date: 2026-10-29 PT. Author: Grok Bot (executor)
 
 ## Status
 
-Code and tests done; branch pushed. Gate pending (pregate plus Reviewer at the pinned SHA). Not merged; Mark merges after the gates.
+Code and tests done; branch pushed. Gate pending (pregate plus Reviewer at the pinned SHA). Not merged; bots fast-forward main to the pinned SHA after the gates.
 
 ## Problem
 
@@ -46,7 +46,7 @@ Mutation check on nimo (each mutant applied to smoke_149.py, suite run, file res
 | `timeout <= 0` guard removed | killed (zero/negative timeout tests check the reason) |
 | version pin back to substring | killed (test_version_pin_is_exact) |
 
-CI and pregate results: RESULTS_PLACEHOLDER
+CI and pregate results at code SHA 996ea3d: eval-structural 41010561425 success (ubuntu-24.04 G0 and self-hosted nimo G0), operator-launch-filemode 41007276111 success; pregate `996ea3d-20261030T052903Z-459010` OVERALL=PASS pass=6 fail=0 skip=1 (SKIP suite by design). Reviewer verified B1 and B2 fixed at 996ea3d. The commit that fills this line is docs-only.
 
 ## How this fails / how we recover
 
@@ -63,4 +63,4 @@ CI and pregate results: RESULTS_PLACEHOLDER
 
 ## Next step
 
-Reviewer delta gate at the pinned SHA, then Mark fast-forwards main. No PR (Mark's 2026-10-19 rule).
+Reviewer delta gate at the pinned SHA, then bots fast-forward main. No PR (Mark's 2026-10-19 rule).
