@@ -34,3 +34,7 @@ Local: `python3 eval/mvp2/run_trial.py all-local`. Cloud: `python3 eval/mvp2/run
 ## Not done
 
 Task diffs are not on this branch except as patches. Mark chooses what to land. No second local attempt. No cloud retry. Weekly percent still unknown.
+
+## Landing (2026-10-30 PT)
+
+Branch `bot/mvp2-report`: the five `bot/mvp2-trial` commits (50220ce and parents) cherry-picked unchanged onto `origin/main` 1e99251 so main can fast-forward. Worktree `tmp/mvp2r`. Scope is docs and eval only: `docs/build-dropins/`, `docs/ops/`, `docs/TODO.md`, `eval/mvp2/`. No runtime code changes; the local t4/t5 diffs are only evidence files under `eval/mvp2/patches/`, not landed code. The `eval/mvp2/gates/test_mvp2_*.py` gates are red on base by design and sit outside `tests/`, so CI's `unittest discover -s tests` does not collect them. Gate rule: docs/eval only, so pregate plus Reviewer, no Tester. Follow-up: MVP-3 review-and-retry loop on `bot/mvp3-review-retry` (`docs/build-dropins/pfy-local-build-mvp3.md`).
