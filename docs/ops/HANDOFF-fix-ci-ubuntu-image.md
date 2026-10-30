@@ -36,4 +36,4 @@ Baseline: the failing run on the old image was 41000777422 (40 failures in `test
 
 ## Next (no-PR flow)
 
-Reviewer gates the pinned SHA with the pregate summary and CI run ids. When it PASSes, Mark fast-forwards `main`.
+Reviewer gates the pinned SHA with the pregate summary and CI run ids. When it PASSes, bots fast-forward `main` to the pinned SHA.
