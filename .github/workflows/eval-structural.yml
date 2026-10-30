@@ -9,13 +9,24 @@ on:
 
 jobs:
   structural-github:
+    # Job name kept as-is so required status checks keep matching. The image is
+    # pinned: ubuntu-latest moved to 26.04 (run 41000777422), where bwrap works
+    # and rg is missing, so 40 harness2 sandbox tests failed.
     name: G0 (ubuntu-latest)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Install ripgrep (harness2 sandbox tests need rg)
+        run: |
+          set -euo pipefail
+          if ! command -v rg >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq ripgrep
+          fi
+          rg --version | head -1
       - name: Structural + golden
         run: |
           python3 examples/eval-harness/run_structural.py --write-md pipelines/eval/structural.latest.md

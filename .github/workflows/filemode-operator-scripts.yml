@@ -14,7 +14,7 @@ permissions:
 jobs:
   check-filemode:
     name: G0 launcher 100755
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - name: FAIL unless pfy, scripts/pfy, detect-local-runtime.sh are 100755 and ./pfy help runs
@@ -55,7 +55,7 @@ jobs:
     # Contents/MCP push always writes 100644; restore +x on any feature-branch push.
     # (Previously hard-coded to feat/pfy-executable only — skipped on feat/161-local-usage.)
     if: github.event_name == 'push' && github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
