@@ -9,10 +9,11 @@ on:
 
 jobs:
   structural-github:
-    # Job name kept as-is so required status checks keep matching. The image is
-    # pinned: ubuntu-latest moved to 26.04 (run 41000777422), where bwrap works
-    # and rg is missing, so 40 harness2 sandbox tests failed.
-    name: G0 (ubuntu-latest)
+    # The image is pinned: ubuntu-latest moved to 26.04 (run 41000777422 on
+    # catalog/x-intake-149), where bwrap works and rg is missing, so 40 harness2
+    # sandbox tests failed. main has no required status checks, so the job name
+    # follows the image.
+    name: G0 (ubuntu-24.04)
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4

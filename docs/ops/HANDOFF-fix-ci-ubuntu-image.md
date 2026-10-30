@@ -6,11 +6,11 @@ Branch `fix/ci-ubuntu-image`, cut from `origin/main` `6b04ba8`. CI-config only (
 
 ## Problem
 
-`main` went red: eval-structural run 41000777422, job "G0 (ubuntu-latest)", 40 failures, all in `tests.test_harness2_local_sandbox` (for example "AssertionError: 2 != 0 : rg missing"). GitHub moved `ubuntu-latest` from 24.04 to 26.04. On 26.04 bwrap works, so the bwrap-gated tests run (skipped dropped from 93 to 20), and ripgrep is not installed, so they fail.
+The ubuntu CI job went red: eval-structural run 41000777422 on `catalog/x-intake-149` at `0652e65` (main code, plus a catalog entry that did not touch these tests), job "G0 (ubuntu-latest)", 40 failures, all in `tests.test_harness2_local_sandbox` (for example "AssertionError: 2 != 0 : rg missing"). GitHub moved `ubuntu-latest` from 24.04 to 26.04. On 26.04 bwrap works, so the bwrap-gated tests run (skipped dropped from 93 to 20), and ripgrep is not installed, so they fail.
 
 ## Change
 
-- `.github/workflows/eval-structural.yml`: the GitHub-hosted G0 job runs on `ubuntu-24.04`. The job name stays "G0 (ubuntu-latest)" so required status checks keep matching; a comment says why. A new step installs ripgrep when `rg` is missing, so a later image bump does not fail on `rg missing`.
+- `.github/workflows/eval-structural.yml`: the GitHub-hosted G0 job runs on `ubuntu-24.04`. The job is renamed "G0 (ubuntu-24.04)" to match the image. `main` has no branch protection or required status checks, so nothing depends on the old name. A new step installs ripgrep when `rg` is missing, so a later image bump does not fail on `rg missing`.
 - `.github/workflows/filemode-operator-scripts.yml`: both jobs pinned to `ubuntu-24.04`.
 - Self-hosted workflows (`local-lab`, `nightly-models`, `post-merge-brief`, the nimo G0 job) are unchanged.
 - `scripts/pregate.sh` lint (Reviewer follow-up 8): FAILs if any workflow uses `runs-on: ubuntu-latest` or if `eval-structural.yml` stops installing ripgrep. The ubuntu-parity detail says it mirrors the pinned `ubuntu-24.04` job. `docs/ops/PREGATE.md` updated to match.
@@ -21,7 +21,7 @@ All at the gated code SHA `603c2c3` (this results note is a docs-only follow-up 
 
 | Check | Id | Result |
 |-------|----|--------|
-| eval-structural (dispatch), G0 (ubuntu-latest) job, runner label `ubuntu-24.04`, image 24.04.5 | run 41003223935, job 123892193920 | success (ripgrep step ok; Structural + golden ok) |
+| eval-structural (dispatch), G0 job (then named "G0 (ubuntu-latest)"), runner label `ubuntu-24.04`, image 24.04.5 | run 41003223935, job 123892193920 | success (ripgrep step ok; Structural + golden ok) |
 | eval-structural, G0 (self-hosted nimo) job | run 41003223935, job 123892194072 | success |
 | operator-launch-filemode (push) | run 41003167991 | success |
 | pregate full, nimo, runner idle | `603c2c3-20261030T051106Z-352430` | OVERALL=PASS wall=1062s pass=6 fail=0 skip=1 (suite skipped by design: eval-structural and ubuntu-parity already ran discover) |
@@ -32,7 +32,7 @@ Baseline: the failing run on the old image was 41000777422 (40 failures in `test
 ## Known gaps
 
 - 24.04 will also be retired eventually. When the pin moves, the harness2 sandbox tests will run on the hosted runner with bwrap; ripgrep is already installed for that case, but other missing tools may surface.
-- The job display name still says "ubuntu-latest". Renaming it needs a matching branch-protection update.
+- The harness2 sandbox tests skip on the 24.04 hosted runner (bwrap is unusable there), so the ripgrep step is not exercised by those tests on 24.04. It matters only when the pin moves to an image where bwrap works.
 
 ## Next (no-PR flow)
 
