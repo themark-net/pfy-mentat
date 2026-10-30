@@ -65,14 +65,28 @@ state: DONE | tests: review 7 OK; local-build 61 OK; discover Ran 955 OK skipped
 
 ### trial-harness
 
-Task copies under `eval/mvp3/tasks/` differ from `eval/mvp2/tasks/` only by a `files:` line, plus a `require:` line on t5. `eval/mvp3/run_trial.py` is the local arm only. `prove-red` has not run yet. No model call yet.
+Task copies under `eval/mvp3/tasks/` differ from `eval/mvp2/tasks/` only by a `files:` line, plus a `require:` line on t5. `eval/mvp3/run_trial.py` is the local arm only.
 
-state: RUNNING | tests: not run | files: eval/mvp3 | err: none yet
+`python3 eval/mvp3/run_trial.py prove-red` at 2026-10-30T17:49:46Z, before any model call. Host: MemAvailable about 72 GiB, SwapFree about 5 MB, load 2.75, `ollama ps` empty.
+
+```
+PROVE_RED t1-smolvm-stderr-first failed=1 errors=0
+PROVE_RED t2-tree-sig-119 failed=1 errors=0
+PROVE_RED t3-daemon-stop-fail failed=1 errors=0
+PROVE_RED t4-timeout-substep failed=2 errors=0
+PROVE_RED t5-receipts-outside-repo failed=1 errors=0
+PROVE_RED t6-tree-sig-three failed=3 errors=0
+PROVE_DONE ok
+```
+
+Log: `tmp/mvp3-runs/prove-red.stdout`. Worktrees removed after each gate.
+
+state: DONE | tests: prove-red PROVE_DONE ok | files: eval/mvp3 | err: none
 
 ### suite-push
 
-Full discover recorded above. Commit and push of `bot/mvp3-review-retry` follow this log update. No rebase, no force, no PR.
+Full discover recorded above. Pushed `b25fc35` to `origin/bot/mvp3-review-retry` (c9650e2..b25fc35). No rebase, no force, no PR.
 
-state: RUNNING | tests: discover Ran 955 OK skipped=100 in 501.227s | files: pending commit | err: none yet
+state: DONE | tests: discover Ran 955 OK skipped=100 in 501.227s | files: 13 | err: none
 
 Host at the green suite: MemAvailable about 71 GiB, SwapFree about 5 MB, 32 cores, `ollama ps` empty, `qwen3.6:35b` present in tags and not loaded. Floor stays 32 GiB.
