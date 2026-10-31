@@ -2557,7 +2557,7 @@ def _stub_extra_rw() -> list[Path]:
     Production does not read PFY_STUB_PLAN, PFY_STUB_COUNT, or PFY_STUB_PROMPTS.
     Those names are consulted only when PFY_LOCAL_BUILD_TEST_SEAM=1. A normal
     run leaves the seam unset and returns no extra binds. The same switch gates
-    the extra-file inject in _stage_reviewed.
+    the extra-file inject in _stage_reviewed and the review-poster crash argv.
     """
     if not _test_seam_on():
         return []
@@ -2592,6 +2592,22 @@ def _drop_worktree(repo: Path, worktree: Path | None) -> None:
     _git(repo, ["worktree", "prune"])
 
 
+def _review_poster_argv(script_path: Path) -> list[str]:
+    """The poster command. A crash exit is test-only and seam-gated.
+
+    PFY_LOCAL_BUILD_REVIEW_CRASH=1 makes the child exit before it writes the
+    out file. Without PFY_LOCAL_BUILD_TEST_SEAM=1 that variable is ignored, so
+    a stray value cannot turn a real run into a reviewer failure.
+    """
+    if _test_seam_on() and os.environ.get("PFY_LOCAL_BUILD_REVIEW_CRASH") == "1":
+        return [
+            "python3",
+            "-c",
+            "import sys; sys.stderr.write('review poster crashed before out\\n'); raise SystemExit(1)",
+        ]
+    return ["python3", str(script_path)]
+
+
 def _run_model_review(
     args,
     worktree: Path,
@@ -2602,7 +2618,7 @@ def _run_model_review(
     state: State,
     repo: Path,
 ) -> tuple[str, dict | None]:
-    """Return (status, review). status is accept, reject, timeout, interrupted, mem-edge, blocked, sandbox."""
+    """Return (status, review). status is accept, reject, timeout, interrupted, mem-edge, blocked, sandbox, http-error, crashed."""
     port = _loopback_port(openai_base)
     if port is None:
         return "blocked", {
@@ -2640,7 +2656,7 @@ def _run_model_review(
     )
     try:
         prepared = prepare_sandbox(
-            ["python3", str(script_path)],
+            _review_poster_argv(script_path),
             worktree,
             hide=hide_paths(repo, worktree),
             endpoint=openai_base,
@@ -2667,7 +2683,14 @@ def _run_model_review(
     try:
         raw = out_path.read_text(encoding="utf-8")
     except OSError:
-        raw = (out or "") + (err or "")
+        # The poster never opened the out file (python missing, or it died
+        # first). Stdout is not a verdict. Do not retry this as a reject.
+        tail = redact(((out or "") + "\n" + (err or "")).strip())[:500]
+        return "crashed", {
+            "verdict": "reject",
+            "reasons": ["review-crashed"],
+            "raw_tail": tail,
+        }
     transport = _review_transport_error(raw)
     if transport is not None:
         # An HTTP failure is not a verdict. Do not parse it as reject and retry
@@ -3311,6 +3334,20 @@ def build_local(argv: list[str] | None = None) -> int:
                     mem_snap,
                     "FAIL",
                     "review-http-error",
+                    checks,
+                    model_review,
+                    diff_stats,
+                    diff_text,
+                )
+                return finish()
+            if review_status == "crashed":
+                status, reason, exit_code = "FAIL", "review-crashed", EXIT_FAIL
+                _record_attempt(
+                    attempts_used,
+                    attempt_t0,
+                    mem_snap,
+                    "FAIL",
+                    "review-crashed",
                     checks,
                     model_review,
                     diff_stats,
