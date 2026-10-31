@@ -112,3 +112,26 @@ The headless Grok Build session (pid 3444714) exited at 11:13 PDT while t4 was i
 
 Run 1 first model call was 2026-10-30T17:50:52Z (archived as `tmp/mvp3-runs/run1-archive/first-model-call.txt`). Run 2 resumes at t4 with a fresh 3h cap from its own first model call. It uses `--background-wait-timeout 14400` and runs the trial arms in the foreground, so the CLI cannot end the run early.
 
+## Run 2 (resume)
+
+Resumed 2026-10-30 20:05 PDT (2026-10-31T03:05Z) in a new session. Part 1 stays at `b25fc35`. t1 to t3 stay committed. t4 to t6 run one at a time as detached `setsid` processes with a foreground poll.
+
+Preflight before any model call: MemAvailable+SwapFree 64.658 GiB (floor 32), load 2.23 (stop above 64), 32 cores, `ollama ps` empty, API answered, auth present (size check only). No stray `run_trial` or `pfy_build_local`. Live `tmp/mvp3-runs/first-model-call.txt` (run 1 stamp 2026-10-30T17:50:52Z) moved to `tmp/mvp3-runs/run1-archive/first-model-call.run1-original.txt`. The archive already held `first-model-call.txt` with the same stamp.
+
+Run 2 phases:
+- preflight | clock + host | floor holds, ollama empty, clock archived | none | lead
+- t4-timeout-substep | `eval/mvp3/results`, `eval/mvp3/patches` | ARM_DONE, human review, commit, push | preflight | lead
+- t5-receipts-outside-repo | same | same | t4 | lead
+- t6-tree-sig-three | same | same | t5 | lead
+- report | `eval/mvp3/REPORT.md`, handoff, this log | pushed, no PR | t6 or an exit | lead
+
+state: in progress | tests: host preflight only | files: this log | err: none
+
+
+Run 2 first model call: 2026-10-31T03:07:13Z (2026-10-30 20:07:13 PDT). Wall cap: 2026-10-31T06:07:13Z (2026-10-30 23:07:13 PDT). Source: `tmp/mvp3-runs/first-model-call.txt`.
+
+### t4-timeout-substep
+
+ARM_DONE FAIL no-change. 3 attempts (982.4 s, 205.9 s, 1014.8 s), all no-change. Wall 2203.5 s. Agent diff 0 files. Loop reject. Human reject: the model planned the sub-step rename and wrote nothing. Planted gate unchanged, still 2 failures. Supervisor MemAvailable+SwapFree low 44.365 GiB. Receipt `min_available_gb` 27.494 is MemAvailable only; mem-edge (16 GiB) did not fire. Model unloaded. `qwen3.6:35b` was the only model and was already gone after the arm.
+
+state: DONE | tests: arm L t4-timeout-substep FAIL no-change | files: result + patch | err: none
