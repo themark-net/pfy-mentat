@@ -63,7 +63,7 @@ Active work is also tracked as issues: https://github.com/themark-net/pfy-mentat
 | T-0081 | [#7](https://github.com/themark-net/pfy-mentat/issues/7) | P2 |
 | T-0040 | [#8](https://github.com/themark-net/pfy-mentat/issues/8) | P2 **done** |
 | T-0094 | [#9](https://github.com/themark-net/pfy-mentat/issues/9) | P3 |
-| T-0095 | [#10](https://github.com/themark-net/pfy-mentat/issues/10) | P3 |
+| T-0095 | [#10](https://github.com/themark-net/pfy-mentat/issues/10) | P3 **done** |
 | T-0064 | [#11](https://github.com/themark-net/pfy-mentat/issues/11) | P3 parked |
 | T-0043 | [#12](https://github.com/themark-net/pfy-mentat/issues/12) | P3 parked |
 | T-0062 | [#13](https://github.com/themark-net/pfy-mentat/issues/13) | P3 |
@@ -113,7 +113,6 @@ Active work is also tracked as issues: https://github.com/themark-net/pfy-mentat
 | T-0093 | P1 | done | Tools-capable Ollama select + tool-split | — | T-0080 | `eval-select-tools-model` |
 | T-0096 | P1 | done | **Dual-tier orchestrator** high↔low (`VOICE_ROUTE=high-first` default) | — | T-0092, T-0093 | [voice-orchestrator.md](ops/voice-orchestrator.md); `smoke-voice-orchestrate` |
 | T-0094 | P3 | todo | Optional short **local TTS** status (not duplex) | — | T-0092 | [#9](https://github.com/themark-net/pfy-mentat/issues/9) · Kokoro/piper after local agent path green |
-| T-0095 | P3 | todo | Catalog Stage 0: Pipecat / LiveKit / freeapp (ref only) | — | ADR-0012 | [#10](https://github.com/themark-net/pfy-mentat/issues/10) · No primary install |
 | T-0070 | P1 | doing | Grow design/coding **skills + structural eval** (more text scorers) | — | T-0065 | [#3](https://github.com/themark-net/pfy-mentat/issues/3) · `013-stage-card` scorer. Keep `eval-structural` green |
 | T-0074 | P1 | doing | Implement-lane via `make eval-auto` (fit-select + candidates) | — | — | [#4](https://github.com/themark-net/pfy-mentat/issues/4) · empty fit-select falls back to `deepseek-coder:6.7b-instruct`, then `deepseek-coder:6.7b` |
 | T-0075 | P2 | done | More structural scorers: ADR shape, open-question row shape | — | T-0070 | [#5](https://github.com/themark-net/pfy-mentat/issues/5) **done** |
@@ -146,6 +145,7 @@ Active work is also tracked as issues: https://github.com/themark-net/pfy-mentat
 
 | ID | Priority | Status | Item | Notes |
 |----|----------|--------|------|-------|
+| T-0095 | P3 | done | Catalog Stage 0: Pipecat / LiveKit / freeapp (ref only) | Entries 150-152. Issue #10 was already closed on the 2026-07-30 stub. Receipts are Stage-0 FAIL / I0. No install. No TOOLS.md row. ADR-0012 primary unchanged. Not a Feature GO. |
 | — | P1 | done | pfy launcher phase 1: `install.sh`, catalog v2 (`core-skills`, `code-graph`, `rea`), setup/doctor/uninstall on grok, claude-code, codex, opencode | [#290](https://github.com/themark-net/pfy-mentat/issues/290) · PR 291 · `build/pfy-launcher-p1` · review fixes on the same branch (created-file uninstall, npx allowlist, shared-skill dedupe, backup delete, needs_human receipt) · suite 228 OK skipped=4 · `v0.4.17` tag still absent on origin · not a Feature GO · HOLD 70–75 untouched · phases 2–4 not started |
 | — | P3 | done | X-intake receipt sha source, shared timeout text, har temp HOME, graphjin log close, pfylib tmp cleanup | `build/orch-fixes-1011` · 2026-10-11 · not a Feature GO · catalog HOLD untouched |
 | — | — | done | #230 Jev-style decision layer (CUA-S1-FORMS primary local; TypeSafe optional) | — |
