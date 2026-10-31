@@ -60,4 +60,5 @@ Risks:
 
 (one line per finished item: `item | commit | tests | result`)
 
-item-1-mvp2-reviewer-docs | 469aaf3 | none (docs only; MVP-3 busy, no pregate) | landing default named, historical note on handoff run log and TODO, MVP-3 link kept with a lands-with-MVP-3 note, prove-red gap in Known gaps, truncated-prompt and weekly-percent labeled as operator observations with no receipt field
+item-1-mvp2-reviewer-docs | 6b63b4d | none (docs only; MVP-3 busy, no pregate) | landing default named, historical note on handoff run log and TODO, MVP-3 link kept with a lands-with-MVP-3 note, prove-red gap in Known gaps, truncated-prompt and weekly-percent labeled as operator observations with no receipt field
+item-2-smoke-149 | STAMP | nice -n 19 python3 -m unittest tests.test_x_intake_smoke_149 tests.test_x_intake_smoke_148: 39 OK in 4.312s; PATH=/nonexistent /usr/bin/python3 -m unittest tests.test_x_intake_smoke_149: 25 OK skipped=16 | version probe, pin reason, no production HOME env hook, proc/shm fail closed, bwrap exit 1 fail closed, date 2026-10-25T04:41:28Z, mutations 13 applied 13 killed 0 survived
