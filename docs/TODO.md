@@ -137,7 +137,7 @@ Active work is also tracked as issues: https://github.com/themark-net/pfy-mentat
 |----|----------|--------|------|----------------|---------|-------|
 | T-0016 | P2 | todo | colibri/large model lab under 250GB pool | — | OQ-0008 | [#24](https://github.com/themark-net/pfy-mentat/issues/24) |
 | T-0005 | P2 | doing | Apply integration-stages broadly | — | OQ-0003 | [#21](https://github.com/themark-net/pfy-mentat/issues/21) · 50 handoff cards. Facts recomputed by `scripts/catalog_stage_eval.py`. Stage letter still does not auto-promote |
-| T-0124 | P2 | todo | Fold OpenCode enterable (`pfy_enterable_162*`) behind `pfylib/attach.py`; retire `_legacy` as remaining scripts move | — | T-0121 | OpenCode attach is still its own path; four usable shims already delegate |
+| T-0124 | P2 | done | Fold OpenCode enterable (`pfy_enterable_162*`) behind `pfylib/attach.py`; retire `_legacy` as remaining scripts move | - | T-0121 | OpenCode open path is `attach.open_opencode_session`; `pfy_enterable_162_b.py` is a shim. `_legacy` still loads the other scripts |
 | T-0127 | P2 | done | Live atg-compile once the host is quiet (one model: `qwen3.6:35b`, then opt-in coder-next) | — | T-0004 | 2026-10-06: `qwen3.6:35b` exit 0, 2/10 sink-correct, wall 478s. Stage I2. coder-next blocked: 48.19 GiB blob + 25 GiB > 65.3 GiB MemAvailable. Not a Feature GO. Catalog HOLD 70–75. Do not touch eval-harness. |
 
 ---
