@@ -1,27 +1,51 @@
 # Handoff: MVP-3 review-and-retry loop for `./pfy build --local`
 
-Branch `bot/mvp3-review-retry`, base `bot/mvp2-report` 85c53dc (origin/main 1e99251 plus the MVP-2 report). Worktree `~/DEVELOP/pfy-mentat/tmp/mvp3` on nimo. No PR; Mark merges after gates.
+Branch `bot/mvp3-review-retry`. Worktree `~/DEVELOP/pfy-mentat/tmp/mvp3`. Base of the branch is `bot/mvp2-report` `85c53dc`. Trial base for every arm is `997d89264495861a178713ccf7d4447ea828afc4`. No PR. Mark merges after the gate.
 
-## Status (2026-10-30 PT, Grok Bot)
+## Status (2026-10-30 PT)
 
-Drop-in written: `docs/build-dropins/pfy-local-build-mvp3.md`. Headless Grok Build launched on nimo in this worktree with the drop-in as its prompt; pid in `tmp/mvp3-run.pid`, log in `tmp/mvp3-run.log` (gitignored, inside the worktree). The Build run overwrites this file's status with its own results when it finishes.
+Done as a measurement. No-go as the default for build-only runs.
 
-## Why
+Part 1 is `b25fc35`: the review loop in `scripts/pfy_build_local.py`. Suite after that change: `python3 -m unittest discover -s tests -t .` with bwrap hidden, Ran 955 OK, skipped=100, 501.227 s. Run 2 did not change the runner.
 
-MVP-2 closed as a no-go for local-as-default: local gate 5/6, review 4/6, 1694 s vs cloud 6/6, 6/6, 584 s. Local t4 was green but too broad; local t5 never set `PFY_SMOKE_RECEIPT_DIR` in both test modules. The trial found that the local path lacks a review step and never got a retry after a reject.
+Part 2 re-ran the six MVP-2 tasks locally. Report: `eval/mvp3/REPORT.md`.
+
+| | Gate | Review accept | Wall |
+|--|------|---------------|------|
+| MVP-3 loop | 5/6 | 5/6 | 3859.9 s |
+| MVP-3 human | 5/6 | 4/6 | 3859.9 s |
+| MVP-2 local | 5/6 | 4/6 | 1694.0 s |
+| MVP-2 cloud | 6/6 | 6/6 | 583.6 s |
+
+t1, t2, t3, t6: loop and human accept. t4: FAIL no-change after 3 attempts, both reject. t5: gate PASS, loop accept, human reject, because commit `4b017e4` also adds gitignored `pipelines/smoke/kander/latest.json`.
+
+The trial ran in two sessions. Run 1 (cap from 2026-10-30T17:50:52Z) died at 11:13 PDT when the grok CLI stopped a background task at 600 s, during t4. t1 to t3 were already committed. Run 2 (cap from 2026-10-31T03:07:13Z to 06:07:13Z) finished t4, t5, and t6. Each session had its own 3 h cap. Details are in the report and in `docs/ops/RUN-LOG-mvp3-review-retry.md`.
+
+## How to run
+
+```bash
+python3 eval/mvp3/run_trial.py prove-red
+python3 eval/mvp3/run_trial.py arm L t4-timeout-substep
+```
+
+Model `qwen3.6:35b` only. Floor is 32 GiB MemAvailable+SwapFree. Unload that model when it is the only one loaded. Raw logs stay under `tmp/mvp3-runs/` (gitignored).
 
 ## How this fails / how we recover
 
 | Risk | How it fails | Recovery |
 |------|--------------|----------|
-| Build run hangs or the host runs low on memory | The drop-in's exits stop it (3 h cap, memory floor, lockup signs) and the run log says why | Read `docs/ops/RUN-LOG-mvp3-review-retry.md`; re-running the same prompt resumes from the run log |
-| Run dies without a handoff | `tmp/mvp3-run.pid` is dead and this file still says "launched" | Check the `tmp/mvp3-run.log` tail and pushed commits; relaunch with the same command |
-| Reviewer too strict or too loose | Many PASS-REJECTED, or t4/t5 still accepted | The receipts name each check; tune defaults or use `--no-review` |
+| Reviewer too strict | Real tasks end PASS-REJECTED | Receipts name the check. `--no-review` is the one-attempt MVP-1 path |
+| Reviewer too loose | t5: loop accepted a commit that contains a gitignored receipt | Read the commit, not only the attempt diff. The scope check uses `git status`, and `git add -A -f` then adds ignored paths |
+| Model writes nothing | t4: three no-change attempts, 2203.5 s, gate still red | The review never runs without a diff. A retry does not force a write |
+| Host memory or a hung arm | Floor, lockup, or the 3 h cap | The run log records STOPPED or not-run. Kill only process groups this run started |
+| CLI ends a background arm | Run 1, 600 s background wait | Run the arm with `setsid` and poll it in the foreground |
 
-## Next step
+## Known gaps
 
-When the run exits: read the report and handoff, then gate (runtime change: Tester plus Reviewer at the pinned SHA, plus pregate).
+The scope check and the commit do not see the same files. t4's broad-label failure from MVP-2 was not re-measured, because this model never wrote a patch. Wall time is worse than MVP-2 local.
 
-## Run 2 resume (2026-10-30 PT)
+## Gate and what is left
 
-Run 1 (pid 3444714) ended at 11:13 PDT: the grok CLI hit its 600 s background-wait limit and stopped the trial runner during t4. t1 to t3 passed on attempt 1 and are committed. Run 2 resumes t4 to t6 from `docs/build-dropins/pfy-local-build-mvp3-resume.md`. It uses `--background-wait-timeout 14400`, runs each arm detached with a foreground poll, and has a fresh 3h cap. Pid is in `tmp/mvp3-run2.pid` and the log in `tmp/mvp3-run2.log`. Run 1's log is archived at `tmp/mvp3-runs/run1-archive/grok-run1.log`.
+Tester plus Reviewer at the pinned SHA. Part 1 changes runtime. No Feature GO. Do not merge from this run.
+
+Next code fix, not done here: make the scope check include every path `git add -A -f` will commit, then re-run t5. Separately, t4 still needs a local run that writes the sub-step catch.

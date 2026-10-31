@@ -141,3 +141,15 @@ state: DONE | tests: arm L t4-timeout-substep FAIL no-change | files: result + p
 ARM_DONE PASS ok. 1 attempt. Wall 581.6 s. Agent diff 2 files, +24/-2 (both test modules). Loop accept. Human reject: commit `4b017e4` also adds gitignored `pipelines/smoke/kander/latest.json` via `git add -A -f`. Scope check used `git status` and did not see it. Planted gate unchanged. Canonical gate 1 passed. Mem low 50.641 GiB. Supervisor sum low about 53.4 GiB. Model unloaded.
 
 state: DONE | tests: arm L t5-receipts-outside-repo PASS, human reject | files: result + patch | err: none
+
+### t6-tree-sig-three
+
+ARM_DONE PASS ok. 2 attempts (89.9 s no-change, 274.2 s PASS). Wall 364.8 s. Agent diff 3 files, +27/-9. Commit `9b61b75` is those three files only. Loop accept. Human accept: the three `tree_sig` bodies match `smoke_122_124.py`, including `:dir` and `:unreadable`. Planted gate unchanged. Mem low 38.689 GiB. Supervisor sum low 38.879 GiB. Model unloaded. `ollama ps` empty.
+
+state: DONE | tests: arm L t6-tree-sig-three PASS, human accept | files: result + patch | err: none
+
+### report
+
+All six tasks have a result. Gate 5/6. Loop accept 5/6. Human accept 4/6. Wall 3859.9 s. No-go as the default. Two sessions, two caps. Runner not changed in run 2.
+
+state: DONE | tests: report and handoff | files: eval/mvp3/REPORT.md, handoff, this log, TODO | err: none
