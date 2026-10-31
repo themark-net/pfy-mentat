@@ -59,3 +59,4 @@ Format: `item | commit | tests | result`
 
 hermes-status | e78d371 | docs only; no test module reads this handoff; ancestry of 24fe672 and 7281cd1 confirmed on origin/main | landed
 t0095-stage0 | a632b23 | nice -n 19 python3 -m unittest tests.test_voice_stage0_ref tests.test_catalog_entry_numbers tests.test_catalog_stage_eval: 8 tests OK in 0.195s; RED check flipped entry 150 to Stage-0 PASS and test_pipecat_fail_holds failed | FAIL/I0 receipts, no install
+issue-25-laguna | ce075bd | nice -n 19 python3 -m unittest tests.test_laguna_smoke_note: 1 test OK; MVP-3 alive, MemAvailable 44.7 GiB | catalog note only, T-0062 still todo, issue stays open
