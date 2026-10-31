@@ -65,3 +65,4 @@ issue-27-claude-codex | 57bc3d0 | no new tests; docs/ops/claude-codex-quality-ho
 issue-28-mue-x | 7197200 | no new tests; docs/ops/mue-x-patterns.md and T-0072 already done | pattern only, no evolve
 t0005-stages | 0715085 | nice -n 19 python3 -m unittest tests.test_catalog_stage_eval tests.test_catalog_entry_numbers: 6 tests OK in 0.081s; in-memory RED (dropped ATG receipt) would fail; disk potential stays measured-probe; MVP-3 alive, MemAvailable 53.7 GiB | Kolibri-1 facts only, stage I0, --apply not run, T-0005 stays doing
 t0002-synthesis | 4e2cf80 | nice -n 19 python3 -m unittest tests.test_scoring_rollup: 1 test OK in 0.001s; in-memory RED overall: 99 matches the ban; clean section does not | no new scores, TODO done, issue #16 stays closed
+x-intake-docs | skipped | 21 handoffs read; no code change | no docs-only gap; local model, install, Mark, Docker, or a receipt ADR (runx)
