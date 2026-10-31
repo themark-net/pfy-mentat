@@ -135,3 +135,9 @@ Run 2 first model call: 2026-10-31T03:07:13Z (2026-10-30 20:07:13 PDT). Wall cap
 ARM_DONE FAIL no-change. 3 attempts (982.4 s, 205.9 s, 1014.8 s), all no-change. Wall 2203.5 s. Agent diff 0 files. Loop reject. Human reject: the model planned the sub-step rename and wrote nothing. Planted gate unchanged, still 2 failures. Supervisor MemAvailable+SwapFree low 44.365 GiB. Receipt `min_available_gb` 27.494 is MemAvailable only; mem-edge (16 GiB) did not fire. Model unloaded. `qwen3.6:35b` was the only model and was already gone after the arm.
 
 state: DONE | tests: arm L t4-timeout-substep FAIL no-change | files: result + patch | err: none
+
+### t5-receipts-outside-repo
+
+ARM_DONE PASS ok. 1 attempt. Wall 581.6 s. Agent diff 2 files, +24/-2 (both test modules). Loop accept. Human reject: commit `4b017e4` also adds gitignored `pipelines/smoke/kander/latest.json` via `git add -A -f`. Scope check used `git status` and did not see it. Planted gate unchanged. Canonical gate 1 passed. Mem low 50.641 GiB. Supervisor sum low about 53.4 GiB. Model unloaded.
+
+state: DONE | tests: arm L t5-receipts-outside-repo PASS, human reject | files: result + patch | err: none
