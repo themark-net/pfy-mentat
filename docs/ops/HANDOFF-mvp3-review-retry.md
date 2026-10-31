@@ -21,3 +21,7 @@ MVP-2 closed as a no-go for local-as-default: local gate 5/6, review 4/6, 1694 s
 ## Next step
 
 When the run exits: read the report and handoff, then gate (runtime change: Tester plus Reviewer at the pinned SHA, plus pregate).
+
+## Run 2 resume (2026-10-30 PT)
+
+Run 1 (pid 3444714) ended at 11:13 PDT: the grok CLI hit its 600 s background-wait limit and stopped the trial runner during t4. t1 to t3 passed on attempt 1 and are committed. Run 2 resumes t4 to t6 from `docs/build-dropins/pfy-local-build-mvp3-resume.md`. It uses `--background-wait-timeout 14400`, runs each arm detached with a foreground poll, and has a fresh 3h cap. Pid is in `tmp/mvp3-run2.pid` and the log in `tmp/mvp3-run2.log`. Run 1's log is archived at `tmp/mvp3-runs/run1-archive/grok-run1.log`.
