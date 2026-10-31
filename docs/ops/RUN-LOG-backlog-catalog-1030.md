@@ -63,3 +63,4 @@ issue-25-laguna | ce075bd | nice -n 19 python3 -m unittest tests.test_laguna_smo
 issue-26-asm | 7197200 | no new tests; docs/ops/asm-skill-manager.md and make smoke-asm already on origin/main | pattern-only, HD #37, no npm install
 issue-27-claude-codex | 57bc3d0 | no new tests; docs/ops/claude-codex-quality-hooks.md already on origin/main | pattern extract, no Claude runtime
 issue-28-mue-x | 7197200 | no new tests; docs/ops/mue-x-patterns.md and T-0072 already done | pattern only, no evolve
+t0005-stages | 0715085 | nice -n 19 python3 -m unittest tests.test_catalog_stage_eval tests.test_catalog_entry_numbers: 6 tests OK in 0.081s; in-memory RED (dropped ATG receipt) would fail; disk potential stays measured-probe; MVP-3 alive, MemAvailable 53.7 GiB | Kolibri-1 facts only, stage I0, --apply not run, T-0005 stays doing
