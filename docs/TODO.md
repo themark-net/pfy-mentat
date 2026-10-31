@@ -68,7 +68,7 @@ Active work is also tracked as issues: https://github.com/themark-net/pfy-mentat
 | T-0043 | [#12](https://github.com/themark-net/pfy-mentat/issues/12) | P3 parked |
 | T-0062 | [#13](https://github.com/themark-net/pfy-mentat/issues/13) | P3 |
 | T-0046 | [#14](https://github.com/themark-net/pfy-mentat/issues/14) | P3 |
-| T-0002 | [#16](https://github.com/themark-net/pfy-mentat/issues/16) | P3 |
+| T-0002 | [#16](https://github.com/themark-net/pfy-mentat/issues/16) | P3 **done** |
 | T-0005 | [#21](https://github.com/themark-net/pfy-mentat/issues/21) | P2 todo |
 | T-0004 | [#22](https://github.com/themark-net/pfy-mentat/issues/22) | P2 **done** |
 | T-0015 | [#23](https://github.com/themark-net/pfy-mentat/issues/23) | P3 **done** |
@@ -128,7 +128,6 @@ Active work is also tracked as issues: https://github.com/themark-net/pfy-mentat
 | T-0043 | P3 | todo | Write-guard mcp-host wiring | — | T-0031 | [#12](https://github.com/themark-net/pfy-mentat/issues/12) · Parked |
 | T-0062 | P3 | todo | Laguna local model DoD | — | — | [#13](https://github.com/themark-net/pfy-mentat/issues/13) · Hardware-gated |
 | T-0046 | P3 | todo | Re-evaluate AgenC | [ADR-0010](adr/0010-reject-agenc-as-primary-runtime.md) | T-0044 | [#14](https://github.com/themark-net/pfy-mentat/issues/14) |
-| T-0002 | P3 | todo | Aggregate synthesis | — | — | [#16](https://github.com/themark-net/pfy-mentat/issues/16) |
 
 ### Active — follow-ups (OQs answered; not blocked)
 
@@ -145,6 +144,7 @@ Active work is also tracked as issues: https://github.com/themark-net/pfy-mentat
 
 | ID | Priority | Status | Item | Notes |
 |----|----------|--------|------|-------|
+| T-0002 | P3 | done | Aggregate synthesis | Issue #16 was already closed on the 2026-07-30 rollup. The 2026-10-30 section is the diff since then. No new scores. `sources/aggregates.md` still empty. Not a Feature GO. |
 | T-0095 | P3 | done | Catalog Stage 0: Pipecat / LiveKit / freeapp (ref only) | Entries 150-152. Issue #10 was already closed on the 2026-07-30 stub. Receipts are Stage-0 FAIL / I0. No install. No TOOLS.md row. ADR-0012 primary unchanged. Not a Feature GO. |
 | — | P1 | done | pfy launcher phase 1: `install.sh`, catalog v2 (`core-skills`, `code-graph`, `rea`), setup/doctor/uninstall on grok, claude-code, codex, opencode | [#290](https://github.com/themark-net/pfy-mentat/issues/290) · PR 291 · `build/pfy-launcher-p1` · review fixes on the same branch (created-file uninstall, npx allowlist, shared-skill dedupe, backup delete, needs_human receipt) · suite 228 OK skipped=4 · `v0.4.17` tag still absent on origin · not a Feature GO · HOLD 70–75 untouched · phases 2–4 not started |
 | — | P3 | done | X-intake receipt sha source, shared timeout text, har temp HOME, graphjin log close, pfylib tmp cleanup | `build/orch-fixes-1011` · 2026-10-11 · not a Feature GO · catalog HOLD untouched |
