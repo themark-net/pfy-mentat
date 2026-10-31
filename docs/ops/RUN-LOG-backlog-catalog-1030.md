@@ -67,3 +67,5 @@ t0005-stages | 0715085 | nice -n 19 python3 -m unittest tests.test_catalog_stage
 t0002-synthesis | 4e2cf80 | nice -n 19 python3 -m unittest tests.test_scoring_rollup: 1 test OK in 0.001s; in-memory RED overall: 99 matches the ban; clean section does not | no new scores, TODO done, issue #16 stays closed
 x-intake-docs | skipped | 21 handoffs read; no code change | no docs-only gap; local model, install, Mark, Docker, or a receipt ADR (runx)
 docs-hygiene | a9d3987 | nice -n 19 python3 -m unittest tests.test_docs_hygiene: 2 tests OK in 0.052s; link scan clean; MVP-3 alive, MemAvailable 53.4 GiB | T-0070 and T-0074 moved to done; ADR-0017 not written; T-0091 and T-0110 left open
+
+state: lane empty at 2026-10-30 20:56 PT. Last item commit f5e50fd. MVP-3 pid 1695827 alive. MemAvailable 53.2 GiB. Load 4.59 on 32 cores. pregate not run: host busy. No full suite. Not merged.
