@@ -2133,8 +2133,8 @@ def _stage_reviewed(worktree: Path, env: dict, reviewed: list[str]) -> str | Non
         if added.returncode != 0:
             _reset_index(worktree, env)
             return "commit-failed"
-    # Fault injection for the mismatch recovery. Unset in normal runs.
-    if os.environ.get("PFY_LOCAL_BUILD_INJECT_EXTRA_STAGE") == "1":
+    # Fault injection for the mismatch recovery. Off unless the test seam is on.
+    if _test_seam_on() and os.environ.get("PFY_LOCAL_BUILD_INJECT_EXTRA_STAGE") == "1":
         extra = worktree / "injected-extra.txt"
         extra.write_text("injected\n", encoding="utf-8")
         _git(worktree, ["add", "-f", "--", "injected-extra.txt"], env=env)
@@ -2537,13 +2537,25 @@ def _attempt_low(state: State, snap: float | None) -> float | None:
     return round(min(values), 3)
 
 
+def _test_seam_on() -> bool:
+    """True only for PFY_LOCAL_BUILD_TEST_SEAM=1. Any other value, including unset, is off."""
+    return os.environ.get("PFY_LOCAL_BUILD_TEST_SEAM") == "1"
+
+
 def _stub_extra_rw() -> list[Path]:
-    """Parents of the test stub's plan files. A normal run sets none of these.
+    """Parents of the test stub's plan files.
 
     The sandbox root is read-only, so the stub cannot record the prompt or the
     attempt counter unless those files' directory is bound read-write. The
     agent cannot add binds of its own: this list is fixed before it starts.
+
+    Production does not read PFY_STUB_PLAN, PFY_STUB_COUNT, or PFY_STUB_PROMPTS.
+    Those names are consulted only when PFY_LOCAL_BUILD_TEST_SEAM=1. A normal
+    run leaves the seam unset and returns no extra binds. The same switch gates
+    the extra-file inject in _stage_reviewed.
     """
+    if not _test_seam_on():
+        return []
     found: list[Path] = []
     seen: set[str] = set()
     for key in ("PFY_STUB_PLAN", "PFY_STUB_COUNT", "PFY_STUB_PROMPTS"):
