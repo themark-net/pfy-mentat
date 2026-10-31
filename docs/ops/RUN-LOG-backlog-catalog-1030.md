@@ -56,3 +56,5 @@ Risks:
 ## Items
 
 Format: `item | commit | tests | result`
+
+hermes-status | e78d371 | docs only; no test module reads this handoff; ancestry of 24fe672 and 7281cd1 confirmed on origin/main | landed
