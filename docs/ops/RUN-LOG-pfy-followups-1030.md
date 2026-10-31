@@ -65,3 +65,8 @@ item-2-smoke-149 | a1e7a47 | nice -n 19 python3 -m unittest tests.test_x_intake_
 item-3-workflow-image-pin | 53933b3 | nice -n 19 python3 -m unittest tests.test_workflow_image_pin: 15 OK in 8.380s | YAML walk of runs-on; ubuntu-latest, a list containing it, a matrix that resolves to it, an unpinned image, malformed YAML, a missing runs-on, and a missing PyYAML fail closed; pinned, self-hosted, reusable, and the real workflows pass; pregate --only lint OVERALL=PASS and the lint log contains the helper PASS line
 mvp-local-build-loose-ends | skipped | none | origin/bot/mvp3-review-retry rewrites build_local and parse_args; the named gaps are --reap, a model run, or a deliberate known gap
 T-0124 | 6c8d00a | nice -n 19 python3 -m unittest tests.test_attach tests.test_registry: 33 OK in 0.061s | OpenCode open path is attach.open_opencode_session; pfy_enterable_162_b.py is a shim; a tools-env pin does not override the probed base; missing binary, a dead terminal, and a failed prove stay FAIL
+T-0070 | skipped | none | 013-stage-card scorer and pass/fail fixtures are already on main; run_structural.py already runs them; no next scorer is named
+T-0081 | skipped | none | OpenCode-in-cage smoke needs docker; MVP-3 pid 1695827 is alive, so no docker
+T-0074 | skipped | none | candidate fallback is already in scripts/eval_auto_candidates.py and tests/test_eval_auto_candidates.py; the rest is make eval-auto, which runs a local model
+
+state: stopped | exit 3 no progress | T-0070, T-0081, and T-0074 skipped in a row after T-0124 | pregate not run: host busy | do not merge
