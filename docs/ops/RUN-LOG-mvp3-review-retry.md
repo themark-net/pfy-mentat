@@ -90,3 +90,25 @@ Full discover recorded above. Pushed `b25fc35` to `origin/bot/mvp3-review-retry`
 state: DONE | tests: discover Ran 955 OK skipped=100 in 501.227s | files: 13 | err: none
 
 Host at the green suite: MemAvailable about 71 GiB, SwapFree about 5 MB, 32 cores, `ollama ps` empty, `qwen3.6:35b` present in tags and not loaded. Floor stays 32 GiB.
+
+### trials
+
+`python3 eval/mvp3/run_trial.py all-local` started after prove-red. First model call 2026-10-30T17:50:52Z (`tmp/mvp3-runs/first-model-call.txt`). Wall cap 2026-10-30T20:50:52Z. Free at start 68.787 GiB. Only `qwen3.6:35b` resident. Log: `tmp/mvp3-runs/all-local.stdout`.
+
+- t1 PASS accept (loop and human). 1 attempt. Wall 145.1 s. Agent diff 1 file, +5/-5. Planted gate unchanged. Mem low 55.6 GiB.
+- t2 PASS accept (loop and human). 1 attempt. Wall 143.7 s. Agent diff 1 file, +10/-3. Content hash matches smoke_122_124, including :dir and :unreadable. Mem low 47.5 GiB.
+- t3 PASS accept (loop and human). 1 attempt. Wall 421.2 s. Agent diff 1 file, +6/-1. Timeout with no live lock returns 1. Mem low 43.7 GiB.
+
+state: STOPPED | tests: t1 PASS; t2 PASS; t3 PASS; t4 no result | files: eval/mvp3/results t1 t2 t3, eval/mvp3/patches t1 t2 t3 | err: grok CLI exit
+
+### run 1 stopped by the grok CLI (2026-10-30 11:13 PDT)
+
+The headless Grok Build session (pid 3444714) exited at 11:13 PDT while t4 was in progress. The CLI printed: "the wait for background work ran out after 600 s and exit stopped 1 background task ... Pass --background-wait-timeout <secs> to wait longer, or --no-wait-for-background". The trial runner was a background task of that session, so the CLI killed it. This was a harness limit of the CLI, not a trial failure, a memory floor breach, or a lockup.
+
+- t1, t2, t3: results and patches are committed as recorded above.
+- t4: no trial result. The inner `pfy build --local` child outlived the runner by about 2 minutes, and its receipt says PASS on attempt 1 (11:15 PDT). The runner never planted a result or did the human review, so that receipt does not count. It is archived at `tmp/mvp3-runs/run1-archive/t4-receipts-orphan` (gitignored), and t4 is re-run from scratch.
+- t5, t6: not started.
+- Afterwards: no trial or model process was left, `ollama ps` was empty, and Mark's processes were untouched.
+
+Run 1 first model call was 2026-10-30T17:50:52Z (archived as `tmp/mvp3-runs/run1-archive/first-model-call.txt`). Run 2 resumes at t4 with a fresh 3h cap from its own first model call. It uses `--background-wait-timeout 14400` and runs the trial arms in the foreground, so the CLI cannot end the run early.
+
