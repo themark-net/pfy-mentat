@@ -129,11 +129,13 @@ def clear_session_reach(hid: str, STATE) -> None:
 def write_terminal_pid(hid: str, STATE, pid: int) -> None:
     STATE = Path(STATE)
     STATE.mkdir(parents=True, exist_ok=True)
-    (STATE / _require(hid)["terminal_pid_file"]).write_text(str(int(pid)) + "\n", encoding="utf-8")
+    _write_regular_text(STATE / _require(hid)["terminal_pid_file"], str(int(pid)) + "\n")
 
 
 def read_terminal_pid(hid: str, STATE):
     path = Path(STATE) / _require(hid)["terminal_pid_file"]
+    if path.is_symlink():
+        return 0
     if not path.is_file():
         return 0
     try:
