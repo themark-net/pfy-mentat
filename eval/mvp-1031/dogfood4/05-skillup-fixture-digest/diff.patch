@@ -1,0 +1,50 @@
+diff --git a/examples/x-intake-local/smoke_146_147.py b/examples/x-intake-local/smoke_146_147.py
+index bc7939a..29b8b8b 100644
+--- a/examples/x-intake-local/smoke_146_147.py
++++ b/examples/x-intake-local/smoke_146_147.py
+@@ -47,6 +47,7 @@ from __future__ import annotations
+ import argparse
+ import json
+ import math
++import hashlib
+ import os
+ import sys
+ import tempfile
+@@ -174,6 +175,18 @@ def smoke_skillup(r: dict) -> int:
+     return watched("skill-up", lambda rr, checks: _skillup(rr, su, python, want, checks), r)
+ 
+ 
++def fixture_digest(root: Path) -> str:
++    """Stable digest of a fixture tree. A symlink is link:<target> and is not opened."""
++    rows = []
++    for path in sorted(root.rglob("*"), key=lambda p: str(p.relative_to(root))):
++        rel = str(path.relative_to(root))
++        if path.is_symlink():
++            rows.append("%s\tlink:%s" % (rel, os.readlink(path)))
++        elif path.is_file():
++            rows.append("%s\t%s" % (rel, hashlib.sha256(path.read_bytes()).hexdigest()))
++    return hashlib.sha256(("\n".join(rows)).encode("utf-8")).hexdigest()
++
++
+ def _skillup(r: dict, su: str, python: str, want: str, checks: dict) -> int | None:
+     with tempfile.TemporaryDirectory(prefix="pfy-skillup-") as tdn:
+         td = Path(tdn)
+@@ -188,6 +201,7 @@ def _skillup(r: dict, su: str, python: str, want: str, checks: dict) -> int | No
+         (skill / "evals" / "eval.yaml").write_text(EVAL_YAML)
+         for n, body in CASES.items():
+             (skill / "evals" / "cases" / n).write_text(body)
++        fixture_before = fixture_digest(skill)
+         extra = {"TMPDIR": str(ttmp), "STUB_AGENT_BIN": str(stub), "STUB_LOG": str(log),
+                  "XDG_CONFIG_HOME": str(td / "xdg"), "PYTHONDONTWRITEBYTECODE": "1"}
+ 
+@@ -233,9 +247,7 @@ def _skillup(r: dict, su: str, python: str, want: str, checks: dict) -> int | No
+                                             and all("messages" in s.get("keys", []) for s in seen))
+         r["home_files"] = sorted(str(x.relative_to(home)) for x in home.rglob("*"))
+         checks["temp_home_empty"] = not r["home_files"]
+-        fixture = {str(p.relative_to(skill)) for p in skill.rglob("*") if p.is_file()}
+-        checks["fixture_unchanged"] = fixture == {"SKILL.md", "evals/eval.yaml", "evals/cases/pass.yaml",
+-                                                  "evals/cases/fail.yaml"}
++        checks["fixture_unchanged"] = fixture_digest(skill) == fixture_before
+         r["_ok_reason"] = (f"skill-up {want}: validate + custom local-command engine run (1 PASS, 1 FAIL as designed), "
+                            f"result.json graded; temp HOME empty; {', '.join('~/' + d for d in WATCH['skill-up'])} "
+                            "untouched")

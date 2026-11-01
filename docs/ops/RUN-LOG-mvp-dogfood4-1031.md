@@ -78,3 +78,4 @@ item | commit | tests | result
 02 modules-symlink | 2e8d20e | tests.test_loop_paint_symlink tests.test_loop_paint 11 OK | accept
 03 opencode-config-symlink | d2dc658 | tests.test_bot_interface_opencode_symlink tests.test_bot_interface 22 OK | accept
 04 hiroute-term-wait | d507591 | tests.test_smoke_146_term_wait 3 OK; tests.test_x_intake_smoke_146_147 35 OK | accept
+05 skillup-fixture-digest | e6aad0d | tests.test_smoke_146_fixture_digest tests.test_smoke_146_term_wait tests.test_x_intake_smoke_146_147 41 OK | accept

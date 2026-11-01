@@ -1,0 +1,45 @@
+{
+  "schema": "pfy-cloud-build/1",
+  "status": "PASS",
+  "reason": "ok",
+  "exit_code": 0,
+  "branch": "cloud/edit-only-examples-x-intake-local-smoke-20261101T020213550233Z",
+  "commit": "7cebc92b635c4286cc28ce1c80df4f21c3e6507f",
+  "base": "HEAD",
+  "review": {
+    "verdict": "accept",
+    "reasons": []
+  },
+  "attempts": [
+    {
+      "n": 1,
+      "status": "PASS",
+      "reason": "ok",
+      "output_tail": "I'll edit only `examples/x-intake-local/smoke_146_147.py` so fixture comparison uses a digest that treats symlinks as links and file bytes as hashes. First I'll read the current function and the smoke test.The name-set check treats a byte change and a same-bytes symlink as unchanged. I'll add `fixture_digest` and compare that digest before and after the skill-up run.`hashlib` landed with the other imports, but not beside `os`. I'll move it next to that import, then run the smoke test.`fixture_unchanged` in `examples/x-intake-local/smoke_146_147.py` now compares a content digest taken before the skill-up run with one taken after it.\n\n`fixture_digest` walks the fixture tree in relative-path order. A regular file contributes its SHA-256. A symlink contributes `link:<target>` from `os.readlink` and is not opened, so a missing target does not raise. A byte edit or a symlink standing in for `SKILL.md` changes the digest.\n\n`python3 -m unittest tests.test_smoke_146_fixture_digest` passed (3 tests).\n\nI'll review the diff against the task and check the file only changed as specified.verdict: accept\n\nThe diff edits only `examples/x-intake-local/smoke_146_147.py`. It adds `import hashlib` beside `import os`, inserts `fixture_digest` immediately above `_skillup`, records `fixture_before` after the CASES writes, and sets `checks[\"fixture_unchanged\"]` from a digest compare. Symlinks are recorded with `os.readlink` and are not opened. `term_wait_problem`, `term_wait`, and `main()` are unchanged. No tests are deleted, no recursive delete is added, and nothing writes at the filesystem root.\n",
+      "review": {
+        "verdict": "accept",
+        "reasons": []
+      }
+    }
+  ],
+  "gate": {
+    "cmd": "python3 -m unittest tests.test_smoke_146_fixture_digest",
+    "before": {
+      "cmd": "python3 -m unittest tests.test_smoke_146_fixture_digest",
+      "exit": 1,
+      "tail": "p\", td / \"out\", td / \"sut\"\\n        for p in (home, ttmp, skill / \"evals\" / \"cases\"):\\n            p.mkdir(parents=True)\\n        stub = td / \"stub_agent.py\"\\n        stub.write_text(STUB_AGENT.replace(\"#!/usr/bin/env python3\", \"#!\" + python, 1))\\n        stub.chmod(0o755)\\n        log = td / \"stub.log\"\\n        (skill / \"SKILL.md\").write_text(SKILL_MD)\\n        (skill / \"evals\" / \"eval.yaml\").write_text(EVAL_YAML)\\n        for n, body in CASES.items():\\n            (skill / \"evals\" / \"cases\" / n).write_text(body)\\n        extra = {\"TMPDIR\": str(ttmp), \"STUB_AGENT_BIN\": str(stub), \"STUB_LOG\": str(log),\\n                 \"XDG_CONFIG_HOME\": str(td / \"xdg\"), \"PYTHONDONTWRITEBYTECODE\": \"1\"}\\n\\n        def run(args, tag):\\n            return iso([su, *args], tag, home=str(home), cwd=str(skill), path=SYS_PATH, extra=extra,\\n                       bwrap_writable=[tdn])\\n        v = run([\"--version\"], \"skill-up --version\")\\n        r[\"version_out\"] = (v.stdout + v.stderr).strip()[:200]\\n        if v.returncode != 0 or f\"skill-up version {want}\" not in v.stdout:\\n            r[\"reason\"] = f\"`skill-up --version` gave {r[\\'version_out\\']!r}, want \\'skill-up version {want}\\'\"\\n            return 2\\n        val = run([\"validate\", str(skill / \"evals\" / \"eval.yaml\")], \"skill-up validate\")\\n        vt = val.stdout + val.stderr\\n        r[\"validate\"] = {\"rc\": val.returncode, \"out\": vt.strip()[-400:]}\\n        checks[\"validate_ok\"] = val.returncode == 0 and \"is valid\" in vt and \"2 case\" in vt\\n        res = run([\"run\", str(skill), \"--output-dir\", str(out)], \"skill-up run\")\\n        rt = res.stdout + res.stderr\\n        r[\"run\"] = {\"rc\": res.returncode, \"out\": rt.strip()[-600:]}\\n        checks[\"run_exit_1\"] = res.returncode == 1\\n        checks[\"run_summary\"] = \"1 passed, 1 failed, 0 errors\" in rt\\n        results = sorted(out.rglob(\"result.json\"))\\n        r[\"result_files\"] = [str(p.relative_to(td)) for p in results]\\n        cases = {}\\n        if results:\\n            try:\\n                cases = {c.get(\"case_id\"): c for c in json.loads(results[0].read_text()).get(\"case_results\", [])}\\n            except ValueError:\\n                cases = {}\\n        ok, bad = cases.get(\"ping-pass\", {}), cases.get(\"hello-fail\", {})\\n        r[\"cases\"] = {k: {\"status\": c.get(\"status\"), \"response\": c.get(\"response\")} for k, c in cases.items()}\\n        checks[\"ping_pass\"] = ok.get(\"status\") == \"PASS\" and ok.get(\"response\") == \"pong-7\"\\n        ev = \" \".join(a.get(\"evidence\", \"\") for a in (bad.get(\"grading\") or {}).get(\"assertion_results\") or [])\\n        checks[\"hello_fail\"] = bad.get(\"status\") == \"FAIL\" and bad.get(\"response\") == \"no-ping\" and \"pong-7\" in ev\\n        seen = []\\n        if log.is_file():\\n            for line in log.read_text().splitlines():\\n                try:\\n                    seen.append(json.loads(line))\\n                except ValueError:\\n                    pass\\n        r[\"stub_calls\"] = seen\\n        checks[\"stub_got_session_input\"] = ({s.get(\"case_id\") for s in seen} == {\"ping-pass\", \"hello-fail\"}\\n                                            and all(\"messages\" in s.get(\"keys\", []) for s in seen))\\n        r[\"home_files\"] = sorted(str(x.relative_to(home)) for x in home.rglob(\"*\"))\\n        checks[\"temp_home_empty\"] = not r[\"home_files\"]\\n        fixture = {str(p.relative_to(skill)) for p in skill.rglob(\"*\") if p.is_file()}\\n        checks[\"fixture_unchanged\"] = fixture == {\"SKILL.md\", \"evals/eval.yaml\", \"evals/cases/pass.yaml\",\\n                                                  \"evals/cases/fail.yaml\"}\\n        r[\"_ok_reason\"] = (f\"skill-up {want}: validate + custom local-command engine run (1 PASS, 1 FAIL as designed), \"\\n                           f\"result.json graded; temp HOME empty; {\\', \\'.join(\\'~/\\' + d for d in WATCH[\\'skill-up\\'])} \"\\n                           \"untouched\")\\n    return None\\n'\n\n----------------------------------------------------------------------\nRan 3 tests in 0.030s\n\nFAILED (failures=1, errors=2)\n",
+      "started": true
+    },
+    "after": {
+      "cmd": "python3 -m unittest tests.test_smoke_146_fixture_digest",
+      "exit": 0,
+      "tail": "\n...\n----------------------------------------------------------------------\nRan 3 tests in 0.030s\n\nOK\n",
+      "started": true
+    }
+  },
+  "recovery": "",
+  "pushed": false,
+  "worktree_removed": true,
+  "task": "Edit only examples/x-intake-local/smoke_146_147.py. Do not edit any file under tests/. Do not add a file. Do not commit. Do not push. Do not edit smoke_140_142.py. Do not change term_wait_problem, term_wait, or main().\n\nfixture_unchanged compares the set of relative names from skill.rglob and is_file. is_file follows a symlink, so a byte edit of SKILL.md stays equal, and a symlink that replaces SKILL.md with a file of the same bytes stays equal.\n\nAdd import hashlib next to import os.\n\nAdd this function immediately above _skillup:\n\ndef fixture_digest(root: Path) -> str:\n    \"\"\"Stable digest of a fixture tree. A symlink is link:<target> and is not opened.\"\"\"\n    rows = []\n    for path in sorted(root.rglob(\"*\"), key=lambda p: str(p.relative_to(root))):\n        rel = str(path.relative_to(root))\n        if path.is_symlink():\n            rows.append(\"%s\\tlink:%s\" % (rel, os.readlink(path)))\n        elif path.is_file():\n            rows.append(\"%s\\t%s\" % (rel, hashlib.sha256(path.read_bytes()).hexdigest()))\n    return hashlib.sha256((\"\\n\".join(rows)).encode(\"utf-8\")).hexdigest()\n\nIn _skillup, immediately after the CASES loop writes the fixture files, and before extra = {...}:\n\n    fixture_before = fixture_digest(skill)\n\nReplace the two lines that build the name set and assign checks[\"fixture_unchanged\"] with:\n\n        checks[\"fixture_unchanged\"] = fixture_digest(skill) == fixture_before\n\nDo not open a symlink target. os.readlink is enough, including when the target is missing, so a missing target must not raise. Same names with different bytes must not compare equal. A symlink in place of a regular file must not compare equal to the regular-file digest. Do not use an em dash or an en dash.",
+  "finished_at": "2026-11-01T02:04:24Z"
+}
