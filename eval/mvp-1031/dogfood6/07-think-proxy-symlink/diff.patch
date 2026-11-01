@@ -1,0 +1,38 @@
+diff --git a/examples/hermes-bakeoff/think_proxy.py b/examples/hermes-bakeoff/think_proxy.py
+index 1e702f0..9d25fa0 100644
+--- a/examples/hermes-bakeoff/think_proxy.py
++++ b/examples/hermes-bakeoff/think_proxy.py
+@@ -9,6 +9,8 @@ The log records only those fields, never the prompt.
+ from __future__ import annotations
+ 
+ import json
++import os
++import tempfile
+ import threading
+ import urllib.error
+ import urllib.request
+@@ -132,8 +134,23 @@ class ThinkProxy:
+         self._thread.join(timeout=2)
+ 
+ 
++def _write_regular_text(path: Path, text: str) -> None:
++    # Temp file in the parent, then os.replace, so a symlink is replaced.
++    fd, tmpname = tempfile.mkstemp(prefix=".think-proxy-", dir=str(path.parent))
++    try:
++        with os.fdopen(fd, "w", encoding="utf-8") as handle:
++            handle.write(text)
++        os.replace(tmpname, path)
++    except Exception:
++        try:
++            os.unlink(tmpname)
++        except OSError:
++            pass
++        raise
++
++
+ def write_forced_log(path: Path, rows: list[dict]) -> None:
+     """Public record only. Callers must not pass prompt text."""
+     path.parent.mkdir(parents=True, exist_ok=True)
+     lines = [json.dumps(row, sort_keys=True) for row in rows]
+-    path.write_text(("\n".join(lines) + ("\n" if lines else "")), encoding="utf-8")
++    _write_regular_text(path, "\n".join(lines) + ("\n" if lines else ""))

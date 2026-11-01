@@ -82,6 +82,7 @@ item | commit | tests | result
 04 attach-receipt-symlink | 1c100a5 | tests.test_attach_receipt_symlink tests.test_attach_pid_symlink tests.test_attach_session_symlink tests.test_attach 46 OK | accept
 05 hermes-arm-symlink | 839ae5e | tests.test_hermes_arm_symlink tests.test_hermes_bakeoff 35 OK (1 skipped) | accept
 06 opencode-arm-symlink | 51ed297 | tests.test_opencode_arm_symlink tests.test_hermes_bakeoff 35 OK (1 skipped) | accept
+07 think-proxy-symlink | 4340a72 | tests.test_think_proxy_symlink tests.test_hermes_bakeoff 35 OK (1 skipped) | accept
 
 ## Survey skips
 

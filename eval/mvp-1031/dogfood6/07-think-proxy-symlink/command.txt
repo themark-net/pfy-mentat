@@ -1,0 +1,14 @@
+2026-11-01T03:05:20Z
+cwd /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood6-1031
+repo /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood6-1031/tmp/target-07
+base HEAD 4248882402a95b5ec0080b501723c80e42d05167
+retries 1
+timeout 900
+test-cmd python3 -m unittest tests.test_think_proxy_symlink
+receipt-dir /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood6-1031/eval/mvp-1031/dogfood6/07-think-proxy-symlink
+local no
+
+finished 2026-11-01T03:06:47Z
+result PASS ok
+cloud 49979f196748f86fc730507f8f4706f0ed7a0424
+landed 4340a72
