@@ -1,13 +1,15 @@
-"""Entries 103-111 write receipts under pipelines/smoke and leave that tree clean.
+"""Entries 103-111 skip-path receipts stay out of the repo.
 
-The skip path (tool not staged) is enough: each smoke still writes latest.json.
-kolibri1/latest.json stays tracked. pipelines/smoke/ is not ignored as a whole.
+The skip path (tool not staged) is enough: each smoke still writes latest.json,
+under a temp $PFY_SMOKE_RECEIPT_DIR. The repo's pipelines/smoke tree does not
+change. kolibri1/latest.json stays tracked. pipelines/smoke/ is not ignored as a whole.
 """
 from __future__ import annotations
 
 import json
 import os
 import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -37,24 +39,31 @@ _BIN_KEYS = (
 
 class XIntakeSmoke103111ReceiptTests(unittest.TestCase):
     def test_skip_path_receipts_are_ignored_and_kolibri_stays_tracked(self) -> None:
-        # Fail: a 103-111 receipt shows up in git status, or kolibri1/latest.json is ignored.
-        # Recover: each skip-path smoke writes latest.json, status for pipelines/smoke is empty,
-        # and the kolibri receipt is still tracked.
+        # Fail: a skip-path smoke writes pipelines/smoke/<entry>/latest.json in the repo,
+        # or kolibri1/latest.json is ignored.
+        # Recover: the receipt is under $PFY_SMOKE_RECEIPT_DIR, the repo path is unchanged,
+        # status for pipelines/smoke is empty, and the kolibri receipt is still tracked.
         env = os.environ.copy()
         for key in _BIN_KEYS:
             env.pop(key, None)
-        for script, entry in ENTRIES:
-            proc = subprocess.run(
-                ["python3", script, "--entry", entry],
-                cwd=str(ROOT), env=env, capture_output=True, text=True, timeout=60,
-            )
-            blob = proc.stdout + proc.stderr
-            self.assertNotIn("Traceback", proc.stderr, blob)
-            self.assertEqual(proc.returncode, 2, blob)
-            path = ROOT / "pipelines" / "smoke" / entry / "latest.json"
-            self.assertTrue(path.is_file(), blob)
-            receipt = json.loads(path.read_text(encoding="utf-8"))
-            self.assertEqual(receipt.get("verdict"), "FAIL_CANNOT_RUN_HERE", receipt)
+        with tempfile.TemporaryDirectory(prefix="pfy-xintake-103-receipts-") as td:
+            env["PFY_SMOKE_RECEIPT_DIR"] = td
+            for script, entry in ENTRIES:
+                repo_path = ROOT / "pipelines" / "smoke" / entry / "latest.json"
+                before = repo_path.read_bytes() if repo_path.is_file() else None
+                proc = subprocess.run(
+                    ["python3", script, "--entry", entry],
+                    cwd=str(ROOT), env=env, capture_output=True, text=True, timeout=60,
+                )
+                blob = proc.stdout + proc.stderr
+                self.assertNotIn("Traceback", proc.stderr, blob)
+                self.assertEqual(proc.returncode, 2, blob)
+                after = repo_path.read_bytes() if repo_path.is_file() else None
+                self.assertEqual(after, before, "repo receipt changed: " + str(repo_path))
+                path = Path(td) / entry / "latest.json"
+                self.assertTrue(path.is_file(), blob)
+                receipt = json.loads(path.read_text(encoding="utf-8"))
+                self.assertEqual(receipt.get("verdict"), "FAIL_CANNOT_RUN_HERE", receipt)
         status = subprocess.run(
             ["git", "status", "--porcelain", "pipelines/smoke"],
             cwd=str(ROOT), capture_output=True, text=True, check=True,

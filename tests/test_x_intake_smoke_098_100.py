@@ -1,6 +1,7 @@
 """Entries 098-100 smokes, run as a subprocess with stubs. Cite the x-intake contract.
 
 Parent HOME is a temp dir this test owns so a stub cannot touch the operator's real home.
+Receipts go to a temp $PFY_SMOKE_RECEIPT_DIR, one directory per test.
 """
 from __future__ import annotations
 
@@ -51,6 +52,11 @@ def _write_exe(path: Path, body: str) -> None:
 
 
 class XIntakeSmoke098100Tests(unittest.TestCase):
+    def setUp(self) -> None:
+        self._receipt_tmp = tempfile.TemporaryDirectory(prefix="pfy-xintake-098-receipts-")
+        self.addCleanup(self._receipt_tmp.cleanup)
+        self._receipts = Path(self._receipt_tmp.name)
+
     def _base_env(self, home: Path) -> dict[str, str]:
         env = os.environ.copy()
         env["HOME"] = str(home)
@@ -61,8 +67,10 @@ class XIntakeSmoke098100Tests(unittest.TestCase):
             "HARNESS_SHA256",
             "PFY_XINTAKE_TIMEOUT",
             "PFY_PROBE_OUT",
+            "PFY_SMOKE_RECEIPT_DIR",
         ):
             env.pop(key, None)
+        env["PFY_SMOKE_RECEIPT_DIR"] = str(self._receipts)
         return env
 
     def _run(self, entry: str, env: dict[str, str]) -> subprocess.CompletedProcess[str]:
@@ -76,7 +84,7 @@ class XIntakeSmoke098100Tests(unittest.TestCase):
         )
 
     def _receipt(self, entry: str) -> dict:
-        path = ROOT / "pipelines" / "smoke" / entry / "latest.json"
+        path = self._receipts / entry / "latest.json"
         self.assertTrue(path.is_file(), f"missing receipt {path}")
         return json.loads(path.read_text(encoding="utf-8"))
 
