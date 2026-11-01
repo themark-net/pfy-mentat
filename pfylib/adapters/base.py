@@ -176,7 +176,13 @@ def parse_config(path: Path, kind: str) -> str | None:
 
 
 def backup_once(path: Path) -> str:
-    """First backup is path + '.pfy.backup'. Never overwrite an existing backup."""
+    """First backup is path + '.pfy.backup'. Never overwrite an existing backup.
+
+    A symlink is not a backup source: return "" without opening the target
+    or creating a backup. is_file() follows links, so it is not a safe check.
+    """
+    if path.is_symlink():
+        return ""
     if not path.is_file():
         return ""
     dest = Path(str(path) + ".pfy.backup")
