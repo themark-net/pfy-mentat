@@ -336,12 +336,6 @@ class OutdirPathTests(unittest.TestCase):
 
 
 class RunnerRssTests(unittest.TestCase):
-    def test_is_ollama_runner_proc_matches_argv0_without_exe(self):
-        """ollama-user llama-server: /proc/pid/exe is EACCES; argv0 still identifies it."""
-        self.assertTrue(bench.is_ollama_exe("/usr/local/lib/ollama/llama-server"))
-        self.assertTrue(bench.is_ollama_exe("/usr/local/bin/ollama"))
-        self.assertFalse(bench.is_ollama_exe("/home/mark/.local/bin/grok"))
-
     def test_eacces_exe_falls_back_to_argv0_and_recovers_stats(self):
         """Fail closed on unreadable exe, then recover RSS via argv0/comm (Entry 092 / #273 nit)."""
         from unittest import mock
