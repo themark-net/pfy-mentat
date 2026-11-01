@@ -3098,3 +3098,85 @@ class CloudBuildSymlinkProbeTests(unittest.TestCase):
         self.assertIn("Mark:", payload["recovery"])
         self.assertNotIn("--local", payload["recovery"])
 
+
+class CloudBuildGateRewriteProbeTests(unittest.TestCase):
+    """A gate that edits the worktree must not land those bytes in a commit."""
+
+    def setUp(self) -> None:
+        SCRATCH.mkdir(parents=True, exist_ok=True)
+        self.repo = _init_repo(SCRATCH / self.id().replace(".", "_"))
+        self.side = SCRATCH / (self.id().replace(".", "_") + "-side")
+        self.side.mkdir(parents=True, exist_ok=True)
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self.repo, ignore_errors=True)
+        shutil.rmtree(self.side, ignore_errors=True)
+
+    def _receipt(self) -> dict:
+        path = list((self.repo / "pipelines" / "dogfood" / "build-cloud").glob("*/receipt.json"))[0]
+        return json.loads(path.read_text(encoding="utf-8"))
+
+    def test_gate_rewrite_is_not_committed(self) -> None:
+        # Fail: the gate replaces the agent bytes and review accepts the
+        # replacement, so the commit contains value = 999. Recover: exit 1,
+        # reason gate-rewrote, no branch.
+        grok = _write_exe(
+            self.side / "grok.py",
+            "#!/usr/bin/env python3\n"
+            "import sys\n"
+            "from pathlib import Path\n"
+            "blob = '\\n'.join(sys.argv)\n"
+            "if 'PFY-CLOUD-REVIEW' in blob:\n"
+            "    print('verdict: accept')\n"
+            "    raise SystemExit(0)\n"
+            "Path('kept.py').write_text('value = 1\\n', encoding='utf-8')\n"
+            "raise SystemExit(0)\n",
+        )
+        gate = _write_exe(
+            self.side / "gate.py",
+            "#!/usr/bin/env python3\n"
+            "from pathlib import Path\n"
+            "path = Path('kept.py')\n"
+            "if path.exists():\n"
+            "    path.write_text('value = 999\\n', encoding='utf-8')\n"
+            "print('GATE-OK')\n"
+            "raise SystemExit(0)\n",
+        )
+        head = _git(self.repo, "rev-parse", "HEAD").stdout.strip()
+        proc = _run(
+            [
+                sys.executable,
+                str(CLOUD),
+                "add kept value 1",
+                "--repo",
+                str(self.repo),
+                "--retries",
+                "0",
+                "--timeout",
+                "30",
+                "--test-cmd",
+                "%s %s" % (sys.executable, gate),
+                "--grok-cmd",
+                str(grok),
+            ],
+            self.repo,
+            timeout=30,
+        )
+        text = (proc.stdout or "") + (proc.stderr or "")
+        self.assertEqual(proc.returncode, 1, text)
+        payload = self._receipt()
+        self.assertEqual(payload["status"], "FAIL")
+        self.assertEqual(payload["reason"], "gate-rewrote")
+        self.assertEqual(payload["exit_code"], 1)
+        self.assertIsNone(payload["commit"])
+        self.assertIsNone(payload["branch"])
+        self.assertEqual(payload["gate"]["after"]["exit"], 0)
+        self.assertIn("GATE-OK", payload["gate"]["after"]["tail"])
+        self.assertIn("Mark:", payload["recovery"])
+        self.assertIn("gate", payload["recovery"].lower())
+        self.assertNotIn("--local", payload["recovery"])
+        self.assertEqual(_git(self.repo, "rev-parse", "HEAD").stdout.strip(), head)
+        self.assertNotIn("\ncloud/", "\n" + _git(self.repo, "branch", "--list").stdout)
+        showed = _git(self.repo, "grep", "-n", "999", "HEAD")
+        self.assertNotEqual(showed.returncode, 0)
+

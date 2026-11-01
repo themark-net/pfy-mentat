@@ -362,6 +362,50 @@ def escaping_symlinks(worktree: Path) -> list[str]:
     return sorted(set(bad))
 
 
+def tree_manifest(worktree: Path) -> dict[str, str]:
+    """Content fingerprint of the worktree, ignoring git, tmp, and bytecode.
+
+    Symlinks are recorded as their link text. The walk does not follow them.
+    """
+    found: dict[str, str] = {}
+    if not worktree.is_dir():
+        return found
+    for dirpath, dirnames, filenames in os.walk(worktree, followlinks=False):
+        base = Path(dirpath)
+        kept: list[str] = []
+        for name in dirnames:
+            full = base / name
+            rel = _rel_under(worktree, full)
+            if _skip_walk(rel):
+                continue
+            if full.is_symlink():
+                try:
+                    found[rel] = "sym:" + os.readlink(full)
+                except OSError:
+                    found[rel] = "sym:unreadable"
+                continue
+            kept.append(name)
+        dirnames[:] = kept
+        for name in filenames:
+            if name.endswith(".pyc"):
+                continue
+            full = base / name
+            rel = _rel_under(worktree, full)
+            if _skip_walk(rel):
+                continue
+            if full.is_symlink():
+                try:
+                    found[rel] = "sym:" + os.readlink(full)
+                except OSError:
+                    found[rel] = "sym:unreadable"
+                continue
+            try:
+                found[rel] = hashlib.sha256(full.read_bytes()).hexdigest()
+            except OSError:
+                found[rel] = "unreadable"
+    return found
+
+
 def _glob_match(rel: str, name: str, pat: str) -> bool:
     if fnmatch_path(rel, pat) or fnmatch_path(name, pat):
         return True
@@ -568,6 +612,7 @@ TERMINAL_FAILURE_REASONS = (
     "rate-limit",
     "review-rejected",
     "runner-crash",
+    "gate-rewrote",
     "scope-commit-mismatch",
     "symlink-escape",
     "tests",
@@ -649,6 +694,12 @@ def failure_recovery(reason: str, task: str, detail: str = "") -> str:
             "Remove that change and rerun ./pfy build %s. "
             "auth.json, .env, and grok-home stay out of the commit."
             % (shown, quoted)
+        )
+    if reason == "gate-rewrote":
+        return (
+            "Mark: the gate rewrote the worktree. The branch was not kept. "
+            "Fix the gate so it only checks, then rerun ./pfy build %s."
+            % quoted
         )
     if reason == "symlink-escape":
         shown = (detail or "").strip() or "a symlink"
@@ -1284,6 +1335,17 @@ class CloudBuild:
         self.record(number, "TIMEOUT", "timeout", output)
         return self.fail("TIMEOUT", "timeout", EXIT_TIMEOUT, "")
 
+    def _gate_rewrote_fail(self, number: int, before: dict[str, str], output: str) -> int | None:
+        """None when the gate left the tree alone. Else a terminal failure.
+
+        Fail: the gate rewrites a file and that rewrite is what gets committed.
+        Recover: do not retry. A gate that edits will edit again.
+        """
+        if self.worktree is None or tree_manifest(self.worktree) == before:
+            return None
+        self.record(number, "FAIL", "gate-rewrote", output)
+        return self.fail("FAIL", "gate-rewrote", EXIT_FAIL, "")
+
     def prepare_worktree(self) -> str | None:
         dest = self.repo / "tmp" / "cloud-build" / self.stamp
         try:
@@ -1330,12 +1392,18 @@ class CloudBuild:
             self.recovery_detail = ", ".join(escaped)
             self.record(0, "FAIL", "symlink-escape", "")
             return self.fail("FAIL", "symlink-escape", EXIT_FAIL, "")
+        base_manifest = tree_manifest(self.worktree)
         self.gate_before = self.gate()
         if (self.gate_before or {}).get("aborted") == "timeout":
             return self._gate_timeout_fail(0, str((self.gate_before or {}).get("tail") or ""))
         if self.state.interrupted or (self.gate_before or {}).get("aborted") == "interrupted":
             self.record(0, "FAIL", "interrupted", "")
             return self.fail("FAIL", "interrupted", EXIT_FAIL, "")
+        rewrote = self._gate_rewrote_fail(
+            0, base_manifest, str((self.gate_before or {}).get("tail") or "")
+        )
+        if rewrote is not None:
+            return rewrote
         blocked = before_gate_block(self.gate_before, self.args.test_cmd)
         if blocked:
             tail = str((self.gate_before or {}).get("tail") or "")
@@ -1403,6 +1471,7 @@ class CloudBuild:
                 if number < self.max_attempts:
                     continue
                 return self.fail("FAIL", "tests-tampered", EXIT_FAIL, "")
+            agent_manifest = tree_manifest(self.worktree)
             after = self.gate()
             self.gate_after = after
             if after.get("aborted") == "timeout":
@@ -1410,6 +1479,11 @@ class CloudBuild:
             if self.state.interrupted or after.get("aborted") == "interrupted":
                 self.record(number, "FAIL", "interrupted", output)
                 return self.fail("FAIL", "interrupted", EXIT_FAIL, "")
+            rewrote = self._gate_rewrote_fail(
+                number, agent_manifest, output + "\n" + str(after.get("tail") or "")
+            )
+            if rewrote is not None:
+                return rewrote
             if not changed:
                 feedback = "no-change\n%s" % (after.get("tail") or "")
                 self.record(number, "FAIL", "no-change", output)
@@ -1431,6 +1505,11 @@ class CloudBuild:
             if self.state.interrupted or again.get("aborted") == "interrupted":
                 self.record(number, "FAIL", "interrupted", output)
                 return self.fail("FAIL", "interrupted", EXIT_FAIL, "")
+            rewrote = self._gate_rewrote_fail(
+                number, agent_manifest, output + "\n" + str(again.get("tail") or "")
+            )
+            if rewrote is not None:
+                return rewrote
             if again.get("exit") != 0 or not again.get("started"):
                 feedback = "gate failed: tests-flaky\n%s" % (again.get("tail") or "")
                 self.record(number, "FAIL", "tests-flaky", output)
