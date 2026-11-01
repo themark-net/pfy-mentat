@@ -91,3 +91,4 @@ item | commit | tests | result
 exits | 0e36b7b | none | exit card pushed before any merge
 survey | d98ed10 | git fetch plus run-log tail and merge-tree | all ten finished, none contained, all clean vs 0e36b7b
 merge localbench-tmpdir | 2279366 | nice -n 19 python3 -m unittest tests.test_local_bench | tip 76fd6a1, clean, 18 OK in 1.343s
+merge probe-int | 450c339 | nice -n 19 python3 -m unittest tests.test_pfy_build_cloud | tip b2cbd4f, clean, 67 OK in 21.580s
