@@ -46,6 +46,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import sys
 import tempfile
@@ -311,6 +312,23 @@ finally:
 '''
 
 
+def term_wait_problem() -> str | None:
+    """HIROUTE_TERM_WAIT must be a finite number of seconds in (0, 600] when set. Whitespace-only is unset."""
+    raw = os.environ.get("HIROUTE_TERM_WAIT")
+    if raw is None:
+        return None
+    raw = raw.strip()
+    if not raw:
+        return None
+    try:
+        v = float(raw)
+    except ValueError:
+        v = math.nan
+    if math.isfinite(v) and 0 < v <= 600:
+        return None
+    return f"HIROUTE_TERM_WAIT={raw[:40]!r} is not a number of seconds > 0 and <= 600"
+
+
 def term_wait() -> str:
     """$HIROUTE_TERM_WAIT (seconds the driver waits after SIGTERM, default 45 = the unit's TimeoutStopSec)."""
     raw = os.environ.get("HIROUTE_TERM_WAIT", "")
@@ -447,6 +465,11 @@ def main() -> int:
     if bad:
         receipt["reason"] = bad
         return write(a.entry, receipt, 2)
+    if a.entry == "hiroute":
+        bad = term_wait_problem()
+        if bad:
+            receipt["reason"] = bad
+            return write(a.entry, receipt, 2)
     try:
         code = ENTRIES[a.entry](receipt)
     except Exception as e:
