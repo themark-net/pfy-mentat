@@ -65,3 +65,12 @@ Risks:
 Clock check before exits: `2026-11-01T02:34:15Z`, inside the cap. MemAvailable 56606856 KiB. Load 3.33 on 32 cores. Runner.Worker present.
 
 exits | 5eb5800 | none (docs only; Runner.Worker present so no python suite) | pushed
+exits log line | bd31b3d | none | pushed
+
+Clock check before the scan join: `2026-11-01T02:46:22Z`, inside the cap. MemAvailable 46528832 KiB. Load 2.81 on 32 cores. Runner.Worker absent.
+
+scan-eval | notes `tmp/tautology-scan/eval.md` | read only, no tests | 71 python files, 10 findings (8 fixture test_keep, 1 t07 note, 1 mvp2 t6 note)
+scan-tests-a | notes `tmp/tautology-scan/tests-a.md` | read only, no tests | 34 files, 10 findings
+scan-tests-b | notes `tmp/tautology-scan/tests-b.md` | read only, no tests | 28 files, 4 findings
+scan-tests-c | notes `tmp/tautology-scan/tests-c.md` | read only, no tests | 39 files, 6 findings
+state: DONE | tests: none (read only) | files: 4 notes under tmp/ | err: none
