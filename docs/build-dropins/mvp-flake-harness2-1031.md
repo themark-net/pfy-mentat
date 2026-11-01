@@ -17,7 +17,7 @@ Needs a local model: no. Do not run scripts/pregate.sh.
 A. Root cause seen in CI run 41262832115 (nimo G0 job): the harness2 stage tests failed in tearDown because `~/.cache/uv` changed while they ran (a concurrent pregate on the same host). Make the harness2 stage tests use a private HOME or UV_CACHE_DIR under the test's temp dir, so another process using uv cannot change what they check, and their own uv use cannot touch the real cache. Fail/recover test: change the real-cache stand-in during the test and prove it still passes; prove a write by the test to the real cache path would fail.
 B. tests/test_docs_hygiene.py (the shallow-clone branch near lines 68-71): use `self.skipTest("shallow clone: old main SHAs not present")` instead of returning silently. (Only if that file exists on this base; if not, record it as a cross-lane request for bot/backlog-catalog-1030.)
 C. scripts/pregate.sh must not run while a G0 job runs on this host: check for a running `Runner.Worker` process (`pgrep -f 'Runner[.]Worker'`) at start and exit with a clear message and a distinct exit code (or wait with a bounded timeout behind a flag). Test it with a fake process name.
-Before running any test that uses uv or the full suite, check `pgrep -f 'Runner[.]Worker'`; if a G0 job is running, wait (poll every 60s) until it ends.
+Run every harness2 or uv-using test (including the 20x loop) under `flock ~/DEVELOP/pfy-mentat/tmp/heavy-1030.lock`, so it never overlaps a pregate. Before running any test that uses uv or the full suite, check `pgrep -f 'Runner[.]Worker'`; if a G0 job is running, wait (poll every 60s) until it ends.
 
 ## Hard rules (pre-authorized, no questions)
 
