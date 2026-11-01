@@ -1,0 +1,9 @@
+started 2026-11-01T01:54:51Z
+cwd /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood4-1031
+repo /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood4-1031/tmp/target-03
+base HEAD 0b7af0671535fd6bede22fae57bf65efc0ce7e95
+retries 1
+timeout 900
+test-cmd python3 -m unittest tests.test_bot_interface_opencode_symlink
+receipt-dir /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood4-1031/eval/mvp-1031/dogfood4/03-opencode-config-symlink
+local no

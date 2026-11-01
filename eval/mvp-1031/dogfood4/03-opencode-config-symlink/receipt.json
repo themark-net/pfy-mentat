@@ -1,0 +1,45 @@
+{
+  "schema": "pfy-cloud-build/1",
+  "status": "PASS",
+  "reason": "ok",
+  "exit_code": 0,
+  "branch": "cloud/edit-only-pfylib-bot-interface-py-do-not-20261101T015451237891Z",
+  "commit": "c908d1c55be352bf028596a20c53b9a5c3cf488b",
+  "base": "HEAD",
+  "review": {
+    "verdict": "accept",
+    "reasons": []
+  },
+  "attempts": [
+    {
+      "n": 1,
+      "status": "PASS",
+      "reason": "ok",
+      "output_tail": "I'll edit only `pfylib/bot_interface.py` so a symlink destination is replaced with a regular file, then run the given unit test.The writer follows symlinks today. I'll add `_put_text` and switch only `write_opencode_config` over to it.`write_opencode_config` now writes through `_put_text`, so a symlink at `opencode.json` is replaced by a regular file and the link target is left alone.\n\n`_put_text` creates a temp file in the destination directory and uses `os.replace`, which swaps the symlink inode and does not follow it. A normal file still receives the same JSON. `opencode_config` and `run_opencode` are unchanged.\n\n`python3 -m unittest tests.test_bot_interface_opencode_symlink` passed (3 tests).\n\nverdict: accept\n",
+      "review": {
+        "verdict": "accept",
+        "reasons": []
+      }
+    }
+  ],
+  "gate": {
+    "cmd": "python3 -m unittest tests.test_bot_interface_opencode_symlink",
+    "before": {
+      "cmd": "python3 -m unittest tests.test_bot_interface_opencode_symlink",
+      "exit": 1,
+      "tail": "\n.FF\n======================================================================\nFAIL: test_write_does_not_create_a_broken_symlink_target (tests.test_bot_interface_opencode_symlink.OpenCodeConfigSymlinkTests.test_write_does_not_create_a_broken_symlink_target)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood4-1031/tmp/target-03/tmp/cloud-build/20261101T015451237891Z/tests/test_bot_interface_opencode_symlink.py\", line 46, in test_write_does_not_create_a_broken_symlink_target\n    self.assertFalse(missing.exists())\n    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^\nAssertionError: True is not false\n\n======================================================================\nFAIL: test_write_replaces_symlink_and_leaves_target (tests.test_bot_interface_opencode_symlink.OpenCodeConfigSymlinkTests.test_write_replaces_symlink_and_leaves_target)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood4-1031/tmp/target-03/tmp/cloud-build/20261101T015451237891Z/tests/test_bot_interface_opencode_symlink.py\", line 35, in test_write_replaces_symlink_and_leaves_target\n    self.assertEqual(outside.read_text(encoding=\"utf-8\"), \"keep-outside\\n\")\n    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: '{\\n  \"$schema\": \"https://opencode.ai/conf[487 chars]n}\\n' != 'keep-outside\\n'\n+ keep-outside\n- {\n-   \"$schema\": \"https://opencode.ai/config.json\",\n-   \"autoupdate\": false,\n-   \"share\": \"disabled\",\n-   \"model\": \"ollama/demo-model\",\n-   \"enabled_providers\": [\n-     \"ollama\"\n-   ],\n-   \"provider\": {\n-     \"ollama\": {\n-       \"npm\": \"@ai-sdk/openai-compatible\",\n-       \"name\": \"Ollama (local)\",\n-       \"options\": {\n-         \"baseURL\": \"http://127.0.0.1:9/v1\",\n-         \"apiKey\": \"local\"\n-       },\n-       \"models\": {\n-         \"demo-model\": {\n-           \"name\": \"demo-model\",\n-           \"tool_call\": true\n-         }\n-       }\n-     }\n-   }\n- }\n\n\n----------------------------------------------------------------------\nRan 3 tests in 0.002s\n\nFAILED (failures=2)\n",
+      "started": true
+    },
+    "after": {
+      "cmd": "python3 -m unittest tests.test_bot_interface_opencode_symlink",
+      "exit": 0,
+      "tail": "\n...\n----------------------------------------------------------------------\nRan 3 tests in 0.002s\n\nOK\n",
+      "started": true
+    }
+  },
+  "recovery": "",
+  "pushed": false,
+  "worktree_removed": true,
+  "task": "Edit only pfylib/bot_interface.py. Do not edit any file under tests/. Do not add a file. Do not commit. Do not push.\n\nwrite_opencode_config writes work/opencode/config/opencode/opencode.json with path.write_text. That follows a symlink, so the target bytes change and the path stays a symlink. write_text on a broken symlink creates the missing target.\n\nWhen the destination is a symlink, including a broken symlink, do not open or write the target. Replace the symlink with a regular file. os.replace replaces the symlink inode and does not follow it.\n\nAdd import tempfile next to import os.\n\nAdd this helper immediately above write_opencode_config:\n\ndef _put_text(path: Path, text: str) -> None:\n    \"\"\"Write text as a regular file. A symlink at path is replaced, not followed.\"\"\"\n    path.parent.mkdir(parents=True, exist_ok=True)\n    fd, name = tempfile.mkstemp(prefix=\".pfy-\", dir=path.parent)\n    tmp = Path(name)\n    try:\n        with os.fdopen(fd, \"w\", encoding=\"utf-8\") as fh:\n            fh.write(text)\n        os.replace(tmp, path)\n    except Exception:\n        tmp.unlink(missing_ok=True)\n        raise\n\nIn write_opencode_config, keep the path and the return value. Replace path.parent.mkdir and path.write_text with _put_text(path, json.dumps(opencode_config(base, model), indent=2) + \"\\n\"). Do not call write_text on path.\n\nDo not change opencode_config, run_opencode, or any other function. A regular file still receives the same JSON. Do not use an em dash or an en dash.",
+  "finished_at": "2026-11-01T01:55:54Z"
+}
