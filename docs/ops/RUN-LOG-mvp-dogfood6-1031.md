@@ -87,6 +87,8 @@ item | commit | tests | result
 07 think-proxy-symlink | 4340a72 | tests.test_think_proxy_symlink tests.test_hermes_bakeoff 35 OK (1 skipped) | accept
 08 make-tasks-symlink | a7008f4 | tests.test_make_tasks_symlink tests.test_hermes_bakeoff 35 OK (1 skipped) | accept
 
+state: DONE | turn cap 8/8 cloud builds, 8 accept, 0 reject, pass rate 8/8
+
 ## Survey skips
 
 Recorded before item 01. They do not count as a no-progress streak. Detail is in the decisions file.
