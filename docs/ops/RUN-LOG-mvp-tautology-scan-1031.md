@@ -90,3 +90,7 @@ Clock check before continue-stub: 2026-11-01T03:00:32Z. Runner absent. MemAvaila
 continue-stub | 6253b5d | tests.test_fs_nav (4 OK) | pushed. Mutant colon instead of write_continue_config, config file assert red, restored.
 
 Clock check before shimmy-order: 2026-11-01T03:02:44Z. Runner absent. MemAvailable 46297944 KiB. Load 3.38 on 32 cores.
+
+shimmy-order | c173893 | tests.test_shimmy_ensure (3 OK) | pushed. Mutant swapped shimmy above ollama, recorded order shimmy, restored.
+
+Clock check before hermes-stamp: 2026-11-01T03:04:17Z. Runner absent. MemAvailable 46061996 KiB. Load 2.97 on 32 cores.

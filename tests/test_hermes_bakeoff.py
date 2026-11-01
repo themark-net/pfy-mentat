@@ -752,21 +752,32 @@ class HermesBakeoffTests(unittest.TestCase):
             self.assertEqual(rows[0]["name"], "submit_choice")
 
     def test_labels_written_is_the_newest_source_stamp(self):
+        """Fail: dropping the ATG source leaves the stamp on an older file.
+        Recover: a later ATG when moves the stamp. An older source that stays older does not.
+        """
+        import make_tasks
+
+        scratch = ROOT / "tmp"
+        scratch.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix="bakeoff-stamp-", dir=scratch) as tmp:
+            base = Path(tmp)
+            laya_path = base / "laya.json"
+            bench3 = base / "pipelines/dogfood/local-bench-3/receipt.json"
+            bench5 = base / "pipelines/dogfood/local-bench-5/receipt-qwen36-ollama.json"
+            atg = base / "pipelines/dogfood/atg-compile/receipt-live-qwen36-35b.json"
+            for path in (bench3, bench5, atg):
+                path.parent.mkdir(parents=True, exist_ok=True)
+            laya_path.write_text(json.dumps({"labels_written": "2026-01-01T00:00:00Z"}), encoding="utf-8")
+            bench3.write_text(json.dumps({"finished": "2026-02-01T00:00:00Z"}), encoding="utf-8")
+            bench5.write_text(json.dumps({"finished": "2026-03-01T00:00:00Z"}), encoding="utf-8")
+            atg.write_text(json.dumps({"when": "2026-04-01T00:00:00Z"}), encoding="utf-8")
+            with mock.patch.object(make_tasks, "ROOT", base), mock.patch.object(make_tasks, "LAYA", laya_path):
+                self.assertEqual(labels_written_stamp(), "2026-04-01T00:00:00Z")
+                bench5.write_text(json.dumps({"finished": "2026-03-15T00:00:00Z"}), encoding="utf-8")
+                self.assertEqual(labels_written_stamp(), "2026-04-01T00:00:00Z")
+                atg.write_text(json.dumps({"when": "2026-05-01T00:00:00Z"}), encoding="utf-8")
+                self.assertEqual(labels_written_stamp(), "2026-05-01T00:00:00Z")
         fresh = build()
-        atg = json.loads(
-            (ROOT / "pipelines/dogfood/atg-compile/receipt-live-qwen36-35b.json").read_text(encoding="utf-8")
-        )
-        laya = json.loads((ROOT / "data/decision-gates/laya-trial.cases.v0.json").read_text(encoding="utf-8"))
-        bench3 = json.loads(
-            (ROOT / "pipelines/dogfood/local-bench-3/receipt.json").read_text(encoding="utf-8")
-        )
-        bench5 = json.loads(
-            (ROOT / "pipelines/dogfood/local-bench-5/receipt-qwen36-ollama.json").read_text(encoding="utf-8")
-        )
-        newest = max(laya["labels_written"], bench3["finished"], bench5["finished"], atg["when"])
-        self.assertEqual(labels_written_stamp(), newest)
-        self.assertEqual(fresh["labels_written"], newest)
-        self.assertEqual(fresh["labels_written"], atg["when"])
         committed = json.loads(
             (ROOT / "data/decision-gates/hermes-bakeoff.tasks.v0.json").read_text(encoding="utf-8")
         )
