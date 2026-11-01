@@ -17,7 +17,12 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-MODULES = ("smoke_119_121.py",)
+MODULES = (
+    "smoke_112_114.py",
+    "smoke_115_116.py",
+    "smoke_117_118.py",
+    "smoke_119_121.py",
+)
 
 
 def _load(filename: str):
