@@ -59,4 +59,5 @@ probe-a and probe-b share no product files. They run together. The doc sentence 
 
 ## Items
 
-(none yet)
+- exit-card | 7c21b6d | docs only, no test | run log and decisions pushed before probes
+- doc-sentence | (this commit) | docs only, no test | HANDOFF-pfy-local-build-mvp.md larger diff is FAIL reason review-rejected

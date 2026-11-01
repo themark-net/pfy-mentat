@@ -126,7 +126,7 @@ Review is on for `./pfy build --local` unless the command passes `--no-review`. 
 
 The default cap is `--max-files 3` and `--max-lines 250`. A test file named by `--test-cmd` does not count toward the file cap. Added lines plus removed lines count toward the line cap. `./pfy build --local --help` prints the same defaults.
 
-A larger diff is `PASS-REJECTED` (exit 1) even when the tests are green and the change is a legitimate fix. The attempt receipt names the file count and the line count. Raise `--max-files` and `--max-lines` when the task is really that big. Three changed files, or 251 changed lines, is enough to reject.
+A larger diff is `FAIL` with reason `review-rejected` (exit 1) even when the tests are green and the change is a legitimate fix. The summary line starts with `FAIL`. The attempt receipt uses the same status and names the file count and the line count. Raise `--max-files` and `--max-lines` when the task is really that big. Three changed files, or 251 changed lines, is enough to reject.
 
 The scope check runs only when the task has a `files:` line or the command passes `--allow-path`. With neither, review still runs the size check, the wiring check, and the model, and a path the task never named can be committed. Stderr prints `scope check skipped: no allow list` once, and the top-level receipt lists that same phrase in `warnings`. Add a `files:` line or `--allow-path` and the warning stays off. `--no-review` does not run the scope check, so that path does not print the warning.
 
