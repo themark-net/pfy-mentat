@@ -65,4 +65,7 @@ Risks:
 
 Format: `item | commit | tests | result`
 
+- loop-card | 34d7992 | docs only | PASS
+- root-added-only | pending | tests.test_pfy_build_cloud | red before the fix: test_removing_a_root_delete_can_land returned 1, reason review-rejected. test_added_tmp_delete_stays_rejected passed on that tree. After the fix the module is OK (69 tests).
+
 Scan at 2026-11-01T02:34Z, before code: `diff_aims_at_root` still searches the whole diff. `DEFAULT_PROTECT` lists `.env` and `_protected` does not special-case `.env.*`. `reap` uses `except OSError: pass` and then `return EXIT_OK`. `origin/main` at `c0d38af` has no `diff_aims_at_root`. Probe-int handoff's remaining cloud gap is the same-process symlink write, which that handoff already marks as an ADR.

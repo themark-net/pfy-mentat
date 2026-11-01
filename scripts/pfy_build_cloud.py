@@ -804,8 +804,18 @@ def failure_recovery(reason: str, task: str, detail: str = "") -> str:
 
 
 def diff_aims_at_root(diff_text: str) -> bool:
-    """True when an added line runs rm -rf or rm -fr against the filesystem root."""
-    return re.search(r"(?i)rm\s+-rf\s+/|rm\s+-fr\s+/", diff_text or "") is not None
+    """True when an added line runs rm -rf or rm -fr against the filesystem root.
+
+    Only lines that start with '+' and not '+++' count. A patch that only
+    deletes the command can land. An added `rm -rf /tmp/x` still counts.
+    """
+    pattern = re.compile(r"(?i)rm\s+-rf\s+/|rm\s+-fr\s+/")
+    for line in (diff_text or "").splitlines():
+        if not line.startswith("+") or line.startswith("+++"):
+            continue
+        if pattern.search(line):
+            return True
+    return False
 
 
 def parse_verdict(text: str) -> tuple[str, list[str]]:
