@@ -1,0 +1,14 @@
+2026-11-01T02:43:13Z
+cwd /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood6-1031
+repo /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood6-1031/tmp/target-01
+base HEAD 7ac7dfd352639c0c326b070dcd6f2b6fc3b2859d
+retries 1
+timeout 900
+test-cmd python3 -m unittest tests.test_hermes_driver_symlink
+receipt-dir /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood6-1031/eval/mvp-1031/dogfood6/01-hermes-driver-symlink
+local no
+
+finished 2026-11-01T02:45:24Z
+result PASS ok
+cloud b011907ff97eb68a83404d090e3726d5b2589dfb
+landed ebb808d

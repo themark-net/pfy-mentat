@@ -1,0 +1,45 @@
+{
+  "schema": "pfy-cloud-build/1",
+  "status": "PASS",
+  "reason": "ok",
+  "exit_code": 0,
+  "branch": "cloud/edit-only-pfylib-hermes-bot-driver-py-do-20261101T024313119429Z",
+  "commit": "b011907ff97eb68a83404d090e3726d5b2589dfb",
+  "base": "HEAD",
+  "review": {
+    "verdict": "accept",
+    "reasons": []
+  },
+  "attempts": [
+    {
+      "n": 1,
+      "status": "PASS",
+      "reason": "ok",
+      "output_tail": "I'll change only `pfylib/hermes_bot_driver.py` so writes replace a symlink instead of following it, then run the symlink test.`Path.write_text` follows a symlink and can write the target. I'll add one helper that writes a temp file in the parent and `os.replace`s it onto the destination, then use it from `_write` and `_config`.`_write` and `_config` now write through `_write_text`, which puts a temp file in the parent directory and `os.replace`s it onto the destination. A symlink is replaced by a regular file, so the target bytes stay, including when the link is broken or points outside the parent. A broken link does not create the missing target. An existing regular file still receives the new bytes. Parent `mkdir` calls are unchanged.\n\n`python3 -m unittest tests.test_hermes_driver_symlink` passed (4 tests). An extra check confirmed an outside config target and a missing broken-link target were left untouched.\n\nI'll check the diff against the task and the rejection rules before giving a verdict.verdict: accept\n\nThe edit stays in `pfylib/hermes_bot_driver.py`. `_write_text` creates a temp file in the parent directory and `os.replace`s it onto the destination, and both `_write` and `_config` use it while still creating the parent directory. No tests were removed, there is no recursive delete, and nothing writes a command aimed at the filesystem root.\n",
+      "review": {
+        "verdict": "accept",
+        "reasons": []
+      }
+    }
+  ],
+  "gate": {
+    "cmd": "python3 -m unittest tests.test_hermes_driver_symlink",
+    "before": {
+      "cmd": "python3 -m unittest tests.test_hermes_driver_symlink",
+      "exit": 1,
+      "tail": "\nF.FF\n======================================================================\nFAIL: test_config_replaces_symlink_and_leaves_target (tests.test_hermes_driver_symlink.HermesDriverSymlinkTests.test_config_replaces_symlink_and_leaves_target)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood6-1031/tmp/target-01/tmp/cloud-build/20261101T024313119429Z/tests/test_hermes_driver_symlink.py\", line 56, in test_config_replaces_symlink_and_leaves_target\n    self.assertEqual(target.read_text(encoding=\"utf-8\"), \"keep-config\")\n    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: 'model:\\n  default: \"probe-model\"\\n  provi[186 chars]ff\\n' != 'keep-config'\n+ keep-config\n- model:\n-   default: \"probe-model\"\n-   provider: custom\n-   base_url: \"http://127.0.0.1:9/v1\"\n-   api_key: \"no-key\"\n- agent:\n-   max_turns: 6\n-   reasoning_effort: \"none\"\n- tools:\n-   tool_search:\n-     enabled: off\n- approvals:\n-   mode: off\n- \n\n\n======================================================================\nFAIL: test_write_replaces_broken_symlink (tests.test_hermes_driver_symlink.HermesDriverSymlinkTests.test_write_replaces_broken_symlink)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood6-1031/tmp/target-01/tmp/cloud-build/20261101T024313119429Z/tests/test_hermes_driver_symlink.py\", line 44, in test_write_replaces_broken_symlink\n    self.assertFalse(link.is_symlink())\n    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^\nAssertionError: True is not false\n\n======================================================================\nFAIL: test_write_replaces_symlink_and_leaves_target (tests.test_hermes_driver_symlink.HermesDriverSymlinkTests.test_write_replaces_symlink_and_leaves_target)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood6-1031/tmp/target-01/tmp/cloud-build/20261101T024313119429Z/tests/test_hermes_driver_symlink.py\", line 34, in test_write_replaces_symlink_and_leaves_target\n    self.assertEqual(target.read_text(encoding=\"utf-8\"), \"keep\")\n    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: '{\\n  \"ok\": false,\\n  \"error\": \"closed\"\\n}\\n' != 'keep'\n+ keep\n- {\n-   \"ok\": false,\n-   \"error\": \"closed\"\n- }\n- \n\n\n----------------------------------------------------------------------\nRan 4 tests in 0.002s\n\nFAILED (failures=3)\n",
+      "started": true
+    },
+    "after": {
+      "cmd": "python3 -m unittest tests.test_hermes_driver_symlink",
+      "exit": 0,
+      "tail": "\n....\n----------------------------------------------------------------------\nRan 4 tests in 0.001s\n\nOK\n",
+      "started": true
+    }
+  },
+  "recovery": "",
+  "pushed": false,
+  "worktree_removed": true,
+  "task": "Edit only pfylib/hermes_bot_driver.py. Do not edit any file under tests/. Do not add a file. Do not commit. Do not push. _write and _config call Path.write_text, which follows a symlink and overwrites the target. Add one helper that writes text as a regular file: create a temp file in the parent directory and os.replace it onto the destination, so a symlink is replaced and the target bytes stay. Use that helper from _write for the JSON text and from _config for the config.yaml text. Keep the parent directory mkdir. A regular file still receives the new bytes. A symlink, including a broken symlink and a symlink whose target sits outside the parent, becomes a regular file and the outside bytes stay. A broken symlink must not create the missing target. Do not add an em dash or an en dash.",
+  "finished_at": "2026-11-01T02:45:24Z"
+}
