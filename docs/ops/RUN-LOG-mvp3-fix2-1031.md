@@ -17,7 +17,7 @@ Loop type: goal
 Human gate: Tester plus Reviewer after this branch. No merge from this run.
 ```
 
-state: running
+state: DONE
 
 | Item | Commit | Tests | Result |
 |------|--------|-------|--------|
@@ -26,4 +26,5 @@ state: running
 | B2 | 1c74003 | M10 M17 M18 tests green on the tree. Each failed when its mutant was applied, then the tree was restored | error beside accept is a reject and is not committed. --no-review receipt retries is 0. The reviewer prompt carries the changed line |
 | S7 | 3392e78 | red: FAIL scope-commit-mismatch. Green: test_in_scope_rename_is_committed, ignored extra file, ignored helper, inject mismatch | --no-renames keeps the old path. Excludes come before the names so git 2.53 stages the new path |
 | S8 | 301f786 | red: PASS-REJECTED review-rejected (porcelain quoted src/café.py into a slash path). Green: test_unicode_path_in_scope_is_committed, rename, empty-diff. Review module plus test_pfy_build_local: 92 OK in 158.563s | status and numstat use -z. The review diff sets core.quotepath=false. The commit contains src/café.py and the prompt has café |
-| Docs | this commit | no code. Follow-ups 1-10 were already on this branch. The ignored-helper test already expects only commit-recheck-failed. The seam and PFY_LOCAL_BUILD_INJECT_EXTRA_STAGE were already in the operator doc | Known gaps and the old next-step line are gone. cb2f90e is the no-change gate. Operator guards name gate-modified-reviewed-file and an outside symlink |
+| Docs | d2521b5 | no code. Follow-ups 1-10 were already on this branch. The ignored-helper test already expects only commit-recheck-failed. The seam and PFY_LOCAL_BUILD_INJECT_EXTRA_STAGE were already in the operator doc | Known gaps and the old next-step line are gone. cb2f90e is the no-change gate. Operator guards name gate-modified-reviewed-file and an outside symlink |
+| Suite | this commit | TMPDIR=$PWD/tmp flock heavy-1030.lock python3 -m unittest discover -s tests -t . Ran 1007 in 728.294s. FAILED failures=1 skipped=16 | The failure is tests.test_local_bench.OutdirPathTests.test_relative_outdir_log_path_safe. TMPDIR is inside the repo. Same environmental miss as mvp3-fix-1031. Hedge detector did not fail |
