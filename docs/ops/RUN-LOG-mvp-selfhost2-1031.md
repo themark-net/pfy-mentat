@@ -64,3 +64,5 @@ Survey skips, recorded before item 01, not a no-progress streak: T-0091 voice sh
 11 setup-ledger | b6e387a | tests.test_setup_ledger_symlink 1 OK on Python 3.14 and 3.12; SetupTests second-run and four-harness OK on 3.14 | PASS receipt, attempts 1, wall 94s, review accept, human accept. Cloud SHA 7540153.
 12 apply-mcp | c97d0a1 | tests.test_apply_mcp_symlink tests.test_pfy_launcher_p1.SetupTests second-run and four-harness 3 OK on Python 3.14 and 3.12 | PASS receipt, attempts 1, wall 173s, review accept, human accept. Cloud SHA 533f8a2.
 13 backup-once | 18ed977 | tests.test_backup_once_symlink tests.test_apply_mcp_symlink tests.test_adapter_tree_hash_symlink 3 OK on Python 3.14 and 3.12 | PASS receipt, attempts 1, wall 79s, review accept, human accept. Cloud SHA 01067f1.
+
+state: lane empty | 13 product items accepted and pushed. 14 build invocations of 16. Kolibri attempt A kept no SHA. Wall cap and host pressure did not fire. Pregate not run: host busy. Handoff docs/ops/HANDOFF-mvp-selfhost2-1031.md.
