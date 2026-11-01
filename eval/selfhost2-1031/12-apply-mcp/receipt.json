@@ -1,0 +1,45 @@
+{
+  "schema": "pfy-cloud-build/1",
+  "status": "PASS",
+  "reason": "ok",
+  "exit_code": 0,
+  "branch": "cloud/pfylib-setup-py-apply-mcp-uses-path-is-f-20261101T012437772311Z",
+  "commit": "533f8a26721da53eaacf685576bf36414b104da6",
+  "base": "HEAD",
+  "review": {
+    "verdict": "accept",
+    "reasons": []
+  },
+  "attempts": [
+    {
+      "n": 1,
+      "status": "PASS",
+      "reason": "ok",
+      "output_tail": "I'll change only `_apply_mcp` so a symlink is treated as absent and replaced without being followed. First I'll read the function and the symlink test.`is_file` and `read_bytes` follow the link, so a mode-000 target still looks present and then raises. I'll treat a symlink as absent inside `_apply_mcp` and replace it with `atomic_write`.`_apply_mcp` now treats a symlink as absent, so the link is replaced and its target is never opened.\n\n- A symlink is not read, not passed to `backup_once`, and not passed to `file_sha`.\n- The config is rendered from empty bytes and written with `atomic_write`, which replaces the directory entry.\n- A regular file is still written once. A second apply of the same entry returns `wrote` False and leaves the bytes unchanged.\n\n`python3 -m unittest tests.test_apply_mcp_symlink` passed.\n\nI'll review the `_apply_mcp` diff against the task and the surrounding function before giving a verdict.verdict: accept\n\nThe diff only changes `_apply_mcp`. A symlink is treated as absent: it is not read, `backup_once` is skipped, and `file_sha` runs only after `atomic_write` replaces the directory entry. A regular file still writes once, and a second apply with the same bytes returns `wrote` False.\n",
+      "review": {
+        "verdict": "accept",
+        "reasons": []
+      }
+    }
+  ],
+  "gate": {
+    "cmd": "python3 -m unittest tests.test_apply_mcp_symlink",
+    "before": {
+      "cmd": "python3 -m unittest tests.test_apply_mcp_symlink",
+      "exit": 1,
+      "tail": "\nE\n======================================================================\nERROR: test_symlink_config_is_replaced_and_regular_file_does_not_rewrite (tests.test_apply_mcp_symlink.ApplyMcpSymlinkTests.test_symlink_config_is_replaced_and_regular_file_does_not_rewrite)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/mark/DEVELOP/pfy-mentat/tmp/mvp-selfhost2-1031/tmp/selfhost2-clones/target-12/tmp/cloud-build/20261101T012437772311Z/tests/test_apply_mcp_symlink.py\", line 50, in test_symlink_config_is_replaced_and_regular_file_does_not_rewrite\n    wrote, _changed = _apply_mcp(_op(link), records)\n                      ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^\n  File \"/home/mark/DEVELOP/pfy-mentat/tmp/mvp-selfhost2-1031/tmp/selfhost2-clones/target-12/tmp/cloud-build/20261101T012437772311Z/pfylib/setup.py\", line 445, in _apply_mcp\n    current = path.read_bytes() if existed else None\n              ~~~~~~~~~~~~~~~^^\n  File \"/usr/lib/python3.14/pathlib/__init__.py\", line 778, in read_bytes\n    with self.open(mode='rb', buffering=0) as f:\n         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib/python3.14/pathlib/__init__.py\", line 772, in open\n    return io.open(self, mode, buffering, encoding, errors, newline)\n           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nPermissionError: [Errno 13] Permission denied: '/home/mark/DEVELOP/pfy-mentat/tmp/mvp-selfhost2-1031/tmp/selfhost2-clones/target-12/tmp/cloud-build/20261101T012437772311Z/tmp/selfhost2-tests/apply-mcp-iskvg34o/link.toml'\n\n----------------------------------------------------------------------\nRan 1 test in 0.005s\n\nFAILED (errors=1)\n",
+      "started": true
+    },
+    "after": {
+      "cmd": "python3 -m unittest tests.test_apply_mcp_symlink",
+      "exit": 0,
+      "tail": "\n.\n----------------------------------------------------------------------\nRan 1 test in 0.002s\n\nOK\n",
+      "started": true
+    }
+  },
+  "recovery": "",
+  "pushed": false,
+  "worktree_removed": true,
+  "task": "pfylib/setup.py _apply_mcp uses path.is_file() and path.read_bytes() before render. Those follow a symlink. The owner can still stat a mode-000 file, so is_file is true and read_bytes raises. backup_once and file_sha also follow.\n\nChange only _apply_mcp. Do not edit tests. Do not change backup_once, file_sha, or atomic_write. If the path is a symlink, treat it as absent: do not read it, do not call backup_once on it, and do not call file_sha until the path is a regular file. Render from empty and atomic_write so the symlink is replaced and the target is not opened. A regular file still writes once, and a second apply of the same entry returns wrote False without changing bytes.",
+  "finished_at": "2026-11-01T01:27:30Z"
+}

@@ -1,0 +1,45 @@
+{
+  "schema": "pfy-cloud-build/1",
+  "status": "PASS",
+  "reason": "ok",
+  "exit_code": 0,
+  "branch": "cloud/pfylib-setup-py-save-ledger-checks-path-20261101T012124877480Z",
+  "commit": "7540153aec477c61c114714b798aa25e3399378e",
+  "base": "HEAD",
+  "review": {
+    "verdict": "accept",
+    "reasons": []
+  },
+  "attempts": [
+    {
+      "n": 1,
+      "status": "PASS",
+      "reason": "ok",
+      "output_tail": "I'll change only `save_ledger` so a symlink is replaced by `atomic_write` and never opened. First I'll read the function and the test that covers it.`is_file` and `read_bytes` follow the symlink, so a mode-000 target still looks like a file and then fails to open. I'll skip those calls when the ledger path is a symlink and let `atomic_write` replace the link.`save_ledger` now skips the matching-bytes check when the ledger path is a symlink, so `atomic_write` replaces the link and never opens the target.\n\nA regular file whose bytes already match still returns immediately and keeps the same inode. A regular file with different bytes is still updated.\n\n`python3 -m unittest tests.test_setup_ledger_symlink` passed.\n\nI'll check the `save_ledger` diff against the task and the reject rules before giving a verdict.verdict: accept\n\n`save_ledger` is the only edit. `not path.is_symlink()` short-circuits, so a symlink never reaches `is_file` or `read_bytes` and falls through to `atomic_write`, which uses `os.replace`. A regular file with matching bytes still returns without a rewrite. A regular file with different bytes still updates. Tests and `atomic_write` are unchanged.\n",
+      "review": {
+        "verdict": "accept",
+        "reasons": []
+      }
+    }
+  ],
+  "gate": {
+    "cmd": "python3 -m unittest tests.test_setup_ledger_symlink",
+    "before": {
+      "cmd": "python3 -m unittest tests.test_setup_ledger_symlink",
+      "exit": 1,
+      "tail": "\nE\n======================================================================\nERROR: test_symlink_ledger_is_replaced_and_regular_file_stays_put (tests.test_setup_ledger_symlink.SetupLedgerSymlinkTests.test_symlink_ledger_is_replaced_and_regular_file_stays_put)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/mark/DEVELOP/pfy-mentat/tmp/mvp-selfhost2-1031/tmp/selfhost2-clones/target-11/tmp/cloud-build/20261101T012124877480Z/tests/test_setup_ledger_symlink.py\", line 56, in test_symlink_ledger_is_replaced_and_regular_file_stays_put\n    save_ledger([ROW])\n    ~~~~~~~~~~~^^^^^^^\n  File \"/home/mark/DEVELOP/pfy-mentat/tmp/mvp-selfhost2-1031/tmp/selfhost2-clones/target-11/tmp/cloud-build/20261101T012124877480Z/pfylib/setup.py\", line 104, in save_ledger\n    if path.is_file() and path.read_bytes() == data:\n                          ~~~~~~~~~~~~~~~^^\n  File \"/usr/lib/python3.14/pathlib/__init__.py\", line 778, in read_bytes\n    with self.open(mode='rb', buffering=0) as f:\n         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib/python3.14/pathlib/__init__.py\", line 772, in open\n    return io.open(self, mode, buffering, encoding, errors, newline)\n           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nPermissionError: [Errno 13] Permission denied: '/home/mark/DEVELOP/pfy-mentat/tmp/mvp-selfhost2-1031/tmp/selfhost2-clones/target-11/tmp/cloud-build/20261101T012124877480Z/tmp/selfhost2-tests/setup-ledger-kq1ql0do/link-state/pfy/installed.json'\n\n----------------------------------------------------------------------\nRan 1 test in 0.004s\n\nFAILED (errors=1)\n",
+      "started": true
+    },
+    "after": {
+      "cmd": "python3 -m unittest tests.test_setup_ledger_symlink",
+      "exit": 0,
+      "tail": "\n.\n----------------------------------------------------------------------\nRan 1 test in 0.002s\n\nOK\n",
+      "started": true
+    }
+  },
+  "recovery": "",
+  "pushed": false,
+  "worktree_removed": true,
+  "task": "pfylib/setup.py save_ledger checks path.is_file() and path.read_bytes() before atomic_write. Those calls follow a symlink. The owner can still stat a mode-000 file, so is_file is true and read_bytes raises. A readable target is opened. atomic_write already uses os.replace, which replaces the directory entry and does not follow.\n\nChange only save_ledger. Do not edit tests. Do not change atomic_write. If the path is a symlink, do not call is_file or read_bytes on it. Fall through to atomic_write so the symlink is replaced and the target is not opened. A regular file whose bytes already match the payload must still return without a rewrite, keeping the same inode. A regular file with different bytes still updates.",
+  "finished_at": "2026-11-01T01:22:58Z"
+}

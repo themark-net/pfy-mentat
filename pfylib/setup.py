@@ -101,7 +101,9 @@ def save_ledger(records: list[dict]) -> None:
     path = ledger_path()
     payload = {"records": records}
     data = (json.dumps(payload, indent=2, sort_keys=True) + "\n").encode("utf-8")
-    if path.is_file() and path.read_bytes() == data:
+    # is_file and read_bytes follow a symlink. Skip them so atomic_write
+    # replaces the directory entry and does not open the target.
+    if not path.is_symlink() and path.is_file() and path.read_bytes() == data:
         return
     path.parent.mkdir(parents=True, exist_ok=True)
     atomic_write(path, data)
@@ -439,8 +441,14 @@ def _apply_mcp(op: dict, records: list[dict]) -> tuple[bool, bool]:
     """Return (file_wrote, ledger_changed)."""
     adapter = by_id(op["harness"])
     path: Path = op["path"]
-    existed = path.is_file()
-    current = path.read_bytes() if existed else None
+    # is_file, read_bytes, backup_once, and file_sha follow a symlink.
+    # A symlink is absent: render from empty and let atomic_write replace it.
+    if path.is_symlink():
+        existed = False
+        current = None
+    else:
+        existed = path.is_file()
+        current = path.read_bytes() if existed else None
     new = adapter.render_config(current, op["item"], op["entry"])
     wrote = current is None or new != current
     backup = _lookup_backup(records, {"harness": op["harness"], "item": op["item"], "path": str(path), "kind": "mcp"})
@@ -450,7 +458,8 @@ def _apply_mcp(op: dict, records: list[dict]) -> tuple[bool, bool]:
         atomic_write(path, new)
         sha = file_sha(path)
     else:
-        sha = file_sha(path) if path.is_file() else hashlib.sha256(new).hexdigest()
+        # existed is a regular file. Do not stat again: is_file follows.
+        sha = file_sha(path) if existed else hashlib.sha256(new).hexdigest()
     changed = _upsert(
         records,
         {
