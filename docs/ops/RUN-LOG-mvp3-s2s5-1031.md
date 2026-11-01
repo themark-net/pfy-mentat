@@ -35,3 +35,8 @@ Risks:
 - Mapping PASS-REJECTED onto FAIL changes a status the mvp3 drop-in named. Mitigation: keep exit 1, keep reason review-rejected, and do not commit. The operator schema status set is the one this lane was told to match.
 
 Pregate: not at start. Runner.Worker is live. Record at the end.
+
+## Items
+
+- S2 | 880478a | red: unrecognized --wall-timeout, exit 2. Green: test_wall_budget_stops_a_sleeping_retry_loop. Review module 39 OK in 87.764s. test_pfy_build_local 61 OK in 81.411s | TIMEOUT wall-timeout, exit 3, under 12s
+

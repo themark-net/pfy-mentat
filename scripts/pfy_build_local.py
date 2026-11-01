@@ -74,6 +74,7 @@ SCOPE_SKIPPED_NOTE = "scope check skipped: no allow list"
 DIFF_PROMPT_CAP = 8000
 _RETRYABLE = {
     "no-change",
+    "agent-crashed",
     "protected-path-changed",
     "tests-failed",
     "tests-regressed",
@@ -3431,6 +3432,21 @@ def build_local(argv: list[str] | None = None) -> int:
             diff_text, diff_stats = _collect_diff(worktree, test_env, changed)
             reviewed_digests = {rel: _reviewed_digest(worktree, rel) for rel in changed}
             if not changed:
+                # A finished non-zero exit with an empty diff is a crash.
+                # Exit 0 with an empty diff stays no-change and still runs the gate.
+                if run_status == "done" and _code not in (0, None):
+                    feedback = "agent-crashed"
+                    if _can_retry(args.review, attempts_used, max_attempts, "agent-crashed"):
+                        _record_attempt(
+                            attempts_used, attempt_t0, mem_snap, "FAIL", "agent-crashed", None, None, diff_stats, diff_text
+                        )
+                        previous_diff = diff_text
+                        continue
+                    status, reason, exit_code = "FAIL", "agent-crashed", EXIT_FAIL
+                    _record_attempt(
+                        attempts_used, attempt_t0, mem_snap, "FAIL", "agent-crashed", None, None, diff_stats, diff_text
+                    )
+                    return finish()
                 tests_after, wall_hit = _run_gate()
                 if wall_hit:
                     return _finish_wall()

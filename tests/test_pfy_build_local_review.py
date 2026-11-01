@@ -280,6 +280,39 @@ class ReviewLoopTests(unittest.TestCase):
         self.assertIsNone(data["branch"])
         self.inner.assert_clean_origin()
 
+    def test_agent_crash_every_attempt_is_not_labelled_no_change(self):
+        # S3: os._exit(70) before any write used to be FAIL no-change.
+        # The receipt must name the crash, and a later real edit can still land.
+        task = "fix add so one plus one is two\nfiles: src/calc.py\n"
+        proc, receipt = self._run(task, [{"mode": "crash"}], extra=["--retries", "2"])
+        self.assertEqual(proc.returncode, 1, proc.stdout + proc.stderr)
+        data = self._receipt(proc, receipt)
+        self.assertEqual(data["status"], "FAIL")
+        self.assertEqual(data["reason"], "agent-crashed")
+        self.assertNotEqual(data["reason"], "no-change")
+        self.assertEqual(data["attempts"], 3)
+        self.assertIsNone(data["commit"])
+        self.assertIsNone(data["branch"])
+        for number in (1, 2, 3):
+            attempt = json.loads((receipt / ("attempt-%d" % number) / "receipt.json").read_text(encoding="utf-8"))
+            self.assertEqual(attempt["reason"], "agent-crashed")
+        self.inner.assert_clean_origin()
+
+    def test_agent_crash_then_a_fix_still_passes(self):
+        task = "fix add so one plus one is two\nfiles: src/calc.py\n"
+        proc, receipt = self._run(
+            task,
+            [{"mode": "crash"}, {"mode": "fix"}],
+            extra=["--retries", "2"],
+        )
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        data = self._receipt(proc, receipt)
+        self.assertEqual((data["status"], data["attempts"]), ("PASS", 2))
+        self.assertIsNotNone(data["commit"])
+        shown = harness._git(self.inner.repo, "show", "%s:src/calc.py" % data["commit"])
+        self.assertIn("return a + b\n", shown)
+        self.inner.assert_clean_origin()
+
     def test_a_reviewer_that_keeps_rejecting_stops_at_three_attempts(self):
         self.inner.httpd.review_queue = [
             json.dumps({"verdict": "reject", "reasons": ["too broad"]}),
