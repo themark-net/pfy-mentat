@@ -1,0 +1,45 @@
+{
+  "schema": "pfy-cloud-build/1",
+  "status": "PASS",
+  "reason": "ok",
+  "exit_code": 0,
+  "branch": "cloud/edit-only-examples-x-intake-local-smoke-20261101T015821449370Z",
+  "commit": "8a46224d1a3fd2fede820e212abc8aa028d60727",
+  "base": "HEAD",
+  "review": {
+    "verdict": "accept",
+    "reasons": []
+  },
+  "attempts": [
+    {
+      "n": 1,
+      "status": "PASS",
+      "reason": "ok",
+      "output_tail": "I'll add `term_wait_problem()` and the hiroute-only check in `main()`, leaving `term_wait()` and the other smoke functions unchanged. First I'm reading the current file and the test so the edit matches the expected fail-closed behavior.`term_wait()` still coerces a bad `HIROUTE_TERM_WAIT` to `\"45\"` after the staging check, so invalid values never fail closed. I'll add the range check in `main()` for the hiroute entry only.`term_wait_problem()` now rejects a bad `HIROUTE_TERM_WAIT` in `main()` before the hiroute entry runs. `python3 -m unittest tests.test_smoke_146_term_wait` passed (3 tests).\n\n- `import math` sits next to `import os`.\n- `term_wait_problem()` is directly above `term_wait()`. Unset, empty, and whitespace-only values are treated as unset. A stripped finite value in `(0, 600]` is accepted. Anything else returns a reason that names `HIROUTE_TERM_WAIT`.\n- Only the `hiroute` entry calls that check, after `timeout_problem()` and before `ENTRIES[a.entry]`. A bad value exits 2 and never reaches the staging path. `skill-up` does not consult the variable.\n- `term_wait()`, `smoke_hiroute`, `smoke_skillup`, and `fixture_unchanged` are unchanged.\n\nI'll check the diff against the task and the file on disk before giving a verdict.verdict: accept\n\nThe diff only adds `import math`, `term_wait_problem()`, and the hiroute-only check in `main()` of `examples/x-intake-local/smoke_146_147.py`. `term_wait()`, the smoke helpers, and the fixture are unchanged, and nothing under `tests/` was touched.\n",
+      "review": {
+        "verdict": "accept",
+        "reasons": []
+      }
+    }
+  ],
+  "gate": {
+    "cmd": "python3 -m unittest tests.test_smoke_146_term_wait",
+    "before": {
+      "cmd": "python3 -m unittest tests.test_smoke_146_term_wait",
+      "exit": 1,
+      "tail": "z, hiroute-0.3.1-13856abd873d-x86_64-unknown-linux-gnu.tar.gz.json, standalone.py); download the release archive + manifest and hiroute.ai/install/standalone.py there and check their digests, see the handoff. Never run install.sh or install into the real HOME'\n\n======================================================================\nFAIL: test_bad_term_wait_exits_2_before_staging (tests.test_smoke_146_term_wait.TermWaitTests.test_bad_term_wait_exits_2_before_staging) (term_wait='nan')\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood4-1031/tmp/target-04/tmp/cloud-build/20261101T015821449370Z/tests/test_smoke_146_term_wait.py\", line 73, in test_bad_term_wait_exits_2_before_staging\n    self.assertIn(\"HIROUTE_TERM_WAIT\", reason)\n    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: 'HIROUTE_TERM_WAIT' not found in 'HiRoute v0.3.1 not staged in /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood4-1031/tmp/target-04/tmp/cloud-build/20261101T015821449370Z/tmp/pfy-smoke146-term-jimpu3xg/home/DEVELOP/pfy-mentat/tmp/hiroute (missing hiroute-0.3.1-13856abd873d-x86_64-unknown-linux-gnu.tar.gz, hiroute-0.3.1-13856abd873d-x86_64-unknown-linux-gnu.tar.gz.json, standalone.py); download the release archive + manifest and hiroute.ai/install/standalone.py there and check their digests, see the handoff. Never run install.sh or install into the real HOME'\n\n======================================================================\nFAIL: test_bad_term_wait_exits_2_before_staging (tests.test_smoke_146_term_wait.TermWaitTests.test_bad_term_wait_exits_2_before_staging) (term_wait='inf')\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood4-1031/tmp/target-04/tmp/cloud-build/20261101T015821449370Z/tests/test_smoke_146_term_wait.py\", line 73, in test_bad_term_wait_exits_2_before_staging\n    self.assertIn(\"HIROUTE_TERM_WAIT\", reason)\n    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: 'HIROUTE_TERM_WAIT' not found in 'HiRoute v0.3.1 not staged in /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood4-1031/tmp/target-04/tmp/cloud-build/20261101T015821449370Z/tmp/pfy-smoke146-term-jimpu3xg/home/DEVELOP/pfy-mentat/tmp/hiroute (missing hiroute-0.3.1-13856abd873d-x86_64-unknown-linux-gnu.tar.gz, hiroute-0.3.1-13856abd873d-x86_64-unknown-linux-gnu.tar.gz.json, standalone.py); download the release archive + manifest and hiroute.ai/install/standalone.py there and check their digests, see the handoff. Never run install.sh or install into the real HOME'\n\n======================================================================\nFAIL: test_bad_term_wait_exits_2_before_staging (tests.test_smoke_146_term_wait.TermWaitTests.test_bad_term_wait_exits_2_before_staging) (term_wait='601')\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood4-1031/tmp/target-04/tmp/cloud-build/20261101T015821449370Z/tests/test_smoke_146_term_wait.py\", line 73, in test_bad_term_wait_exits_2_before_staging\n    self.assertIn(\"HIROUTE_TERM_WAIT\", reason)\n    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: 'HIROUTE_TERM_WAIT' not found in 'HiRoute v0.3.1 not staged in /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood4-1031/tmp/target-04/tmp/cloud-build/20261101T015821449370Z/tmp/pfy-smoke146-term-jimpu3xg/home/DEVELOP/pfy-mentat/tmp/hiroute (missing hiroute-0.3.1-13856abd873d-x86_64-unknown-linux-gnu.tar.gz, hiroute-0.3.1-13856abd873d-x86_64-unknown-linux-gnu.tar.gz.json, standalone.py); download the release archive + manifest and hiroute.ai/install/standalone.py there and check their digests, see the handoff. Never run install.sh or install into the real HOME'\n\n----------------------------------------------------------------------\nRan 3 tests in 0.813s\n\nFAILED (failures=6)\n",
+      "started": true
+    },
+    "after": {
+      "cmd": "python3 -m unittest tests.test_smoke_146_term_wait",
+      "exit": 0,
+      "tail": "\n...\n----------------------------------------------------------------------\nRan 3 tests in 0.812s\n\nOK\n",
+      "started": true
+    }
+  },
+  "recovery": "",
+  "pushed": false,
+  "worktree_removed": true,
+  "task": "Edit only examples/x-intake-local/smoke_146_147.py. Do not edit any file under tests/. Do not add a file. Do not commit. Do not push. Do not edit smoke_140_142.py.\n\nterm_wait() turns a bad HIROUTE_TERM_WAIT into the string \"45\". It is called only inside the hiroute body, after smoke_hiroute has already returned the staging reason when the archive is missing. abc, 0, -1, nan, inf, and 601 therefore still report \"not staged\".\n\nFail closed in main(), after the existing timeout_problem() block and before ENTRIES[a.entry]. Only the hiroute entry consults HIROUTE_TERM_WAIT. skill-up must not.\n\nAdd import math next to import os.\n\nAdd this function immediately above term_wait():\n\ndef term_wait_problem() -> str | None:\n    \"\"\"HIROUTE_TERM_WAIT must be a finite number of seconds in (0, 600] when set. Whitespace-only is unset.\"\"\"\n    raw = os.environ.get(\"HIROUTE_TERM_WAIT\")\n    if raw is None:\n        return None\n    raw = raw.strip()\n    if not raw:\n        return None\n    try:\n        v = float(raw)\n    except ValueError:\n        v = math.nan\n    if math.isfinite(v) and 0 < v <= 600:\n        return None\n    return f\"HIROUTE_TERM_WAIT={raw[:40]!r} is not a number of seconds > 0 and <= 600\"\n\nIn main(), after the timeout_problem() block and before the try that calls ENTRIES[a.entry]:\n\n    if a.entry == \"hiroute\":\n        bad = term_wait_problem()\n        if bad:\n            receipt[\"reason\"] = bad\n            return write(a.entry, receipt, 2)\n\nUnset, empty, whitespace-only, and a stripped finite value in (0, 600] (including \"10\", \"600\", and \"  10  \") still run the hiroute entry, so a missing archive still reports \"not staged\". A value outside that range exits 2 with a reason that names HIROUTE_TERM_WAIT and does not contain \"not staged\".\n\nDo not change term_wait(), smoke_hiroute, smoke_skillup, or fixture_unchanged. Do not use an em dash or an en dash.",
+  "finished_at": "2026-11-01T01:59:29Z"
+}
