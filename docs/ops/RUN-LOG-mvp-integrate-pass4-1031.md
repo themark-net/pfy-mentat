@@ -89,4 +89,5 @@ Not in the list, and not merged: mvp3 branches, backlog branches, `bot/mvp-probe
 item | commit | tests | result
 
 exits | 0e36b7b | none | exit card pushed before any merge
-survey | this commit | git fetch plus run-log tail and merge-tree | all ten finished, none contained, all clean vs 0e36b7b
+survey | d98ed10 | git fetch plus run-log tail and merge-tree | all ten finished, none contained, all clean vs 0e36b7b
+merge localbench-tmpdir | 2279366 | nice -n 19 python3 -m unittest tests.test_local_bench | tip 76fd6a1, clean, 18 OK in 1.343s
