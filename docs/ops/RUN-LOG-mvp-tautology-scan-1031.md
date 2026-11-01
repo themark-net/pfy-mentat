@@ -94,3 +94,9 @@ Clock check before shimmy-order: 2026-11-01T03:02:44Z. Runner absent. MemAvailab
 shimmy-order | c173893 | tests.test_shimmy_ensure (3 OK) | pushed. Mutant swapped shimmy above ollama, recorded order shimmy, restored.
 
 Clock check before hermes-stamp: 2026-11-01T03:04:17Z. Runner absent. MemAvailable 46061996 KiB. Load 2.97 on 32 cores.
+
+hermes-stamp | 55abd44 | tests.test_hermes_bakeoff.HermesBakeoffTests.test_labels_written_is_the_newest_source_stamp (1 OK) | pushed. Mutant dropped the ATG source, stamp stayed 2026-03-01, restored.
+
+Clock check before handoff: 2026-11-01T03:06:12Z. No Runner.Worker binary. A flock waiter on heavy-1030.lock mentions that name in its own command line and was left alone. MemAvailable 47337564 KiB. Load 3.28 on 32 cores. Turn cap: 8 fix items. No ninth fix.
+
+state: DONE | turn cap 8 fix items after the scan doc. Remaining rows are in the handoff. Gate: pregate plus Reviewer. No merge.
