@@ -93,12 +93,11 @@ MUTANTS: list[dict[str, str]] = [
     {
         "id": "C9",
         "title": "interrupted handler does not kill the process group",
-        "old": "        state.interrupted = True\n"
-        "        if state.pgid:\n"
-        "            _signal_pgid(state.pgid, signal.SIGTERM)\n",
-        "new": "        state.interrupted = True\n"
-        "        if False and state.pgid:\n"
-        "            _signal_pgid(state.pgid, signal.SIGTERM)\n",
+        "old": "        for pg in kids:\n"
+        "            _signal_pgid(pg, signal.SIGTERM)\n",
+        "new": "        for pg in kids:\n"
+        "            if False:\n"
+        "                _signal_pgid(pg, signal.SIGTERM)\n",
     },
     {
         "id": "C10",
@@ -217,12 +216,8 @@ CLOUD2_MUTANTS: list[dict[str, str]] = [
     {
         "id": "C22",
         "title": "archive recheck skipped",
-        "old": "        reason, tail = self.recheck_sha(sha)\n"
-        "        self.recheck_tail = tail\n"
-        "        if reason:\n",
-        "new": '        reason, tail = None, ""\n'
-        "        self.recheck_tail = tail\n"
-        "        if reason:\n",
+        "old": '                box["recheck"] = self.recheck_sha(sha)\n',
+        "new": '                box["recheck"] = (None, "")\n',
     },
     {
         "id": "C23",
@@ -366,21 +361,25 @@ CLOUD2_MUTANTS: list[dict[str, str]] = [
     {
         "id": "C38",
         "title": "timeout does not kill the grok process group",
-        "old": "    except subprocess.TimeoutExpired:\n"
-        "        _kill_pgid(proc.pid)\n"
-        "        try:\n"
-        "            out, err = proc.communicate(timeout=5)\n",
-        "new": "    except subprocess.TimeoutExpired:\n"
-        "        try:\n"
-        "            out, err = proc.communicate(timeout=5)\n",
+        "old": "        except subprocess.TimeoutExpired:\n"
+        "            _kill_pgid(proc.pid)\n"
+        "            try:\n"
+        "                out, err = proc.communicate(timeout=5)\n",
+        "new": "        except subprocess.TimeoutExpired:\n"
+        "            try:\n"
+        "                out, err = proc.communicate(timeout=5)\n",
     },
     {
         "id": "C39",
         "title": "review timeout is a review reject",
         "old": '                if review_status == "timeout":\n'
+        "                    self._undo_commit(keep_edits=True)\n"
+        "                    if last_reject is not None:\n"
+        "                        return as_reject(number, output, True)\n"
         '                    self.record(number, "TIMEOUT", "timeout", output)\n'
         '                    return self.fail("TIMEOUT", "timeout", EXIT_TIMEOUT, "")\n',
         "new": '                if review_status == "timeout":\n'
+        "                    self._undo_commit(keep_edits=True)\n"
         '                    self.record(number, "PASS-REJECTED", "review-rejected", output)\n'
         "                    if number < self.max_attempts:\n"
         "                        continue\n"
