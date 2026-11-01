@@ -10,6 +10,8 @@ Needs a local model: no. Do not run scripts/pregate.sh.
 
 ## Scope: integration pass 4 on its own branch
 Merge with merge commits (never rebase), in this order, the finished wave 6-7 lanes: origin/bot/mvp-localbench-tmpdir-1031, origin/bot/mvp-probe-int-1031, origin/bot/mvp-pass3-review-1031, origin/bot/mvp-dogfood3-1031, origin/bot/mvp-hermes-check-1031, origin/bot/mvp-timeoutfix-1031, origin/bot/mvp-cloud-perf-1031, origin/bot/mvp-selfhost2-1031, origin/bot/mvp-mutate-cloud2-1031, origin/bot/mvp-review-quality-1031 (skip any not finished: its run log has no final state line; skip branches already contained). Do NOT merge mvp3 branches, backlog branches, or bot/mvp-probe-fix2-1031. Resolve conflicts conservatively and log each one. After each merge run the targeted tests of touched modules (niced). At the end run the full suite once under the heavy lock with an in-repo TMPDIR (target 0 failures; fix any failure caused by a merge) and run one cloud-default `./pfy build` demo on a small real 1-2 file fix, saving `eval/mvp-1031/demo-receipt-pass4.json`. Handoff: merge table (branch, tip, result), suite count, demo receipt.
+Before the full suite or any uv-using test, wait (poll every 60s) while `pgrep -f "Runner[.]Worker"` finds a G0 job on this host.
+
 ## Hard rules (pre-authorized, no questions)
 
 - Follow the orchestrator skill (`~/.grok/skills/orchestrator/SKILL.md`) and the repo skills `prefer-behavior-and-fail-recover-tests`, `repo-handoff-doc-required` and `write-loop-exits-first`. Do not ask questions. Decide conservatively, log each decision as one line in this run's decisions file, and keep going.
