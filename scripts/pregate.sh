@@ -16,9 +16,10 @@
 #
 # One pregate per host at a time is the supported mode. Repo paths with
 # whitespace are refused (exit 2). An unresolvable --base exits 2.
-# A running Runner.Worker (pgrep -f 'Runner[.]Worker') exits 3 at start.
-# PREGATE_RUNNER_PGREP overrides that pattern. Bracket one character so
-# pgrep does not match its own argv. PREGATE_RUNNER_POLL is the wait
+# A running Runner.Worker (pgrep -x Runner.Worker) exits 3 at start.
+# The match is on the exact process name, never on argv, so a shell whose
+# command line mentions Runner.Worker does not block. PREGATE_RUNNER_NAME
+# overrides the name (15 chars max). PREGATE_RUNNER_POLL is the wait
 # interval in seconds (default 2).
 #
 # Checks: lint ci-parity ubuntu-parity eval-structural suite orphans gate-hash
@@ -42,7 +43,7 @@ STEP_TIMEOUT="${PREGATE_STEP_TIMEOUT:-2400}"
 MAX_ROOT_LEN="${PREGATE_MAX_ROOT_LEN:-60}"
 KEEP_RUNS="${PREGATE_KEEP_RUNS:-20}"
 WAIT_RUNNER=0
-RUNNER_PATTERN="${PREGATE_RUNNER_PGREP:-Runner[.]Worker}"
+RUNNER_NAME="${PREGATE_RUNNER_NAME:-Runner.Worker}"
 RUNNER_POLL="${PREGATE_RUNNER_POLL:-2}"
 MAIN_PID=$$
 
@@ -81,15 +82,16 @@ fi
 [[ "$WAIT_RUNNER" =~ ^[0-9]+$ ]] || die2 "--wait-runner must be seconds"
 [[ "$RUNNER_POLL" =~ ^[1-9][0-9]*$ ]] || die2 "PREGATE_RUNNER_POLL must be seconds"
 
-# Refuse to start while a G0 job is on this host. The default pattern is
-# Runner[.]Worker. Exit 3 is distinct from a failed check (1) and from usage (2).
-if pgrep -f "$RUNNER_PATTERN" >/dev/null 2>&1; then
+# Refuse to start while a G0 job is on this host. Match the exact process
+# name with pgrep -x. Matching argv would also catch any shell whose
+# command line contains the text, and spin forever under a lock. Exit 3 is distinct from a failed check (1) and from usage (2).
+if pgrep -x "$RUNNER_NAME" >/dev/null 2>&1; then
   if [[ "$WAIT_RUNNER" -eq 0 ]]; then
     echo "pregate: GitHub runner worker is running on this host; not starting. Pass --wait-runner SECONDS to wait for it to exit." >&2
     exit 3
   fi
   deadline=$(( $(date +%s) + WAIT_RUNNER ))
-  while pgrep -f "$RUNNER_PATTERN" >/dev/null 2>&1; do
+  while pgrep -x "$RUNNER_NAME" >/dev/null 2>&1; do
     now=$(date +%s)
     if (( now >= deadline )); then
       echo "pregate: GitHub runner worker still running after ${WAIT_RUNNER}s; not starting." >&2
