@@ -12,13 +12,18 @@
 #   --in-place        run in this checkout (HEAD must equal REF; must be clean)
 #   --allow-dirty     with --in-place, allow a dirty tree (dev only)
 #   --keep-worktree   keep the run worktree and scratch for debugging
+#   --wait-runner SEC if a GitHub runner worker is running, wait up to SEC
 #
 # One pregate per host at a time is the supported mode. Repo paths with
 # whitespace are refused (exit 2). An unresolvable --base exits 2.
+# A running Runner.Worker (pgrep -f 'Runner[.]Worker') exits 3 at start.
+# PREGATE_RUNNER_PGREP overrides that pattern. Bracket one character so
+# pgrep does not match its own argv. PREGATE_RUNNER_POLL is the wait
+# interval in seconds (default 2).
 #
 # Checks: lint ci-parity ubuntu-parity eval-structural suite orphans gate-hash
 # Logs and summary persist in ~/DEVELOP/pfy-mentat/tmp/pregate-runs/<run-id>/.
-# Exit: 0 PASS, 1 FAIL (or no check passed), 2 usage/setup error, 130/143 signal.
+# Exit: 0 PASS, 1 FAIL (or no check passed), 2 usage/setup error, 3 runner busy, 130/143 signal.
 # Keeps the newest PREGATE_KEEP_RUNS (default 20) run folders.
 set -euo pipefail
 
@@ -36,6 +41,9 @@ REF_SET=0
 STEP_TIMEOUT="${PREGATE_STEP_TIMEOUT:-2400}"
 MAX_ROOT_LEN="${PREGATE_MAX_ROOT_LEN:-60}"
 KEEP_RUNS="${PREGATE_KEEP_RUNS:-20}"
+WAIT_RUNNER=0
+RUNNER_PATTERN="${PREGATE_RUNNER_PGREP:-Runner[.]Worker}"
+RUNNER_POLL="${PREGATE_RUNNER_POLL:-2}"
 MAIN_PID=$$
 
 die2() { echo "pregate: $*" >&2; exit 2; }
@@ -48,6 +56,10 @@ while [[ $# -gt 0 ]]; do
     --allow-dirty) ALLOW_DIRTY=1; shift ;;
     --keep-worktree) KEEP_WORKTREE=1; shift ;;
     --force-suite) FORCE_SUITE=1; shift ;;
+    --wait-runner)
+      if [[ $# -lt 2 || -z "$2" || "$2" == -* ]]; then die2 "--wait-runner needs a value"; fi
+      WAIT_RUNNER="$2"
+      shift 2 ;;
     --only|--base)
       if [[ $# -lt 2 || -z "$2" || "$2" == -* ]]; then die2 "$1 needs a value"; fi
       if [[ "$1" == "--only" ]]; then ONLY="$2"; else BASE_REF="$2"; fi
@@ -66,6 +78,26 @@ if [[ -n "$ONLY" ]]; then
 fi
 [[ "$STEP_TIMEOUT" =~ ^[0-9]+$ ]] || die2 "PREGATE_STEP_TIMEOUT must be seconds"
 [[ "$KEEP_RUNS" =~ ^[1-9][0-9]*$ ]] || die2 "PREGATE_KEEP_RUNS must be a positive integer"
+[[ "$WAIT_RUNNER" =~ ^[0-9]+$ ]] || die2 "--wait-runner must be seconds"
+[[ "$RUNNER_POLL" =~ ^[1-9][0-9]*$ ]] || die2 "PREGATE_RUNNER_POLL must be seconds"
+
+# Refuse to start while a G0 job is on this host. The default pattern is
+# Runner[.]Worker. Exit 3 is distinct from a failed check (1) and from usage (2).
+if pgrep -f "$RUNNER_PATTERN" >/dev/null 2>&1; then
+  if [[ "$WAIT_RUNNER" -eq 0 ]]; then
+    echo "pregate: GitHub runner worker is running on this host; not starting. Pass --wait-runner SECONDS to wait for it to exit." >&2
+    exit 3
+  fi
+  deadline=$(( $(date +%s) + WAIT_RUNNER ))
+  while pgrep -f "$RUNNER_PATTERN" >/dev/null 2>&1; do
+    now=$(date +%s)
+    if (( now >= deadline )); then
+      echo "pregate: GitHub runner worker still running after ${WAIT_RUNNER}s; not starting." >&2
+      exit 3
+    fi
+    sleep "$RUNNER_POLL"
+  done
+fi
 
 command -v git >/dev/null 2>&1 || die2 "git not found on PATH"
 command -v python3 >/dev/null 2>&1 || die2 "python3 not found on PATH"
