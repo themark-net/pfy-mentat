@@ -9,7 +9,7 @@ Exit codes:
   0  PASS, or a clean --dry-run, or --reap
   1  FAIL, or PASS-REJECTED (the gate was green and the review rejected the patch)
   2  usage, or opencode is missing
-  3  TIMEOUT (agent)
+  3  TIMEOUT (agent, or the overall --wall-timeout budget)
   4  BLOCKED (memory, busy host, ps error, model size, cloud tag, lock, no-model,
            no-sandbox, no-runtime-dir, runtime-dir-in-tmp, socket-path)
 
@@ -63,6 +63,7 @@ DEFAULT_MODEL = "qwen3.6:35b"
 DEFAULT_ENDPOINT = "http://127.0.0.1:11434/v1"
 DEFAULT_TEST_CMD = "python3 -m unittest discover -s tests -t ."
 DEFAULT_TIMEOUT = 1200
+DEFAULT_WALL_TIMEOUT = 7200
 DEFAULT_TEST_TIMEOUT = 600
 DEFAULT_MIN_FREE_GB = 32.0
 DEFAULT_RETRIES = 2
@@ -301,6 +302,12 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--endpoint", default=None, help="OpenAI base URL (env LOCAL_OPENAI_BASE_URL)")
     parser.add_argument("--test-cmd", default=None, help="gate command (env PFY_LOCAL_BUILD_TEST_CMD)")
     parser.add_argument("--timeout", type=float, default=None, help="agent seconds (env PFY_LOCAL_BUILD_TIMEOUT)")
+    parser.add_argument(
+        "--wall-timeout",
+        type=float,
+        default=None,
+        help="overall loop seconds, then TIMEOUT (env PFY_LOCAL_BUILD_WALL_TIMEOUT, default 7200)",
+    )
     parser.add_argument("--test-timeout", type=float, default=None, help="test command seconds")
     parser.add_argument("--min-free-gb", type=float, default=None, help="MemAvailable+SwapFree floor")
     parser.add_argument("--protect", action="append", default=[], help="glob the agent must not change")
@@ -373,6 +380,7 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
         args.endpoint_raw = _pick_str(args.endpoint, "LOCAL_OPENAI_BASE_URL", DEFAULT_ENDPOINT)
         args.test_cmd_s = _pick_str(args.test_cmd, "PFY_LOCAL_BUILD_TEST_CMD", DEFAULT_TEST_CMD)
         args.timeout_s = _pick_float(args.timeout, "PFY_LOCAL_BUILD_TIMEOUT", DEFAULT_TIMEOUT)
+        args.wall_timeout_s = _pick_float(args.wall_timeout, "PFY_LOCAL_BUILD_WALL_TIMEOUT", DEFAULT_WALL_TIMEOUT)
         args.test_timeout_s = _pick_float(args.test_timeout, "PFY_LOCAL_BUILD_TEST_TIMEOUT", DEFAULT_TEST_TIMEOUT)
         args.min_free = _pick_float(args.min_free_gb, "PFY_LOCAL_BUILD_MIN_FREE_GB", DEFAULT_MIN_FREE_GB)
         _apply_review_flags(args)
@@ -385,12 +393,13 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
         args.endpoint_raw = _pick_str(args.endpoint, "LOCAL_OPENAI_BASE_URL", DEFAULT_ENDPOINT)
         args.test_cmd_s = _pick_str(args.test_cmd, "PFY_LOCAL_BUILD_TEST_CMD", DEFAULT_TEST_CMD)
         args.timeout_s = _pick_float(args.timeout, "PFY_LOCAL_BUILD_TIMEOUT", DEFAULT_TIMEOUT)
+        args.wall_timeout_s = _pick_float(args.wall_timeout, "PFY_LOCAL_BUILD_WALL_TIMEOUT", DEFAULT_WALL_TIMEOUT)
         args.test_timeout_s = _pick_float(args.test_timeout, "PFY_LOCAL_BUILD_TEST_TIMEOUT", DEFAULT_TEST_TIMEOUT)
         args.min_free = _pick_float(args.min_free_gb, "PFY_LOCAL_BUILD_MIN_FREE_GB", DEFAULT_MIN_FREE_GB)
     except ValueError as exc:
         raise UsageError("a numeric flag or env value is not a number") from exc
-    if args.timeout_s <= 0 or args.test_timeout_s <= 0 or args.min_free < 0:
-        raise UsageError("timeout and min-free-gb must be positive (min-free-gb may be 0)")
+    if args.timeout_s <= 0 or args.test_timeout_s <= 0 or args.wall_timeout_s <= 0 or args.min_free < 0:
+        raise UsageError("timeout, wall-timeout, and min-free-gb must be positive (min-free-gb may be 0)")
     _apply_review_flags(args)
     return args
 
@@ -2852,9 +2861,11 @@ def _run_model_review(
     gate_tail: str,
     state: State,
     repo: Path,
+    review_timeout: float | None = None,
 ) -> tuple[str, dict | None]:
     """Return (status, review). status is accept, reject, timeout, interrupted, mem-edge, blocked, sandbox, http-error, crashed."""
     port = _loopback_port(openai_base)
+    limit = float(args.timeout_s if review_timeout is None else review_timeout)
     if port is None:
         return "blocked", {
             "verdict": "reject",
@@ -2886,7 +2897,7 @@ def _run_model_review(
             "OPENAI_BASE_URL": openai_base,
             "PFY_REVIEW_BODY": str(body_path),
             "PFY_REVIEW_OUT": str(out_path),
-            "PFY_REVIEW_HTTP_TIMEOUT": str(float(args.timeout_s) + 30.0),
+            "PFY_REVIEW_HTTP_TIMEOUT": str(limit + 30.0),
         }
     )
     try:
@@ -2904,7 +2915,7 @@ def _run_model_review(
     child.update(lockdown_env(worktree))
     try:
         run_status, _code, out, err = run_bounded(
-            prepared.argv, child, worktree, float(args.timeout_s), state
+            prepared.argv, child, worktree, limit, state
         )
     finally:
         prepared.close()
@@ -3204,6 +3215,54 @@ def build_local(argv: list[str] | None = None) -> int:
                 except OSError:
                     pass
 
+        def _over_wall() -> bool:
+            return (time.monotonic() - started) >= args.wall_timeout_s
+
+        def _clamp(requested: float) -> float | None:
+            left = args.wall_timeout_s - (time.monotonic() - started)
+            if left <= 0:
+                return None
+            return min(float(requested), left)
+
+        def _budget_hit(limit: float | None, requested: float, timed_out: bool) -> bool:
+            if state.interrupted or state.mem_edge:
+                return False
+            if _over_wall():
+                return True
+            return bool(timed_out and limit is not None and limit + 1e-3 < float(requested))
+
+        def _finish_wall():
+            nonlocal status, reason, exit_code
+            status, reason, exit_code = "TIMEOUT", "wall-timeout", EXIT_TIMEOUT
+            _record_attempt(
+                attempts_used,
+                attempt_t0,
+                mem_snap,
+                "TIMEOUT",
+                "wall-timeout",
+                checks,
+                model_review,
+                diff_stats,
+                diff_text,
+            )
+            return finish()
+
+        def _run_gate():
+            limit = _clamp(args.test_timeout_s)
+            if limit is None:
+                return None, True
+            rec = run_tests(
+                args.test_cmd_s,
+                worktree,
+                test_env,
+                limit,
+                state,
+                repo=repo,
+                unsafe=bool(args.unsafe_no_sandbox),
+            )
+            timed_out = rec.get("exit") == 124 and "test-timeout" in str(rec.get("tail") or "")
+            return rec, _budget_hit(limit, args.test_timeout_s, timed_out)
+
         while attempts_used < max_attempts:
             attempts_used += 1
             attempt_t0 = time.monotonic()
@@ -3277,15 +3336,9 @@ def build_local(argv: list[str] | None = None) -> int:
                 watcher.start()
                 watcher_started = True
 
-            tests_before = run_tests(
-                args.test_cmd_s,
-                worktree,
-                test_env,
-                args.test_timeout_s,
-                state,
-                repo=repo,
-                unsafe=bool(args.unsafe_no_sandbox),
-            )
+            tests_before, wall_hit = _run_gate()
+            if wall_hit:
+                return _finish_wall()
             if tests_before.get("aborted") == "interrupted" or state.interrupted:
                 status, reason, exit_code = "FAIL", "interrupted", EXIT_FAIL
                 _record_attempt(attempts_used, attempt_t0, mem_snap, "FAIL", "interrupted", None, None, diff_stats, "")
@@ -3331,10 +3384,13 @@ def build_local(argv: list[str] | None = None) -> int:
                 port = _loopback_port(openai_base)
                 if port:
                     child["OPENAI_BASE_URL"] = "http://127.0.0.1:%d/v1" % port
+            agent_limit = _clamp(args.timeout_s)
+            if agent_limit is None:
+                return _finish_wall()
             agent_started = True
             _mark_loaded(state, not model_was_loaded)
             agent_t0 = time.monotonic()
-            run_status, _code, out, err = run_bounded(prepared.argv, child, worktree, args.timeout_s, state)
+            run_status, _code, out, err = run_bounded(prepared.argv, child, worktree, agent_limit, state)
             agent_seconds += time.monotonic() - agent_t0
             prepared.close()
             prepared = None
@@ -3356,6 +3412,8 @@ def build_local(argv: list[str] | None = None) -> int:
             if os.environ.get("PFY_LOCAL_BUILD_INJECT_CRASH") == "post" and run_status == "done":
                 raise RuntimeError("injected post crash")
 
+            if _budget_hit(agent_limit, args.timeout_s, run_status == "timeout"):
+                return _finish_wall()
             if run_status == "interrupted" or state.interrupted:
                 status, reason, exit_code = "FAIL", "interrupted", EXIT_FAIL
                 _record_attempt(attempts_used, attempt_t0, mem_snap, "FAIL", "interrupted", None, None, diff_stats, "")
@@ -3373,15 +3431,9 @@ def build_local(argv: list[str] | None = None) -> int:
             diff_text, diff_stats = _collect_diff(worktree, test_env, changed)
             reviewed_digests = {rel: _reviewed_digest(worktree, rel) for rel in changed}
             if not changed:
-                tests_after = run_tests(
-                    args.test_cmd_s,
-                    worktree,
-                    test_env,
-                    args.test_timeout_s,
-                    state,
-                    repo=repo,
-                    unsafe=bool(args.unsafe_no_sandbox),
-                )
+                tests_after, wall_hit = _run_gate()
+                if wall_hit:
+                    return _finish_wall()
                 if tests_after.get("aborted") == "interrupted" or state.interrupted:
                     status, reason, exit_code = "FAIL", "interrupted", EXIT_FAIL
                     _record_attempt(attempts_used, attempt_t0, mem_snap, "FAIL", "interrupted", None, None, diff_stats, diff_text)
@@ -3421,15 +3473,9 @@ def build_local(argv: list[str] | None = None) -> int:
                 )
                 return finish()
 
-            tests_after = run_tests(
-                args.test_cmd_s,
-                worktree,
-                test_env,
-                args.test_timeout_s,
-                state,
-                repo=repo,
-                unsafe=bool(args.unsafe_no_sandbox),
-            )
+            tests_after, wall_hit = _run_gate()
+            if wall_hit:
+                return _finish_wall()
             if tests_after.get("aborted") == "interrupted" or state.interrupted:
                 status, reason, exit_code = "FAIL", "interrupted", EXIT_FAIL
                 _record_attempt(attempts_used, attempt_t0, mem_snap, "FAIL", "interrupted", None, None, diff_stats, diff_text)
@@ -3458,15 +3504,9 @@ def build_local(argv: list[str] | None = None) -> int:
                     attempts_used, attempt_t0, mem_snap, "FAIL", "tests-tampered", None, None, diff_stats, diff_text
                 )
                 return finish()
-            again = run_tests(
-                args.test_cmd_s,
-                worktree,
-                test_env,
-                args.test_timeout_s,
-                state,
-                repo=repo,
-                unsafe=bool(args.unsafe_no_sandbox),
-            )
+            again, wall_hit = _run_gate()
+            if wall_hit:
+                return _finish_wall()
             if again.get("aborted") == "interrupted" or state.interrupted:
                 status, reason, exit_code = "FAIL", "interrupted", EXIT_FAIL
                 _record_attempt(attempts_used, attempt_t0, mem_snap, "FAIL", "interrupted", None, None, diff_stats, diff_text)
@@ -3583,6 +3623,9 @@ def build_local(argv: list[str] | None = None) -> int:
                 return finish()
 
             gate_tail = str(tests_after.get("tail") or "") if isinstance(tests_after, dict) else ""
+            review_limit = _clamp(args.timeout_s)
+            if review_limit is None:
+                return _finish_wall()
             review_status, model_review = _run_model_review(
                 args,
                 worktree,
@@ -3592,7 +3635,10 @@ def build_local(argv: list[str] | None = None) -> int:
                 gate_tail,
                 state,
                 repo,
+                review_timeout=review_limit,
             )
+            if _budget_hit(review_limit, args.timeout_s, review_status == "timeout"):
+                return _finish_wall()
             if review_status == "timeout":
                 status, reason, exit_code = "TIMEOUT", "timeout", EXIT_TIMEOUT
                 _record_attempt(attempts_used, attempt_t0, mem_snap, "TIMEOUT", "timeout", checks, model_review, diff_stats, diff_text)
@@ -3712,17 +3758,23 @@ def build_local(argv: list[str] | None = None) -> int:
             return finish()
         sha_now = _git(worktree, ["rev-parse", "HEAD"], env=commit_env)
         commit_sha = (sha_now.stdout or "").strip()
+        recheck_limit = _clamp(args.test_timeout_s)
+        if recheck_limit is None:
+            return _finish_wall()
         recheck_status = _recheck_commit(
             repo,
             worktree,
             commit_sha,
             args.test_cmd_s,
             test_env,
-            args.test_timeout_s,
+            recheck_limit,
             state,
             tests_before,
             bool(args.unsafe_no_sandbox),
         )
+        if _budget_hit(recheck_limit, args.test_timeout_s, False) and _over_wall():
+            _rollback_head(worktree, commit_env)
+            return _finish_wall()
         if recheck_status == "interrupted" or state.interrupted:
             _rollback_head(worktree, commit_env)
             status, reason, exit_code = "FAIL", "interrupted", EXIT_FAIL

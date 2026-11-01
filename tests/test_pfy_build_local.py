@@ -292,6 +292,12 @@ elif scenario == "plan":
             steps = []
     step = steps[n] if n < len(steps) else (steps[-1] if steps else {"mode": "fix"})
     mode = step.get("mode") or "noop"
+    if mode == "crash":
+        sys.stderr.write("Traceback: stub builder crash\n")
+        os._exit(70)
+    if mode == "sleep":
+        time.sleep(float(step.get("seconds") or 1))
+        raise SystemExit(0)
     if mode == "fix" and calc.exists():
         calc.write_text(calc.read_text(encoding="utf-8").replace("return a + b + 1", "return a + b"), encoding="utf-8")
     elif mode == "worse" and calc.exists():

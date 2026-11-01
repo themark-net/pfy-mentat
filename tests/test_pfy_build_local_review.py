@@ -257,6 +257,29 @@ class ReviewLoopTests(unittest.TestCase):
         rows = _prompts(self.prompts)
         self.assertIn("tests/test_other.py", rows[1]["prompt"])
 
+    def test_wall_budget_stops_a_sleeping_retry_loop(self):
+        # S2: the loop had no overall clock. A stub that sleeps 30s on every
+        # attempt, with retries left, must end TIMEOUT once --wall-timeout
+        # is spent. It must not run out the retry cap as no-change.
+        task = "fix add so one plus one is two\nfiles: src/calc.py\n"
+        started = time.monotonic()
+        proc, receipt = self._run(
+            task,
+            [{"mode": "sleep", "seconds": 30}],
+            extra=["--wall-timeout", "2", "--timeout", "30", "--test-timeout", "20", "--retries", "2"],
+            timeout=45,
+        )
+        elapsed = time.monotonic() - started
+        self.assertEqual(proc.returncode, 3, proc.stdout + proc.stderr)
+        data = self._receipt(proc, receipt)
+        self.assertEqual(data["status"], "TIMEOUT")
+        self.assertEqual(data["reason"], "wall-timeout")
+        self.assertLess(data["attempts"], 3)
+        self.assertLess(elapsed, 12, proc.stdout + proc.stderr)
+        self.assertIsNone(data["commit"])
+        self.assertIsNone(data["branch"])
+        self.inner.assert_clean_origin()
+
     def test_a_reviewer_that_keeps_rejecting_stops_at_three_attempts(self):
         self.inner.httpd.review_queue = [
             json.dumps({"verdict": "reject", "reasons": ["too broad"]}),
