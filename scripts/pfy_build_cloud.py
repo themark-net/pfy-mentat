@@ -480,6 +480,9 @@ def _protected(path: str, patterns: tuple[str, ...] = DEFAULT_PROTECT) -> bool:
     if not rel or rel.startswith("../") or rel == ".." or "/../" in "/%s/" % rel:
         return True
     name = Path(rel).name
+    # .env.bak, .env.local, and other .env.* names are secrets. .env.example is a sample.
+    if name != ".env.example" and (name == ".env" or name.startswith(".env.")):
+        return True
     for pattern in patterns:
         pat = _norm_rel(pattern)
         if pat and _glob_match(rel, name, pat):

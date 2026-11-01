@@ -2170,6 +2170,60 @@ class CloudBuildFailureTests(unittest.TestCase):
         self.assertEqual(_git(self.repo, "show", branch + ":kept.py").stdout, "value = 1\n")
         self.assertEqual(_git(self.repo, "rev-parse", "HEAD").stdout.strip(), head)
 
+    def test_env_variants_are_protected_and_example_can_land(self) -> None:
+        # Fail: .env.bak, nested .env.local, and .env.production are committed.
+        # Recover: the attempt is protected-path-changed, the secret text stays
+        # out of the receipt, and a retry that writes .env.example can land.
+        grok = _write_exe(
+            self.side / "grok.py",
+            "#!/usr/bin/env python3\n"
+            "import sys\n"
+            "from pathlib import Path\n"
+            "blob = '\\n'.join(sys.argv)\n"
+            "if 'PFY-CLOUD-REVIEW' in blob:\n"
+            "    print('verdict: accept')\n"
+            "    raise SystemExit(0)\n"
+            "if 'protected-path-changed' in blob:\n"
+            "    Path('.env.bak').unlink(missing_ok=True)\n"
+            "    Path('nested/.env.local').unlink(missing_ok=True)\n"
+            "    Path('nested/.env.production').unlink(missing_ok=True)\n"
+            "    Path('.env.example').write_text('EXAMPLE=1\\n', encoding='utf-8')\n"
+            "    Path('kept.py').write_text('value = 1\\n', encoding='utf-8')\n"
+            "    raise SystemExit(0)\n"
+            "Path('nested').mkdir(parents=True, exist_ok=True)\n"
+            "Path('.env.bak').write_text('TOKEN=bak-secret-value-347\\n', encoding='utf-8')\n"
+            "Path('nested/.env.local').write_text('TOKEN=local-secret-value-347\\n', encoding='utf-8')\n"
+            "Path('nested/.env.production').write_text('TOKEN=prod-secret-value-347\\n', encoding='utf-8')\n"
+            "Path('kept.py').write_text('value = 1\\n', encoding='utf-8')\n"
+            "raise SystemExit(0)\n",
+        )
+        head = _git(self.repo, "rev-parse", "HEAD").stdout.strip()
+        proc = self._run_task(grok, self._gate(), "add kept", extra=["--retries", "1"])
+        text = (proc.stdout or "") + (proc.stderr or "")
+        self.assertEqual(proc.returncode, 0, text)
+        match = re.search(r"PASS ok branch=(\S+) receipt=(\S+)", proc.stdout or "")
+        self.assertIsNotNone(match, proc.stdout)
+        branch = match.group(1)
+        receipt_path = Path(match.group(2))
+        payload = json.loads(receipt_path.read_text(encoding="utf-8"))
+        receipt_text = receipt_path.read_text(encoding="utf-8")
+        self.assertEqual(len(payload["attempts"]), 2)
+        self.assertEqual(payload["attempts"][0]["reason"], "protected-path-changed")
+        self.assertEqual(payload["recovery"], "")
+        self.assertNotIn("bak-secret-value-347", receipt_text)
+        self.assertNotIn("local-secret-value-347", receipt_text)
+        self.assertNotIn("prod-secret-value-347", receipt_text)
+        self.assertEqual(payload["attempts"][1]["status"], "PASS")
+        names = _git(self.repo, "ls-tree", "-r", "--name-only", branch).stdout.splitlines()
+        self.assertIn("kept.py", names)
+        self.assertIn(".env.example", names)
+        self.assertNotIn(".env.bak", names)
+        self.assertNotIn("nested/.env.local", names)
+        self.assertNotIn("nested/.env.production", names)
+        self.assertEqual(_git(self.repo, "show", branch + ":kept.py").stdout, "value = 1\n")
+        self.assertEqual(_git(self.repo, "show", branch + ":.env.example").stdout, "EXAMPLE=1\n")
+        self.assertEqual(_git(self.repo, "rev-parse", "HEAD").stdout.strip(), head)
+
     def test_keep_worktree_leaves_the_directory(self) -> None:
         grok = _write_exe(
             self.side / "grok.py",
