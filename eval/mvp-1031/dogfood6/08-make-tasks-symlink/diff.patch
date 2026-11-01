@@ -1,0 +1,39 @@
+diff --git a/examples/hermes-bakeoff/make_tasks.py b/examples/hermes-bakeoff/make_tasks.py
+index 8b27647..fb08cc2 100644
+--- a/examples/hermes-bakeoff/make_tasks.py
++++ b/examples/hermes-bakeoff/make_tasks.py
+@@ -4,6 +4,8 @@
+ from __future__ import annotations
+ 
+ import json
++import os
++import tempfile
+ from pathlib import Path
+ 
+ from fixtures import bench_receipt, catalog_lookup, compute_sum, tools_query, value_text
+@@ -297,9 +299,24 @@ def build() -> dict:
+     }
+ 
+ 
++def _write_regular_file(path: Path, text: str) -> None:
++    """Write text as a regular file. Replace a symlink at path; leave its target bytes."""
++    fd, tmp_name = tempfile.mkstemp(dir=path.parent)
++    try:
++        with os.fdopen(fd, "w", encoding="utf-8") as handle:
++            handle.write(text)
++        os.replace(tmp_name, path)
++    except BaseException:
++        try:
++            os.unlink(tmp_name)
++        except OSError:
++            pass
++        raise
++
++
+ def main() -> None:
+     payload = build()
+-    OUT.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
++    _write_regular_file(OUT, json.dumps(payload, indent=2) + "\n")
+     print(f"wrote {OUT} n={payload['n_tasks']}")
+ 
+ 

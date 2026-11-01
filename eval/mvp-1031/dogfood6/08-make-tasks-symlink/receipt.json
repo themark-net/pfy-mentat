@@ -1,0 +1,45 @@
+{
+  "schema": "pfy-cloud-build/1",
+  "status": "PASS",
+  "reason": "ok",
+  "exit_code": 0,
+  "branch": "cloud/edit-only-examples-hermes-bakeoff-make-t-20261101T031544487330Z",
+  "commit": "1ac3db4d3aa386f1a2192369fff7fbfeeacb5048",
+  "base": "HEAD",
+  "review": {
+    "verdict": "accept",
+    "reasons": []
+  },
+  "attempts": [
+    {
+      "n": 1,
+      "status": "PASS",
+      "reason": "ok",
+      "output_tail": "I'll edit only `examples/hermes-bakeoff/make_tasks.py` so the `OUT` write replaces a symlink instead of following it, then run the symlink test.`Path.write_text` follows `OUT` when it is a symlink. I'll add one helper that writes a temp file in the parent directory and `os.replace`s it onto the destination, and use it only for that write.`main` now writes `OUT` through `_write_regular_file`, which creates a temp file in the parent directory and `os.replace`s it onto the destination. A symlink, including a broken one, is replaced by a regular file, and the symlink target is left untouched.\n\n`python3 -m unittest tests.test_make_tasks_symlink` passed: 3 tests, OK.\n\nI'll check the diff against the task: one helper, used only for the `OUT` write, and nothing that widens the change.verdict: accept\n\nThe diff only edits `examples/hermes-bakeoff/make_tasks.py`. `_write_regular_file` creates a temp file in the parent directory and `os.replace`s it onto `OUT`, and `main` is the only caller. The payload is still `json.dumps(..., indent=2)` plus a trailing newline. `OUT`, `build`, and `labels_written_stamp` are unchanged, and there is no mkdir, no test edit, no recursive delete, and no root-path command.\n",
+      "review": {
+        "verdict": "accept",
+        "reasons": []
+      }
+    }
+  ],
+  "gate": {
+    "cmd": "python3 -m unittest tests.test_make_tasks_symlink",
+    "before": {
+      "cmd": "python3 -m unittest tests.test_make_tasks_symlink",
+      "exit": 1,
+      "tail": "wrote /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood6-1031/tmp/target-08/tmp/cloud-build/20261101T031544487330Z/tmp/pfy-make-tasks-symlink-1uuepptj/tasks.json n=27\nwrote /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood6-1031/tmp/target-08/tmp/cloud-build/20261101T031544487330Z/tmp/pfy-make-tasks-symlink-1uuepptj/tasks.json n=27\nwrote /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood6-1031/tmp/target-08/tmp/cloud-build/20261101T031544487330Z/tmp/pfy-make-tasks-symlink-d1cy8prr/tasks.json n=27\nwrote /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood6-1031/tmp/target-08/tmp/cloud-build/20261101T031544487330Z/tmp/pfy-make-tasks-symlink-8lo8ty87/tasks.json n=27\n\n.FF\n======================================================================\nFAIL: test_write_replaces_broken_symlink (tests.test_make_tasks_symlink.MakeTasksSymlinkTests.test_write_replaces_broken_symlink)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood6-1031/tmp/target-08/tmp/cloud-build/20261101T031544487330Z/tests/test_make_tasks_symlink.py\", line 56, in test_write_replaces_broken_symlink\n    self.assertFalse((self.tmp / \"missing-tasks\").exists())\n    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: True is not false\n\n======================================================================\nFAIL: test_write_replaces_symlink_and_leaves_target (tests.test_make_tasks_symlink.MakeTasksSymlinkTests.test_write_replaces_symlink_and_leaves_target)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood6-1031/tmp/target-08/tmp/cloud-build/20261101T031544487330Z/tests/test_make_tasks_symlink.py\", line 48, in test_write_replaces_symlink_and_leaves_target\n    self.assertTrue(target.read_text(encoding=\"utf-8\") == \"KEEP\\n\")\n    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: False is not true\n\n----------------------------------------------------------------------\nRan 3 tests in 0.007s\n\nFAILED (failures=2)\n",
+      "started": true
+    },
+    "after": {
+      "cmd": "python3 -m unittest tests.test_make_tasks_symlink",
+      "exit": 0,
+      "tail": "wrote /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood6-1031/tmp/target-08/tmp/cloud-build/20261101T031544487330Z/tmp/pfy-make-tasks-symlink-z6gcyqgy/tasks.json n=27\nwrote /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood6-1031/tmp/target-08/tmp/cloud-build/20261101T031544487330Z/tmp/pfy-make-tasks-symlink-z6gcyqgy/tasks.json n=27\nwrote /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood6-1031/tmp/target-08/tmp/cloud-build/20261101T031544487330Z/tmp/pfy-make-tasks-symlink-iq5vt1xd/tasks.json n=27\nwrote /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood6-1031/tmp/target-08/tmp/cloud-build/20261101T031544487330Z/tmp/pfy-make-tasks-symlink-md2ac26t/tasks.json n=27\n\n...\n----------------------------------------------------------------------\nRan 3 tests in 0.007s\n\nOK\n",
+      "started": true
+    }
+  },
+  "recovery": "",
+  "pushed": false,
+  "worktree_removed": true,
+  "task": "Edit only examples/hermes-bakeoff/make_tasks.py. Do not edit any file under tests/. Do not add a file. Do not commit. Do not push. main writes the module global OUT with Path.write_text, which follows a symlink and overwrites the target. Tests assign OUT to a temporary path before calling main. Add one helper in this file that writes text as a regular file: create a temp file in the parent directory and os.replace it onto the destination, so a symlink is replaced and the target bytes stay. Use that helper for the OUT write in main only. Do not change the OUT constant, build, or labels_written_stamp. Do not add a mkdir. A regular OUT file still receives json.dumps of the payload with indent 2 plus a trailing newline. A symlink, including a broken symlink, becomes a regular file and the target bytes stay. A broken symlink must not create the missing target. Do not add an em dash or an en dash.",
+  "finished_at": "2026-11-01T03:17:33Z"
+}
