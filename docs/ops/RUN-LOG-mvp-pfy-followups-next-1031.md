@@ -69,3 +69,6 @@ Risks:
 ## Items
 
 (one line per finished item: `item | commit | tests | result`)
+
+#300-d4-smolvm-stderr | 96a5b8f | nice -n 19 python3 -m unittest tests.test_x_intake_smoke_109_111: 13 OK in 3.180s. Before the fix, test_h failed because both runs returned the stdout cache line. | stderr Pulling image wins when a guest cache line is also present; cache-only still counts
+#300-d2-daemon-stop | d97f0c2 | nice -n 19 python3 -m unittest tests.test_x_intake_smoke_112_114: 8 OK in 9.831s. Before the fix, the daemon-stop test exited 0 with "daemon stopped". | exit 1 and the receipt reason is the daemon-stop timeout text when the lock is already gone
