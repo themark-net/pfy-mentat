@@ -24,6 +24,7 @@ This runner does not keep a second copy of those phrases.
 from __future__ import annotations
 
 import argparse
+import fcntl
 import hashlib
 import json
 import os
@@ -59,6 +60,30 @@ def classify_runner_failure(code: int, stdout: str, stderr: str) -> str:
     if _NOT_SIGNED_IN.search("%s\n%s" % (stdout or "", stderr or "")):
         return "unauthenticated"
     return kind
+
+
+_NETWORK_FAILURE = (
+    "connection refused",
+    "connection reset by peer",
+    "failed to establish a new connection",
+    "name or service not known",
+    "network down",
+    "network is unreachable",
+    "network unreachable",
+    "no route to host",
+    "temporary failure in name resolution",
+)
+
+
+def network_failure_text(stdout: str, stderr: str) -> bool:
+    """True when grok text says the endpoint could not be reached.
+
+    Exit 0 is not a network failure. Callers check the exit code first.
+    Other non-zero exits still run the gate.
+    """
+    lowered = "%s\n%s" % (stdout or "", stderr or "")
+    lowered = lowered.lower()
+    return any(phrase in lowered for phrase in _NETWORK_FAILURE)
 
 
 EXIT_OK = 0
@@ -118,6 +143,26 @@ class BaseMissing(Exception):
     def __init__(self, ref: str) -> None:
         super().__init__(ref)
         self.ref = ref
+
+
+class BuildLockBusy(Exception):
+    """Another cloud build holds this repo's lock."""
+
+
+def acquire_build_lock(repo: Path):
+    """Exclusive non-blocking lock. Raises BuildLockBusy when it is held.
+
+    The returned file must stay open. Closing it releases the lock.
+    """
+    path = repo / "tmp" / "cloud-build.lock"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    handle = open(path, "a+")
+    try:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        handle.close()
+        raise BuildLockBusy()
+    return handle
 
 
 class State:
@@ -287,6 +332,123 @@ def _norm_rel(path: str) -> str:
     if normalized in ("", "."):
         return ""
     return normalized
+
+
+def _rel_under(root: Path, full: Path) -> str:
+    try:
+        return _norm_rel(str(full.relative_to(root)))
+    except ValueError:
+        return ""
+
+
+def _skip_walk(rel: str) -> bool:
+    if not rel:
+        return True
+    if rel in {".git", "tmp", "__pycache__", ".pytest_cache"}:
+        return True
+    return (
+        rel.startswith(".git/")
+        or rel.startswith("tmp/")
+        or rel.startswith("__pycache__/")
+        or "/__pycache__/" in rel
+        or rel.startswith(".pytest_cache/")
+    )
+
+
+def _link_escapes(root: Path, link: Path) -> bool:
+    """True when the symlink target resolves outside root.
+
+    A missing target still counts. The check does not follow the link to
+    read or write it.
+    """
+    try:
+        raw = os.readlink(link)
+    except OSError:
+        return True
+    if not raw:
+        return True
+    target = Path(raw) if raw.startswith("/") else (link.parent / raw)
+    try:
+        target.resolve().relative_to(root)
+    except ValueError:
+        return True
+    return False
+
+
+def escaping_symlinks(worktree: Path) -> list[str]:
+    """Symlinks in the worktree whose targets resolve outside it."""
+    if not worktree.is_dir():
+        return []
+    root = worktree.resolve()
+    bad: list[str] = []
+    for dirpath, dirnames, filenames in os.walk(worktree, followlinks=False):
+        base = Path(dirpath)
+        kept: list[str] = []
+        for name in dirnames:
+            full = base / name
+            rel = _rel_under(worktree, full)
+            if _skip_walk(rel):
+                continue
+            if full.is_symlink():
+                if _link_escapes(root, full):
+                    bad.append(rel)
+                continue
+            kept.append(name)
+        dirnames[:] = kept
+        for name in filenames:
+            full = base / name
+            if not full.is_symlink():
+                continue
+            rel = _rel_under(worktree, full)
+            if _skip_walk(rel):
+                continue
+            if _link_escapes(root, full):
+                bad.append(rel)
+    return sorted(set(bad))
+
+
+def tree_manifest(worktree: Path) -> dict[str, str]:
+    """Content fingerprint of the worktree, ignoring git, tmp, and bytecode.
+
+    Symlinks are recorded as their link text. The walk does not follow them.
+    """
+    found: dict[str, str] = {}
+    if not worktree.is_dir():
+        return found
+    for dirpath, dirnames, filenames in os.walk(worktree, followlinks=False):
+        base = Path(dirpath)
+        kept: list[str] = []
+        for name in dirnames:
+            full = base / name
+            rel = _rel_under(worktree, full)
+            if _skip_walk(rel):
+                continue
+            if full.is_symlink():
+                try:
+                    found[rel] = "sym:" + os.readlink(full)
+                except OSError:
+                    found[rel] = "sym:unreadable"
+                continue
+            kept.append(name)
+        dirnames[:] = kept
+        for name in filenames:
+            if name.endswith(".pyc"):
+                continue
+            full = base / name
+            rel = _rel_under(worktree, full)
+            if _skip_walk(rel):
+                continue
+            if full.is_symlink():
+                try:
+                    found[rel] = "sym:" + os.readlink(full)
+                except OSError:
+                    found[rel] = "sym:unreadable"
+                continue
+            try:
+                found[rel] = hashlib.sha256(full.read_bytes()).hexdigest()
+            except OSError:
+                found[rel] = "unreadable"
+    return found
 
 
 def _glob_match(rel: str, name: str, pat: str) -> bool:
@@ -486,6 +648,7 @@ def auth_recovery(task: str) -> str:
 
 
 TERMINAL_FAILURE_REASONS = (
+    "build-busy",
     "commit-failed",
     "commit-recheck-failed",
     "interrupted",
@@ -495,7 +658,10 @@ TERMINAL_FAILURE_REASONS = (
     "rate-limit",
     "review-rejected",
     "runner-crash",
+    "gate-rewrote",
+    "network",
     "scope-commit-mismatch",
+    "symlink-escape",
     "tests",
     "tests-flaky",
     "tests-tampered",
@@ -574,6 +740,32 @@ def failure_recovery(reason: str, task: str, detail: str = "") -> str:
             "Mark: the attempt changed a protected path (%s). "
             "Remove that change and rerun ./pfy build %s. "
             "auth.json, .env, and grok-home stay out of the commit."
+            % (shown, quoted)
+        )
+    if reason == "build-busy":
+        return (
+            "Mark: another cloud build is already running on this repo. "
+            "Wait for it to finish, then rerun ./pfy build %s."
+            % quoted
+        )
+    if reason == "network":
+        return (
+            "Mark: the cloud endpoint could not be reached. "
+            "Check the network, then rerun ./pfy build %s."
+            % quoted
+        )
+    if reason == "gate-rewrote":
+        return (
+            "Mark: the gate rewrote the worktree. The branch was not kept. "
+            "Fix the gate so it only checks, then rerun ./pfy build %s."
+            % quoted
+        )
+    if reason == "symlink-escape":
+        shown = (detail or "").strip() or "a symlink"
+        return (
+            "Mark: a symlink points outside the worktree (%s). "
+            "Remove it and rerun ./pfy build %s. "
+            "The build did not commit that link."
             % (shown, quoted)
         )
     lines = {
@@ -896,6 +1088,7 @@ class CloudBuild:
         self.finished = False
         self.max_attempts = 1 if args.no_review else args.retries + 1
         self.recheck_tail = ""
+        self.lock_fh = None
 
     def child_env(self) -> dict[str, str]:
         env = os.environ.copy()
@@ -1133,6 +1326,45 @@ class CloudBuild:
                 pass
         self.worktree_removed = not self.worktree.exists()
 
+    def _release_lock(self) -> None:
+        handle = getattr(self, "lock_fh", None)
+        if handle is None:
+            return
+        try:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+        except OSError:
+            pass
+        try:
+            handle.close()
+        except OSError:
+            pass
+        self.lock_fh = None
+
+    def _clear_own_pid(self) -> None:
+        """Remove the pid file only when it names this process.
+
+        Fail: a second build's finish unlinks the live build's pid file.
+        Recover: leave a pid that belongs to someone else.
+        """
+        if not self.pid_path.is_file():
+            return
+        try:
+            data = json.loads(self.pid_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return
+        if not isinstance(data, dict):
+            return
+        try:
+            pid = int(data.get("pid") or 0)
+        except (TypeError, ValueError):
+            return
+        if pid != os.getpid():
+            return
+        try:
+            self.pid_path.unlink()
+        except OSError:
+            pass
+
     def fail(self, status: str, reason: str, code: int, recovery: str = "") -> int:
         self.status = status
         self.reason = reason
@@ -1183,11 +1415,8 @@ class CloudBuild:
             write_receipt(self.receipt_path, payload)
         except OSError as exc:
             print("FAIL: receipt: %s" % exc, file=sys.stderr)
-        try:
-            if self.pid_path.is_file():
-                self.pid_path.unlink()
-        except OSError:
-            pass
+        self._clear_own_pid()
+        self._release_lock()
         print(_summary(self.status, self.reason, self.branch, self.receipt_path))
         if self.exit_code != EXIT_OK:
             print("FAIL: %s" % self.reason, file=sys.stderr)
@@ -1201,6 +1430,17 @@ class CloudBuild:
         self.recovery_detail = "gate"
         self.record(number, "TIMEOUT", "timeout", output)
         return self.fail("TIMEOUT", "timeout", EXIT_TIMEOUT, "")
+
+    def _gate_rewrote_fail(self, number: int, before: dict[str, str], output: str) -> int | None:
+        """None when the gate left the tree alone. Else a terminal failure.
+
+        Fail: the gate rewrites a file and that rewrite is what gets committed.
+        Recover: do not retry. A gate that edits will edit again.
+        """
+        if self.worktree is None or tree_manifest(self.worktree) == before:
+            return None
+        self.record(number, "FAIL", "gate-rewrote", output)
+        return self.fail("FAIL", "gate-rewrote", EXIT_FAIL, "")
 
     def prepare_worktree(self) -> str | None:
         dest = self.repo / "tmp" / "cloud-build" / self.stamp
@@ -1240,12 +1480,26 @@ class CloudBuild:
                 worktree_recovery(self.args.task_text, self.base_ref, self.recovery_detail or "add-failed"),
             )
         assert self.worktree is not None
+        escaped = escaping_symlinks(self.worktree)
+        if escaped:
+            # Fail: a committed symlink points outside the worktree, so the
+            # agent can overwrite that target before review. Recover: stop
+            # before grok and before the gate, and keep no branch.
+            self.recovery_detail = ", ".join(escaped)
+            self.record(0, "FAIL", "symlink-escape", "")
+            return self.fail("FAIL", "symlink-escape", EXIT_FAIL, "")
+        base_manifest = tree_manifest(self.worktree)
         self.gate_before = self.gate()
         if (self.gate_before or {}).get("aborted") == "timeout":
             return self._gate_timeout_fail(0, str((self.gate_before or {}).get("tail") or ""))
         if self.state.interrupted or (self.gate_before or {}).get("aborted") == "interrupted":
             self.record(0, "FAIL", "interrupted", "")
             return self.fail("FAIL", "interrupted", EXIT_FAIL, "")
+        rewrote = self._gate_rewrote_fail(
+            0, base_manifest, str((self.gate_before or {}).get("tail") or "")
+        )
+        if rewrote is not None:
+            return rewrote
         blocked = before_gate_block(self.gate_before, self.args.test_cmd)
         if blocked:
             tail = str((self.gate_before or {}).get("tail") or "")
@@ -1284,6 +1538,20 @@ class CloudBuild:
             if kind == "unauthenticated":
                 self.record(number, "FAIL", "unauthenticated", output)
                 return self.fail("FAIL", "unauthenticated", EXIT_FAIL, auth_recovery(self.args.task_text))
+            if code not in (0, None) and network_failure_text(out, err):
+                # Fail: a closed endpoint still commits the partial edit.
+                # Recover: do not run the gate and do not commit.
+                self.record(number, "FAIL", "network", output)
+                return self.fail("FAIL", "network", EXIT_FAIL, "")
+            escaped = escaping_symlinks(self.worktree)
+            if escaped:
+                # Fail: the agent adds a symlink that resolves outside the
+                # worktree and the commit records that link. Recover: refuse
+                # the commit. A write the agent already made through the new
+                # link is not rolled back here.
+                self.recovery_detail = ", ".join(escaped)
+                self.record(number, "FAIL", "symlink-escape", output)
+                return self.fail("FAIL", "symlink-escape", EXIT_FAIL, "")
             changed = files_changed(self.worktree)
             protected_hits = [path for path in changed if _protected(path)]
             if protected_hits:
@@ -1304,6 +1572,7 @@ class CloudBuild:
                 if number < self.max_attempts:
                     continue
                 return self.fail("FAIL", "tests-tampered", EXIT_FAIL, "")
+            agent_manifest = tree_manifest(self.worktree)
             after = self.gate()
             self.gate_after = after
             if after.get("aborted") == "timeout":
@@ -1311,6 +1580,11 @@ class CloudBuild:
             if self.state.interrupted or after.get("aborted") == "interrupted":
                 self.record(number, "FAIL", "interrupted", output)
                 return self.fail("FAIL", "interrupted", EXIT_FAIL, "")
+            rewrote = self._gate_rewrote_fail(
+                number, agent_manifest, output + "\n" + str(after.get("tail") or "")
+            )
+            if rewrote is not None:
+                return rewrote
             if not changed:
                 feedback = "no-change\n%s" % (after.get("tail") or "")
                 self.record(number, "FAIL", "no-change", output)
@@ -1332,6 +1606,11 @@ class CloudBuild:
             if self.state.interrupted or again.get("aborted") == "interrupted":
                 self.record(number, "FAIL", "interrupted", output)
                 return self.fail("FAIL", "interrupted", EXIT_FAIL, "")
+            rewrote = self._gate_rewrote_fail(
+                number, agent_manifest, output + "\n" + str(again.get("tail") or "")
+            )
+            if rewrote is not None:
+                return rewrote
             if again.get("exit") != 0 or not again.get("started"):
                 feedback = "gate failed: tests-flaky\n%s" % (again.get("tail") or "")
                 self.record(number, "FAIL", "tests-flaky", output)
@@ -1362,6 +1641,9 @@ class CloudBuild:
                 if review_kind == "unauthenticated":
                     self.record(number, "FAIL", "unauthenticated", output)
                     return self.fail("FAIL", "unauthenticated", EXIT_FAIL, auth_recovery(self.args.task_text))
+                if review_code not in (0, None) and network_failure_text(review_out, review_err):
+                    self.record(number, "FAIL", "network", output)
+                    return self.fail("FAIL", "network", EXIT_FAIL, "")
                 verdict, reasons = parse_verdict(review_output)
                 if verdict == "accept" and diff_aims_at_root(diff_text):
                     verdict = "reject"
@@ -1384,6 +1666,11 @@ class CloudBuild:
                         continue
                     return self.fail("FAIL", "review-rejected", EXIT_FAIL, "")
                 self.review = {"verdict": "skipped", "reasons": []}
+            escaped = escaping_symlinks(self.worktree)
+            if escaped:
+                self.recovery_detail = ", ".join(escaped)
+                self.record(number, "FAIL", "symlink-escape", output)
+                return self.fail("FAIL", "symlink-escape", EXIT_FAIL, "")
             err = self.commit_paths(changed)
             if err == "timeout":
                 return self._gate_timeout_fail(number, output)
@@ -1540,6 +1827,22 @@ def main(argv: list[str] | None = None) -> int:
     if args.dry_run:
         return _dry_run(args, repo, base_ref, receipt)
     build = CloudBuild(args, repo, base_ref, base_sha, resolve_grok(args))
+    try:
+        build.lock_fh = acquire_build_lock(repo)
+    except BuildLockBusy:
+        # Fail: a second build overwrites the live pid file and can PASS
+        # beside the first. Recover: refuse before grok and leave that pid.
+        build.record(0, "FAIL", "build-busy", "")
+        return build.fail("FAIL", "build-busy", EXIT_FAIL, "")
+    except OSError:
+        build.recovery_detail = "unwritable"
+        build.record(0, "FAIL", "worktree-failed", "")
+        return build.fail(
+            "FAIL",
+            "worktree-failed",
+            EXIT_FAIL,
+            worktree_recovery(args.task_text, base_ref, "unwritable"),
+        )
     try:
         return build.execute()
     except Exception as exc:

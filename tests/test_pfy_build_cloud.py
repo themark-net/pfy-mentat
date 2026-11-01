@@ -7,6 +7,7 @@ import os
 import re
 import shutil
 import signal
+import socket
 import subprocess
 import sys
 import time
@@ -2956,4 +2957,514 @@ class CloudBuildGateReasonTests(unittest.TestCase):
         self.assertEqual(count.read_text(encoding="utf-8"), "2")
         self.assertEqual(_git(self.repo, "rev-parse", "HEAD").stdout.strip(), head)
         self.assertNotIn("\ncloud/", "\n" + _git(self.repo, "branch", "--list").stdout)
+
+
+class CloudBuildSymlinkProbeTests(unittest.TestCase):
+    """An out-of-scope symlink must not be followed and must not be committed."""
+
+    def setUp(self) -> None:
+        SCRATCH.mkdir(parents=True, exist_ok=True)
+        self.repo = _init_repo(SCRATCH / self.id().replace(".", "_"))
+        self.side = SCRATCH / (self.id().replace(".", "_") + "-side")
+        self.side.mkdir(parents=True, exist_ok=True)
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self.repo, ignore_errors=True)
+        shutil.rmtree(self.side, ignore_errors=True)
+
+    def _receipt(self) -> dict:
+        path = list((self.repo / "pipelines" / "dogfood" / "build-cloud").glob("*/receipt.json"))[0]
+        return json.loads(path.read_text(encoding="utf-8"))
+
+    def _gate(self) -> Path:
+        return _write_exe(
+            self.side / "gate.py",
+            "#!/usr/bin/env python3\nprint('GATE-OK')\nraise SystemExit(0)\n",
+        )
+
+    def test_preexisting_symlink_outside_the_worktree_does_not_run_grok(self) -> None:
+        # Fail: the agent writes through a committed symlink and the outside
+        # file changes while the build still PASSes. Recover: refuse before
+        # grok, leave the outside bytes alone, and keep no branch.
+        outside = self.side / "secret.txt"
+        outside.write_text("SECRET\n", encoding="utf-8")
+        os.symlink(str(outside), self.repo / "leak")
+        added = _git(self.repo, "add", "leak")
+        self.assertEqual(added.returncode, 0, added.stderr)
+        committed = _git(self.repo, "commit", "-m", "add leak")
+        self.assertEqual(committed.returncode, 0, committed.stderr)
+        head = _git(self.repo, "rev-parse", "HEAD").stdout.strip()
+        before = _git(self.repo, "status", "--porcelain").stdout
+        marker = self.side / "grok-started"
+        grok = _write_exe(
+            self.side / "grok.py",
+            "#!/usr/bin/env python3\n"
+            "import sys\n"
+            "from pathlib import Path\n"
+            "blob = '\\n'.join(sys.argv)\n"
+            "if 'PFY-CLOUD-REVIEW' in blob:\n"
+            "    print('verdict: accept')\n"
+            "    raise SystemExit(0)\n"
+            "Path(%r).write_text('yes\\n', encoding='utf-8')\n"
+            "Path('leak').write_text('OVERWRITTEN\\n', encoding='utf-8')\n"
+            "Path('kept.py').write_text('value = 1\\n', encoding='utf-8')\n"
+            "raise SystemExit(0)\n" % str(marker),
+        )
+        proc = _run(
+            [
+                sys.executable,
+                str(CLOUD),
+                "add kept and leave the leak",
+                "--repo",
+                str(self.repo),
+                "--retries",
+                "0",
+                "--timeout",
+                "30",
+                "--test-cmd",
+                "%s %s" % (sys.executable, self._gate()),
+                "--grok-cmd",
+                str(grok),
+            ],
+            self.repo,
+            timeout=30,
+        )
+        text = (proc.stdout or "") + (proc.stderr or "")
+        self.assertEqual(proc.returncode, 1, text)
+        payload = self._receipt()
+        self.assertEqual(payload["status"], "FAIL")
+        self.assertEqual(payload["reason"], "symlink-escape")
+        self.assertEqual(payload["exit_code"], 1)
+        self.assertIsNone(payload["commit"])
+        self.assertIsNone(payload["branch"])
+        self.assertIn("leak", payload["recovery"])
+        self.assertIn("Mark:", payload["recovery"])
+        self.assertNotIn("--local", payload["recovery"])
+        self.assertFalse(marker.exists())
+        self.assertEqual(outside.read_text(encoding="utf-8"), "SECRET\n")
+        self.assertEqual(_git(self.repo, "rev-parse", "HEAD").stdout.strip(), head)
+        self.assertEqual(_git(self.repo, "status", "--porcelain").stdout, before)
+        self.assertNotIn("\ncloud/", "\n" + _git(self.repo, "branch", "--list").stdout)
+
+    def test_agent_symlink_outside_the_worktree_is_not_committed(self) -> None:
+        # Fail: grok adds a symlink to an outside file and the build commits
+        # that link. Recover: exit 1, drop the branch, leave the outside file.
+        outside = self.side / "secret.txt"
+        outside.write_text("SECRET\n", encoding="utf-8")
+        marker = self.side / "grok-started"
+        grok = _write_exe(
+            self.side / "grok.py",
+            "#!/usr/bin/env python3\n"
+            "import os\n"
+            "import sys\n"
+            "from pathlib import Path\n"
+            "blob = '\\n'.join(sys.argv)\n"
+            "if 'PFY-CLOUD-REVIEW' in blob:\n"
+            "    print('verdict: accept')\n"
+            "    raise SystemExit(0)\n"
+            "Path(%r).write_text('yes\\n', encoding='utf-8')\n"
+            "os.symlink(%r, 'leak')\n"
+            "Path('kept.py').write_text('value = 1\\n', encoding='utf-8')\n"
+            "raise SystemExit(0)\n" % (str(marker), str(outside)),
+        )
+        head = _git(self.repo, "rev-parse", "HEAD").stdout.strip()
+        proc = _run(
+            [
+                sys.executable,
+                str(CLOUD),
+                "add kept",
+                "--repo",
+                str(self.repo),
+                "--retries",
+                "0",
+                "--timeout",
+                "30",
+                "--test-cmd",
+                "%s %s" % (sys.executable, self._gate()),
+                "--grok-cmd",
+                str(grok),
+            ],
+            self.repo,
+            timeout=30,
+        )
+        text = (proc.stdout or "") + (proc.stderr or "")
+        self.assertEqual(proc.returncode, 1, text)
+        payload = self._receipt()
+        self.assertEqual(payload["reason"], "symlink-escape")
+        self.assertIsNone(payload["commit"])
+        self.assertTrue(marker.exists())
+        self.assertEqual(outside.read_text(encoding="utf-8"), "SECRET\n")
+        self.assertEqual(_git(self.repo, "rev-parse", "HEAD").stdout.strip(), head)
+        self.assertNotIn("\ncloud/", "\n" + _git(self.repo, "branch", "--list").stdout)
+        self.assertIn("Mark:", payload["recovery"])
+        self.assertNotIn("--local", payload["recovery"])
+
+
+class CloudBuildGateRewriteProbeTests(unittest.TestCase):
+    """A gate that edits the worktree must not land those bytes in a commit."""
+
+    def setUp(self) -> None:
+        SCRATCH.mkdir(parents=True, exist_ok=True)
+        self.repo = _init_repo(SCRATCH / self.id().replace(".", "_"))
+        self.side = SCRATCH / (self.id().replace(".", "_") + "-side")
+        self.side.mkdir(parents=True, exist_ok=True)
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self.repo, ignore_errors=True)
+        shutil.rmtree(self.side, ignore_errors=True)
+
+    def _receipt(self) -> dict:
+        path = list((self.repo / "pipelines" / "dogfood" / "build-cloud").glob("*/receipt.json"))[0]
+        return json.loads(path.read_text(encoding="utf-8"))
+
+    def test_gate_rewrite_is_not_committed(self) -> None:
+        # Fail: the gate replaces the agent bytes and review accepts the
+        # replacement, so the commit contains value = 999. Recover: exit 1,
+        # reason gate-rewrote, no branch.
+        grok = _write_exe(
+            self.side / "grok.py",
+            "#!/usr/bin/env python3\n"
+            "import sys\n"
+            "from pathlib import Path\n"
+            "blob = '\\n'.join(sys.argv)\n"
+            "if 'PFY-CLOUD-REVIEW' in blob:\n"
+            "    print('verdict: accept')\n"
+            "    raise SystemExit(0)\n"
+            "Path('kept.py').write_text('value = 1\\n', encoding='utf-8')\n"
+            "raise SystemExit(0)\n",
+        )
+        gate = _write_exe(
+            self.side / "gate.py",
+            "#!/usr/bin/env python3\n"
+            "from pathlib import Path\n"
+            "path = Path('kept.py')\n"
+            "if path.exists():\n"
+            "    path.write_text('value = 999\\n', encoding='utf-8')\n"
+            "print('GATE-OK')\n"
+            "raise SystemExit(0)\n",
+        )
+        head = _git(self.repo, "rev-parse", "HEAD").stdout.strip()
+        proc = _run(
+            [
+                sys.executable,
+                str(CLOUD),
+                "add kept value 1",
+                "--repo",
+                str(self.repo),
+                "--retries",
+                "0",
+                "--timeout",
+                "30",
+                "--test-cmd",
+                "%s %s" % (sys.executable, gate),
+                "--grok-cmd",
+                str(grok),
+            ],
+            self.repo,
+            timeout=30,
+        )
+        text = (proc.stdout or "") + (proc.stderr or "")
+        self.assertEqual(proc.returncode, 1, text)
+        payload = self._receipt()
+        self.assertEqual(payload["status"], "FAIL")
+        self.assertEqual(payload["reason"], "gate-rewrote")
+        self.assertEqual(payload["exit_code"], 1)
+        self.assertIsNone(payload["commit"])
+        self.assertIsNone(payload["branch"])
+        self.assertEqual(payload["gate"]["after"]["exit"], 0)
+        self.assertIn("GATE-OK", payload["gate"]["after"]["tail"])
+        self.assertIn("Mark:", payload["recovery"])
+        self.assertIn("gate", payload["recovery"].lower())
+        self.assertNotIn("--local", payload["recovery"])
+        self.assertEqual(_git(self.repo, "rev-parse", "HEAD").stdout.strip(), head)
+        self.assertNotIn("\ncloud/", "\n" + _git(self.repo, "branch", "--list").stdout)
+        showed = _git(self.repo, "grep", "-n", "999", "HEAD")
+        self.assertNotEqual(showed.returncode, 0)
+
+
+class CloudBuildNetworkProbeTests(unittest.TestCase):
+    """A closed cloud endpoint must not commit a partial edit."""
+
+    def setUp(self) -> None:
+        SCRATCH.mkdir(parents=True, exist_ok=True)
+        self.repo = _init_repo(SCRATCH / self.id().replace(".", "_"))
+        self.side = SCRATCH / (self.id().replace(".", "_") + "-side")
+        self.side.mkdir(parents=True, exist_ok=True)
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self.repo, ignore_errors=True)
+        shutil.rmtree(self.side, ignore_errors=True)
+
+    def _receipt(self) -> dict:
+        path = list((self.repo / "pipelines" / "dogfood" / "build-cloud").glob("*/receipt.json"))[0]
+        return json.loads(path.read_text(encoding="utf-8"))
+
+    def _gate(self) -> Path:
+        return _write_exe(
+            self.side / "gate.py",
+            "#!/usr/bin/env python3\nprint('GATE-OK')\nraise SystemExit(0)\n",
+        )
+
+    def test_closed_port_does_not_commit_the_partial_edit(self) -> None:
+        # Fail: grok writes partial.py, then connection refused, and the
+        # build still PASSes. Recover: exit 1, reason network, no branch.
+        port = 1
+        probe = socket.socket()
+        probe.settimeout(0.3)
+        try:
+            probe.connect(("127.0.0.1", port))
+        except OSError:
+            closed = True
+        else:
+            closed = False
+        finally:
+            probe.close()
+        self.assertTrue(closed, "127.0.0.1:%s accepted a connection" % port)
+        grok = _write_exe(
+            self.side / "grok.py",
+            "#!/usr/bin/env python3\n"
+            "import socket\n"
+            "import sys\n"
+            "from pathlib import Path\n"
+            "blob = '\\n'.join(sys.argv)\n"
+            "if 'PFY-CLOUD-REVIEW' in blob:\n"
+            "    print('verdict: accept')\n"
+            "    raise SystemExit(0)\n"
+            "Path('partial.py').write_text('partial = 1\\n', encoding='utf-8')\n"
+            "sock = socket.socket()\n"
+            "sock.settimeout(2)\n"
+            "try:\n"
+            "    sock.connect(('127.0.0.1', %d))\n"
+            "except OSError as exc:\n"
+            "    print('connection refused: %%s' %% exc, file=sys.stderr)\n"
+            "    raise SystemExit(1)\n"
+            "raise SystemExit(0)\n" % port,
+        )
+        head = _git(self.repo, "rev-parse", "HEAD").stdout.strip()
+        proc = _run(
+            [
+                sys.executable,
+                str(CLOUD),
+                "add kept",
+                "--repo",
+                str(self.repo),
+                "--retries",
+                "0",
+                "--timeout",
+                "30",
+                "--test-cmd",
+                "%s %s" % (sys.executable, self._gate()),
+                "--grok-cmd",
+                str(grok),
+            ],
+            self.repo,
+            timeout=30,
+        )
+        text = (proc.stdout or "") + (proc.stderr or "")
+        self.assertEqual(proc.returncode, 1, text)
+        payload = self._receipt()
+        self.assertEqual(payload["status"], "FAIL")
+        self.assertEqual(payload["reason"], "network")
+        self.assertEqual(payload["exit_code"], 1)
+        self.assertIsNone(payload["commit"])
+        self.assertIsNone(payload["branch"])
+        self.assertIn("Mark:", payload["recovery"])
+        self.assertNotIn("--local", payload["recovery"])
+        self.assertEqual(_git(self.repo, "rev-parse", "HEAD").stdout.strip(), head)
+        self.assertNotIn("\ncloud/", "\n" + _git(self.repo, "branch", "--list").stdout)
+        self.assertNotIn("partial.py", _git(self.repo, "ls-tree", "-r", "--name-only", "HEAD").stdout)
+
+    def test_other_nonzero_grok_still_runs_the_gate_and_can_pass(self) -> None:
+        # A non-zero grok exit that is not a network failure still reaches
+        # the gate. Fail would be treating every non-zero as network.
+        grok = _write_exe(
+            self.side / "grok.py",
+            "#!/usr/bin/env python3\n"
+            "import sys\n"
+            "from pathlib import Path\n"
+            "blob = '\\n'.join(sys.argv)\n"
+            "if 'PFY-CLOUD-REVIEW' in blob:\n"
+            "    print('verdict: accept')\n"
+            "    raise SystemExit(0)\n"
+            "Path('kept.py').write_text('value = 1\\n', encoding='utf-8')\n"
+            "print('boom')\n"
+            "raise SystemExit(1)\n",
+        )
+        proc = _run(
+            [
+                sys.executable,
+                str(CLOUD),
+                "add kept value",
+                "--repo",
+                str(self.repo),
+                "--retries",
+                "0",
+                "--timeout",
+                "30",
+                "--test-cmd",
+                "%s %s" % (sys.executable, self._gate()),
+                "--grok-cmd",
+                str(grok),
+            ],
+            self.repo,
+            timeout=30,
+        )
+        text = (proc.stdout or "") + (proc.stderr or "")
+        self.assertEqual(proc.returncode, 0, text)
+        payload = self._receipt()
+        self.assertEqual(payload["reason"], "ok")
+        self.assertIn("kept.py", _git(self.repo, "ls-tree", "-r", "--name-only", payload["commit"]).stdout)
+
+
+class CloudBuildParallelProbeTests(unittest.TestCase):
+    """A second cloud build on a live repo refuses instead of sharing the pid file."""
+
+    def setUp(self) -> None:
+        SCRATCH.mkdir(parents=True, exist_ok=True)
+        self.repo = _init_repo(SCRATCH / self.id().replace(".", "_"))
+        self.side = SCRATCH / (self.id().replace(".", "_") + "-side")
+        self.side.mkdir(parents=True, exist_ok=True)
+        self.proc = None
+
+    def tearDown(self) -> None:
+        proc = getattr(self, "proc", None)
+        if proc is not None and proc.poll() is None:
+            try:
+                os.killpg(proc.pid, signal.SIGKILL)
+            except OSError:
+                pass
+            try:
+                proc.communicate(timeout=5)
+            except subprocess.TimeoutExpired:
+                pass
+        shutil.rmtree(self.repo, ignore_errors=True)
+        shutil.rmtree(self.side, ignore_errors=True)
+
+    def test_second_build_is_busy_and_leaves_the_live_pid(self) -> None:
+        # Fail: two builds run at once and the pid file keeps only one pid,
+        # so reap can miss the other. The second finish also unlinks that
+        # file. Recover: the second exits build-busy before grok, and the
+        # first pid file is still there until the first build finishes.
+        ready = self.side / "ready"
+        second_marker = self.side / "second-started"
+        grok_a = _write_exe(
+            self.side / "grok-a.py",
+            "#!/usr/bin/env python3\n"
+            "import os\n"
+            "import sys\n"
+            "import time\n"
+            "from pathlib import Path\n"
+            "blob = '\\n'.join(sys.argv)\n"
+            "if 'PFY-CLOUD-REVIEW' in blob:\n"
+            "    print('verdict: accept')\n"
+            "    raise SystemExit(0)\n"
+            "Path(%r).write_text(str(os.getpid()), encoding='utf-8')\n"
+            "time.sleep(6)\n"
+            "Path('kept.py').write_text('value = 1\\n', encoding='utf-8')\n"
+            "raise SystemExit(0)\n" % str(ready),
+        )
+        grok_b = _write_exe(
+            self.side / "grok-b.py",
+            "#!/usr/bin/env python3\n"
+            "import sys\n"
+            "from pathlib import Path\n"
+            "blob = '\\n'.join(sys.argv)\n"
+            "if 'PFY-CLOUD-REVIEW' in blob:\n"
+            "    print('verdict: accept')\n"
+            "    raise SystemExit(0)\n"
+            "Path(%r).write_text('yes\\n', encoding='utf-8')\n"
+            "Path('beta.py').write_text('value = 1\\n', encoding='utf-8')\n"
+            "raise SystemExit(0)\n" % str(second_marker),
+        )
+        gate = _write_exe(
+            self.side / "gate.py",
+            "#!/usr/bin/env python3\nprint('GATE-OK')\nraise SystemExit(0)\n",
+        )
+        head = _git(self.repo, "rev-parse", "HEAD").stdout.strip()
+        argv_a = [
+            sys.executable,
+            str(CLOUD),
+            "add alpha",
+            "--repo",
+            str(self.repo),
+            "--retries",
+            "0",
+            "--timeout",
+            "30",
+            "--test-cmd",
+            "%s %s" % (sys.executable, gate),
+            "--grok-cmd",
+            str(grok_a),
+            "--receipt-dir",
+            str(self.side / "receipt-a"),
+        ]
+        env = os.environ.copy()
+        env["TMPDIR"] = str(SCRATCH)
+        env["PYTHONDONTWRITEBYTECODE"] = "1"
+        proc = subprocess.Popen(
+            argv_a,
+            cwd=str(self.repo),
+            env=env,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            start_new_session=True,
+        )
+        self.proc = proc
+        deadline = time.monotonic() + 15
+        while time.monotonic() < deadline and not ready.exists():
+            if proc.poll() is not None:
+                break
+            time.sleep(0.05)
+        self.assertTrue(ready.exists(), "first grok did not start")
+        second = _run(
+            [
+                sys.executable,
+                str(CLOUD),
+                "add beta",
+                "--repo",
+                str(self.repo),
+                "--retries",
+                "0",
+                "--timeout",
+                "30",
+                "--test-cmd",
+                "%s %s" % (sys.executable, gate),
+                "--grok-cmd",
+                str(grok_b),
+                "--receipt-dir",
+                str(self.side / "receipt-b"),
+            ],
+            self.repo,
+            timeout=20,
+        )
+        text = (second.stdout or "") + (second.stderr or "")
+        self.assertEqual(second.returncode, 1, text)
+        payload_b = json.loads((self.side / "receipt-b" / "receipt.json").read_text(encoding="utf-8"))
+        self.assertEqual(payload_b["reason"], "build-busy")
+        self.assertEqual(payload_b["exit_code"], 1)
+        self.assertIsNone(payload_b["commit"])
+        self.assertIn("Mark:", payload_b["recovery"])
+        self.assertNotIn("--local", payload_b["recovery"])
+        self.assertFalse(second_marker.exists())
+        pid_path = self.repo / "tmp" / "cloud-build.pids.json"
+        self.assertTrue(pid_path.is_file(), "second build removed the live pid file")
+        recorded = json.loads(pid_path.read_text(encoding="utf-8"))
+        self.assertEqual(int(recorded.get("pid") or 0), proc.pid)
+        try:
+            out, err = proc.communicate(timeout=20)
+        except subprocess.TimeoutExpired:
+            os.killpg(proc.pid, signal.SIGKILL)
+            out, err = proc.communicate(timeout=5)
+            self.fail("first build did not finish: %s %s" % (out, err))
+        self.assertEqual(proc.returncode, 0, (out or "") + (err or ""))
+        payload_a = json.loads((self.side / "receipt-a" / "receipt.json").read_text(encoding="utf-8"))
+        self.assertEqual(payload_a["reason"], "ok")
+        names = _git(self.repo, "ls-tree", "-r", "--name-only", payload_a["commit"]).stdout
+        self.assertIn("kept.py", names)
+        self.assertNotIn("beta.py", names)
+        branches = _git(self.repo, "branch", "--list").stdout
+        self.assertEqual(branches.count("cloud/"), 1)
+        self.assertEqual(_git(self.repo, "rev-parse", "HEAD").stdout.strip(), head)
+        self.assertFalse(pid_path.exists())
 
