@@ -72,6 +72,7 @@ Unittest skip counts depend on the host (bwrap, grok, Ollama, Python version), s
 - Tester/Reviewer judgment, including reading the gate-hash NOTEs about edited tests
 - The ubuntu CI run itself: the Python version (3.12 on CI) and missing grok/Ollama are not emulated
 - A GitHub `eval-structural` dispatch at the fix pin. Pregate does not start that workflow, and a pregate PASS does not replace it. When the pin adds or edits tests under `tests/`, do not fast-forward until both G0 jobs (`G0 (ubuntu-24.04)` and `G0 (self-hosted nimo)`) have a conclusion on that SHA. See [common-rules.md](../build-dropins/common-rules.md).
+- Depth-1 git history. The pregate worktree is a full checkout of the pin, so `git cat-file` and `git show` of an old SHA succeed here and fail on a G0 depth-1 checkout. [test_shallow_checkout_history.py](../../tests/test_shallow_checkout_history.py) clones `--depth=1` and runs `tests.test_docs_hygiene`. That run is red on `1f3b1a3` and green on `2a74482`.
 
 ## See also
 

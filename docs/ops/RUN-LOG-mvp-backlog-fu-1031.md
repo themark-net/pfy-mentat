@@ -55,3 +55,5 @@ Risks:
 ## Items
 
 Format: `item | commit | tests | result`
+
+fu-4-gate-dispatch | 443fc9d | nice -n 19 python3 -m unittest tests.test_gate_path_docs tests.test_docs_hygiene | 5 tests OK in 0.026s; common rules, PREGATE, eval-gates, HANDOFF-pregate, and three drop-in finish lines require both G0 jobs at the fix pin
