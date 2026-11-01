@@ -1,0 +1,14 @@
+2026-11-01T02:52:58Z
+cwd /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood6-1031
+repo /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood6-1031/tmp/target-04
+base HEAD 1c6241a966a5d0ae83a65f52ce15ed30147f87e6
+retries 1
+timeout 900
+test-cmd python3 -m unittest tests.test_attach_receipt_symlink
+receipt-dir /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood6-1031/eval/mvp-1031/dogfood6/04-attach-receipt-symlink
+local no
+
+finished 2026-11-01T02:54:16Z
+result PASS ok
+cloud 8bce3dbe0cb4bc63550c283e3ac4db82db4c6b9b
+landed 1c100a5

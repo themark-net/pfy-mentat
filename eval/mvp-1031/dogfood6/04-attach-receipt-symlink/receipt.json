@@ -1,0 +1,45 @@
+{
+  "schema": "pfy-cloud-build/1",
+  "status": "PASS",
+  "reason": "ok",
+  "exit_code": 0,
+  "branch": "cloud/edit-only-pfylib-attach-py-do-not-edit-a-20261101T025258544977Z",
+  "commit": "8bce3dbe0cb4bc63550c283e3ac4db82db4c6b9b",
+  "base": "HEAD",
+  "review": {
+    "verdict": "accept",
+    "reasons": []
+  },
+  "attempts": [
+    {
+      "n": 1,
+      "status": "PASS",
+      "reason": "ok",
+      "output_tail": "I'll edit only `pfylib/attach.py` so the spawn receipt write uses `_write_regular_text` and does not follow a symlink. First I'm reading the helper and the current write path.`_write_spawn_receipt` still calls `Path.write_text`, which follows a symlink. I'll switch that one write to `_write_regular_text` and leave the `OSError` handler in place.`_write_spawn_receipt` now writes `<sid>-attach-receipt.json` through `_write_regular_text`. That helper writes a temp file and replaces the path, so a symlink is replaced and the target bytes stay. A broken symlink becomes a regular file and does not create the missing target.\n\nA regular file still gets the JSON object with `exit_code` and `live` set to `FAIL`, with `sort_keys` true. A write error is still caught as `OSError` and returns without raising. The other session and pid helpers are unchanged.\n\n`python3 -m unittest tests.test_attach_receipt_symlink` passed (4 tests).\n\nI'll check the diff against the task: only the receipt write should switch to the existing helper, with the same error handling and JSON.verdict: accept\n\nThe diff changes only the receipt write in `pfylib/attach.py` to the existing `_write_regular_text` helper. The JSON payload, `sort_keys=True`, and `OSError` handler stay as they were, and no other function, file, helper, test, or dash was added.\n",
+      "review": {
+        "verdict": "accept",
+        "reasons": []
+      }
+    }
+  ],
+  "gate": {
+    "cmd": "python3 -m unittest tests.test_attach_receipt_symlink",
+    "before": {
+      "cmd": "python3 -m unittest tests.test_attach_receipt_symlink",
+      "exit": 1,
+      "tail": "\n..FF\n======================================================================\nFAIL: test_write_replaces_broken_symlink (tests.test_attach_receipt_symlink.AttachReceiptSymlinkTests.test_write_replaces_broken_symlink)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood6-1031/tmp/target-04/tmp/cloud-build/20261101T025258544977Z/tests/test_attach_receipt_symlink.py\", line 48, in test_write_replaces_broken_symlink\n    self.assertFalse((self.state / \"missing-receipt\").exists())\n    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: True is not false\n\n======================================================================\nFAIL: test_write_replaces_symlink_and_leaves_target (tests.test_attach_receipt_symlink.AttachReceiptSymlinkTests.test_write_replaces_symlink_and_leaves_target)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood6-1031/tmp/target-04/tmp/cloud-build/20261101T025258544977Z/tests/test_attach_receipt_symlink.py\", line 38, in test_write_replaces_symlink_and_leaves_target\n    self.assertEqual(target.read_text(encoding=\"utf-8\"), \"SECRET\\n\")\n    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: '{\"exit_code\": 3, \"live\": \"FAIL\"}\\n' != 'SECRET\\n'\n- {\"exit_code\": 3, \"live\": \"FAIL\"}\n+ SECRET\n\n\n----------------------------------------------------------------------\nRan 4 tests in 0.002s\n\nFAILED (failures=2)\n",
+      "started": true
+    },
+    "after": {
+      "cmd": "python3 -m unittest tests.test_attach_receipt_symlink",
+      "exit": 0,
+      "tail": "\n....\n----------------------------------------------------------------------\nRan 4 tests in 0.001s\n\nOK\n",
+      "started": true
+    }
+  },
+  "recovery": "",
+  "pushed": false,
+  "worktree_removed": true,
+  "task": "Edit only pfylib/attach.py. Do not edit any file under tests/. Do not add a file. Do not commit. Do not push. _write_spawn_receipt still uses Path.write_text on the <sid>-attach-receipt.json path, which follows a symlink and overwrites the target. Use the existing _write_regular_text helper for that write only. Do not add a second helper. Keep the try/except OSError so a write error still returns without raising. A regular file still receives the JSON object with exit_code and live set to FAIL, with sort_keys True. A symlink is replaced and the target bytes stay. A broken symlink becomes a regular file and must not create the missing target. Do not change write_session_reach, read_session_reach, write_terminal_pid, read_terminal_pid, or clear_session_reach. Do not add an em dash or an en dash.",
+  "finished_at": "2026-11-01T02:54:16Z"
+}
