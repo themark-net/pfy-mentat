@@ -95,7 +95,7 @@ Store under `pipelines/uat/` or issue comment when run.
 
 ## Agent rules (closing issues)
 
-1. **Docs / schema / patterns** → G0 green → close.  
+1. **Docs / schema / patterns** → G0 green → close. A docs change that adds or edits tests under `tests/` is not closed by a local pregate PASS. Dispatch `eval-structural` at the fix pin and wait until both G0 jobs, `G0 (ubuntu-24.04)` and `G0 (self-hosted nimo)`, have a conclusion on that SHA before a fast-forward. See [common-rules.md](../build-dropins/common-rules.md).  
 2. **Runtime / smoke / product levers** → G0+G1 → close as **implement done**; open or leave **UAT** checklist if UX-facing.  
 3. **Never** claim “user accepted” without G2 note.  
 4. New test frameworks → must be **deploy-ready** (documented Make/smoke + simple path) or they fail our own publishing standard.  

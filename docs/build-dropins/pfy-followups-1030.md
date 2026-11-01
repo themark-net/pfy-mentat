@@ -46,7 +46,7 @@ Skip items that need a local model, special hardware, a human decision (an open 
 
 ## Finish (on any exit)
 
-Write or update this run's handoff in `docs/ops/`: items done with SHAs, items skipped and why, test evidence, how each change fails and recovers, the gate needed (Tester plus Reviewer for runtime changes; pregate plus Reviewer for docs, eval or test-only changes), and the next step. Finish the run log with a final `state:` line. Commit and push. Do not merge.
+Write or update this run's handoff in `docs/ops/`: items done with SHAs, items skipped and why, test evidence, how each change fails and recovers, the gate needed (Tester plus Reviewer for runtime changes; pregate plus Reviewer for docs, eval or test-only changes), and the next step. If the pin adds or edits tests under `tests/`, follow [common-rules.md](common-rules.md): dispatch `eval-structural` at the fix pin and wait for both G0 jobs before the fast-forward. A pregate PASS does not replace that dispatch. Finish the run log with a final `state:` line. Commit and push. Do not merge.
 
 ## Listed items (do these first, in order)
 

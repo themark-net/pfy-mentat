@@ -118,7 +118,7 @@ Round 2 results on nimo, 2026-10-29 PDT. Pregate code: `b368c44` for the probes,
 - Retention keeps 20 run folders, so evidence folders cited below can age out; copy a summary elsewhere to keep it.
 - A full run is about two discovers long (see Verify). Use `--only` for fast loops, but never attach a partial summary to a gate request.
 - One pregate per host: concurrent runs are not coordinated. The self-hosted nimo GitHub runner also counts: a G0 job running on nimo can FAIL `test_pfylib_tmp_cleanup` (it globs the shared `/tmp`). Re-run when the runner is idle.
-- `eval-structural.yml` is not triggered from here. This is local reproduction only.
+- `eval-structural.yml` is not triggered from here. This is local reproduction only. A pregate PASS does not replace a GitHub `eval-structural` dispatch at the fix pin. When the pin adds or edits tests under `tests/`, wait until both G0 jobs (`G0 (ubuntu-24.04)` and `G0 (self-hosted nimo)`) have a conclusion before the fast-forward. See [common-rules.md](../build-dropins/common-rules.md).
 
 ## Isolation
 
@@ -127,5 +127,5 @@ Work happened in `~/DEVELOP/pfy-mentat/tmp/pgfix` on `bot/pregate-check`. Pregat
 ## Next (no-PR flow)
 
 1. Bots gate the pinned SHA: Tester, then Reviewer, each against the summary from a full pregate run on that SHA.
-2. When both PASS, fast-forward `main` to the pinned SHA. There is no PR, and the implementer does not merge or request gates.
+2. When both PASS, fast-forward `main` to the pinned SHA. There is no PR, and the implementer does not merge or request gates. If that SHA adds or edits tests under `tests/`, dispatch `eval-structural` at the fix pin first and wait until both G0 jobs (`G0 (ubuntu-24.04)` and `G0 (self-hosted nimo)`) have a conclusion. A pregate PASS does not replace that dispatch. See [common-rules.md](../build-dropins/common-rules.md).
 3. After that, `docs/ops/PREGATE.md` is the standing gate hygiene: a full run and an attached summary before every gate request.

@@ -32,10 +32,11 @@ Skipped on purpose: Pred-foundry, the trading desks, and GrapheneOS MDM (parked 
 
 ## What every prompt has
 
-Repo path and mandatory reads · its own worktree and branch (never the founder checkout) · goal · definition of done with behavior and fail-and-recover tests (no tautological units) · a handoff doc in `docs/` · push + PR body file · gates: no merge, Tester/Reviewer merge.
+Repo path and mandatory reads · its own worktree and branch (never the founder checkout) · goal · definition of done with behavior and fail-and-recover tests (no tautological units) · a handoff doc in `docs/` · push + PR body file · gates: no merge, Tester/Reviewer merge. Before a fast-forward, follow [common-rules.md](common-rules.md): a pin that adds or edits tests under `tests/` needs `eval-structural` at that fix pin, and both G0 jobs must finish first. A pregate PASS does not replace that dispatch.
 
 ## Changelog
 
+- 2026-11-01: added [common-rules.md](common-rules.md). A pin that adds or edits tests under `tests/` needs an `eval-structural` dispatch at that fix pin, and both G0 jobs must finish before a fast-forward. A pregate PASS does not replace that dispatch.
 - 2026-10-25: added `pfy-local-build-mvp.md` (MVP-1): headless `./pfy build --local` on `bot/mvp-local-build`. No founder gate. Loads a model only in item 3 on a quiet host. Not a Feature GO.
 - 2026-10-19: added `skill-discovery.md` (H2, founder HIGH): free local discover over open registries; Monid paid runs stay off.
 - 2026-10-19: added `harness2-local.md` (H1, founder HIGH): Harness² on local models only, sandboxed, proposals as a branch for Tester and Reviewer.

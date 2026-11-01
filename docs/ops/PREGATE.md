@@ -71,6 +71,7 @@ Unittest skip counts depend on the host (bwrap, grok, Ollama, Python version), s
 - Live model eval (`./pfy eval-local-build`)
 - Tester/Reviewer judgment, including reading the gate-hash NOTEs about edited tests
 - The ubuntu CI run itself: the Python version (3.12 on CI) and missing grok/Ollama are not emulated
+- A GitHub `eval-structural` dispatch at the fix pin. Pregate does not start that workflow, and a pregate PASS does not replace it. When the pin adds or edits tests under `tests/`, do not fast-forward until both G0 jobs (`G0 (ubuntu-24.04)` and `G0 (self-hosted nimo)`) have a conclusion on that SHA. See [common-rules.md](../build-dropins/common-rules.md).
 
 ## See also
 
