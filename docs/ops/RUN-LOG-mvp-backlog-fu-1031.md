@@ -60,3 +60,6 @@ fu-4-gate-dispatch | 443fc9d | nice -n 19 python3 -m unittest tests.test_gate_pa
 fu-5-shallow | aa7548d | nice -n 19 python3 -m unittest tests.test_shallow_checkout_history tests.test_docs_hygiene | 5 tests OK in 0.571s; depth-1 of 1f3b1a3 fails on 7197200, depth-1 of 2a74482 passes; pregate.sh not edited (Run A)
 fu-6-judgment-allowlist | 5101b88 | nice -n 19 python3 -m unittest tests.test_catalog_stage_eval | 5 tests OK in 0.014s; only Pipecat, LiveKit, Exo (exoharness), and claude-code-unified-agents omit judgment fields
 fu-7-073-unverified | 3182879 | nice -n 19 python3 -m unittest tests.test_laguna_smoke_note tests.test_catalog_entry_numbers | 4 tests OK in 0.071s; entry 073 source is content-unverified; a 200 with the claim text is not verified
+fu-8-voice-facts | 145ea40 | nice -n 19 python3 -m unittest tests.test_voice_stage0_ref | 2 tests OK in 0.001s; price is a number, required env is a list, PASS stays blocked while cloud env or a missing pin remains
+
+state: lane empty | items 4-8 landed at 443fc9d aa7548d 5101b88 3182879 145ea40 | pregate not run: lane forbids scripts/pregate.sh and Runner.Worker was active | next: dispatch eval-structural at this handoff pin and wait for both G0 jobs before any fast-forward
