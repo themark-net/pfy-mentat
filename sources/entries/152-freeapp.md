@@ -21,4 +21,8 @@
 | Paid license read as open | The $299 line is dropped and the entry is cataloged as permissive | Keep the price sentence until an upstream LICENSE file is quoted. |
 | Silent promotion | A TOOLS.md row or a `data/tools.json` object named freeapp | The same test fails. Revert the row. Entry 152 stays the artifact. |
 
+<!-- stage0-facts
+{"stage0": "FAIL", "required_env": [], "git_pin": null, "license_open": false, "price_usd": 299, "model_license_proprietary": false}
+-->
+
 - **Status**: Stage-0 FAIL / I0 awareness (T-0095, issue #10). Receipt only. Not a primary install.

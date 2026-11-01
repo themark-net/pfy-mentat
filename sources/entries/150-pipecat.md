@@ -22,4 +22,8 @@
 | Silent promotion | A TOOLS.md row or a `data/tools.json` object, or the stage card leaves I0 | The same test fails. Revert the catalog row. Entry 150 stays the artifact. |
 | Local services treated as the quickstart | Kokoro, Piper, or the local transport are cited as if this receipt ran them | They are names in the upstream services table only. Run one in a scratch dir before any catalog row. |
 
+<!-- stage0-facts
+{"stage0": "FAIL", "required_env": ["DEEPGRAM_API_KEY", "OPENAI_API_KEY", "CARTESIA_API_KEY"], "git_pin": "6f777a0ef3bb98163d10d708525a0db21cda5fbf", "license_open": true, "price_usd": null, "model_license_proprietary": false}
+-->
+
 - **Status**: Stage-0 FAIL / I0 awareness (T-0095, issue #10). Receipt only. Not a primary install.

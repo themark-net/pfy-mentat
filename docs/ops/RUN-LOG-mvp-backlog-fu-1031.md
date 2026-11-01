@@ -59,3 +59,4 @@ Format: `item | commit | tests | result`
 fu-4-gate-dispatch | 443fc9d | nice -n 19 python3 -m unittest tests.test_gate_path_docs tests.test_docs_hygiene | 5 tests OK in 0.026s; common rules, PREGATE, eval-gates, HANDOFF-pregate, and three drop-in finish lines require both G0 jobs at the fix pin
 fu-5-shallow | aa7548d | nice -n 19 python3 -m unittest tests.test_shallow_checkout_history tests.test_docs_hygiene | 5 tests OK in 0.571s; depth-1 of 1f3b1a3 fails on 7197200, depth-1 of 2a74482 passes; pregate.sh not edited (Run A)
 fu-6-judgment-allowlist | 5101b88 | nice -n 19 python3 -m unittest tests.test_catalog_stage_eval | 5 tests OK in 0.014s; only Pipecat, LiveKit, Exo (exoharness), and claude-code-unified-agents omit judgment fields
+fu-7-073-unverified | 3182879 | nice -n 19 python3 -m unittest tests.test_laguna_smoke_note tests.test_catalog_entry_numbers | 4 tests OK in 0.071s; entry 073 source is content-unverified; a 200 with the claim text is not verified

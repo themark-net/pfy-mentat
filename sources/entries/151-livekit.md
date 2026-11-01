@@ -21,4 +21,8 @@
 | Console line read as a pass | The receipt is marked pass because `python myagent.py console` is one command, while the voice sample still needs `LIVEKIT_URL`, `LIVEKIT_API_KEY`, and `LIVEKIT_API_SECRET` | Keep Stage-0 FAIL until a timed console or self-hosted run is logged. `tests/test_voice_stage0_ref.py` fails if the receipt says pass while those variable names remain. |
 | Silent promotion | A TOOLS.md row or a `data/tools.json` object, or the stage card leaves I0 | The same test fails. Revert the catalog row. Entry 151 stays the artifact. |
 
+<!-- stage0-facts
+{"stage0": "FAIL", "required_env": ["LIVEKIT_URL", "LIVEKIT_API_KEY", "LIVEKIT_API_SECRET"], "git_pin": "11c8ad8d74c272cf046e65d83cfe7be46abaec64", "license_open": true, "price_usd": null, "model_license_proprietary": true}
+-->
+
 - **Status**: Stage-0 FAIL / I0 awareness (T-0095, issue #10). Receipt only. Not a primary install.
