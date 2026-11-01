@@ -46,12 +46,13 @@ Operator items A, B, and C run before the original 1, 2, 3. Item A is the cause 
 
 ## Items
 
-(in progress) A / item 1 private HOME and UV cache for harness2 stage tests
+(done) A / item 1 private HOME and UV cache for harness2 stage tests | af1c104 | flock + nice unittest tests.test_harness2_local_stage then 20x test_stub_tools_see_state_caches_and_home_stays with 4 CPU burners | 12 OK in 4.232s; 20/20 OK
 (done) B docs hygiene shallow skipTest | a0885ed | TMPDIR=$PWD/tmp nice -n 19 python3 -m unittest tests.test_docs_hygiene | 3 OK in 0.067s
 (done) C pregate refuses Runner.Worker | b8ec41d | TMPDIR=$PWD/tmp nice -n 19 python3 -m unittest tests.test_pregate_runner_gate | 2 OK in the combined 2.980s run (the third test was the traceback check)
 (done) item 2 structural traceback | 871075c | TMPDIR=$PWD/tmp nice -n 19 python3 -m unittest tests.test_eval_structural_trace | ok in the combined run (traceback assertions held; hygiene failure in that run was fixed before a0885ed)
 (pending) item 3 discover x3
 
+A / item 1 | af1c104 | TMPDIR=$PWD/tmp nice -n 19 flock heavy-1030.lock: unittest tests.test_harness2_local_stage; then 20x test_stub_tools_see_state_caches_and_home_stays with 4 CPU burners | 12 OK in 4.232s; 20/20 OK (lock acquired 04:05:30Z, 20x done 04:05:49Z)
 B | a0885ed | TMPDIR=$PWD/tmp nice -n 19 python3 -m unittest tests.test_docs_hygiene | 3 OK in 0.067s
 C | b8ec41d | TMPDIR=$PWD/tmp nice -n 19 python3 -m unittest tests.test_pregate_runner_gate | 2 OK
 item 2 | 871075c | TMPDIR=$PWD/tmp nice -n 19 python3 -m unittest tests.test_eval_structural_trace | ok (Traceback, AssertionError, operator cache changed; passing run has no Traceback)
