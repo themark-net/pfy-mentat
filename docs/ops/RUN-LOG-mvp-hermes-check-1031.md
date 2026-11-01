@@ -57,8 +57,10 @@ Risks:
 
 | item | commit | tests | result |
 |---|---|---|---|
-| (none yet) | | | |
+| exit card | 54053a8 | none | written before the recompute |
+| hermes-eval recompute | (this commit) | `nice -n 19 python3 -m unittest tests.test_hermes_bakeoff -v` -> Ran 9 tests in 0.658s OK | two prose claims corrected; headline numbers match; check report written |
 
 ## State lines
 
 state: PLAN | tests: none yet | files: run log + decisions | err: none
+state: DONE | tests: unittest tests.test_hermes_bakeoff 9 OK in 0.658s | files: check report + two doc corrections | err: none

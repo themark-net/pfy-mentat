@@ -25,7 +25,7 @@ Ollama is 0.30.8. Hermes refused 32768 (`ValueError`: context 32,768 is under th
 
 ## Task set
 
-`data/decision-gates/hermes-bakeoff.tasks.v0.json`, 27 tasks, labels fixed before any scored call.
+`data/decision-gates/hermes-bakeoff.tasks.v0.json`, 27 tasks. The file sets `labels_before_models` to true. `labels_written` is the hardcoded `2026-10-19T18:00:00Z` (`examples/hermes-bakeoff/make_tasks.py` line 273). That stamp is later than `results.json` `meta.started` (`2026-10-19T08:33:09Z`), and `meta.started` is written at the end of the run (`examples/hermes-bakeoff/run.py` line 417). The tasks file first appears in git in `b48d634`, the same commit as the results. Those fields do not prove the labels were fixed before the scored calls.
 
 - 14 Choice cases from `laya-trial.cases.v0.json`: ph-01, ph-03, ph-05, ph-08, wz-01, wz-04, wz-06, wz-10, hd-01, hd-06, hd-11, fm-01, fm-04, cp-02.
 - 8 fetch tasks and 2 chains over `sources/entries/`, `data/tools.json`, and the committed local-bench / atg receipts.
@@ -80,7 +80,7 @@ Negatives passed on both arms (zero tool calls, expected text).
 
 A meta-tools-off re-run is planned after Mark's 2026-10-20 decision to choose Hermes as the bot interface (wiring pending). Its prerequisites and the matched-thinking rule are in the [handoff](HERMES-EVAL-HANDOFF.md#founder-decision-2026-10-20).
 
-Item C (adapter plan) is skipped. A re-run is worth it only if the question changes. On this 27-task set both arms are already above 92%, and +10 points means about three more baseline misses. The intervals overlap.
+Item C (adapter plan) is skipped. A re-run is worth it only if the question changes. On this 27-task set both arms are already above 92% (96.30% and 92.59%). The current gap is one task, 3.70 pp. Two more baseline misses, with Hermes still at 26/27, would make the gap 11.11 pp, which clears +10 pp. One more miss would leave it at 7.41 pp. The intervals overlap.
 
 1. Turn off Hermes `tool_search`, `tool_describe`, and the `tool_call` batch tool so the model emits MCP calls directly. Recompute the valid rate. The success gap can stay inside the margin even if the rate recovers.
 2. Keep the same labels. Do not retune oracles after seeing these transcripts.
