@@ -1,0 +1,5 @@
+# Autonomous decisions mvp-probe-int-1031
+
+- 2026-11-01T01:33:31Z | Skills `write-loop-exits-first` and `repo-handoff-doc-required` are not files in this worktree or `~/.grok/skills`. Bound the loop to the drop-in exit list, the exit card in `docs/ops/RUN-LOG-mvp-probe-int-1031.md`, and `docs/ops/HANDOFF-mvp-probe-int-1031.md`. | Stop and ask. | The drop-in says do not ask, and it already names the exits and the handoff path.
+- 2026-11-01T01:45:00Z | Probes invoke `./pfy build` with `--grok-cmd` pointing at a fake grok. `HOME` and `PFY_STATE_DIR` stay under `tmp/probe-int/`. No `--local`. No live Grok API. The closed-port probe uses `127.0.0.1` only. | Call the real `grok` binary. | The lane forbids reading auth state and does not authorize spend.
+- 2026-11-01T01:45:00Z | Probe fixes, if any, land sequentially in `scripts/pfy_build_cloud.py` and `tests/test_pfy_build_cloud.py`. One project-map subagent may write `.project-map/` only. | Spawn one editor subagent per probe. | Those probes share one runner file.
