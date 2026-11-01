@@ -1,0 +1,45 @@
+{
+  "schema": "pfy-cloud-build/1",
+  "status": "PASS",
+  "reason": "ok",
+  "exit_code": 0,
+  "branch": "cloud/pfylib-adapters-base-py-backup-once-uses-20261101T012902461929Z",
+  "commit": "01067f1e755aa426a01eef942c62865c4fe53470",
+  "base": "HEAD",
+  "review": {
+    "verdict": "accept",
+    "reasons": []
+  },
+  "attempts": [
+    {
+      "n": 1,
+      "status": "PASS",
+      "reason": "ok",
+      "output_tail": "I'll change only `backup_once` so a symlink returns an empty string and is never opened or backed up, while a regular file is still copied once.`is_file` follows the link, so a mode-000 target still looks like a file and `shutil.copy` opens it. I'll return before that when the path itself is a symlink.`backup_once` now returns `\"\"` for a symlink and does not open the target or write a backup.\n\n`Path.is_symlink()` is checked first, before `is_file()`. `is_file()` follows links, so a mode-000 target still looked like a file and `shutil.copy` tried to open it. A regular file is still copied once to `path` plus `.pfy.backup`, and a second call leaves that backup in place.\n\n`python3 -m unittest tests.test_backup_once_symlink` passed.\n\nThe review is only about `backup_once`: symlink must return `\"\"` without opening the target, and a regular file must still back up once. I'll check the function against that.verdict: accept\n",
+      "review": {
+        "verdict": "accept",
+        "reasons": []
+      }
+    }
+  ],
+  "gate": {
+    "cmd": "python3 -m unittest tests.test_backup_once_symlink",
+    "before": {
+      "cmd": "python3 -m unittest tests.test_backup_once_symlink",
+      "exit": 1,
+      "tail": "\nE\n======================================================================\nERROR: test_symlink_is_skipped_and_regular_file_backs_up_once (tests.test_backup_once_symlink.BackupOnceSymlinkTests.test_symlink_is_skipped_and_regular_file_backs_up_once)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/mark/DEVELOP/pfy-mentat/tmp/mvp-selfhost2-1031/tmp/selfhost2-clones/target-13/tmp/cloud-build/20261101T012902461929Z/tests/test_backup_once_symlink.py\", line 47, in test_symlink_is_skipped_and_regular_file_backs_up_once\n    got = backup_once(link)\n  File \"/home/mark/DEVELOP/pfy-mentat/tmp/mvp-selfhost2-1031/tmp/selfhost2-clones/target-13/tmp/cloud-build/20261101T012902461929Z/pfylib/adapters/base.py\", line 184, in backup_once\n    shutil.copy(path, dest)\n    ~~~~~~~~~~~^^^^^^^^^^^^\n  File \"/usr/lib/python3.14/shutil.py\", line 489, in copy\n    copyfile(src, dst, follow_symlinks=follow_symlinks)\n    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib/python3.14/shutil.py\", line 313, in copyfile\n    with open(src, 'rb') as fsrc:\n         ~~~~^^^^^^^^^^^\nPermissionError: [Errno 13] Permission denied: '/home/mark/DEVELOP/pfy-mentat/tmp/mvp-selfhost2-1031/tmp/selfhost2-clones/target-13/tmp/cloud-build/20261101T012902461929Z/tmp/selfhost2-tests/backup-once-e2fk6iuo/link.toml'\n\n----------------------------------------------------------------------\nRan 1 test in 0.010s\n\nFAILED (errors=1)\n",
+      "started": true
+    },
+    "after": {
+      "cmd": "python3 -m unittest tests.test_backup_once_symlink",
+      "exit": 0,
+      "tail": "\n.\n----------------------------------------------------------------------\nRan 1 test in 0.005s\n\nOK\n",
+      "started": true
+    }
+  },
+  "recovery": "",
+  "pushed": false,
+  "worktree_removed": true,
+  "task": "pfylib/adapters/base.py backup_once uses path.is_file() and then shutil.copy. is_file follows a symlink. The owner can still stat a mode-000 file, so is_file is true and shutil.copy raises. A readable target would be copied as a regular backup.\n\nChange only backup_once. Do not edit tests. Do not change file_sha or atomic_write. If the path is a symlink, return an empty string and do not open the target and do not create a backup. A regular file is still copied once to path plus .pfy.backup, and a second call does not overwrite that backup.",
+  "finished_at": "2026-11-01T01:30:21Z"
+}

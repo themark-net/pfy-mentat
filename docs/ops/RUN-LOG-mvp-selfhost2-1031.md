@@ -63,3 +63,4 @@ Survey skips, recorded before item 01, not a no-progress streak: T-0091 voice sh
 10 hedge-ledger | 3eeab42 | tests.test_hedge_ledger_symlink tests.test_hedge 17 OK on Python 3.14 and 3.12 | PASS receipt, attempts 1, wall 132s, review accept, human accept. Cloud SHA e8cc4f3.
 11 setup-ledger | b6e387a | tests.test_setup_ledger_symlink 1 OK on Python 3.14 and 3.12; SetupTests second-run and four-harness OK on 3.14 | PASS receipt, attempts 1, wall 94s, review accept, human accept. Cloud SHA 7540153.
 12 apply-mcp | c97d0a1 | tests.test_apply_mcp_symlink tests.test_pfy_launcher_p1.SetupTests second-run and four-harness 3 OK on Python 3.14 and 3.12 | PASS receipt, attempts 1, wall 173s, review accept, human accept. Cloud SHA 533f8a2.
+13 backup-once | 18ed977 | tests.test_backup_once_symlink tests.test_apply_mcp_symlink tests.test_adapter_tree_hash_symlink 3 OK on Python 3.14 and 3.12 | PASS receipt, attempts 1, wall 79s, review accept, human accept. Cloud SHA 01067f1.
