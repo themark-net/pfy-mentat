@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import json
 import os
+import tempfile
 from pathlib import Path
 
 from . import _legacy, registry
@@ -575,10 +576,31 @@ def _under(path: Path, roots: list[Path]) -> bool:
     return any(p == r or r in p.parents for r in roots)
 
 
+def _put_text(path: Path, text: str) -> None:
+    """Write text as a regular file. A symlink at path is replaced, not followed."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, name = tempfile.mkstemp(prefix=".pfy-", dir=path.parent)
+    tmp = Path(name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(text)
+        os.replace(tmp, path)
+    except Exception:
+        tmp.unlink(missing_ok=True)
+        raise
+
+
+def _regular_text(path: Path) -> str:
+    """Bytes of a regular file. A symlink is absent content, not the target."""
+    if path.is_symlink() or not path.is_file():
+        return ""
+    return path.read_text(encoding="utf-8", errors="replace")
+
+
 def _write_marker(path: Path, tid: str, content: str) -> str:
     begin, end = MARK_BEGIN % tid, MARK_END % tid
     block = "%s\n%s\n%s\n" % (begin, content.rstrip("\n"), end)
-    existing = path.read_text(encoding="utf-8", errors="replace") if path.is_file() else ""
+    existing = _regular_text(path)
     if begin in existing and end in existing:
         head = existing.split(begin, 1)[0]
         tail = existing.split(end, 1)[1]
@@ -587,14 +609,15 @@ def _write_marker(path: Path, tid: str, content: str) -> str:
     else:
         new = (existing.rstrip("\n") + "\n\n" if existing.strip() else "") + block
         action = "appended"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(new, encoding="utf-8")
+    _put_text(path, new)
     return action
 
 
 def _merge_json(path: Path, fragment: dict) -> str:
     cfg: dict = {}
-    if path.is_file():
+    if path.is_symlink() or not path.is_file():
+        cfg = {}
+    else:
         try:
             loaded = json.loads(path.read_text(encoding="utf-8"))
             cfg = loaded if isinstance(loaded, dict) else {}
@@ -613,8 +636,7 @@ def _merge_json(path: Path, fragment: dict) -> str:
             cfg[key] = cur
         else:
             cfg[key] = val
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(cfg, indent=2) + "\n", encoding="utf-8")
+    _put_text(path, json.dumps(cfg, indent=2) + "\n")
     return "merged"
 
 
@@ -657,8 +679,7 @@ def apply(p: dict, *, yes: bool = False, state: Path | None = None, root_dir: Pa
         mode = f.get("mode") or "write"
         try:
             if mode == "write":
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text(str(f.get("content") or ""), encoding="utf-8")
+                _put_text(path, str(f.get("content") or ""))
                 res = "written"
             elif mode == "append-marker":
                 res = _write_marker(path, tid, str(f.get("content") or ""))
