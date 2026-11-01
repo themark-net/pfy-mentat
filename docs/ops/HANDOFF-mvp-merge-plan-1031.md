@@ -23,7 +23,7 @@ The plan covers every `origin/bot/*-1031` branch plus `origin/bot/mvp3-review-re
 | expectation fix | 52e3ddc | tmp/stack-rerun-tests.log at 2275c47, 8 tests, 4.355s | OK |
 | late retips (dogfood3, selfhost2, cloud-perf, tmpclean) | cee9bdd | tmp/stack-late-tests.log, 3 tests, 0.346s | OK |
 
-Lane commits before this handoff: `51d51ba` (exit card), `55a138a` (decisions title). The plan commit SHA is the commit that adds this file. The run log state line names it.
+Lane commits: `51d51ba` (exit card), `55a138a` (decisions title), `471266eead89a7abbc6a95c25ea7d332dd52b663` (this plan, the handoff, the decisions, and the run log). The run log state line names that SHA.
 
 ## Skipped
 

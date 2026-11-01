@@ -150,12 +150,12 @@ Scratch SHAs below are not pushed. The plan doc commit is on this branch.
 - stacked batch | 9b63b93 | tmp/stack-final-tests.log 289 tests 301.767s plus local-t5 12 tests | 281 passed, 8 failed; local-t5 OK
 - expectation fix for recheck git and stricter help | 52e3ddc | tmp/stack-rerun-tests.log at 2275c47, 8 tests 4.355s | OK
 - late retips dogfood3 selfhost2 cloud-perf | cee9bdd | tmp/stack-late-tests.log 3 tests 0.346s | OK
-- plan doc | this branch | docs only, no product tests | see MERGE-PLAN-1031.md
+- plan doc | 471266e | docs only, no product tests | see MERGE-PLAN-1031.md
 
 Four tests stay red on the stacked runner (mutant anchors and one planted diff). Recorded in the plan. Not regenerated.
 
 Host at freeze: MemAvailable about 68 GiB, load about 3.5, 32 cores. Not pressured.
 Pregate not run: drop-in forbids scripts/pregate.sh.
 
-state: lane empty | scratch cee9bdd92bce33df5a8c94c5c77eb376bc242dcd at 2026-11-01T01:20:48Z | plan doc is this commit | pregate not run | four anchor tests stay red on the stacked runner until they are re-cut
+state: lane empty | scratch cee9bdd92bce33df5a8c94c5c77eb376bc242dcd at 2026-11-01T01:20:48Z | plan 471266eead89a7abbc6a95c25ea7d332dd52b663 | pregate not run | four anchor tests stay red on the stacked runner until they are re-cut
 
