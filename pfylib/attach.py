@@ -243,7 +243,7 @@ def _write_spawn_receipt(state, sid: str, code: int | None) -> None:
         path = Path(state)
         path.mkdir(parents=True, exist_ok=True)
         text = json.dumps({"exit_code": code, "live": "FAIL"}, sort_keys=True) + "\n"
-        (path / ("%s-attach-receipt.json" % sid)).write_text(text, encoding="utf-8")
+        _write_regular_text(path / ("%s-attach-receipt.json" % sid), text)
     except OSError:
         pass
 
