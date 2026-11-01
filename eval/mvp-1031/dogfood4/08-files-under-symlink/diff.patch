@@ -1,0 +1,21 @@
+diff --git a/examples/x-intake-local/smoke_143_145.py b/examples/x-intake-local/smoke_143_145.py
+index 8f8fd13..7b1eeaf 100644
+--- a/examples/x-intake-local/smoke_143_145.py
++++ b/examples/x-intake-local/smoke_143_145.py
+@@ -143,7 +143,15 @@ def git_head(git: str, repo: Path, home: str, cwd: str) -> str:
+ 
+ 
+ def files_under(p: Path) -> list[str]:
+-    return sorted(str(x.relative_to(p)) for x in p.rglob("*") if x.is_file()) if p.is_dir() else []
++    if not p.is_dir() or p.is_symlink():
++        return []
++    names = []
++    for path in p.rglob("*"):
++        if path.is_symlink():
++            continue
++        if path.is_file():
++            names.append(str(path.relative_to(p)))
++    return sorted(names)
+ 
+ 
+ def sha256_file(p: Path) -> str:

@@ -1,0 +1,45 @@
+{
+  "schema": "pfy-cloud-build/1",
+  "status": "PASS",
+  "reason": "ok",
+  "exit_code": 0,
+  "branch": "cloud/edit-only-examples-x-intake-local-smoke-20261101T021259376406Z",
+  "commit": "a2123f737de3ad0ff533017885bc35b5b9edb859",
+  "base": "HEAD",
+  "review": {
+    "verdict": "accept",
+    "reasons": []
+  },
+  "attempts": [
+    {
+      "n": 1,
+      "status": "PASS",
+      "reason": "ok",
+      "output_tail": "I'll replace `files_under` in `examples/x-intake-local/smoke_143_145.py` so it skips symlinks and still lists regular files.The current `files_under` treats a symlink to a file as a real file. I'll replace only that function, then run the smoke test.`files_under` in `examples/x-intake-local/smoke_143_145.py` now skips symlinks and still lists regular files.\n\nA path that is not a directory, or is itself a symlink, returns an empty list. While walking with `rglob`, each symlink is skipped before `is_file()` runs, so a link to a file outside the tree is not opened and not listed. A normal file is still included, and the names come back sorted.\n\n`python3 -m unittest tests.test_smoke_143_files_under` passed. `site_digest`, `_taste`, and the other functions are unchanged.\n\nI'll check the working tree against the task so the verdict is based on the real diff, not only the pasted hunk.verdict: accept\n\nThe diff edits only `files_under` in `examples/x-intake-local/smoke_143_145.py` and matches the requested body. No other function, file, test, commit, or push is included.\n",
+      "review": {
+        "verdict": "accept",
+        "reasons": []
+      }
+    }
+  ],
+  "gate": {
+    "cmd": "python3 -m unittest tests.test_smoke_143_files_under",
+    "before": {
+      "cmd": "python3 -m unittest tests.test_smoke_143_files_under",
+      "exit": 1,
+      "tail": "\nF\n======================================================================\nFAIL: test_symlink_is_not_listed_and_target_stays (tests.test_smoke_143_files_under.FilesUnderTests.test_symlink_is_not_listed_and_target_stays)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood4-1031/tmp/target-08/tmp/cloud-build/20261101T021259376406Z/tests/test_smoke_143_files_under.py\", line 39, in test_symlink_is_not_listed_and_target_stays\n    self.assertEqual(names, [\"real.txt\"])\n    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^\nAssertionError: Lists differ: ['real.txt', 'shot.jpg'] != ['real.txt']\n\nFirst list contains 1 additional elements.\nFirst extra element 1:\n'shot.jpg'\n\n- ['real.txt', 'shot.jpg']\n+ ['real.txt']\n\n----------------------------------------------------------------------\nRan 1 test in 0.032s\n\nFAILED (failures=1)\n",
+      "started": true
+    },
+    "after": {
+      "cmd": "python3 -m unittest tests.test_smoke_143_files_under",
+      "exit": 0,
+      "tail": "\n.\n----------------------------------------------------------------------\nRan 1 test in 0.028s\n\nOK\n",
+      "started": true
+    }
+  },
+  "recovery": "",
+  "pushed": false,
+  "worktree_removed": true,
+  "task": "Edit only examples/x-intake-local/smoke_143_145.py. Do not edit any file under tests/. Do not add a file. Do not commit. Do not push. Do not edit site_digest or smoke_140_142.py.\n\nfiles_under uses p.rglob and x.is_file(). is_file follows a symlink, so a symlink to a file is listed as if it were a file in the tree. The target can sit outside the directory.\n\nSkip symlinks. Do not open them and do not list them. A regular file is still listed.\n\nReplace files_under with:\n\ndef files_under(p: Path) -> list[str]:\n    if not p.is_dir() or p.is_symlink():\n        return []\n    names = []\n    for path in p.rglob(\"*\"):\n        if path.is_symlink():\n            continue\n        if path.is_file():\n            names.append(str(path.relative_to(p)))\n    return sorted(names)\n\nDo not change site_digest, _taste, or any other function. Do not use an em dash or an en dash.",
+  "finished_at": "2026-11-01T02:13:54Z"
+}
