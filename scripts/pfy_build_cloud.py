@@ -1752,6 +1752,7 @@ def reap(args) -> int:
         print(str(exc), file=sys.stderr)
         return EXIT_USAGE
     notes: list[str] = []
+    receipt_error = ""
     pid_path = repo / "tmp" / "cloud-build.pids.json"
     if pid_path.is_file():
         try:
@@ -1800,14 +1801,18 @@ def reap(args) -> int:
                             },
                         )
                         notes.append("aborted %s" % dest.parent.name)
-                    except OSError:
-                        pass
-        if pid != os.getpid():
+                    except OSError as exc:
+                        # Keep the pid file so a later --reap can write the receipt.
+                        receipt_error = "reap: could not write ABORTED receipt %s: %s" % (dest, exc)
+        if pid != os.getpid() and not receipt_error:
             try:
                 pid_path.unlink()
             except OSError:
                 pass
     print("reaped: %s" % (", ".join(notes) or "none"))
+    if receipt_error:
+        print(receipt_error, file=sys.stderr)
+        return EXIT_FAIL
     return EXIT_OK
 
 

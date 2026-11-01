@@ -1749,6 +1749,49 @@ class CloudBuildFailureTests(unittest.TestCase):
         self.assertIn("--reap", aborted["recovery"])
         self.assertFalse(cloud_pids.exists())
 
+    def test_reap_exits_nonzero_when_the_aborted_receipt_cannot_be_written(self) -> None:
+        # Fail: reap returns 0 when the ABORTED receipt cannot be written.
+        # Recover: the pid file stays. After the path is a directory, a second
+        # reap writes ABORTED and exits 0.
+        blocked = self.side / "receipt-not-a-dir"
+        blocked.write_text("blocked\n", encoding="utf-8")
+        leader = subprocess.Popen(["sleep", "60"], start_new_session=True)
+        self.addCleanup(lambda: None if _dead(leader.pid) else os.kill(leader.pid, signal.SIGKILL))
+        os.kill(leader.pid, signal.SIGKILL)
+        leader.wait(timeout=5)
+        self.assertTrue(_dead(leader.pid))
+        cloud_pids = self.repo / "tmp" / "cloud-build.pids.json"
+        cloud_pids.parent.mkdir(parents=True, exist_ok=True)
+        cloud_pids.write_text(
+            json.dumps(
+                {
+                    "pid": leader.pid,
+                    "pgid": 0,
+                    "agent_pgid": 0,
+                    "receipt_dir": str(blocked),
+                }
+            ),
+            encoding="utf-8",
+        )
+        proc = _run([sys.executable, str(CLOUD), "--reap", "--repo", str(self.repo)], self.repo, timeout=20)
+        text = (proc.stdout or "") + (proc.stderr or "")
+        self.assertEqual(proc.returncode, 1, text)
+        self.assertIn("could not write ABORTED receipt", proc.stderr or "")
+        self.assertIn(str(blocked), proc.stderr or "")
+        self.assertTrue(cloud_pids.is_file(), text)
+        self.assertTrue(blocked.is_file())
+        blocked.unlink()
+        blocked.mkdir()
+        again = _run([sys.executable, str(CLOUD), "--reap", "--repo", str(self.repo)], self.repo, timeout=20)
+        again_text = (again.stdout or "") + (again.stderr or "")
+        self.assertEqual(again.returncode, 0, again_text)
+        aborted = json.loads((blocked / "receipt.json").read_text(encoding="utf-8"))
+        self.assertEqual(aborted["status"], "ABORTED")
+        self.assertEqual(aborted["reason"], "no-receipt")
+        self.assertIn("Mark:", aborted["recovery"])
+        self.assertIn("--reap", aborted["recovery"])
+        self.assertFalse(cloud_pids.exists())
+
     def test_reap_leaves_a_live_recorded_pid_alone(self) -> None:
         stale = self.side / "live-run"
         stale.mkdir()
