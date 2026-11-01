@@ -1,0 +1,45 @@
+{
+  "schema": "pfy-cloud-build/1",
+  "status": "PASS",
+  "reason": "ok",
+  "exit_code": 0,
+  "branch": "cloud/edit-only-pfylib-loop-paint-py-do-not-ed-20261101T015243103027Z",
+  "commit": "01597623dcc67b8fe0096eec7fd644fa2fdf618a",
+  "base": "HEAD",
+  "review": {
+    "verdict": "accept",
+    "reasons": []
+  },
+  "attempts": [
+    {
+      "n": 1,
+      "status": "PASS",
+      "reason": "ok",
+      "output_tail": "I'll edit only `pfylib/loop_paint.py` so symlink paths are not followed on load or save, then run the symlink test.`load_selection` and `save_selection` follow `loop-modules.json` when it is a symlink. I will treat a symlink as empty on load and replace it with a regular file on save.`load_selection` and `save_selection` in `pfylib/loop_paint.py` no longer follow a symlink at `loop-modules.json`.\n\n- A symlink, including a broken one, loads as `{\"enabled\": [], \"task\": \"interactive\"}` and is not read.\n- Save writes through a temp file and `os.replace`, so the symlink inode is replaced by a regular file and the old target is left unchanged.\n- A regular file still round-trips.\n\n`python3 -m unittest tests.test_loop_paint_symlink tests.test_loop_paint` passed: 11 tests, OK. No commit and no push.\n\nI'll check the diff against the task and the rejection rules before giving a verdict.verdict: accept\n\nThe diff edits only `pfylib/loop_paint.py`. It adds `import tempfile`, the `_put_text` helper, the `is_symlink()` early return in `load_selection`, and the `_put_text` call in `save_selection`. No tests were deleted, nothing is removed recursively, and no write targets the filesystem root.\n",
+      "review": {
+        "verdict": "accept",
+        "reasons": []
+      }
+    }
+  ],
+  "gate": {
+    "cmd": "python3 -m unittest tests.test_loop_paint_symlink",
+    "before": {
+      "cmd": "python3 -m unittest tests.test_loop_paint_symlink",
+      "exit": 1,
+      "tail": "\nF.FF\n======================================================================\nFAIL: test_load_does_not_read_symlink_target (tests.test_loop_paint_symlink.LoopPaintSymlinkTests.test_load_does_not_read_symlink_target)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood4-1031/tmp/target-02/tmp/cloud-build/20261101T015243103027Z/tests/test_loop_paint_symlink.py\", line 43, in test_load_does_not_read_symlink_target\n    self.assertEqual(loaded[\"enabled\"], [])\n    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: Lists differ: ['keep-me'] != []\n\nFirst list contains 1 additional elements.\nFirst extra element 0:\n'keep-me'\n\n- ['keep-me']\n+ []\n\n======================================================================\nFAIL: test_save_does_not_create_a_broken_symlink_target (tests.test_loop_paint_symlink.LoopPaintSymlinkTests.test_save_does_not_create_a_broken_symlink_target)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood4-1031/tmp/target-02/tmp/cloud-build/20261101T015243103027Z/tests/test_loop_paint_symlink.py\", line 64, in test_save_does_not_create_a_broken_symlink_target\n    self.assertFalse(missing.exists())\n    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^\nAssertionError: True is not false\n\n======================================================================\nFAIL: test_save_replaces_symlink_and_leaves_target (tests.test_loop_paint_symlink.LoopPaintSymlinkTests.test_save_replaces_symlink_and_leaves_target)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood4-1031/tmp/target-02/tmp/cloud-build/20261101T015243103027Z/tests/test_loop_paint_symlink.py\", line 53, in test_save_replaces_symlink_and_leaves_target\n    self.assertEqual(outside.read_text(encoding=\"utf-8\"), '{\"enabled\":[\"keep-me\"],\"task\":\"hard\"}\\n')\n    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: '{\\n  \"enabled\": [\\n    \"jev\"\\n  ],\\n  \"task\": \"bulk\"\\n}\\n' != '{\"enabled\":[\"keep-me\"],\"task\":\"hard\"}\\n'\n+ {\"enabled\":[\"keep-me\"],\"task\":\"hard\"}\n- {\n-   \"enabled\": [\n-     \"jev\"\n-   ],\n-   \"task\": \"bulk\"\n- }\n\n\n----------------------------------------------------------------------\nRan 4 tests in 0.002s\n\nFAILED (failures=3)\n",
+      "started": true
+    },
+    "after": {
+      "cmd": "python3 -m unittest tests.test_loop_paint_symlink",
+      "exit": 0,
+      "tail": "\n....\n----------------------------------------------------------------------\nRan 4 tests in 0.001s\n\nOK\n",
+      "started": true
+    }
+  },
+  "recovery": "",
+  "pushed": false,
+  "worktree_removed": true,
+  "task": "Edit only pfylib/loop_paint.py. Do not edit any file under tests/. Do not add a file. Do not commit. Do not push.\n\nload_selection uses path.is_file() and path.read_text(). save_selection uses path.write_text(). Both follow a symlink at <state>/loop-modules.json. load returns the target JSON. save changes the target bytes and leaves the path as a symlink. write_text on a broken symlink creates the missing target.\n\nWhen the path is a symlink, including a broken symlink, do not open, read, or write the target. load_selection returns the empty selection {\"enabled\": [], \"task\": \"interactive\"}. save_selection replaces the symlink with a regular file. os.replace replaces the symlink inode and does not follow it.\n\nAdd import tempfile next to import os.\n\nAdd this helper immediately above load_selection:\n\ndef _put_text(path: Path, text: str) -> None:\n    \"\"\"Write text as a regular file. A symlink at path is replaced, not followed.\"\"\"\n    path.parent.mkdir(parents=True, exist_ok=True)\n    fd, name = tempfile.mkstemp(prefix=\".pfy-\", dir=path.parent)\n    tmp = Path(name)\n    try:\n        with os.fdopen(fd, \"w\", encoding=\"utf-8\") as fh:\n            fh.write(text)\n        os.replace(tmp, path)\n    except Exception:\n        tmp.unlink(missing_ok=True)\n        raise\n\nIn load_selection, if path.is_symlink(), return empty before any read. Do not call read_text on a symlink.\n\nIn save_selection, keep the payload dict. Replace path.write_text(...) with _put_text(path, json.dumps(payload, indent=2) + \"\\n\"). Do not call write_text on path.\n\nDo not edit toggle, set_task, story, or any other function. Do not change the stub copy string in toggle. A regular file still round-trips: save then load returns the same enabled list and task. Do not use an em dash or an en dash.",
+  "finished_at": "2026-11-01T01:53:55Z"
+}
