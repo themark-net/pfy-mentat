@@ -42,3 +42,7 @@ Risks:
 Item log (append one line each): `item | commit | tests | result`
 
 Survey skips, recorded before item 01, do not count as a no-progress streak. Detail is in the decisions file.
+
+2026-11-01T01:47:00Z: pass3 findings 3, 4, and 7 skipped. probe-int modified `scripts/pfy_build_cloud.py` before this lane committed a product edit. The red test was not pushed.
+
+2026-11-01T01:52:00Z: item 04 red test `tests.test_smoke_137_bad_timeout` FAILED (failures=5). Unset and empty still report the neatroots prereq miss. Cloud build starts next.
