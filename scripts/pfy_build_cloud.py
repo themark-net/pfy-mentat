@@ -1182,6 +1182,33 @@ class CloudBuild:
             )
             if extracted.returncode != 0:
                 return "commit-recheck-failed", "extract failed"
+            # The extract has no .git. Without one, git walks up to the caller
+            # repo and a gate that runs git sees the parent tree. A nested
+            # repo whose index is the archive keeps that walk inside the extract.
+            hooks = dest.parent / ("recheck-hooks-" + sha[:12])
+            hooks.mkdir(parents=True, exist_ok=True)
+            git_base = [
+                "git",
+                "-C",
+                str(dest),
+                "-c",
+                "user.name=%s" % AUTHOR_NAME,
+                "-c",
+                "user.email=%s" % AUTHOR_EMAIL,
+                "-c",
+                "commit.gpgsign=false",
+                "-c",
+                "core.hooksPath=%s" % hooks,
+            ]
+            init = subprocess.run([*git_base, "init", "-q"], capture_output=True, check=False)
+            added = subprocess.run([*git_base, "add", "-A"], capture_output=True, check=False)
+            committed = subprocess.run(
+                [*git_base, "commit", "-q", "--allow-empty", "-m", "recheck"],
+                capture_output=True,
+                check=False,
+            )
+            if init.returncode != 0 or added.returncode != 0 or committed.returncode != 0:
+                return "commit-recheck-failed", "extract failed"
             again = self.gate(dest)
             tail = str(again.get("tail") or "")
             if again.get("aborted") == "timeout":
@@ -1193,6 +1220,7 @@ class CloudBuild:
             return None, tail
         finally:
             shutil.rmtree(dest, ignore_errors=True)
+            shutil.rmtree(dest.parent / ("recheck-hooks-" + sha[:12]), ignore_errors=True)
 
     def grok_call(self, prompt: str) -> tuple[str, int, str, str]:
         if not self.grok:
@@ -1231,6 +1259,10 @@ class CloudBuild:
                 "verdict": self.review.get("verdict"),
                 "reasons": list(self.review.get("reasons") or []),
             }
+        # The worktree is removed when the run fails. Keep the rejected patch
+        # on the receipt so a later timeout does not leave prose tails only.
+        if reason == "review-rejected" and self.worktree is not None:
+            row["diff"] = redact(capture_diff(self.worktree, files_changed(self.worktree)))
         self.attempts.append(row)
 
     def commit_paths(self, paths: list[str]) -> str | None:
@@ -1398,6 +1430,7 @@ class CloudBuild:
             "review": {
                 "verdict": self.review.get("verdict"),
                 "reasons": list(self.review.get("reasons") or []),
+                "truncated": bool(self.review.get("truncated", False)),
             },
             "attempts": self.attempts,
             "gate": {
@@ -1489,6 +1522,37 @@ class CloudBuild:
             self.record(0, "FAIL", "symlink-escape", "")
             return self.fail("FAIL", "symlink-escape", EXIT_FAIL, "")
         base_manifest = tree_manifest(self.worktree)
+        # Run budget is --timeout times the attempt count. One grok call stays
+        # at --timeout, except a review-reject retry, which may use the time
+        # still left so the per-call cap does not abort it early. Nothing runs
+        # past the budget.
+        call_cap = float(self.args.timeout)
+        deadline = time.monotonic() + call_cap * max(1, self.max_attempts)
+        last_reject: list[str] | None = None
+        review_truncated = False
+
+        def time_left() -> float:
+            return deadline - time.monotonic()
+
+        def arm(extend: bool) -> float:
+            left = time_left()
+            if extend and left > 0:
+                self.args.timeout = left
+            else:
+                self.args.timeout = min(call_cap, left) if left > 0 else 0.05
+            return left
+
+        def as_reject(number: int | None, output: str, timed_out: bool) -> int:
+            self.review = {
+                "verdict": "reject",
+                "reasons": list(last_reject or ["review-rejected"]),
+                "truncated": review_truncated,
+            }
+            if timed_out and number is not None:
+                self.record(number, "TIMEOUT", "timeout", output)
+            return self.fail("FAIL", "review-rejected", EXIT_FAIL, "")
+
+        arm(False)
         self.gate_before = self.gate()
         if (self.gate_before or {}).get("aborted") == "timeout":
             return self._gate_timeout_fail(0, str((self.gate_before or {}).get("tail") or ""))
@@ -1518,6 +1582,9 @@ class CloudBuild:
             if self.state.interrupted:
                 self.record(number, "FAIL", "interrupted", "")
                 return self.fail("FAIL", "interrupted", EXIT_FAIL, "")
+            if last_reject is not None and time_left() < 1.0:
+                return as_reject(None, "", False)
+            arm(last_reject is not None)
             status, code, out, err = self.grok_call(
                 implement_prompt(self.args.task_text, self.args.test_cmd, feedback, previous_diff)
             )
@@ -1526,6 +1593,8 @@ class CloudBuild:
                 self.record(number, "FAIL", "interrupted", output)
                 return self.fail("FAIL", "interrupted", EXIT_FAIL, "")
             if status == "timeout":
+                if last_reject is not None:
+                    return as_reject(number, output, True)
                 self.record(number, "TIMEOUT", "timeout", output)
                 return self.fail("TIMEOUT", "timeout", EXIT_TIMEOUT, "")
             if status == "missing":
@@ -1573,6 +1642,7 @@ class CloudBuild:
                     continue
                 return self.fail("FAIL", "tests-tampered", EXIT_FAIL, "")
             agent_manifest = tree_manifest(self.worktree)
+            arm(False)
             after = self.gate()
             self.gate_after = after
             if after.get("aborted") == "timeout":
@@ -1599,6 +1669,7 @@ class CloudBuild:
                 if number < self.max_attempts:
                     continue
                 return self.fail("FAIL", "tests", EXIT_FAIL, "")
+            arm(False)
             again = self.gate()
             self.gate_after = again
             if again.get("aborted") == "timeout":
@@ -1620,6 +1691,13 @@ class CloudBuild:
                 return self.fail("FAIL", "tests-flaky", EXIT_FAIL, "")
             diff_text = capture_diff(self.worktree, changed)
             if not self.args.no_review:
+                if time_left() < 0.05:
+                    if last_reject is not None:
+                        return as_reject(number, output, True)
+                    self.record(number, "TIMEOUT", "timeout", output)
+                    return self.fail("TIMEOUT", "timeout", EXIT_TIMEOUT, "")
+                arm(False)
+                review_truncated = len(redact(diff_text or "")) > DIFF_CAP
                 review_status, review_code, review_out, review_err = self.grok_call(
                     review_prompt(self.args.task_text, diff_text, str(again.get("tail") or ""))
                 )
@@ -1629,6 +1707,8 @@ class CloudBuild:
                     self.record(number, "FAIL", "interrupted", output)
                     return self.fail("FAIL", "interrupted", EXIT_FAIL, "")
                 if review_status == "timeout":
+                    if last_reject is not None:
+                        return as_reject(number, output, True)
                     self.record(number, "TIMEOUT", "timeout", output)
                     return self.fail("TIMEOUT", "timeout", EXIT_TIMEOUT, "")
                 if review_status == "missing":
@@ -1648,10 +1728,15 @@ class CloudBuild:
                 if verdict == "accept" and diff_aims_at_root(diff_text):
                     verdict = "reject"
                     reasons = ["review-rejected"]
-                self.review = {"verdict": verdict, "reasons": reasons}
+                self.review = {
+                    "verdict": verdict,
+                    "reasons": reasons,
+                    "truncated": review_truncated,
+                }
                 if verdict != "accept":
                     feedback = "review-rejected\n%s" % "\n".join(reasons)
                     previous_diff = diff_text
+                    last_reject = list(reasons) if reasons else ["review-rejected"]
                     self.record(number, "PASS-REJECTED", "review-rejected", output)
                     if number < self.max_attempts:
                         continue
@@ -1659,6 +1744,7 @@ class CloudBuild:
             else:
                 if diff_aims_at_root(diff_text):
                     self.review = {"verdict": "reject", "reasons": ["review-rejected"]}
+                    last_reject = ["review-rejected"]
                     feedback = "review-rejected\nrecursive delete aimed at the filesystem root"
                     previous_diff = diff_text
                     self.record(number, "PASS-REJECTED", "review-rejected", output)
@@ -1671,6 +1757,7 @@ class CloudBuild:
                 self.recovery_detail = ", ".join(escaped)
                 self.record(number, "FAIL", "symlink-escape", output)
                 return self.fail("FAIL", "symlink-escape", EXIT_FAIL, "")
+            arm(False)
             err = self.commit_paths(changed)
             if err == "timeout":
                 return self._gate_timeout_fail(number, output)
