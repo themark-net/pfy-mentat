@@ -388,6 +388,10 @@ class Handler(BaseHTTPRequestHandler):
                 blocker = getattr(self.server, "review_block", None)
                 if blocker is not None:
                     blocker.wait()
+                raw_body = getattr(self.server, "review_raw", None)
+                if raw_body is not None:
+                    self._send(200, raw_body)
+                    return
                 queue = getattr(self.server, "review_queue", None)
                 if queue:
                     content = queue.pop(0)
