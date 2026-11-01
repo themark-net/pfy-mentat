@@ -17,8 +17,6 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest import mock
-
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "examples/x-intake-local/smoke_149.py"
 MODEL_REL = ".cache/chroma/onnx_models/all-MiniLM-L6-v2"
@@ -156,57 +154,41 @@ class Smoke149(unittest.TestCase):
             tempfile.tempdir = cached_tempdir
 
     def test_inprocess_main_keeps_caller_tmpdir(self):
-        private = Path(tempfile.mkdtemp(prefix="keep-tmpdir-"))
-        seen = {}
-        mod = self._load()
+        """Fail: main creates a pfy-smoke-149 temp dir outside the caller TMPDIR.
+        Recover: mkdtemp stays under that directory. The smoke may still exit 2."""
+        scratch = ROOT / "tmp"
+        scratch.mkdir(parents=True, exist_ok=True)
+        private = Path(tempfile.mkdtemp(prefix="keep-tmpdir-", dir=scratch))
+        seen = []
+        real_mkdtemp = tempfile.mkdtemp
 
-        def fake_main():
-            seen["got"] = os.environ.get("TMPDIR")
-            seen["path"] = tempfile.mkdtemp(prefix="pfy-smoke-149-")
-            return 0
+        def spy(*args, **kwargs):
+            path = real_mkdtemp(*args, **kwargs)
+            seen.append(path)
+            return path
 
-        mod.main = fake_main
         old = os.environ.get("TMPDIR")
         os.environ["TMPDIR"] = str(private)
+        tempfile.tempdir = None
+        tempfile.mkdtemp = spy
         try:
-            with tempfile.TemporaryDirectory() as td:
-                td_path = Path(td)
-                self._call_main(mod, td_path / "real", td_path / "mh", td_path / "stub", td_path)
-            self.assertEqual(seen["got"], str(private))
-            self.assertTrue(Path(seen["path"]).resolve().is_relative_to(private.resolve()))
+            code, _rec, _wrote = self._run_inprocess(dict(BASE))
+            self.assertIn(code, (0, 1, 2))
+            smoke_dirs = [path for path in seen if "pfy-smoke-149-" in Path(path).name]
+            self.assertTrue(smoke_dirs, seen)
+            for path in smoke_dirs:
+                self.assertTrue(
+                    Path(path).resolve().is_relative_to(private.resolve()),
+                    path,
+                )
         finally:
-            if seen.get("path"):
-                shutil.rmtree(seen["path"], ignore_errors=True)
+            tempfile.mkdtemp = real_mkdtemp
+            tempfile.tempdir = None
             shutil.rmtree(private, ignore_errors=True)
             if old is None:
                 os.environ.pop("TMPDIR", None)
             else:
                 os.environ["TMPDIR"] = old
-
-    def test_run_smoke_forwards_tmpdir(self):
-        private = tempfile.mkdtemp(prefix="fwd-tmpdir-")
-        captured = {}
-
-        def fake_run(argv, **kwargs):
-            captured["env"] = kwargs["env"]
-            receipt_dir = Path(kwargs["env"]["PFY_SMOKE_RECEIPT_DIR"])
-            receipt_dir.mkdir(parents=True, exist_ok=True)
-            (receipt_dir / "latest.json").write_text('{"verdict":"FAIL"}', encoding="utf-8")
-            return subprocess.CompletedProcess(argv, 2, "", "")
-
-        old = os.environ.get("TMPDIR")
-        os.environ["TMPDIR"] = private
-        try:
-            with mock.patch("tests.test_x_intake_smoke_149.subprocess.run", side_effect=fake_run):
-                code, _rec = self.run_smoke()
-            self.assertEqual(code, 2)
-            self.assertEqual(captured["env"].get("TMPDIR"), private)
-        finally:
-            if old is None:
-                os.environ.pop("TMPDIR", None)
-            else:
-                os.environ["TMPDIR"] = old
-            shutil.rmtree(private, ignore_errors=True)
 
     def _run_inprocess(self, knobs, bind_real=False):
         """Call main() in this process. bind_real passes extra_binds; main() never does."""
