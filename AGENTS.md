@@ -52,6 +52,7 @@ Verify: `make eval-structural` (no LLM) · `make smoke-grok-skills` · [skill-ve
 **Local worker model:** `LOCAL_CODER_MODEL` (default `deepseek-coder:6.7b` after lab pass); set via `make eval-select-models`. Grok CLI does **not** auto-use it.  
 **Product UX target:** onboard / stage / ship only — [product-operator-surface.md](docs/ops/product-operator-surface.md) · T-0090.  
 Loop map: [loop-engineering.md](docs/ops/loop-engineering.md). Decisions: [human-decision-inventory.md](docs/ops/human-decision-inventory.md).  
+Lessons we learned ourselves: [docs/lessons/LESSONS.md](docs/lessons/LESSONS.md) (cited, one entry per lesson). X post staging: [docs/x-staging/README.md](docs/x-staging/README.md) (bots draft; Mark posts).  
 Code memory: CM primary ([vs Graphify](docs/evaluation/codebase-memory-vs-graphify.md)).  
 **Cage:** `make cage-grok` refreshes auth + installs first-party skills into container `GROK_HOME`.  
 **Code sync (host only):** `make cage-code-sync` / `PUSH=1` — [cage-code-sync.md](docs/ops/cage-code-sync.md).  
