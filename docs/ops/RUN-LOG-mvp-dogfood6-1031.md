@@ -44,6 +44,7 @@ Overview: Land six small cloud builds sourced from the dogfood4 follow-up (symli
 - 04 attach-receipt-symlink | pfylib/attach.py, tests/test_attach_receipt_symlink.py, eval/mvp-1031/dogfood6/04-attach-receipt-symlink/ | spawn receipt write replaces a symlink and leaves the target bytes | 03 | lead
 - 05 hermes-arm-symlink | examples/hermes-bakeoff/hermes_arm.py, tests/test_hermes_arm_symlink.py, eval/mvp-1031/dogfood6/05-hermes-arm-symlink/ | `_write_config` replaces `config.yaml` when it is a symlink | 04 | lead
 - 06 opencode-arm-symlink | examples/hermes-bakeoff/opencode_arm.py, tests/test_opencode_arm_symlink.py, eval/mvp-1031/dogfood6/06-opencode-arm-symlink/ | `_write_config` replaces `opencode.json` when it is a symlink | 05 | lead
+- 07 think-proxy-symlink | examples/hermes-bakeoff/think_proxy.py, tests/test_think_proxy_symlink.py, eval/mvp-1031/dogfood6/07-think-proxy-symlink/ | `write_forced_log` replaces a symlink and leaves the target bytes | 06 | lead
 - handoff | docs/ops/HANDOFF-mvp-dogfood6-1031.md, this log | state line, push | always last | lead
 
 These six builds share one branch, so they are one workstream. The lead runs them. No parallel implementer.
@@ -70,6 +71,7 @@ Each build: throwaway clone under `tmp/target-<n>`, `./pfy build` with `--repo` 
 | 04 | attach-receipt-symlink | same follow-up, spawn receipt | pfylib/attach.py | after 03 |
 | 05 | hermes-arm-symlink | same contract, bake-off config | examples/hermes-bakeoff/hermes_arm.py | blob matches integrate on every commit |
 | 06 | opencode-arm-symlink | same contract, bake-off opencode.json | examples/hermes-bakeoff/opencode_arm.py | checked free before the build |
+| 07 | think-proxy-symlink | same contract, forced-log writer | examples/hermes-bakeoff/think_proxy.py | blob matches every commit; checked free |
 
 ## Items
 
