@@ -65,8 +65,28 @@ Risks:
 - The cloud demo hangs or spends twice. Mitigation: one 1-2 file fix, bounded wait, no `--local`, no second demo after a receipt exists.
 - Host pressure mid-suite. Mitigation: read MemAvailable and load before each item. Pause 10 minutes once if pressure holds, then stop if it is still there.
 
+## Survey (2026-11-01T02:45Z)
+
+Fetched the ten named tips. Each run log's last non-empty line matches `state: DONE`, `state: lane empty`, or `state: wall cap`. None of the tips is an ancestor of HEAD `0e36b7b`. Pairwise `git merge-tree` against that HEAD was clean. Four lanes edit `scripts/pfy_build_cloud.py` (probe-int, timeoutfix, cloud-perf, review-quality). Those can still conflict with each other after the earlier merge lands. probe-int and timeoutfix also both edit `tests/test_pfy_build_cloud.py`.
+
+| order | branch | tip | action |
+|---|---|---|---|
+| 1 | origin/bot/mvp-localbench-tmpdir-1031 | 76fd6a1 | merge |
+| 2 | origin/bot/mvp-probe-int-1031 | b2cbd4f | merge |
+| 3 | origin/bot/mvp-pass3-review-1031 | cc338de | merge |
+| 4 | origin/bot/mvp-dogfood3-1031 | f50192a | merge |
+| 5 | origin/bot/mvp-hermes-check-1031 | 61396e4 | merge |
+| 6 | origin/bot/mvp-timeoutfix-1031 | ef622a6 | merge |
+| 7 | origin/bot/mvp-cloud-perf-1031 | 7c7ca94 | merge |
+| 8 | origin/bot/mvp-selfhost2-1031 | c51c0b3 | merge |
+| 9 | origin/bot/mvp-mutate-cloud2-1031 | 82a52ce | merge |
+| 10 | origin/bot/mvp-review-quality-1031 | 0930690 | merge |
+
+Not in the list, and not merged: mvp3 branches, backlog branches, `bot/mvp-probe-fix2-1031`.
+
 ## Item log
 
 item | commit | tests | result
 
-(plan written before survey and before any merge)
+exits | 0e36b7b | none | exit card pushed before any merge
+survey | this commit | git fetch plus run-log tail and merge-tree | all ten finished, none contained, all clean vs 0e36b7b
