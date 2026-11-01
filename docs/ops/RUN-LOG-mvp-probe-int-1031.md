@@ -61,4 +61,21 @@ Risks:
 
 ## Items
 
-Pending the probe run. No product code has been edited.
+Scratch receipts are in gitignored `tmp/probe-int/results.json` (first pass, before the fixes). PASS rows have no product commit. Each FINDING is one commit.
+
+- dirty | none | probe only | PASS, exit 0 reason ok, caller porcelain unchanged, dirty paths not in the commit
+- detached-mismatch | none | probe only | PASS, exit 2 before grok, no receipt, still detached, no cloud branch
+- detached-match | none | probe only | PASS, exit 0 reason ok, still detached, HEAD unchanged
+- detached-no-origin | none | probe only | PASS, exit 0 reason ok, still detached, HEAD unchanged
+- shell-metacharacters | none | probe only | PASS, exit 0, task stored as data, PWNED not created
+- unicode-paths | none | probe only | PASS, exit 0, commit names the unicode paths
+- symlink-out-of-scope | e7703bf | nice -n 19 python3 -m unittest tests.test_pfy_build_cloud | FINDING fixed, exit 1 reason symlink-escape
+- gate-rewrote | 30b3c3a | nice -n 19 python3 -m unittest tests.test_pfy_build_cloud | FINDING fixed, exit 1 reason gate-rewrote
+- hung-gate | none | probe only | PASS, exit 3 reason timeout, no branch, elapsed 4.088s
+- review-reject-retry | none | probe only | PASS, exit 0, accepted attempt only
+- network-closed-port | 9028d4f | nice -n 19 python3 -m unittest tests.test_pfy_build_cloud | FINDING fixed, exit 1 reason network; other non-zero grok text can still PASS
+- sigterm | none | probe only | PASS, exit 1 reason interrupted, no branch
+- parallel-build-busy | e2da1d6 | nice -n 19 python3 -m unittest tests.test_pfy_build_cloud | FINDING fixed, exit 1 reason build-busy, live pid kept
+- handoff | docs only, with this log | tests already green at e2da1d6 (67 tests, 21.784s, 2026-11-01T01:58Z) | lane empty
+
+state: lane empty | 11 probes scored (detached split into 3, symlink into 2), 4 findings fixed and pushed, sandbox write-through left as an OQ draft, no further item fits this lane
