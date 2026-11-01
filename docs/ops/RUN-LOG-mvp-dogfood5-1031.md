@@ -52,3 +52,7 @@ Survey skips, recorded before item 01, do not count as a no-progress streak. Det
 05 agenc-smoke-tmp | ef1f2c2 | tests.test_agenc_smoke_tmpdir 2 OK | accept
 06 agenc-install-tmp attempt 1 | none | tests.test_agenc_install_tmpdir before exit 1, after exit 0 | human reject, NODE_CACHE mkdir dropped
 06 agenc-install-tmp | 4828050 | tests.test_agenc_install_tmpdir 2 OK | accept
+
+2026-11-01T02:16:42Z: no further code item fits. Findings 3, 4, and 7 stay with probe-int's cloud.py diff. localbench owns `run_runtime_matrix.sh`. smoke_149 content cap and harness2 mode 751 stay OQ drafts.
+
+state: lane empty | 3 cloud items accepted, 1 human reject retried, findings 3/4/7 left on probe-int's cloud.py | pregate not run: host busy
