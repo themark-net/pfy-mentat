@@ -72,3 +72,18 @@ Risks:
 
 #300-d4-smolvm-stderr | 96a5b8f | nice -n 19 python3 -m unittest tests.test_x_intake_smoke_109_111: 13 OK in 3.180s. Before the fix, test_h failed because both runs returned the stdout cache line. | stderr Pulling image wins when a guest cache line is also present; cache-only still counts
 #300-d2-daemon-stop | d97f0c2 | nice -n 19 python3 -m unittest tests.test_x_intake_smoke_112_114: 8 OK in 9.831s. Before the fix, the daemon-stop test exited 0 with "daemon stopped". | exit 1 and the receipt reason is the daemon-stop timeout text when the lock is already gone
+#300-d1-new-version | 80a233f | nice -n 19 python3 -m unittest tests.test_x_intake_smoke_112_114: 8 OK in 9.799s. Before the fix, reasons were "overtime timeout after 0.4s" and "festival timeout after 0.4s". | new and version timeouts keep their step names; other overtime timeouts stay "overtime"
+#300-d3-117-119 | 34de313 | tests.test_x_intake_smoke_117_118, tests.test_x_intake_smoke_119_121, tests.test_x_intake_receipts_117_119: 21 OK in 9.874s. Before the fix, the kander receipt file was created in the repo. | wrong-version cases pass and repo receipt bytes stay unchanged
+#300-d1-openqodex-review | b3e7dd4 | nice -n 19 python3 -m unittest tests.test_x_intake_smoke_115_116: 4 OK in 1.769s. Before the fix, reason was "openqodex timeout after 1s". | review, review --agent, review --finalize, and git steps name themselves; main keeps an existing reason
+#300-d3-098-103 | 39d76d0 | tests.test_x_intake_smoke_098_100 and tests.test_x_intake_smoke_103_111_receipts: 12 OK in 1.943s. | receipts go to a temp dir; 103-111 repo paths stay byte-identical; kolibri1 stays tracked
+#300-next-tree-sig-119 | 20ca8ca | tests.test_x_intake_tree_sig_content and tests.test_x_intake_smoke_119_121: 14 OK in 8.274s. Before the fix, an mtime-only touch changed the signature. | 119 tree_sig hashes content, records unreadable, ignores mtime
+#300-next-tree-sig-112-115-117 | abeed59 | tests.test_x_intake_tree_sig_content, tests.test_x_intake_smoke_112_114, tests.test_x_intake_smoke_115_116, tests.test_x_intake_smoke_117_118: 20 OK in 12.937s. Before the fix, an mtime-only touch changed the signature on 112, 115, and 117. | those three tree_sig functions hash content the same way 119 does
+
+## Checks (2026-11-01T02:11:53Z)
+
+- python3 scripts/catalog_check.py: PASS, n_json=8, toolsets=8, linked=2, catalog_tool null 6, tools_md=52, stage_cards=52, i1_cards_open=0, stage_only=4. Exit 0.
+- nice -n 19 python3 -m unittest on the 21 tests/test_x_intake*.py modules: Ran 460 tests in 219.082s, OK (skipped=1). Exit 0. Two receipt lines printed status FAIL with failed real_home_unchanged; those are the 148 and 149 negative-path tests, and the suite still passed.
+- pregate not run: drop-in forbids scripts/pregate.sh.
+- Host at close (2026-11-01T02:16:12Z): MemAvailable 56275748 kB, load 5.88 6.21 5.11, 32 cores. Not pressured.
+
+state: lane empty | #300 deferred 1-4 closed on this branch; #303 code notes already closed on main; live smolvm skipped (binary absent); content-hash tree_sig landed for 119 then 112, 115, and 117; catalog_check PASS; x-intake smoke unit tests 460 OK (skipped=1)
