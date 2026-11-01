@@ -4,6 +4,7 @@ Parent HOME is a temp dir this test owns. Children run under run_isolated with a
 real-HOME write uses that temp HOME's absolute path inside the stub. AgentDescent and TSA pass a bwrap writable
 list; bwrap is chosen with shutil.which on the smoke process PATH (there is no disable switch), and a hit makes
 the child root read-only outside the smoke temp dir. Those tests set PATH to the stub dir so the write can land.
+Receipts go to a temp $PFY_SMOKE_RECEIPT_DIR, one directory per test.
 """
 from __future__ import annotations
 
@@ -23,6 +24,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = "examples/x-intake-local/smoke_119_121.py"
 PORT = 7077
+_RECEIPTS: Path | None = None
 
 
 def _write_exe(path: Path, body: str) -> None:
@@ -38,6 +40,9 @@ def _env(home: Path, **extra: str) -> dict[str, str]:
         if key.startswith(("AGENTDESCENT_", "KENFOLD_", "TSA_", "DOCKER_")) or key == "PFY_XINTAKE_TIMEOUT":
             env.pop(key, None)
     env.update(extra)
+    if _RECEIPTS is None:
+        raise RuntimeError("PFY_SMOKE_RECEIPT_DIR is unset")
+    env["PFY_SMOKE_RECEIPT_DIR"] = str(_RECEIPTS)
     return env
 
 
@@ -49,7 +54,8 @@ def _run(entry: str, env: dict[str, str]) -> subprocess.CompletedProcess[str]:
 
 
 def _receipt(entry: str) -> dict:
-    return json.loads((ROOT / f"pipelines/smoke/{entry}/latest.json").read_text(encoding="utf-8"))
+    path = Path(_RECEIPTS) / entry / "latest.json"
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def _port_answers(port: int = PORT) -> bool:
@@ -191,6 +197,16 @@ class _OkHandler(BaseHTTPRequestHandler):
 
 
 class XIntakeSmoke119121Tests(unittest.TestCase):
+    def setUp(self) -> None:
+        global _RECEIPTS
+        self._receipt_tmp = tempfile.TemporaryDirectory(prefix="pfy-xintake-119-receipts-")
+        self.addCleanup(self._receipt_tmp.cleanup)
+        _RECEIPTS = Path(self._receipt_tmp.name)
+
+    def tearDown(self) -> None:
+        global _RECEIPTS
+        _RECEIPTS = None
+
     def test_agentdescent_real_home_write_fails(self) -> None:
         with tempfile.TemporaryDirectory(prefix="pfy-xintake-119-") as td:
             home, bindir = Path(td, "home"), Path(td, "bin")
