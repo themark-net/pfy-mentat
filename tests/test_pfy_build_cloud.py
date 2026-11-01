@@ -3315,3 +3315,156 @@ class CloudBuildNetworkProbeTests(unittest.TestCase):
         self.assertEqual(payload["reason"], "ok")
         self.assertIn("kept.py", _git(self.repo, "ls-tree", "-r", "--name-only", payload["commit"]).stdout)
 
+
+class CloudBuildParallelProbeTests(unittest.TestCase):
+    """A second cloud build on a live repo refuses instead of sharing the pid file."""
+
+    def setUp(self) -> None:
+        SCRATCH.mkdir(parents=True, exist_ok=True)
+        self.repo = _init_repo(SCRATCH / self.id().replace(".", "_"))
+        self.side = SCRATCH / (self.id().replace(".", "_") + "-side")
+        self.side.mkdir(parents=True, exist_ok=True)
+        self.proc = None
+
+    def tearDown(self) -> None:
+        proc = getattr(self, "proc", None)
+        if proc is not None and proc.poll() is None:
+            try:
+                os.killpg(proc.pid, signal.SIGKILL)
+            except OSError:
+                pass
+            try:
+                proc.communicate(timeout=5)
+            except subprocess.TimeoutExpired:
+                pass
+        shutil.rmtree(self.repo, ignore_errors=True)
+        shutil.rmtree(self.side, ignore_errors=True)
+
+    def test_second_build_is_busy_and_leaves_the_live_pid(self) -> None:
+        # Fail: two builds run at once and the pid file keeps only one pid,
+        # so reap can miss the other. The second finish also unlinks that
+        # file. Recover: the second exits build-busy before grok, and the
+        # first pid file is still there until the first build finishes.
+        ready = self.side / "ready"
+        second_marker = self.side / "second-started"
+        grok_a = _write_exe(
+            self.side / "grok-a.py",
+            "#!/usr/bin/env python3\n"
+            "import os\n"
+            "import sys\n"
+            "import time\n"
+            "from pathlib import Path\n"
+            "blob = '\\n'.join(sys.argv)\n"
+            "if 'PFY-CLOUD-REVIEW' in blob:\n"
+            "    print('verdict: accept')\n"
+            "    raise SystemExit(0)\n"
+            "Path(%r).write_text(str(os.getpid()), encoding='utf-8')\n"
+            "time.sleep(6)\n"
+            "Path('kept.py').write_text('value = 1\\n', encoding='utf-8')\n"
+            "raise SystemExit(0)\n" % str(ready),
+        )
+        grok_b = _write_exe(
+            self.side / "grok-b.py",
+            "#!/usr/bin/env python3\n"
+            "import sys\n"
+            "from pathlib import Path\n"
+            "blob = '\\n'.join(sys.argv)\n"
+            "if 'PFY-CLOUD-REVIEW' in blob:\n"
+            "    print('verdict: accept')\n"
+            "    raise SystemExit(0)\n"
+            "Path(%r).write_text('yes\\n', encoding='utf-8')\n"
+            "Path('beta.py').write_text('value = 1\\n', encoding='utf-8')\n"
+            "raise SystemExit(0)\n" % str(second_marker),
+        )
+        gate = _write_exe(
+            self.side / "gate.py",
+            "#!/usr/bin/env python3\nprint('GATE-OK')\nraise SystemExit(0)\n",
+        )
+        head = _git(self.repo, "rev-parse", "HEAD").stdout.strip()
+        argv_a = [
+            sys.executable,
+            str(CLOUD),
+            "add alpha",
+            "--repo",
+            str(self.repo),
+            "--retries",
+            "0",
+            "--timeout",
+            "30",
+            "--test-cmd",
+            "%s %s" % (sys.executable, gate),
+            "--grok-cmd",
+            str(grok_a),
+            "--receipt-dir",
+            str(self.side / "receipt-a"),
+        ]
+        env = os.environ.copy()
+        env["TMPDIR"] = str(SCRATCH)
+        env["PYTHONDONTWRITEBYTECODE"] = "1"
+        proc = subprocess.Popen(
+            argv_a,
+            cwd=str(self.repo),
+            env=env,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            start_new_session=True,
+        )
+        self.proc = proc
+        deadline = time.monotonic() + 15
+        while time.monotonic() < deadline and not ready.exists():
+            if proc.poll() is not None:
+                break
+            time.sleep(0.05)
+        self.assertTrue(ready.exists(), "first grok did not start")
+        second = _run(
+            [
+                sys.executable,
+                str(CLOUD),
+                "add beta",
+                "--repo",
+                str(self.repo),
+                "--retries",
+                "0",
+                "--timeout",
+                "30",
+                "--test-cmd",
+                "%s %s" % (sys.executable, gate),
+                "--grok-cmd",
+                str(grok_b),
+                "--receipt-dir",
+                str(self.side / "receipt-b"),
+            ],
+            self.repo,
+            timeout=20,
+        )
+        text = (second.stdout or "") + (second.stderr or "")
+        self.assertEqual(second.returncode, 1, text)
+        payload_b = json.loads((self.side / "receipt-b" / "receipt.json").read_text(encoding="utf-8"))
+        self.assertEqual(payload_b["reason"], "build-busy")
+        self.assertEqual(payload_b["exit_code"], 1)
+        self.assertIsNone(payload_b["commit"])
+        self.assertIn("Mark:", payload_b["recovery"])
+        self.assertNotIn("--local", payload_b["recovery"])
+        self.assertFalse(second_marker.exists())
+        pid_path = self.repo / "tmp" / "cloud-build.pids.json"
+        self.assertTrue(pid_path.is_file(), "second build removed the live pid file")
+        recorded = json.loads(pid_path.read_text(encoding="utf-8"))
+        self.assertEqual(int(recorded.get("pid") or 0), proc.pid)
+        try:
+            out, err = proc.communicate(timeout=20)
+        except subprocess.TimeoutExpired:
+            os.killpg(proc.pid, signal.SIGKILL)
+            out, err = proc.communicate(timeout=5)
+            self.fail("first build did not finish: %s %s" % (out, err))
+        self.assertEqual(proc.returncode, 0, (out or "") + (err or ""))
+        payload_a = json.loads((self.side / "receipt-a" / "receipt.json").read_text(encoding="utf-8"))
+        self.assertEqual(payload_a["reason"], "ok")
+        names = _git(self.repo, "ls-tree", "-r", "--name-only", payload_a["commit"]).stdout
+        self.assertIn("kept.py", names)
+        self.assertNotIn("beta.py", names)
+        branches = _git(self.repo, "branch", "--list").stdout
+        self.assertEqual(branches.count("cloud/"), 1)
+        self.assertEqual(_git(self.repo, "rev-parse", "HEAD").stdout.strip(), head)
+        self.assertFalse(pid_path.exists())
+

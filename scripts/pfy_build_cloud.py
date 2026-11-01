@@ -24,6 +24,7 @@ This runner does not keep a second copy of those phrases.
 from __future__ import annotations
 
 import argparse
+import fcntl
 import hashlib
 import json
 import os
@@ -142,6 +143,26 @@ class BaseMissing(Exception):
     def __init__(self, ref: str) -> None:
         super().__init__(ref)
         self.ref = ref
+
+
+class BuildLockBusy(Exception):
+    """Another cloud build holds this repo's lock."""
+
+
+def acquire_build_lock(repo: Path):
+    """Exclusive non-blocking lock. Raises BuildLockBusy when it is held.
+
+    The returned file must stay open. Closing it releases the lock.
+    """
+    path = repo / "tmp" / "cloud-build.lock"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    handle = open(path, "a+")
+    try:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        handle.close()
+        raise BuildLockBusy()
+    return handle
 
 
 class State:
@@ -627,6 +648,7 @@ def auth_recovery(task: str) -> str:
 
 
 TERMINAL_FAILURE_REASONS = (
+    "build-busy",
     "commit-failed",
     "commit-recheck-failed",
     "interrupted",
@@ -719,6 +741,12 @@ def failure_recovery(reason: str, task: str, detail: str = "") -> str:
             "Remove that change and rerun ./pfy build %s. "
             "auth.json, .env, and grok-home stay out of the commit."
             % (shown, quoted)
+        )
+    if reason == "build-busy":
+        return (
+            "Mark: another cloud build is already running on this repo. "
+            "Wait for it to finish, then rerun ./pfy build %s."
+            % quoted
         )
     if reason == "network":
         return (
@@ -1060,6 +1088,7 @@ class CloudBuild:
         self.finished = False
         self.max_attempts = 1 if args.no_review else args.retries + 1
         self.recheck_tail = ""
+        self.lock_fh = None
 
     def child_env(self) -> dict[str, str]:
         env = os.environ.copy()
@@ -1297,6 +1326,45 @@ class CloudBuild:
                 pass
         self.worktree_removed = not self.worktree.exists()
 
+    def _release_lock(self) -> None:
+        handle = getattr(self, "lock_fh", None)
+        if handle is None:
+            return
+        try:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+        except OSError:
+            pass
+        try:
+            handle.close()
+        except OSError:
+            pass
+        self.lock_fh = None
+
+    def _clear_own_pid(self) -> None:
+        """Remove the pid file only when it names this process.
+
+        Fail: a second build's finish unlinks the live build's pid file.
+        Recover: leave a pid that belongs to someone else.
+        """
+        if not self.pid_path.is_file():
+            return
+        try:
+            data = json.loads(self.pid_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return
+        if not isinstance(data, dict):
+            return
+        try:
+            pid = int(data.get("pid") or 0)
+        except (TypeError, ValueError):
+            return
+        if pid != os.getpid():
+            return
+        try:
+            self.pid_path.unlink()
+        except OSError:
+            pass
+
     def fail(self, status: str, reason: str, code: int, recovery: str = "") -> int:
         self.status = status
         self.reason = reason
@@ -1347,11 +1415,8 @@ class CloudBuild:
             write_receipt(self.receipt_path, payload)
         except OSError as exc:
             print("FAIL: receipt: %s" % exc, file=sys.stderr)
-        try:
-            if self.pid_path.is_file():
-                self.pid_path.unlink()
-        except OSError:
-            pass
+        self._clear_own_pid()
+        self._release_lock()
         print(_summary(self.status, self.reason, self.branch, self.receipt_path))
         if self.exit_code != EXIT_OK:
             print("FAIL: %s" % self.reason, file=sys.stderr)
@@ -1762,6 +1827,22 @@ def main(argv: list[str] | None = None) -> int:
     if args.dry_run:
         return _dry_run(args, repo, base_ref, receipt)
     build = CloudBuild(args, repo, base_ref, base_sha, resolve_grok(args))
+    try:
+        build.lock_fh = acquire_build_lock(repo)
+    except BuildLockBusy:
+        # Fail: a second build overwrites the live pid file and can PASS
+        # beside the first. Recover: refuse before grok and leave that pid.
+        build.record(0, "FAIL", "build-busy", "")
+        return build.fail("FAIL", "build-busy", EXIT_FAIL, "")
+    except OSError:
+        build.recovery_detail = "unwritable"
+        build.record(0, "FAIL", "worktree-failed", "")
+        return build.fail(
+            "FAIL",
+            "worktree-failed",
+            EXIT_FAIL,
+            worktree_recovery(args.task_text, base_ref, "unwritable"),
+        )
     try:
         return build.execute()
     except Exception as exc:
