@@ -1,6 +1,7 @@
 ### Entry 073: Laguna S 2.1 - Poolside Open Agentic Coding MoE
 
 - **URL**: https://x.com/i/status/2079613777343848465
+- **Source**: content-unverified. An HTTP 200 from x.com does not prove this post exists or that it says what this entry claims.
 - **Date**: 2026-07-21 (post); cataloged 2026-07-22
 - **Poster**: Poolside (@poolsideai)
 - **Summary / Key Claims**: Laguna S 2.1 is a 118B total-parameter Mixture-of-Experts model (8B activated per token) with up to 1M context, thinking + no-thinking modes, purpose-built for agentic coding and long-horizon tasks. Claims strongest agentic coding results in its weight class (Terminal-Bench 2.1: 70.2; DeepSWE: 40.4). Fully open under OpenMDW-1.1. Weights on Hugging Face in BF16 / FP8 / INT4 / NVFP4; official GGUF + MLX + DFlash draft models. Day-one support: llama.cpp, Ollama, vLLM, SGLang, TRT-LLM, transformers, ZML. Designed to run on a single NVIDIA DGX Spark (quantized). Demonstrated persistence and self-verification behavior (e.g., long harness optimization run ~690k tokens). Scale-up of the Laguna XS family with heavy post-training (SFT + RL, including FP8 RL).

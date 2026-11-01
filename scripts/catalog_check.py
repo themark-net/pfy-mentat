@@ -29,6 +29,41 @@ STAGES = ("I0", "I1", "I2", "I3", "I4")
 CARD = ("uses", "features", "potential", "non_goals", "next_gate")
 ROW_RE = re.compile(r"^\| \*\*([^*]+)\*\*([^|]*)\|", re.M)
 ENTRY_NUM_RE = re.compile(r"^(\d{3})-.+\.md$")
+X_POST_URL_RE = re.compile(r"https?://(?:www\.)?(?:x|twitter)\.com/\S+")
+LAGUNA_ENTRY = ROOT / "sources" / "entries" / "073-laguna-s-2-1.md"
+
+
+def x_post_status_verdict(status_code: int, url: str, body: str = "") -> str:
+    """Label an HTTP probe of an X post.
+
+    A 200 from x.com is not proof the post exists, and it is not proof the
+    body says what a catalog entry claims. Login walls and missing posts
+    also return 200. The verdict stays content-unverified. Callers must
+    not relabel it as verified.
+    """
+    lowered = (url or "").lower()
+    if "://x.com" not in lowered and "://twitter.com" not in lowered and "://www.x.com" not in lowered and "://www.twitter.com" not in lowered:
+        raise ValueError("not an x.com url")
+    # status_code and body are the whole probe. A 200, with or without the
+    # claim string in the body, stays content-unverified.
+    _ = (status_code, body)
+    return "content-unverified"
+
+
+def x_entry_source_problems(entry_text: str) -> list[str]:
+    """Entry 073 must record the verdict of an x.com 200, which is not verified."""
+    urls = X_POST_URL_RE.findall(entry_text)
+    if not urls:
+        return ["entry 073 has no x.com url, so its source cannot be marked content-unverified"]
+    verdict = x_post_status_verdict(200, urls[0], body=entry_text)
+    if verdict == "verified":
+        return ["x.com HTTP 200 must not be labeled verified"]
+    marker = "- **Source**: %s" % verdict
+    if marker not in entry_text:
+        return [
+            "entry 073 source must be %s; an HTTP 200 from x.com does not prove the post" % verdict
+        ]
+    return []
 
 
 def entry_number_collisions(entries_dir: Path | None = None) -> list[str]:
@@ -91,6 +126,10 @@ def main(argv: list[str] | None = None) -> int:
     catalog_names = tools_md_names(md, set(stage_rows))
     rows = tools.get("tools") or []
     problems: list[str] = entry_number_collisions(entries_dir)
+    if LAGUNA_ENTRY.is_file():
+        problems.extend(x_entry_source_problems(LAGUNA_ENTRY.read_text(encoding="utf-8")))
+    else:
+        problems.append("entry 073 is missing; its x.com source stays content-unverified")
 
     missing_stage = [n for n in catalog_names if n not in stage_rows]
     if missing_stage:
