@@ -248,6 +248,42 @@ def check_no_encoded_payloads() -> tuple[bool, str]:
     return False, f"{len(offenders)} offender(s): " + "; ".join(offenders[:4])
 
 
+def summarize_unittest(returncode: int, out: str) -> tuple[bool, str]:
+    """One status line, plus the traceback when unittest failed.
+
+    The structural log used to keep only the FAIL: name, so a home-cache
+    assertion was invisible. A passing run stays a single line with no
+    traceback. A failing run keeps each FAIL/ERROR block through the
+    assertion, and drops the dot progress and the final Ran tally.
+    """
+    text = out or ""
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+    ran = next((ln for ln in lines if ln.startswith("Ran ")), "")
+    verdict = lines[-1] if lines else f"exit {returncode}"
+    head = " · ".join(part for part in (ran, verdict) if part)
+    if returncode == 0:
+        return True, head or "ok"
+    blocks: list[str] = []
+    keep = False
+    for ln in text.splitlines():
+        stripped = ln.strip()
+        if stripped.startswith(("FAIL:", "ERROR:")):
+            keep = True
+            blocks.append(ln)
+            continue
+        if keep and stripped.startswith("Ran "):
+            break
+        if keep:
+            blocks.append(ln)
+    trace = "\n".join(blocks).strip()
+    if len(trace) > 12000:
+        trace = trace[:12000] + "\n...[truncated]"
+    if trace:
+        return False, head + "\n" + trace
+    fails = [ln for ln in lines if ln.startswith(("FAIL:", "ERROR:"))]
+    return False, head + (" · " + "; ".join(fails[:4]) if fails else "")
+
+
 def check_pfylib_unittests() -> tuple[bool, str]:
     """ADR-0017: tests/ (stdlib unittest) must pass offline; isolated state dir so nothing touches ~/.pfy-mentat."""
     tests_dir = ROOT / "tests"
@@ -260,14 +296,7 @@ def check_pfylib_unittests() -> tuple[bool, str]:
             [sys.executable, "-m", "unittest", "discover", "-s", str(tests_dir), "-t", str(ROOT)],
             cwd=ROOT, capture_output=True, text=True, env=env,
         )
-    out = (p.stdout or "") + (p.stderr or "")
-    lines = [ln.strip() for ln in out.splitlines() if ln.strip()]
-    ran = next((ln for ln in lines if ln.startswith("Ran ")), "")
-    verdict = lines[-1] if lines else f"exit {p.returncode}"
-    if p.returncode != 0:
-        fails = [ln for ln in lines if ln.startswith(("FAIL:", "ERROR:"))]
-        return False, f"{ran} · {verdict} · " + "; ".join(fails[:4])
-    return True, f"{ran} · {verdict}"
+    return summarize_unittest(p.returncode, (p.stdout or "") + (p.stderr or ""))
 
 
 def check_catalog_item_v2() -> tuple[bool, str]:
@@ -333,7 +362,8 @@ def main() -> int:
             "|-------|--------|--------|",
         ]
         for name, ok, detail in rows:
-            lines.append(f"| `{name}` | {'PASS' if ok else 'FAIL'} | {detail.replace('|', '/')} |")
+            cell = detail.replace("|", "/").replace("\n", " / ")
+            lines.append(f"| `{name}` | {'PASS' if ok else 'FAIL'} | {cell} |")
         lines.append("")
         lines.append(f"**Overall:** {'PASS' if all_ok else 'FAIL'} (no LLM required)")
         lines.append("")
