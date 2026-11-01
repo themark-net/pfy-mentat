@@ -24,12 +24,51 @@ def _chunk(state: str) -> str:
     return head + text[start:end]
 
 
+def _cold_start_order(ollama_rc: int) -> subprocess.CompletedProcess[str]:
+    """Run the cold-start chain with stub ensures. No engine binary is started."""
+    text = PFY.read_text(encoding="utf-8")
+    cold = text.split("# Cold start", 1)[1].split("rt=$(local_runtime)", 1)[0]
+    inner = "started=0" + cold.split("started=0", 1)[1]
+    lines = inner.splitlines()
+    while lines and not lines[-1].strip():
+        lines.pop()
+    # The slice includes the else-closer. The chain's own fi lines are indented further.
+    if lines and lines[-1].strip() == "fi" and (len(lines[-1]) - len(lines[-1].lstrip(" "))) < 4:
+        lines.pop()
+    header = """set -euo pipefail
+order=""
+have() {
+  case "$1" in
+    ollama|shimmy) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+ensure_freetoken() { order="$order ft"; return 0; }
+ensure_llama_swap() { order="$order swap"; return 0; }
+ensure_llama_server() { order="$order llama"; return 0; }
+ensure_ollama_adapter() { order="$order ollama"; return %d; }
+ensure_shimmy() { order="$order shimmy"; return 0; }
+""" % ollama_rc
+    script = header + "\n".join(lines) + '\nprintf "%s\\n" "$order"\n'
+    return subprocess.run(
+        ["/bin/bash", "-c", script],
+        capture_output=True,
+        text=True,
+        timeout=15,
+    )
+
+
 class ShimmyEnsureTests(unittest.TestCase):
     def test_cold_start_tries_shimmy_after_ollama(self):
-        text = PFY.read_text(encoding="utf-8")
-        cold = text.split("Cold start", 1)[1].split("rt=$(local_runtime)", 1)[0]
-        self.assertLess(cold.index("ensure_ollama_adapter"), cold.index("ensure_shimmy"))
-        self.assertIn("shimmy) ensure_shimmy", text)
+        """Fail: shimmy runs before ollama, or ollama success still starts shimmy.
+        Recover: ollama success records only ollama. Ollama failure then records shimmy.
+        """
+        ok = _cold_start_order(0)
+        self.assertEqual(ok.returncode, 0, ok.stdout + ok.stderr)
+        self.assertEqual(ok.stdout.strip(), "ollama")
+        failed = _cold_start_order(1)
+        self.assertEqual(failed.returncode, 0, failed.stdout + failed.stderr)
+        self.assertEqual(failed.stdout.strip(), "ollama shimmy")
 
     def test_missing_binary_is_stub(self):
         with tempfile.TemporaryDirectory() as tmp:

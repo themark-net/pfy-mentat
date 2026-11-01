@@ -86,3 +86,7 @@ har-sibling | 4723705 | XIntakeSmoke106108Tests.test_har_work_dir_sibling_prefix
 local-bench-delete | 9843412 | ParseChoiceTests.test_rss_sampler_ignores_grok_exe and RunnerRssTests.test_eacces_exe_falls_back_to_argv0_and_recovers_stats (2 OK) | pushed. Mutant is_ollama_exe return True, both AssertionError, restored.
 
 Clock check before continue-stub: 2026-11-01T03:00:32Z. Runner absent. MemAvailable 46630860 KiB. Load 2.80 on 32 cores.
+
+continue-stub | 6253b5d | tests.test_fs_nav (4 OK) | pushed. Mutant colon instead of write_continue_config, config file assert red, restored.
+
+Clock check before shimmy-order: 2026-11-01T03:02:44Z. Runner absent. MemAvailable 46297944 KiB. Load 3.38 on 32 cores.
