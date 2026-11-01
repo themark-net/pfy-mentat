@@ -1,0 +1,45 @@
+{
+  "schema": "pfy-cloud-build/1",
+  "status": "PASS",
+  "reason": "ok",
+  "exit_code": 0,
+  "branch": "cloud/edit-only-pfylib-attach-py-do-not-edit-a-20261101T025041988200Z",
+  "commit": "8d7b20e769e774759cb8a4a23a2338a486bdc9d0",
+  "base": "HEAD",
+  "review": {
+    "verdict": "accept",
+    "reasons": []
+  },
+  "attempts": [
+    {
+      "n": 1,
+      "status": "PASS",
+      "reason": "ok",
+      "output_tail": "I'll fix symlink handling in `write_terminal_pid` and `read_terminal_pid` only, using the existing helper. First I'll read the current code and the test so the change matches what the suite checks.`write_terminal_pid` still writes through a symlink, and `read_terminal_pid` still follows one. I'll route the write through `_write_regular_text` and make the read return 0 when the path is a link.`write_terminal_pid` and `read_terminal_pid` no longer follow a symlink. `python3 -m unittest tests.test_attach_pid_symlink` passed (4 tests).\n\n`write_terminal_pid` now writes `str(int(pid))` plus a newline through the existing `_write_regular_text` helper. That replaces a symlink, including a broken one, with a regular file and does not create the missing target.\n\n`read_terminal_pid` returns 0 when the path is a symlink and does not read the target. A regular file still returns its integer, and a non-integer regular file still returns 0.\n\nI'll check the diff against the task and the existing helper before giving a verdict.verdict: accept\n",
+      "review": {
+        "verdict": "accept",
+        "reasons": []
+      }
+    }
+  ],
+  "gate": {
+    "cmd": "python3 -m unittest tests.test_attach_pid_symlink",
+    "before": {
+      "cmd": "python3 -m unittest tests.test_attach_pid_symlink",
+      "exit": 1,
+      "tail": "\nF.FF\n======================================================================\nFAIL: test_read_does_not_follow_symlink (tests.test_attach_pid_symlink.AttachPidSymlinkTests.test_read_does_not_follow_symlink)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood6-1031/tmp/target-03/tmp/cloud-build/20261101T025041988200Z/tests/test_attach_pid_symlink.py\", line 38, in test_read_does_not_follow_symlink\n    self.assertEqual(attach.read_terminal_pid(\"codex\", self.state), 0)\n    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: 99999 != 0\n\n======================================================================\nFAIL: test_write_replaces_broken_symlink (tests.test_attach_pid_symlink.AttachPidSymlinkTests.test_write_replaces_broken_symlink)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood6-1031/tmp/target-03/tmp/cloud-build/20261101T025041988200Z/tests/test_attach_pid_symlink.py\", line 56, in test_write_replaces_broken_symlink\n    self.assertFalse((self.state / \"missing-pid\").exists())\n    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: True is not false\n\n======================================================================\nFAIL: test_write_replaces_symlink_and_leaves_target (tests.test_attach_pid_symlink.AttachPidSymlinkTests.test_write_replaces_symlink_and_leaves_target)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood6-1031/tmp/target-03/tmp/cloud-build/20261101T025041988200Z/tests/test_attach_pid_symlink.py\", line 47, in test_write_replaces_symlink_and_leaves_target\n    self.assertEqual(target.read_text(encoding=\"utf-8\"), \"99999\\n\")\n    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: '4242\\n' != '99999\\n'\n- 4242\n+ 99999\n\n\n----------------------------------------------------------------------\nRan 4 tests in 0.003s\n\nFAILED (failures=3)\n",
+      "started": true
+    },
+    "after": {
+      "cmd": "python3 -m unittest tests.test_attach_pid_symlink",
+      "exit": 0,
+      "tail": "\n....\n----------------------------------------------------------------------\nRan 4 tests in 0.002s\n\nOK\n",
+      "started": true
+    }
+  },
+  "recovery": "",
+  "pushed": false,
+  "worktree_removed": true,
+  "task": "Edit only pfylib/attach.py. Do not edit any file under tests/. Do not add a file. Do not commit. Do not push. write_terminal_pid still uses Path.write_text, which follows a symlink and overwrites the target. read_terminal_pid still uses is_file and read_text, which follow a symlink and return the target integer. Use the existing _write_regular_text helper from write_terminal_pid only. Do not add a second helper. In read_terminal_pid, if the path is a symlink, return 0 and do not read the target. A regular file still stores str(int(pid)) plus a newline, and read_terminal_pid still returns that integer. A non-integer regular file still returns 0. A broken symlink becomes a regular file and must not create the missing target. Do not change write_session_reach, read_session_reach, clear_session_reach, or _write_spawn_receipt. Do not add an em dash or an en dash.",
+  "finished_at": "2026-11-01T02:52:03Z"
+}

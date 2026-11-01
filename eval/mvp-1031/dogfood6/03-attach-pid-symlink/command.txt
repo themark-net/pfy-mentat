@@ -1,0 +1,14 @@
+2026-11-01T02:50:41Z
+cwd /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood6-1031
+repo /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood6-1031/tmp/target-03
+base HEAD ab855bc84ece12a2bca01cfa61096675aa47d81a
+retries 1
+timeout 900
+test-cmd python3 -m unittest tests.test_attach_pid_symlink
+receipt-dir /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood6-1031/eval/mvp-1031/dogfood6/03-attach-pid-symlink
+local no
+
+finished 2026-11-01T02:52:03Z
+result PASS ok
+cloud 8d7b20e769e774759cb8a4a23a2338a486bdc9d0
+landed 3675945
