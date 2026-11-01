@@ -59,7 +59,7 @@ Risks:
 |---|---|---|---|
 | exit card | 54053a8 | none | written before the recompute |
 | hermes-eval recompute | a084a38 | `nice -n 19 python3 -m unittest tests.test_hermes_bakeoff -v` -> Ran 9 tests in 0.658s OK | two prose claims corrected; headline numbers match; check report written |
-| handoff | (handoff commit) | none (docs only, unittest already green) | lane empty |
+| handoff | 604db10 | none (docs only, unittest already green) | lane empty |
 
 ## State lines
 
