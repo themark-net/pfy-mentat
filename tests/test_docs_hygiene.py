@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import re
 import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -10,6 +11,34 @@ ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
 MISSING_ADR = "0017-product-catalog-evaluation-handoff-harness.md"
 LINK_RE = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
+SHALLOW_SKIP = "shallow clone: old main SHAs not present"
+
+
+def _is_shallow(repo: Path) -> bool:
+    probe = subprocess.run(
+        ["git", "rev-parse", "--is-shallow-repository"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+    )
+    return probe.returncode == 0 and probe.stdout.strip() == "true"
+
+
+def require_blob_at_sha(test: unittest.TestCase, repo: Path, sha: str, rel: str) -> None:
+    """On a shallow clone, skip. On a full clone, the blob must exist.
+
+    A silent return would leave the test green without looking at the blob.
+    """
+    if _is_shallow(repo):
+        test.skipTest(SHALLOW_SKIP)
+    probe = subprocess.run(
+        ["git", "cat-file", "-e", f"{sha}:{rel}"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+    )
+    if probe.returncode != 0:
+        test.fail(f"{sha}:{rel} missing: {probe.stderr.strip()}")
 
 
 def _missing_relative_links():
@@ -65,13 +94,46 @@ class DocsHygieneTests(unittest.TestCase):
             ("c0d9072", "scripts/eval-auto.sh"),
             ("c0d9072", "examples/eval-harness/tasks/013-stage-card/score.py"),
         ):
-            probe = subprocess.run(
-                ["git", "cat-file", "-e", f"{sha}:{rel}"],
-                cwd=ROOT,
+            require_blob_at_sha(self, ROOT, sha, rel)
+
+    def test_shallow_clone_skips_instead_of_passing_silently(self):
+        """Fail: a shallow clone returns and the check is counted as a pass,
+        or a full clone missing the blob is skipped.
+        Recover: SkipTest names the shallow clone. A full clone with the blob
+        returns. A full clone missing the blob fails."""
+        scratch = ROOT / "tmp" / "docs-hygiene"
+        scratch.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=scratch) as tmp:
+            full = Path(tmp) / "full"
+            full.mkdir()
+            rel = "scripts/eval-auto.sh"
+            blob = full / rel
+            blob.parent.mkdir(parents=True)
+            blob.write_text("#!/bin/sh\n", encoding="utf-8")
+            git = ["git", "-C", str(full)]
+            subprocess.run(["git", "init", "-q", str(full)], check=True)
+            subprocess.run([*git, "config", "user.email", "hygiene@example.com"], check=True)
+            subprocess.run([*git, "config", "user.name", "hygiene"], check=True)
+            subprocess.run([*git, "add", rel], check=True)
+            subprocess.run([*git, "commit", "-q", "-m", "add blob"], check=True)
+            sha = subprocess.run(
+                [*git, "rev-parse", "HEAD"],
+                check=True,
                 capture_output=True,
                 text=True,
+            ).stdout.strip()
+            require_blob_at_sha(self, full, sha, rel)
+            with self.assertRaises(AssertionError):
+                require_blob_at_sha(self, full, "deadbeef", rel)
+            shallow = Path(tmp) / "shallow"
+            subprocess.run(
+                ["git", "clone", "-q", "--depth", "1", full.as_uri(), str(shallow)],
+                check=True,
             )
-            self.assertEqual(probe.returncode, 0, f"{sha}:{rel} missing: {probe.stderr}")
+            self.assertTrue(_is_shallow(shallow))
+            with self.assertRaises(unittest.SkipTest) as caught:
+                require_blob_at_sha(self, shallow, sha, rel)
+            self.assertEqual(str(caught.exception), SHALLOW_SKIP)
 
 
 if __name__ == "__main__":
