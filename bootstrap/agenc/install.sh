@@ -55,7 +55,8 @@ ensure_node() {
   dest="${NODE_CACHE}/${ver}"
   if [[ ! -x "${dest}/bin/node" ]]; then
     mkdir -p "$NODE_CACHE"
-    tarball="/tmp/${platform}.tar.xz"
+    tarball="${TMPDIR:-$NODE_CACHE}/${platform}.tar.xz"
+    mkdir -p "$(dirname "$tarball")"
     url="https://nodejs.org/dist/${ver}/${platform}.tar.xz"
     log "downloading Node ${ver} → ${dest}"
     curl -fsSL "$url" -o "$tarball"
