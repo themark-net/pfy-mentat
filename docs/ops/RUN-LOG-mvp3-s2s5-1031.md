@@ -41,4 +41,12 @@ Pregate: not at start. Runner.Worker is live. Record at the end.
 - S2 | 880478a | red: unrecognized --wall-timeout, exit 2. Green: test_wall_budget_stops_a_sleeping_retry_loop. Review module 39 OK in 87.764s. test_pfy_build_local 61 OK in 81.411s | TIMEOUT wall-timeout, exit 3, under 12s
 - S3 | 3636a2c | red: reason no-change. Green: test_agent_crash_every_attempt_is_not_labelled_no_change and test_agent_crash_then_a_fix_still_passes. Both modules 102 OK in 170.746s | FAIL agent-crashed, 3 attempts; a later fix PASS on attempt 2
 - S4 | 82cf7c2 | red: status PASS-REJECTED. Green: reviewer reject, scope spent, wiring spent, error beside accept. Both modules 102 OK in 171.394s | FAIL review-rejected, summary starts with FAIL, no commit
+- S5 | a12582f | red: killed worktree still in git worktree list after the next PASS. Green: test_sigkill_worktree_is_pruned_on_the_next_run. Both modules 103 OK in 172.054s | recorded path pruned, sibling local-build worktree kept
+
+## Not taken
+
+- M10, M17, M18, the loose ignored-helper reason, S7, and the fault-hook sentence are already on base 16f17d8. Not redone.
+- Operator handoff sentence that still says PASS-REJECTED: cross-lane, file not owned here.
+
+state: lane empty | S2-S5 pushed on bot/mvp3-s2s5-1031 (880478a, 3636a2c, 82cf7c2, a12582f). Later review gaps already on the base. Pregate not run: host busy.
 
