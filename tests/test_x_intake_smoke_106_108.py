@@ -216,8 +216,6 @@ process.exit(3);
             self.assertEqual(work, got_home + "-evil", seen)
             self.assertTrue(work.startswith(got_home), seen)
             self.assertFalse(Path(work).resolve().is_relative_to(Path(got_home).resolve()), seen)
-            self.assertTrue("/tmp/foo-evil".startswith("/tmp/foo"))
-            self.assertFalse(Path("/tmp/foo-evil").is_relative_to(Path("/tmp/foo")))
             receipt = self._receipt("har")
             self.assertEqual(proc.returncode, 1, blob + "\n" + json.dumps(receipt))
             self.assertNotIn("Traceback", proc.stderr)
