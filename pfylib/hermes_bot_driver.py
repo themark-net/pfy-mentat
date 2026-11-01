@@ -11,6 +11,7 @@ import argparse
 import json
 import os
 import sys
+import tempfile
 from pathlib import Path
 
 
@@ -26,9 +27,24 @@ def _refuse_home(raw: str) -> Path:
     return resolved
 
 
+def _write_text(path: Path, text: str) -> None:
+    # Temp file in the parent, then os.replace, so a symlink is replaced.
+    fd, tmpname = tempfile.mkstemp(prefix=".hermes-", dir=str(path.parent))
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(text)
+        os.replace(tmpname, path)
+    except Exception:
+        try:
+            os.unlink(tmpname)
+        except OSError:
+            pass
+        raise
+
+
 def _write(path: Path, payload: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    _write_text(path, json.dumps(payload, indent=2) + "\n")
 
 
 def _config(home: Path, model: str, base_url: str, reasoning: str) -> None:
@@ -48,7 +64,7 @@ approvals:
   mode: off
 """
     home.mkdir(parents=True, exist_ok=True)
-    (home / "config.yaml").write_text(text, encoding="utf-8")
+    _write_text(home / "config.yaml", text)
 
 
 def _fail(out: Path, message: str) -> int:
