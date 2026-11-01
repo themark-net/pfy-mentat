@@ -163,6 +163,7 @@ def smoke_overtime(r: dict) -> int:
     before = tree_sig(real)
     r["containment"] = "real-home-check (daemon is detached; no bwrap)"
     timed_out: subprocess.TimeoutExpired | None = None
+    stop_timeout: str | None = None
     try:
         with tempfile.TemporaryDirectory(prefix="pfy-overtime-") as td:
             home = Path(td) / "home"
@@ -213,7 +214,8 @@ def smoke_overtime(r: dict) -> int:
                     p = sh(ot + ["daemon", "stop"], home=home_s, path=path)
                     steps.append({"daemon_stop": p.returncode})
                 except subprocess.TimeoutExpired as e:
-                    steps.append({"daemon_stop": timeout_reason("overtime daemon stop", float(e.timeout))})
+                    stop_timeout = timeout_reason("overtime daemon stop", float(e.timeout))
+                    steps.append({"daemon_stop": stop_timeout})
                 time.sleep(1)
             lock = home / "overtime/overtimed.lock"
             alive = False
@@ -235,6 +237,10 @@ def smoke_overtime(r: dict) -> int:
         return 1
     if timed_out is not None:
         r["reason"] = timeout_reason("overtime", float(timed_out.timeout))
+        return 1
+    # A stop that never returned is a failure even when overtimed.lock is already gone.
+    if stop_timeout is not None:
+        r["reason"] = stop_timeout
         return 1
     r["reason"] = "agent created, listed, budget/protect set and shown, no session run, daemon stopped, real HOME untouched"
     return 0

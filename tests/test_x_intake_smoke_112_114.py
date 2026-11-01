@@ -379,8 +379,10 @@ class XIntakeSmoke112114Tests(unittest.TestCase):
             self.assertEqual(_receipt("festival").get("reason"), "festival timeout after 0.4s", blob)
 
     def test_overtime_daemon_stop_timeout_uses_shared_text(self) -> None:
-        # Fail: a daemon-stop timeout is recorded as the bare word "timeout".
-        # Recover: the step value is timeout_reason("overtime daemon stop").
+        # Fail: daemon stop times out, no overtimed.lock is left, and the smoke
+        # still exits 0 with a reason that says the daemon stopped.
+        # Recover: exit 1, the step and the receipt reason are
+        # timeout_reason("overtime daemon stop", 0.4).
         stub = r"""#!/bin/sh
 if [ "$1" = --version ]; then echo v22.19.0; exit 0; fi
 sub=$2
@@ -421,9 +423,12 @@ exit 0
             proc = _run("overtime", env)
             blob = proc.stdout + proc.stderr
             self.assertNotIn("Traceback", proc.stderr, blob)
+            self.assertEqual(proc.returncode, 1, blob)
             receipt = _receipt("overtime")
             stops = [s.get("daemon_stop") for s in receipt.get("steps") or [] if "daemon_stop" in s]
             self.assertEqual(stops, ["overtime daemon stop timeout after 0.4s"], blob + "\n" + str(receipt.get("reason")))
+            self.assertEqual(receipt.get("reason"), "overtime daemon stop timeout after 0.4s", blob)
+            self.assertNotIn("daemon stopped", receipt.get("reason") or "", blob)
 
     def test_overtime_festival_sloptrim_receipts_are_ignored(self) -> None:
         for entry in ("overtime", "festival", "sloptrim"):
