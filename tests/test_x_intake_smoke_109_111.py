@@ -422,9 +422,10 @@ class XIntakeSmoke109111Tests(unittest.TestCase):
             self.assertNotIn("Traceback", proc.stderr, blob)
 
     def test_h_oci_cache_stdout_branch(self) -> None:
-        # Fail: smolvm_image_evidence ignores stdout cache lines (M19b).
-        # Recover: --oci-cache prints Caching on the first run and Using cached later,
-        # and the helper returns those lines. Direct call is the one allowed here.
+        # Fail: a guest cache line on stdout hides stderr "Pulling image <pin>",
+        # or the helper ignores a cache line when stderr has no pull (M19b).
+        # Recover: stderr pull wins when both are present. A cache line alone is still evidence.
+        # --oci-cache prints Caching on the first run and Using cached later.
         import importlib.util
         local = ROOT / "examples" / "x-intake-local"
         if str(local) not in sys.path:
@@ -439,7 +440,8 @@ class XIntakeSmoke109111Tests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="pfy-xintake-smolvm-oci-") as td:
             stub = Path(td) / "smolvm"
             _write_exe(stub, SMOLVM_STUB)
-            seen = []
+            both: list[str | None] = []
+            cache_only: list[str | None] = []
             for _ in range(2):
                 proc = subprocess.run(
                     [str(stub), "machine", "run", "--oci-cache", "--image", SMOLVM_PIN, "--", "true"],
@@ -447,9 +449,13 @@ class XIntakeSmoke109111Tests(unittest.TestCase):
                 )
                 self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
                 self.assertNotIn("Pulling image", proc.stdout)
-                seen.append(evidence(proc.stdout, proc.stderr, SMOLVM_PIN))
-        self.assertEqual(seen[0], "Caching image 0123456789abcdef (one-time; reused on later runs)")
-        self.assertEqual(seen[1], "Using cached image 0123456789abcdef (host cache hit; no pull)")
+                self.assertIn("Pulling image " + SMOLVM_PIN, proc.stderr)
+                both.append(evidence(proc.stdout, proc.stderr, SMOLVM_PIN))
+                cache_only.append(evidence(proc.stdout, "", SMOLVM_PIN))
+        pull = "Pulling image " + SMOLVM_PIN + "..."
+        self.assertEqual(both, [pull, pull])
+        self.assertEqual(cache_only[0], "Caching image 0123456789abcdef (one-time; reused on later runs)")
+        self.assertEqual(cache_only[1], "Using cached image 0123456789abcdef (host cache hit; no pull)")
 
     def test_i_smolvm_child_drops_secret_shaped_env(self) -> None:
         # Fail: clean_env keeps secret-shaped names that are not in PAID_KEYS.
