@@ -68,4 +68,12 @@ Green after the helper change:
 Sibling grep: `tempfile.gettempdir()` in tests is a "child HOME is under the process temp dir" check (098, 103, 106, 112). Those follow TMPDIR, so an in-repo TMPDIR does not make them resolve outside an outdir. Hardcoded `/tmp` in `tests/test_pfylib_tmp_cleanup.py` and `tests/support_tmpclean_leaker.py` is the host-leak detector. Not this bug. No second code change.
 
 item | commit | tests | result
-log-path-tmpdir | (this commit) | TMPDIR=$PWD/tmp and TMPDIR=/dev/shm/... unittest tests.test_local_bench | 18 OK both ways
+log-path-tmpdir | 4ff2c67 | TMPDIR=$PWD/tmp and TMPDIR=/dev/shm/... unittest tests.test_local_bench | 18 OK both ways
+sibling-tmpdir-grep | none | rg gettempdir and /tmp under tests/ | no same-class bug; no code change
+full-suite | 4ff2c67 | flock heavy-1030.lock; nice -n 19; TMPDIR=$PWD/tmp; python3 -m unittest discover -s tests -t . | Ran 1244 tests in 895.776s OK (skipped=16) EXIT 0
+
+Host before the suite: MemAvailable 64.99 GiB, load 3.77 on 32 cores. During the suite: MemAvailable 55.35 GiB, load 3.44. No pause.
+
+Exit: lane empty. The listed fix, the both-placements test, the tests/ grep, and the locked discover are done. No open local-bench TMPDIR item remains in docs/TODO.md. Further product work would leave this lane.
+
+state: lane empty | tests: discover 1244 OK skipped=16 in 895.776s, TMPDIR=$PWD/tmp | files: bench.py, test_local_bench.py, run log, decisions, handoff | err: none
