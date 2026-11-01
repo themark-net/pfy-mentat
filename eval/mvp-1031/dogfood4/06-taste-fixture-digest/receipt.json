@@ -1,0 +1,45 @@
+{
+  "schema": "pfy-cloud-build/1",
+  "status": "PASS",
+  "reason": "ok",
+  "exit_code": 0,
+  "branch": "cloud/edit-only-examples-x-intake-local-smoke-20261101T020620633824Z",
+  "commit": "43b36c88a62978d815bf3df1d8f10d148cc4970e",
+  "base": "HEAD",
+  "review": {
+    "verdict": "accept",
+    "reasons": []
+  },
+  "attempts": [
+    {
+      "n": 1,
+      "status": "PASS",
+      "reason": "ok",
+      "output_tail": "I'll edit only `examples/x-intake-local/smoke_143_145.py`: add `site_digest` above `smoke_taste`, switch both `_taste` hashes to it, and drop `tree_hash` from the import.`tree_hash` follows symlinks and opens them. I'll add `site_digest` so a link is recorded as `link:<target>` and never opened, then point both `_taste` checks at it.`site_digest` now hashes the taste-skill site tree in `examples/x-intake-local/smoke_143_145.py`. A symlink is recorded as `link:<target>` and is not opened, so a missing target does not raise and a link whose bytes match a regular file does not share that file's digest.\n\nBoth `_taste` snapshots use `site_digest(site)`: the `fx_sig` capture and the `fixtures_untouched` check. `tree_hash` is gone from the `smoke_140_142` import and is not called in this file. `files_under` is unchanged.\n\n`python3 -m unittest tests.test_smoke_143_site_digest` passed (3 tests).\n\nI'll check the diff against the task: only `smoke_143_145.py`, local `site_digest`, both `tree_hash(site)` calls replaced, and no widened edits.verdict: accept\n",
+      "review": {
+        "verdict": "accept",
+        "reasons": []
+      }
+    }
+  ],
+  "gate": {
+    "cmd": "python3 -m unittest tests.test_smoke_143_site_digest",
+    "before": {
+      "cmd": "python3 -m unittest tests.test_smoke_143_site_digest",
+      "exit": 1,
+      "tail": "ids = sorted(x.get(\"id\") for x in mo) if isinstance(mo, list) else None\\n        r[\"demo_machines\"] = ids\\n        checks[\"demo_machines_exact\"] = ms.returncode == 0 and ids == DEMO_MACHINES\\n        drv, spec = td / \"driver.py\", td / \"spec.json\"\\n        drv.write_text(MUXIN_DRIVER, encoding=\"utf-8\")\\n        spec.write_text(json.dumps({\"muxin\": mux, \"cwd\": str(cwd)}), encoding=\"utf-8\")\\n        p = iso([python, str(drv), str(spec)], \"muxin mcp driver\", home=str(home), cwd=tdn, path=SYS_PATH,\\n                extra=extra, bwrap_writable=[tdn])\\n        o = as_json(p)\\n        if not isinstance(o, dict) or o.get(\"error\"):\\n            r[\"driver_rc\"] = p.returncode\\n            r[\"driver_tail\"] = str((o or {}).get(\"error\") if isinstance(o, dict) else (p.stdout + p.stderr).strip())[-800:]\\n            checks[\"driver_report\"] = False\\n            return None\\n        tools = o.get(\"tools\") or {}\\n        txt = {k: json.dumps((o.get(k) or {}).get(\"body\")) for k in (\"status\", \"forge\", \"unknown\", \"badarg\", \"run\")}\\n        r[\"server\"], r[\"stopped\"] = o.get(\"server\"), o.get(\"stopped\")\\n        r[\"tool_count\"] = len(tools)\\n        r[\"destructive\"] = sorted(k for k, a in tools.items() if a.get(\"destructiveHint\"))\\n        r[\"results\"] = {k: t[:300] for k, t in txt.items()}\\n        checks[\"server_pinned\"] = (o.get(\"server\") or {}).get(\"name\") == \"muxin\" and \\\\\\n            (o.get(\"server\") or {}).get(\"version\") == want\\n        checks[\"tools_listed\"] = len(tools) >= 80\\n        checks[\"destructive_marked\"] = all((tools.get(t) or {}).get(\"destructiveHint\") for t in\\n                                           (\"run_on_machines\", \"cloud_destroy\"))\\n        checks[\"status_read_only\"] = (tools.get(\"status\") or {}).get(\"readOnlyHint\") is True\\n        checks[\"status_summary\"] = \"9 machines\" in txt[\"status\"]\\n        checks[\"get_machine_forge\"] = \"forge\" in txt[\"forge\"].lower() and \"not_found\" not in txt[\"forge\"]\\n        checks[\"unknown_not_found\"] = \"not_found\" in txt[\"unknown\"] and \"forge\" in txt[\"unknown\"]\\n        checks[\"bad_arg_invalid\"] = \"invalid\" in txt[\"badarg\"]\\n        checks[\"demo_run_succeeded\"] = \"succeeded\" in txt[\"run\"]\\n        checks[\"stopped_on_eof\"] = o.get(\"stopped\") == \"eof\"\\n        r[\"home_files\"] = sorted(str(x.relative_to(home)) for x in home.rglob(\"*\"))[:20]\\n        r[\"state_files\"] = files_under(state)\\n        checks[\"home_untouched\"] = not any(home.iterdir())\\n    r[\"_ok_reason\"] = (f\"v{want} at the pinned sha; paths under MUXIN_HOME; 9 demo machines; MCP over stdio with \"\\n                       f\"{r.get(\\'tool_count\\')} tools and destructive ones marked; status, get_machine, not_found, invalid \"\\n                       \"and a demo run_on_machines all as expected; exit on EOF; temp HOME and the watched real-HOME \"\\n                       f\"dirs ({watch_dirs(\\'muxin\\')}) unchanged\")\\n    return None\\n\\n\\nENTRIES = {\"taste-skill\": smoke_taste, \"gitai\": smoke_gitai, \"muxin\": smoke_muxin}\\n\\n\\ndef main() -> int:\\n    ap = argparse.ArgumentParser()\\n    ap.add_argument(\"--entry\", required=True, choices=list(ENTRIES))\\n    a = ap.parse_args()\\n    receipt = {\"entry\": a.entry, \"script\": \"examples/x-intake-local/smoke_143_145.py\",\\n               \"started\": time.strftime(\"%Y-%m-%dT%H:%M:%S%z\")}\\n    bad = timeout_problem()\\n    if bad:\\n        receipt[\"reason\"] = bad\\n        return write(a.entry, receipt, 2)\\n    try:\\n        code = ENTRIES[a.entry](receipt)\\n    except Exception as e:\\n        receipt.pop(\"_ok_reason\", None)\\n        receipt[\"reason\"] = str(e) if isinstance(e, TimeoutError) else f\"unexpected {type(e).__name__}: {e}\"\\n        if receipt.get(\"checks\", {}).get(\"real_home_untouched\") is False:\\n            receipt[\"reason\"] += f\"; {home_note(a.entry, receipt)}\"\\n        code = 1\\n    return write(a.entry, receipt, code)\\n\\n\\nif __name__ == \"__main__\":\\n    sys.exit(main())\\n'\n\n----------------------------------------------------------------------\nRan 3 tests in 0.029s\n\nFAILED (failures=1, errors=2)\n",
+      "started": true
+    },
+    "after": {
+      "cmd": "python3 -m unittest tests.test_smoke_143_site_digest",
+      "exit": 0,
+      "tail": "\n...\n----------------------------------------------------------------------\nRan 3 tests in 0.029s\n\nOK\n",
+      "started": true
+    }
+  },
+  "recovery": "",
+  "pushed": false,
+  "worktree_removed": true,
+  "task": "Edit only examples/x-intake-local/smoke_143_145.py. Do not edit any file under tests/. Do not add a file. Do not commit. Do not push. Do not edit smoke_140_142.py.\n\n_taste calls tree_hash(site) twice. tree_hash lives in smoke_140_142.py and uses path.is_file() plus read_bytes(), which follow a symlink. A symlink whose target bytes match the regular file keeps the same digest. A symlink to a missing file raises when read_bytes opens it.\n\nAdd a local hasher in this file. Do not change tree_hash.\n\nAdd this function immediately above smoke_taste:\n\ndef site_digest(root: Path) -> str:\n    \"\"\"Stable digest of a site tree. A symlink is link:<target> and is not opened.\"\"\"\n    rows = []\n    for path in sorted(root.rglob(\"*\"), key=lambda p: str(p.relative_to(root))):\n        rel = str(path.relative_to(root))\n        if path.is_symlink():\n            rows.append(\"%s\\tlink:%s\" % (rel, os.readlink(path)))\n        elif path.is_file():\n            rows.append(\"%s\\t%s\" % (rel, hashlib.sha256(path.read_bytes()).hexdigest()))\n    return hashlib.sha256((\"\\n\".join(rows)).encode(\"utf-8\")).hexdigest()\n\nIn _taste, replace both tree_hash(site) calls with site_digest(site). That is the snapshot fx_sig = tree_hash(site) and the later checks[\"fixtures_untouched\"] = tree_hash(site) == fx_sig.\n\nRemove tree_hash from the import line that imports it from smoke_140_142. Leave the other names on that import. hashlib and os are already imported. Do not call tree_hash anywhere in this file.\n\nDo not open a symlink target. A missing target must not raise. A symlink whose target bytes equal the regular file must not compare equal to the regular-file digest. Do not change files_under. Do not use an em dash or an en dash.",
+  "finished_at": "2026-11-01T02:07:26Z"
+}
