@@ -1,4 +1,4 @@
-# Autonomous decisions — mvp-merge-plan-1031
+# Autonomous decisions: mvp-merge-plan-1031
 
 One line each. Choice, alternatives, why. Pre-authorized: do not ask.
 
