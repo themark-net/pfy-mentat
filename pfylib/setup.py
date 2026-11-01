@@ -101,7 +101,9 @@ def save_ledger(records: list[dict]) -> None:
     path = ledger_path()
     payload = {"records": records}
     data = (json.dumps(payload, indent=2, sort_keys=True) + "\n").encode("utf-8")
-    if path.is_file() and path.read_bytes() == data:
+    # is_file and read_bytes follow a symlink. Skip them so atomic_write
+    # replaces the directory entry and does not open the target.
+    if not path.is_symlink() and path.is_file() and path.read_bytes() == data:
         return
     path.parent.mkdir(parents=True, exist_ok=True)
     atomic_write(path, data)
