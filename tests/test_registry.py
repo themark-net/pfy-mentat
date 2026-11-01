@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import copy
+import os
 import sys
 import unittest
 from pathlib import Path
@@ -15,9 +16,23 @@ from pfylib import registry  # noqa: E402
 
 class RegistryLoadTests(unittest.TestCase):
     def test_root_and_state_dir(self):
+        """Fail: state_dir ignores an explicit path or PFY_STATE_DIR.
+        Recover: the explicit path wins, and a bare call uses PFY_STATE_DIR.
+        A tilde in the explicit path is expanded. The directory is not created."""
         self.assertEqual(registry.root(ROOT), ROOT)
         self.assertTrue((registry.root() / "data" / "toolsets.json").is_file())
-        self.assertEqual(registry.state_dir("/tmp/x"), registry.state_dir("/tmp/x"))
+        explicit = ROOT / "tmp" / "state-dir-probe"
+        self.assertEqual(registry.state_dir(explicit), Path(explicit))
+        self.assertEqual(registry.state_dir("~/pfy-state-probe"), Path.home() / "pfy-state-probe")
+        old = os.environ.get("PFY_STATE_DIR")
+        try:
+            os.environ["PFY_STATE_DIR"] = str(explicit)
+            self.assertEqual(registry.state_dir(), Path(explicit))
+        finally:
+            if old is None:
+                os.environ.pop("PFY_STATE_DIR", None)
+            else:
+                os.environ["PFY_STATE_DIR"] = old
 
     def test_harness_axis_is_role_harness_only(self):
         hids = registry.harness_ids(ROOT)
