@@ -68,5 +68,11 @@ Format: `item | commit | tests | result`
 - loop-card | 34d7992 | docs only | PASS
 - root-added-only | 6f1489e | tests.test_pfy_build_cloud | PASS, 69 tests OK in 22.432s. Red before the fix: test_removing_a_root_delete_can_land returned 1, reason review-rejected. test_added_tmp_delete_stays_rejected already passed on that tree. After the fix, deleting danger.sh lands kept.py, and an added rm -rf / or rm -rf /tmp/x stays review-rejected.
 - env-variants | 7cb6995 | tests.test_pfy_build_cloud | PASS, 70 tests, exit 0. Red before the fix: test_env_variants_are_protected_and_example_can_land had 1 attempt, not 2. After the fix, .env.bak, nested/.env.local, and nested/.env.production are protected-path-changed, those secret strings are absent from the receipt, and the retry lands kept.py plus .env.example.
+- reap-receipt | d9a4f44 | tests.test_pfy_build_cloud | PASS, 71 tests OK in 22.442s. Red before the fix: test_reap_exits_nonzero_when_the_aborted_receipt_cannot_be_written returned 0 with stdout `reaped: reaped <pid>` and no receipt error. After the fix, the first reap exits 1, stderr names the ABORTED receipt path, the pid file stays, and a second reap writes status ABORTED and exits 0.
+- rescan | none | read of docs/ops/HANDOFF-mvp-probe-int-1031.md | SKIP. The only open cloud gap there is a same-process symlink write. It needs an ADR. No other item fits this lane.
+
+Close check 2026-11-01T02:45:36Z. Wall cap 2026-11-01T10:34:05Z is later. MemAvailable about 44 GiB (46414312 KiB). Load about 3.1 on 32 cores. No host pressure. Runner.Worker was absent.
+
+state: lane empty | tests: nice -n 19 python3 -m unittest tests.test_pfy_build_cloud, 71 OK in 22.442s at d9a4f44 | files: scripts/pfy_build_cloud.py, tests/test_pfy_build_cloud.py | err: none
 
 Scan at 2026-11-01T02:34Z, before code: `diff_aims_at_root` still searches the whole diff. `DEFAULT_PROTECT` lists `.env` and `_protected` does not special-case `.env.*`. `reap` uses `except OSError: pass` and then `return EXIT_OK`. `origin/main` at `c0d38af` has no `diff_aims_at_root`. Probe-int handoff's remaining cloud gap is the same-process symlink write, which that handoff already marks as an ADR.
