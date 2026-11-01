@@ -75,6 +75,7 @@ Each build: throwaway clone under `tmp/target-<n>`, `./pfy build` with `--repo` 
 
 item | commit | tests | result
 01 hermes-driver-symlink | ebb808d | tests.test_hermes_driver_symlink 4 OK | accept
+02 attach-session-symlink | 29ee1cc | tests.test_attach_session_symlink tests.test_attach 38 OK | accept
 
 ## Survey skips
 
