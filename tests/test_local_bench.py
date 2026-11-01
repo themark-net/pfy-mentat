@@ -4,6 +4,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -242,44 +243,145 @@ class FailClosedTests(unittest.TestCase):
 
 
 
-class OutdirPathTests(unittest.TestCase):
-    def test_relative_outdir_log_path_safe(self):
-        """A temp outdir must not raise. The receipt path follows the resolved location.
+_TMPDIR_CHILD = r"""
+import importlib.util
+import os
+import sys
+import tempfile
+from pathlib import Path
 
-        Fail: TMPDIR inside the repo makes TemporaryDirectory an in-repo log,
-        and demanding an absolute path fails a correct relative receipt.
-        Recover: inside the repo, root / stored path opens the log. Outside,
-        the stored path is absolute and opens the same bytes.
+repo = Path(os.environ["PFY_REPO"]).resolve()
+spec = importlib.util.spec_from_file_location(
+    "local_bench_089_child", repo / "examples" / "local-bench" / "bench.py"
+)
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+expect_inside = os.environ["PFY_EXPECT_INSIDE"] == "1"
+with tempfile.TemporaryDirectory(prefix="local-bench-out-") as td:
+    outdir = Path(td).resolve()
+    tmpdir = Path(os.environ["TMPDIR"]).resolve()
+    outdir.relative_to(tmpdir)
+    try:
+        outdir.relative_to(repo)
+        actually_inside = True
+    except ValueError:
+        actually_inside = False
+    if actually_inside != expect_inside:
+        raise SystemExit(
+            "placement mismatch inside=%s expect=%s outdir=%s" % (actually_inside, expect_inside, outdir)
+        )
+    log_path = outdir / "demo_model.log"
+    log_path.write_text("x\n", encoding="utf-8")
+    got = mod.log_path_for_receipt(log_path, root=mod.ROOT)
+    os.chdir("/")
+    resolved = Path(got).resolve()
+    if not resolved.is_absolute() or ".." in Path(got).parts:
+        raise SystemExit("unsafe stored path %s" % got)
+    try:
+        resolved.relative_to(outdir)
+    except ValueError:
+        raise SystemExit("resolved outside outdir: %s -> %s" % (got, resolved))
+    if resolved.read_text(encoding="utf-8") != "x\n" or got != str(log_path.resolve()):
+        raise SystemExit("log bytes or resolve mismatch: %s" % got)
+print("ok")
+"""
+
+
+class OutdirPathTests(unittest.TestCase):
+    def _assert_opens_inside(self, got: str, outdir: Path, text: str) -> None:
+        self.assertTrue(Path(got).is_absolute(), got)
+        self.assertNotIn("..", Path(got).parts)
+        previous = Path.cwd()
+        try:
+            os.chdir("/")
+            resolved = Path(got).resolve()
+            try:
+                resolved.relative_to(outdir.resolve())
+            except ValueError:
+                self.fail("log path %s resolved outside %s" % (got, outdir))
+            self.assertEqual(resolved.read_text(encoding="utf-8"), text)
+        finally:
+            os.chdir(previous)
+
+    def test_relative_outdir_log_path_safe(self):
+        """A temp outdir log stays inside the outdir from any working directory.
+
+        Fail: TMPDIR inside the repo makes the helper return a repo-relative
+        path. Resolving that string from / lands outside the outdir and the
+        log bytes are gone.
+        Recover: the stored path is the absolute resolved log. It has no
+        '..' segment, it is inside the outdir, and it opens after chdir.
         """
         with tempfile.TemporaryDirectory(prefix="local-bench-out-") as td:
             outdir = Path(td).resolve()
             log_path = outdir / "demo_model.log"
             log_path.write_text("x\n", encoding="utf-8")
             got = bench.log_path_for_receipt(log_path, root=bench.ROOT)
-            try:
-                outdir.relative_to(bench.ROOT)
-                inside = True
-            except ValueError:
-                inside = False
-            if inside:
-                self.assertFalse(Path(got).is_absolute(), got)
-                self.assertEqual((bench.ROOT / got).read_text(encoding="utf-8"), "x\n")
-            else:
-                self.assertEqual(got, str(log_path.resolve()))
-                self.assertEqual(Path(got).read_text(encoding="utf-8"), "x\n")
+            self.assertEqual(got, str(log_path.resolve()))
+            self._assert_opens_inside(got, outdir, "x\n")
             in_tree = bench.ROOT / "examples" / "local-bench" / "bench.py"
-            rel = bench.log_path_for_receipt(in_tree, root=bench.ROOT)
-            self.assertFalse(Path(rel).is_absolute(), rel)
-            self.assertEqual((bench.ROOT / rel).resolve(), in_tree.resolve())
+            stored = bench.log_path_for_receipt(in_tree, root=bench.ROOT)
+            self.assertEqual(stored, str(in_tree.resolve()))
+            self._assert_opens_inside(stored, in_tree.parent, in_tree.read_text(encoding="utf-8"))
+
+    def test_log_path_stable_for_tmpdir_inside_and_outside_repo(self):
+        """Fresh processes with TMPDIR inside the repo and outside it agree.
+
+        Fail: the inside placement returns a relative path. From / that path
+        resolves outside the outdir. An outside TMPDIR still passes, so one
+        ambient temp dir hides the bug.
+        Recover: both children store the absolute resolved log, and that path
+        stays inside the outdir after chdir to /.
+        """
+        inside = bench.ROOT / "tmp" / ("lane-tmpdir-inside-%s" % os.getpid())
+        inside.mkdir(parents=True, exist_ok=True)
+        shm = Path("/dev/shm")
+        self.assertTrue(shm.is_dir() and os.access(shm, os.W_OK), "need a writable dir outside the repo")
+        outside = shm / ("pfy-localbench-tmpdir-%s" % os.getpid())
+        outside.mkdir(parents=True, exist_ok=True)
+        try:
+            outside.resolve().relative_to(bench.ROOT.resolve())
+        except ValueError:
+            pass
+        else:
+            self.fail("outside TMPDIR %s resolved inside the repo" % outside)
+        try:
+            for label, directory, expect_inside in (
+                ("inside", inside, True),
+                ("outside", outside, False),
+            ):
+                with self.subTest(placement=label):
+                    env = {
+                        "PATH": os.environ.get("PATH", "/usr/bin"),
+                        "TMPDIR": str(directory),
+                        "HOME": str(directory),
+                        "LANG": os.environ.get("LANG", "C.UTF-8"),
+                        "PFY_REPO": str(ROOT),
+                        "PFY_EXPECT_INSIDE": "1" if expect_inside else "0",
+                    }
+                    proc = subprocess.run(
+                        [sys.executable, "-c", _TMPDIR_CHILD],
+                        cwd=str(ROOT),
+                        env=env,
+                        capture_output=True,
+                        text=True,
+                        timeout=30,
+                    )
+                    self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+                    self.assertIn("ok", proc.stdout)
+        finally:
+            shutil.rmtree(inside, ignore_errors=True)
+            shutil.rmtree(outside, ignore_errors=True)
 
     def test_log_path_receipt_inside_and_outside_repo(self):
-        """In-repo logs stay relative. Outside logs are the absolute resolved path.
+        """In-repo and outside logs are the absolute resolved path.
 
-        Fail: an in-repo log stored with the machine prefix, or an outside
-        path that still contains '..' / raises from relative_to (Entry 090
-        turned that ValueError into DROP).
-        Recover: root / relative opens the in-repo log. The outside value
-        equals Path.resolve(), has no '..' segment, and opens the same file.
+        Fail: an in-repo log stored repo-relative only opens as root / path.
+        From any other cwd it resolves outside the outdir. An outside path
+        that still contains '..' used to raise from relative_to and Entry 090
+        recorded DROP.
+        Recover: both values equal Path.resolve(), have no '..' segment, and
+        open the same bytes after chdir to /.
         """
         root = bench.ROOT
         inside_dir = root / "tmp" / "intfix-log-path"
@@ -288,9 +390,8 @@ class OutdirPathTests(unittest.TestCase):
         inside_log.write_text("inside-log\n", encoding="utf-8")
         try:
             got_in = bench.log_path_for_receipt(inside_log, root=root)
-            self.assertFalse(Path(got_in).is_absolute(), got_in)
-            self.assertNotIn(str(root), got_in)
-            self.assertEqual((root / got_in).read_text(encoding="utf-8"), "inside-log\n")
+            self.assertEqual(got_in, str(inside_log.resolve()))
+            self._assert_opens_inside(got_in, inside_dir, "inside-log\n")
         finally:
             inside_log.unlink(missing_ok=True)
             try:
@@ -306,21 +407,13 @@ class OutdirPathTests(unittest.TestCase):
             pass
         got_out = bench.log_path_for_receipt(outside, root=root)
         self.assertEqual(got_out, str(outside.resolve()))
-        self.assertTrue(Path(got_out).is_absolute(), got_out)
-        self.assertEqual(
-            Path(got_out).read_text(encoding="utf-8"),
-            outside.read_text(encoding="utf-8"),
-        )
+        self._assert_opens_inside(got_out, outside.parent, outside.read_text(encoding="utf-8"))
 
         messy = Path("/proc/self/../self/comm")
         got_messy = bench.log_path_for_receipt(messy, root=root)
         self.assertEqual(got_messy, str(messy.resolve()))
-        self.assertTrue(Path(got_messy).is_absolute(), got_messy)
         self.assertNotIn("..", Path(got_messy).parts)
-        self.assertEqual(
-            Path(got_messy).read_text(encoding="utf-8"),
-            outside.read_text(encoding="utf-8"),
-        )
+        self._assert_opens_inside(got_messy, outside.parent, outside.read_text(encoding="utf-8"))
 
     def test_outdir_arg_is_resolved_absolute(self):
         """resolve_outdir() is what main() uses for --outdir."""

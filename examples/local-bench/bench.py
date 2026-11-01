@@ -282,21 +282,27 @@ def resolve_outdir(outdir_arg: str | None, receipt_path: Path) -> Path:
 
 
 def log_path_for_receipt(log_path: Path, root: Path | None = None) -> str:
-    """Repo-relative when the resolved log is inside the repo; absolute otherwise.
+    """Absolute resolved path of the log. Same rule wherever TMPDIR points.
 
-    Path.relative_to raises ValueError for an out-of-tree outdir. That used to
-    escape into bench_one and record DROP. Recovery is the absolute resolved
-    path, including when the input still contains '..' or a symlink.
+    A repo-relative path only opens when the reader joins it with the repo
+    root. When TMPDIR sits inside the repo, TemporaryDirectory is in-tree and
+    that relative string resolves from any other cwd to a path outside the
+    outdir (often under the host temp dir). The bytes there are not the log.
+
+    root stays in the signature so existing callers keep working. It does not
+    change the stored string.
+
+    Recovery: resolve, or abspath if resolve raises, and store that absolute
+    path. '..' and symlinks collapse. The result is the log file, so it stays
+    inside the outdir. Never raises into bench_one. Entry 090 turned a
+    relative_to ValueError into DROP.
     """
-    root = root or ROOT
+    del root
     try:
         resolved = log_path.resolve()
     except OSError:
         resolved = Path(os.path.abspath(log_path))
-    try:
-        return str(resolved.relative_to(root.resolve()))
-    except ValueError:
-        return str(resolved)
+    return str(resolved)
 
 def is_ollama_exe(exe: str) -> bool:
     """Match the Ollama binary / llama-server, not a parent whose argv quotes those words."""
