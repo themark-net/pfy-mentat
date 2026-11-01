@@ -64,3 +64,6 @@ skip-gate-allowlist | none | not run | SKIP. Gate denylist already hides secret-
 cross-lane-timeout-docs | none | not run | NOT EDITED. mvp-surface owns pfy-build.md and pfy-build-daily.md. --timeout wording drifts from the run budget. Request in the handoff.
 poll-0049Z | none | read-only | dogfood2 ac42593 handed off after run 09. Findings still F1-F3 only (F1 already on the integrate tip, F2 and F3 fixed here). gom still 88a841b. selfhost2 88f5d99 item 03 PASS, no new runner friction. Quiet clock stays 00:29Z. Next poll 01:09Z. Stop at 01:29Z if still quiet.
 poll-0109Z | none | read-only | dogfood2 still ac42593. gom still 88a841b. cloudfix still 10b4f5b. selfhost2 91ad247 items 04-07 PASS. Item 04 review reject of Path.rglob recurse_symlinks was the right verdict, not a runner bug. Quiet clock stays 00:29Z. Next poll 01:29Z.
+poll-0129Z | none | read-only | dogfood2 still ac42593. gom still 88a841b. cloudfix still 10b4f5b. selfhost2 8b158e1 items 08-12 PASS, decisions are product symlink choices, no new runner friction. 60 quiet minutes since 00:29Z.
+
+state: lane empty | 60 quiet minutes after the kolibri finding at 2026-11-01T00:29Z. Polls at 00:49Z, 01:09Z, and 01:29Z added no new cloud-runner finding. Wall cap and host pressure did not fire. Handoff docs/ops/HANDOFF-mvp-timeoutfix-1031.md. No merge.
