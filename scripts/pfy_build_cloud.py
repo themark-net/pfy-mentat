@@ -61,6 +61,30 @@ def classify_runner_failure(code: int, stdout: str, stderr: str) -> str:
     return kind
 
 
+_NETWORK_FAILURE = (
+    "connection refused",
+    "connection reset by peer",
+    "failed to establish a new connection",
+    "name or service not known",
+    "network down",
+    "network is unreachable",
+    "network unreachable",
+    "no route to host",
+    "temporary failure in name resolution",
+)
+
+
+def network_failure_text(stdout: str, stderr: str) -> bool:
+    """True when grok text says the endpoint could not be reached.
+
+    Exit 0 is not a network failure. Callers check the exit code first.
+    Other non-zero exits still run the gate.
+    """
+    lowered = "%s\n%s" % (stdout or "", stderr or "")
+    lowered = lowered.lower()
+    return any(phrase in lowered for phrase in _NETWORK_FAILURE)
+
+
 EXIT_OK = 0
 EXIT_FAIL = 1
 EXIT_USAGE = 2
@@ -613,6 +637,7 @@ TERMINAL_FAILURE_REASONS = (
     "review-rejected",
     "runner-crash",
     "gate-rewrote",
+    "network",
     "scope-commit-mismatch",
     "symlink-escape",
     "tests",
@@ -694,6 +719,12 @@ def failure_recovery(reason: str, task: str, detail: str = "") -> str:
             "Remove that change and rerun ./pfy build %s. "
             "auth.json, .env, and grok-home stay out of the commit."
             % (shown, quoted)
+        )
+    if reason == "network":
+        return (
+            "Mark: the cloud endpoint could not be reached. "
+            "Check the network, then rerun ./pfy build %s."
+            % quoted
         )
     if reason == "gate-rewrote":
         return (
@@ -1442,6 +1473,11 @@ class CloudBuild:
             if kind == "unauthenticated":
                 self.record(number, "FAIL", "unauthenticated", output)
                 return self.fail("FAIL", "unauthenticated", EXIT_FAIL, auth_recovery(self.args.task_text))
+            if code not in (0, None) and network_failure_text(out, err):
+                # Fail: a closed endpoint still commits the partial edit.
+                # Recover: do not run the gate and do not commit.
+                self.record(number, "FAIL", "network", output)
+                return self.fail("FAIL", "network", EXIT_FAIL, "")
             escaped = escaping_symlinks(self.worktree)
             if escaped:
                 # Fail: the agent adds a symlink that resolves outside the
@@ -1540,6 +1576,9 @@ class CloudBuild:
                 if review_kind == "unauthenticated":
                     self.record(number, "FAIL", "unauthenticated", output)
                     return self.fail("FAIL", "unauthenticated", EXIT_FAIL, auth_recovery(self.args.task_text))
+                if review_code not in (0, None) and network_failure_text(review_out, review_err):
+                    self.record(number, "FAIL", "network", output)
+                    return self.fail("FAIL", "network", EXIT_FAIL, "")
                 verdict, reasons = parse_verdict(review_output)
                 if verdict == "accept" and diff_aims_at_root(diff_text):
                     verdict = "reject"

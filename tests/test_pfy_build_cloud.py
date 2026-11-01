@@ -7,6 +7,7 @@ import os
 import re
 import shutil
 import signal
+import socket
 import subprocess
 import sys
 import time
@@ -3179,4 +3180,138 @@ class CloudBuildGateRewriteProbeTests(unittest.TestCase):
         self.assertNotIn("\ncloud/", "\n" + _git(self.repo, "branch", "--list").stdout)
         showed = _git(self.repo, "grep", "-n", "999", "HEAD")
         self.assertNotEqual(showed.returncode, 0)
+
+
+class CloudBuildNetworkProbeTests(unittest.TestCase):
+    """A closed cloud endpoint must not commit a partial edit."""
+
+    def setUp(self) -> None:
+        SCRATCH.mkdir(parents=True, exist_ok=True)
+        self.repo = _init_repo(SCRATCH / self.id().replace(".", "_"))
+        self.side = SCRATCH / (self.id().replace(".", "_") + "-side")
+        self.side.mkdir(parents=True, exist_ok=True)
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self.repo, ignore_errors=True)
+        shutil.rmtree(self.side, ignore_errors=True)
+
+    def _receipt(self) -> dict:
+        path = list((self.repo / "pipelines" / "dogfood" / "build-cloud").glob("*/receipt.json"))[0]
+        return json.loads(path.read_text(encoding="utf-8"))
+
+    def _gate(self) -> Path:
+        return _write_exe(
+            self.side / "gate.py",
+            "#!/usr/bin/env python3\nprint('GATE-OK')\nraise SystemExit(0)\n",
+        )
+
+    def test_closed_port_does_not_commit_the_partial_edit(self) -> None:
+        # Fail: grok writes partial.py, then connection refused, and the
+        # build still PASSes. Recover: exit 1, reason network, no branch.
+        port = 1
+        probe = socket.socket()
+        probe.settimeout(0.3)
+        try:
+            probe.connect(("127.0.0.1", port))
+        except OSError:
+            closed = True
+        else:
+            closed = False
+        finally:
+            probe.close()
+        self.assertTrue(closed, "127.0.0.1:%s accepted a connection" % port)
+        grok = _write_exe(
+            self.side / "grok.py",
+            "#!/usr/bin/env python3\n"
+            "import socket\n"
+            "import sys\n"
+            "from pathlib import Path\n"
+            "blob = '\\n'.join(sys.argv)\n"
+            "if 'PFY-CLOUD-REVIEW' in blob:\n"
+            "    print('verdict: accept')\n"
+            "    raise SystemExit(0)\n"
+            "Path('partial.py').write_text('partial = 1\\n', encoding='utf-8')\n"
+            "sock = socket.socket()\n"
+            "sock.settimeout(2)\n"
+            "try:\n"
+            "    sock.connect(('127.0.0.1', %d))\n"
+            "except OSError as exc:\n"
+            "    print('connection refused: %%s' %% exc, file=sys.stderr)\n"
+            "    raise SystemExit(1)\n"
+            "raise SystemExit(0)\n" % port,
+        )
+        head = _git(self.repo, "rev-parse", "HEAD").stdout.strip()
+        proc = _run(
+            [
+                sys.executable,
+                str(CLOUD),
+                "add kept",
+                "--repo",
+                str(self.repo),
+                "--retries",
+                "0",
+                "--timeout",
+                "30",
+                "--test-cmd",
+                "%s %s" % (sys.executable, self._gate()),
+                "--grok-cmd",
+                str(grok),
+            ],
+            self.repo,
+            timeout=30,
+        )
+        text = (proc.stdout or "") + (proc.stderr or "")
+        self.assertEqual(proc.returncode, 1, text)
+        payload = self._receipt()
+        self.assertEqual(payload["status"], "FAIL")
+        self.assertEqual(payload["reason"], "network")
+        self.assertEqual(payload["exit_code"], 1)
+        self.assertIsNone(payload["commit"])
+        self.assertIsNone(payload["branch"])
+        self.assertIn("Mark:", payload["recovery"])
+        self.assertNotIn("--local", payload["recovery"])
+        self.assertEqual(_git(self.repo, "rev-parse", "HEAD").stdout.strip(), head)
+        self.assertNotIn("\ncloud/", "\n" + _git(self.repo, "branch", "--list").stdout)
+        self.assertNotIn("partial.py", _git(self.repo, "ls-tree", "-r", "--name-only", "HEAD").stdout)
+
+    def test_other_nonzero_grok_still_runs_the_gate_and_can_pass(self) -> None:
+        # A non-zero grok exit that is not a network failure still reaches
+        # the gate. Fail would be treating every non-zero as network.
+        grok = _write_exe(
+            self.side / "grok.py",
+            "#!/usr/bin/env python3\n"
+            "import sys\n"
+            "from pathlib import Path\n"
+            "blob = '\\n'.join(sys.argv)\n"
+            "if 'PFY-CLOUD-REVIEW' in blob:\n"
+            "    print('verdict: accept')\n"
+            "    raise SystemExit(0)\n"
+            "Path('kept.py').write_text('value = 1\\n', encoding='utf-8')\n"
+            "print('boom')\n"
+            "raise SystemExit(1)\n",
+        )
+        proc = _run(
+            [
+                sys.executable,
+                str(CLOUD),
+                "add kept value",
+                "--repo",
+                str(self.repo),
+                "--retries",
+                "0",
+                "--timeout",
+                "30",
+                "--test-cmd",
+                "%s %s" % (sys.executable, self._gate()),
+                "--grok-cmd",
+                str(grok),
+            ],
+            self.repo,
+            timeout=30,
+        )
+        text = (proc.stdout or "") + (proc.stderr or "")
+        self.assertEqual(proc.returncode, 0, text)
+        payload = self._receipt()
+        self.assertEqual(payload["reason"], "ok")
+        self.assertIn("kept.py", _git(self.repo, "ls-tree", "-r", "--name-only", payload["commit"]).stdout)
 
