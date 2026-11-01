@@ -1492,6 +1492,93 @@ class LocalBuildTests(unittest.TestCase):
         self.assertEqual(aborted["status"], "ABORTED")
         self.assertEqual(aborted["reason"], "no-receipt")
 
+    def _local_build_worktrees(self):
+        root = (self.repo / "tmp").resolve()
+        found = []
+        text = _git(self.repo, "worktree", "list", "--porcelain")
+        for line in text.splitlines():
+            if not line.startswith("worktree "):
+                continue
+            raw = line.split(" ", 1)[1]
+            try:
+                path = Path(raw).resolve()
+                rel = path.relative_to(root)
+            except (OSError, ValueError):
+                continue
+            if rel.parts and rel.parts[0].startswith("local-build-"):
+                found.append(str(path))
+        return found
+
+    def test_sigkill_worktree_is_pruned_on_the_next_run(self):
+        # S5: SIGKILL cannot remove the worktree. The pid file records it.
+        # The next run prunes that path and leaves any other local-build worktree.
+        cmd, _receipt = self.command("hang", extra=["--timeout", "60", "--retries", "0"])
+        proc = subprocess.Popen(
+            cmd,
+            cwd=self.repo,
+            env=self.env("hang"),
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            start_new_session=True,
+        )
+        sibling = self.repo / "tmp" / "local-build-keep-sibling"
+        killed_path = None
+        recorded = ""
+        try:
+            deadline = time.monotonic() + 25
+            pid_path = self.repo / "tmp" / "local-build.pids.json"
+            while time.monotonic() < deadline and proc.poll() is None:
+                listed = self._local_build_worktrees()
+                if listed and pid_path.is_file():
+                    killed_path = listed[0]
+                    try:
+                        recorded = str(json.loads(pid_path.read_text(encoding="utf-8")).get("worktree") or "")
+                    except (OSError, json.JSONDecodeError):
+                        recorded = ""
+                    if recorded:
+                        break
+                time.sleep(0.05)
+            self.assertIsNotNone(killed_path, "worktree was not registered")
+            self.assertTrue(proc.poll() is None, "hang exited before the worktree was registered")
+            os.killpg(proc.pid, signal.SIGKILL)
+            proc.communicate(timeout=5)
+            self.assertIn(killed_path, self._local_build_worktrees())
+            sibling.parent.mkdir(parents=True, exist_ok=True)
+            added = subprocess.run(
+                ["git", "-C", str(self.repo), "worktree", "add", "--detach", str(sibling), "HEAD"],
+                text=True,
+                capture_output=True,
+                timeout=20,
+            )
+            self.assertEqual(added.returncode, 0, added.stdout + added.stderr)
+            nxt, nxt_receipt = self.run_build("fix")
+            self.assertEqual(nxt.returncode, 0, nxt.stdout + nxt.stderr)
+            data = self.receipt(nxt, nxt_receipt)
+            self.assertEqual(data["status"], "PASS")
+            left = self._local_build_worktrees()
+            self.assertNotIn(killed_path, left, left)
+            self.assertFalse(Path(killed_path).exists(), killed_path)
+            self.assertIn(str(sibling.resolve()), left, left)
+            self.assertEqual(str(Path(recorded).resolve()), killed_path)
+        finally:
+            if proc.poll() is None:
+                try:
+                    os.killpg(proc.pid, signal.SIGKILL)
+                except OSError:
+                    pass
+                try:
+                    proc.communicate(timeout=5)
+                except Exception:
+                    pass
+            if sibling.exists() or str(sibling.resolve()) in self._local_build_worktrees():
+                subprocess.run(
+                    ["git", "-C", str(self.repo), "worktree", "remove", "--force", str(sibling)],
+                    capture_output=True,
+                    text=True,
+                    timeout=20,
+                )
+
     def test_missing_runtime_dir_is_not_reported_as_missing_bwrap(self):
         # Do not add --unsafe-no-sandbox. That flag skips the bridge, so the
         # runtime-dir guard would never run on a host without bwrap.

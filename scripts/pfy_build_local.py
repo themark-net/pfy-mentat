@@ -17,7 +17,9 @@ A SIGKILL of this process cannot write a receipt. The pid file under
 <repo>/tmp/local-build.pids.json is the recovery handle: the next run, and
 `pfy build --local --reap`, signal that process group and write ABORTED for
 any build-local directory that has no receipt, and for the pid file's receipt
-dir when that receipt is missing.
+dir when that receipt is missing. That same reap removes the worktree path
+recorded in the pid file when the path is under <repo>/tmp and its first
+directory name starts with local-build-. Other worktrees are left in place.
 
 Receipt schema: pfy-local-build/1
 """
@@ -2024,6 +2026,10 @@ def reap_stale(repo: Path) -> list[str]:
                             },
                         )
                         notes.append("aborted %s" % dest.parent.name)
+            recorded = _recorded_build_worktree(repo, data.get("worktree"))
+            if recorded is not None:
+                _drop_worktree(repo, recorded)
+                notes.append("pruned %s" % recorded.name)
         if pid != os.getpid():
             try:
                 pid_path.unlink()
@@ -2826,6 +2832,21 @@ def _stub_extra_rw() -> list[Path]:
     return found
 
 
+def _recorded_build_worktree(repo: Path, raw) -> Path | None:
+    """Pid-file worktree, only when it is one local-build dir under repo/tmp."""
+    text = str(raw or "").strip()
+    if not text:
+        return None
+    try:
+        path = Path(text).resolve()
+        rel = path.relative_to((repo / "tmp").resolve())
+    except (OSError, ValueError):
+        return None
+    if not rel.parts or not rel.parts[0].startswith("local-build-"):
+        return None
+    return path
+
+
 def _drop_worktree(repo: Path, worktree: Path | None) -> None:
     if worktree is None:
         return
@@ -3310,6 +3331,7 @@ def build_local(argv: list[str] | None = None) -> int:
                         "ollama_root": ollama_root,
                         "loaded_by_run": False,
                         "receipt_dir": str(receipt_dir),
+                        "worktree": str(wt_path),
                     },
                 )
                 pid_written = True
