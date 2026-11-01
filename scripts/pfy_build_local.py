@@ -35,6 +35,7 @@ import shlex
 import shutil
 import signal
 import socket
+import stat
 import subprocess
 import sys
 import threading
@@ -2279,6 +2280,47 @@ def _named_by_test_cmd(rel: str, test_cmd: str) -> bool:
     return False
 
 
+def _reviewed_digest(worktree: Path, rel: str) -> str:
+    """Digest of the bytes a commit of this path would store. Does not follow symlinks."""
+    full = worktree / rel
+    try:
+        st = os.lstat(full)
+    except OSError:
+        return "missing"
+    if stat.S_ISLNK(st.st_mode):
+        try:
+            target = os.readlink(full)
+        except OSError:
+            return "unreadable-link"
+        return "link:" + hashlib.sha256(target.encode("utf-8", "surrogateescape")).hexdigest()
+    if not stat.S_ISREG(st.st_mode):
+        return "other:%s" % stat.S_IFMT(st.st_mode)
+    flags = os.O_RDONLY
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    try:
+        fd = os.open(full, flags)
+    except OSError:
+        return "unreadable"
+    hasher = hashlib.sha256()
+    try:
+        while True:
+            chunk = os.read(fd, 65536)
+            if not chunk:
+                break
+            hasher.update(chunk)
+    finally:
+        os.close(fd)
+    return "file:" + hasher.hexdigest()
+
+
+def _gate_rewrote(worktree: Path, digests: dict[str, str]) -> bool:
+    for rel, old in digests.items():
+        if _reviewed_digest(worktree, rel) != old:
+            return True
+    return False
+
+
 def _synthetic_new_diff(rel: str, lines: list[str]) -> str:
     body = "".join("+%s\n" % line for line in lines)
     return (
@@ -2980,6 +3022,7 @@ def build_local(argv: list[str] | None = None) -> int:
             tests_after = None
             changed = []
             diff_text = ""
+            reviewed_digests: dict[str, str] = {}
             diff_stats = {"files": 0, "added": 0, "removed": 0, "lines": 0, "paths": []}
             checks = None
             model_review = None
@@ -3135,6 +3178,7 @@ def build_local(argv: list[str] | None = None) -> int:
 
             changed = files_changed(worktree, test_env)
             diff_text, diff_stats = _collect_diff(worktree, test_env, changed)
+            reviewed_digests = {rel: _reviewed_digest(worktree, rel) for rel in changed}
             if not changed:
                 tests_after = run_tests(
                     args.test_cmd_s,
@@ -3247,6 +3291,23 @@ def build_local(argv: list[str] | None = None) -> int:
                     continue
                 status, reason, exit_code = "FAIL", "tests-flaky", EXIT_FAIL
                 _record_attempt(attempts_used, attempt_t0, mem_snap, "FAIL", "tests-flaky", None, None, diff_stats, diff_text)
+                return finish()
+            if _gate_rewrote(worktree, reviewed_digests):
+                # The test command rewrote a file the diff already captured.
+                # Do not review or commit that unseen text, and do not retry:
+                # a later attempt could treat the rewrite as the agent's edit.
+                status, reason, exit_code = "FAIL", "gate-modified-reviewed-file", EXIT_FAIL
+                _record_attempt(
+                    attempts_used,
+                    attempt_t0,
+                    mem_snap,
+                    "FAIL",
+                    "gate-modified-reviewed-file",
+                    None,
+                    None,
+                    diff_stats,
+                    diff_text,
+                )
                 return finish()
             gated_tree = tree_digest(worktree)
             if run_status == "timeout":
