@@ -156,9 +156,9 @@ sleep 60
             self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
             self.assertNotIn("Traceback", p.stderr)
             receipt = _receipt("openqodex")
-            # Fail: the receipt uses its own "timeout after <s>s: <cmd>" sentence.
-            # Recover: the reason is the shared timeout_reason text for this entry.
-            self.assertEqual(receipt["reason"], "openqodex timeout after 1s", p.stdout + p.stderr)
+            # Fail: the sleeping review is labeled with the entry name "openqodex".
+            # Recover: exit 1 and the reason names the review step.
+            self.assertEqual(receipt["reason"], "review timeout after 1s", p.stdout + p.stderr)
             self.assertEqual(left, [], "a forked tool grandchild outlived the smoke timeout")
 
     def test_openqodex_home_outside_temp_area_exits_2(self) -> None:

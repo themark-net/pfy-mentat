@@ -172,14 +172,24 @@ def smoke_openqodex(r: dict) -> int:
     with tempfile.TemporaryDirectory(prefix="pfy-openqodex-") as td:
         repo = Path(td) / "repo"
         repo.mkdir()
-        g = lambda *a: sh(["git", "-c", "user.email=smoke@local", "-c", "user.name=smoke", *a],
-                          home=str(home), path=tool_path, cwd=repo)
+
+        def call(step: str, cmd, **kw):
+            try:
+                return sh(cmd, **kw)
+            except subprocess.TimeoutExpired as e:
+                r["reason"] = timeout_reason(step, float(e.timeout))
+                raise
+
+        def g(*a):
+            return call("git " + a[0], ["git", "-c", "user.email=smoke@local", "-c", "user.name=smoke", *a],
+                        home=str(home), path=tool_path, cwd=repo)
+
         g("init", "-q", "-b", "main")
         (repo / "app.py").write_text('print("hi")\n')
         g("add", ".")
         g("commit", "-qm", "init")
         (repo / "app.py").write_text(PLANTED)
-        p = sh(q + ["review"], home=str(home), path=tool_path, cwd=repo)
+        p = call("review", q + ["review"], home=str(home), path=tool_path, cwd=repo)
         out = p.stdout + p.stderr
         r["review_exit"] = p.returncode
         if "Full review unavailable" not in out:
@@ -195,7 +205,7 @@ def smoke_openqodex(r: dict) -> int:
                    for c in cl):
             r["reason"] = "no semgrep or bandit candidate on the planted shell=True line"
             return 1
-        p = sh(q + ["review", "--agent"], home=str(home), path=tool_path, cwd=repo)
+        p = call("review --agent", q + ["review", "--agent"], home=str(home), path=tool_path, cwd=repo)
         brief = p.stdout
         m_path = re.search(r"Write the JSON to `([^`]+agent-findings\.json)`", brief)
         m_cid = re.search(r"- Change: ([0-9a-f]{12})", brief)
@@ -218,7 +228,8 @@ def smoke_openqodex(r: dict) -> int:
                             for i in items if i[0] != raise_[0]]}
         fpath = Path(m_path[1])
         fpath.write_text(json.dumps(good))
-        p = sh(q + ["review", "--finalize", "--cwd", str(repo), str(fpath)], home=str(home), path=tool_path, cwd=repo)
+        p = call("review --finalize", q + ["review", "--finalize", "--cwd", str(repo), str(fpath)],
+                 home=str(home), path=tool_path, cwd=repo)
         r["finalize_good"] = (p.returncode, (p.stdout + p.stderr).strip().splitlines()[:1])
         if p.returncode != 0 or "Shell injection from argv" not in p.stdout + p.stderr:
             r["reason"] = f"finalize rejected a valid findings file: {(p.stdout + p.stderr)[-400:]}"
@@ -226,7 +237,8 @@ def smoke_openqodex(r: dict) -> int:
         bad = dict(good, findings=[dict(good["findings"][0], source="made-up")], dropped=[])
         bpath = fpath.with_name("bad-findings.json")
         bpath.write_text(json.dumps(bad))
-        p = sh(q + ["review", "--finalize", "--cwd", str(repo), str(bpath)], home=str(home), path=tool_path, cwd=repo)
+        p = call("review --finalize", q + ["review", "--finalize", "--cwd", str(repo), str(bpath)],
+                 home=str(home), path=tool_path, cwd=repo)
         r["finalize_bad_exit"] = p.returncode
         if p.returncode == 0:
             r["reason"] = "finalize accepted a finding with a made-up source"
@@ -306,7 +318,8 @@ def main() -> int:
     try:
         code = fn(receipt)
     except subprocess.TimeoutExpired as e:
-        receipt["reason"] = timeout_reason(a.entry, float(e.timeout))
+        if not receipt.get("reason"):
+            receipt["reason"] = timeout_reason(a.entry, float(e.timeout))
         code = 1
     return write(a.entry, receipt, code)
 
