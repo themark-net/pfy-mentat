@@ -105,6 +105,11 @@
         "name": "best-effort-and-bot-budget-build-max",
         "origin": "first-party port of org bot standing (2026-09-25); org skill is a pointer",
         "purpose": "BEST_EFFORT vs GATED; maximize Build; isolate from an open founder checkout; no Feature GO"
+      },
+      {
+        "name": "commit-integrity-and-run-isolation",
+        "origin": "first-party port of org doctrine (2026-10-31, mvp3 review loop); org skill is a pointer",
+        "purpose": "Review is a content contract: six commit-integrity rules, run isolation, tester probe checklist"
       }
     ]
   },

@@ -37,6 +37,7 @@ This is the first concrete integration under `pfy-mentat` — not another third-
 | `prefer-behavior-and-fail-recover-tests` | Testing Trophy: sociable integration/E2E, no tautological units, fail and recover (`/prefer-behavior-and-fail-recover-tests`) |
 | `ui-is-the-app-design-in-loop` | Operator UI is the app; design pack before product chrome (`/ui-is-the-app-design-in-loop`) |
 | `best-effort-and-bot-budget-build-max` | BEST_EFFORT vs GATED; maximize Build; isolate from an open founder checkout (`/best-effort-and-bot-budget-build-max`) |
+| `commit-integrity-and-run-isolation` | Review is a content contract: six commit-integrity rules, run isolation, tester probe checklist (`/commit-integrity-and-run-isolation`) |
 
 ### External skills path (not copied into `~/.grok/skills`)
 
