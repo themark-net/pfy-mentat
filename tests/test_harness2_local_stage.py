@@ -12,6 +12,7 @@ import subprocess
 import sys
 import tempfile
 import textwrap
+import threading
 import unittest
 from pathlib import Path
 
@@ -75,6 +76,13 @@ if name == "git":
             print(os.environ.get("STUB_OC_HEAD", %(oc)r))
         else:
             print(os.environ.get("STUB_H2_HEAD", %(h2)r))
+    if os.environ.get("STUB_TOUCH_HOME") == "1":
+        touched = Path(os.environ["HOME"]) / ".npm" / "touched"
+        touched.parent.mkdir(parents=True, exist_ok=True)
+        touched.write_text("touched", encoding="utf-8")
+    write_path = os.environ.get("STUB_WRITE_PATH")
+    if write_path:
+        Path(write_path).write_text("leak", encoding="utf-8")
     raise SystemExit(0)
 if name == "uv":
     if "venv" in sys.argv:
@@ -146,12 +154,92 @@ def _write_exec(path: Path, text: str) -> None:
 
 
 class HomeWatch(unittest.TestCase):
+    """Fingerprint a private home, never the operator ~/.cache/uv.
+
+    tearDown used to hash Path.home(), so a concurrent uv (CI 41262832115,
+    pregate 16f17d8) changed .cache/uv while the digest was taken. HOME and
+    UV_CACHE_DIR for the test process stay under the scratch dir. The
+    operator cache is a separate stand-in the watch does not read.
+    """
+
     def setUp(self):
-        self.home_before = common.home_snapshot()
+        self._watch_dir = tempfile.TemporaryDirectory(dir=_scratch())
+        root = Path(self._watch_dir.name)
+        self.private_home = root / "home"
+        self.private_uv_cache = root / "uv-cache"
+        self.private_home.mkdir()
+        self.private_uv_cache.mkdir()
+        self._saved_home = os.environ.get("HOME")
+        self._saved_uv = os.environ.get("UV_CACHE_DIR")
+        os.environ["HOME"] = str(self.private_home)
+        os.environ["UV_CACHE_DIR"] = str(self.private_uv_cache)
+        self.home_before = common.home_snapshot(self.private_home)
 
     def tearDown(self):
-        changed = common.snapshot_diff(self.home_before, common.home_snapshot())
-        self.assertEqual(changed, [])
+        try:
+            changed = common.snapshot_diff(
+                self.home_before, common.home_snapshot(self.private_home)
+            )
+            self.assertEqual(changed, [])
+        finally:
+            if self._saved_home is None:
+                os.environ.pop("HOME", None)
+            else:
+                os.environ["HOME"] = self._saved_home
+            if self._saved_uv is None:
+                os.environ.pop("UV_CACHE_DIR", None)
+            else:
+                os.environ["UV_CACHE_DIR"] = self._saved_uv
+            self._watch_dir.cleanup()
+
+
+class HomeWatchIsolationTests(HomeWatch):
+    def test_operator_cache_churn_does_not_fail_and_a_sealed_write_is_refused(self):
+        # Fail: tearDown hashes the operator uv stand-in, or the test can
+        # write that path. Recover: the private home stays empty, the sealed
+        # stand-in rejects a write, and the private UV cache still accepts one.
+        operator = Path(self._watch_dir.name) / "operator-home"
+        real_uv = operator / ".cache" / "uv"
+        real_uv.mkdir(parents=True)
+        (real_uv / "seed").write_text("seed", encoding="utf-8")
+        before_operator = common.home_snapshot(operator)
+        stop = threading.Event()
+
+        def churn() -> None:
+            for n in range(40):
+                if stop.is_set():
+                    return
+                (real_uv / f"c{n}").write_text("x", encoding="utf-8")
+                if stop.wait(0.02):
+                    return
+
+        thr = threading.Thread(target=churn, daemon=True)
+        thr.start()
+        try:
+            self.assertEqual(os.environ["HOME"], str(self.private_home))
+            self.assertEqual(os.environ["UV_CACHE_DIR"], str(self.private_uv_cache))
+            self.assertFalse(str(self.private_uv_cache).startswith(str(operator)))
+            self.assertEqual(
+                common.snapshot_diff(
+                    self.home_before, common.home_snapshot(self.private_home)
+                ),
+                [],
+            )
+        finally:
+            stop.set()
+            thr.join(timeout=2)
+        self.assertIn(
+            ".cache/uv",
+            common.snapshot_diff(before_operator, common.home_snapshot(operator)),
+        )
+        os.chmod(real_uv, 0o555)
+        try:
+            with self.assertRaises(PermissionError):
+                (real_uv / "leak").write_text("no", encoding="utf-8")
+        finally:
+            os.chmod(real_uv, 0o755)
+        (self.private_uv_cache / "ok").write_text("ok", encoding="utf-8")
+        self.assertEqual((self.private_uv_cache / "ok").read_text(encoding="utf-8"), "ok")
 
 
 class CheckTests(HomeWatch):
@@ -294,10 +382,17 @@ class CheckTests(HomeWatch):
             self.assertIn("Vertex is not allowed", proc.stderr)
 
 
-class StageScriptTests(HomeWatch):
+class StageScriptTests(unittest.TestCase):
+    """The stage script is checked against its private HOME.
+
+    HomeWatch hashes the operator ~/.cache/uv and ~/.npm. Other jobs rewrite
+    those trees while a suite runs, so tearDown failed this class even when
+    stage.sh never wrote them (pregate 16f17d8, assertion on .cache/uv).
+    """
+
     def _stub_env(self, work: Path) -> dict[str, str]:
         bindir = work / "bin"
-        bindir.mkdir(parents=True)
+        bindir.mkdir(parents=True, exist_ok=True)
         stub = work / "toolstub.py"
         _write_exec(stub, TOOL_STUB)
         for name in ("git", "uv", "npm", "bun"):
@@ -309,7 +404,7 @@ class StageScriptTests(HomeWatch):
         py_link = (
             home / ".local/share/uv/python/cpython-3.12.9-linux-x86_64-gnu/bin/python3.12"
         )
-        py_link.parent.mkdir(parents=True)
+        py_link.parent.mkdir(parents=True, exist_ok=True)
         py_link.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
         py_link.chmod(0o755)
         env = os.environ.copy()
@@ -351,10 +446,28 @@ class StageScriptTests(HomeWatch):
             self.assertIn(f"realpath {other}", step[0])
             self.assertNotIn("cpython-3.12.12", step[0])
 
+    def _assert_cache_contract(self, work: Path, env: dict[str, str], blob: str) -> None:
+        state = str(Path(env["HARNESS2_W"]) / "tmp" / "state")
+        records = self._records(work)
+        names = {rec["name"] for rec in records}
+        self.assertTrue({"git", "uv", "npm", "bun"} <= names, blob + "\n" + str(names))
+        for rec in records:
+            got = rec["env"]
+            self.assertEqual(got.get("UV_PYTHON_DOWNLOADS"), "never", rec["name"])
+            self.assertEqual(got.get("npm_config_update_notifier"), "false", rec["name"])
+            for key in CACHE_KEYS:
+                value = got.get(key)
+                self.assertTrue(
+                    isinstance(value, str) and value.startswith(state),
+                    f"{rec['name']} {key}={value!r}\n{blob}",
+                )
+
     def test_stub_tools_see_state_caches_and_home_stays(self):
         with tempfile.TemporaryDirectory(dir=_scratch()) as tmp:
             work = Path(tmp)
             env = self._stub_env(work)
+            home = Path(env["HOME"])
+            before = common.home_snapshot(home)
             proc = subprocess.run(
                 ["bash", str(STAGE)],
                 cwd=ROOT,
@@ -362,21 +475,146 @@ class StageScriptTests(HomeWatch):
                 capture_output=True,
                 text=True,
             )
-            self.assertNotIn("BLOCKED: home-write", proc.stderr)
-            state = str(Path(env["HARNESS2_W"]) / "tmp" / "state")
-            records = self._records(work)
-            names = {rec["name"] for rec in records}
-            self.assertTrue({"git", "uv", "npm", "bun"} <= names, names)
-            for rec in records:
-                got = rec["env"]
-                self.assertEqual(got.get("UV_PYTHON_DOWNLOADS"), "never", rec["name"])
-                self.assertEqual(got.get("npm_config_update_notifier"), "false", rec["name"])
-                for key in CACHE_KEYS:
-                    value = got.get(key)
-                    self.assertTrue(
-                        isinstance(value, str) and value.startswith(state),
-                        f"{rec['name']} {key}={value!r}",
+            blob = f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+            # step 6 can exit 2 when the git stub skips the real patch file.
+            # The contract here is the tool environment and the private HOME.
+            self.assertNotIn("BLOCKED: home-write", proc.stderr, blob)
+            self._assert_cache_contract(work, env, blob)
+            changed = common.snapshot_diff(before, common.home_snapshot(home))
+            self.assertEqual(changed, [], blob)
+
+    def test_private_home_write_blocks_then_clean_rerun_recovers(self):
+        # A tool that writes the private HOME must fail closed. The same tree
+        # with that write removed must then pass the cache contract.
+        with tempfile.TemporaryDirectory(dir=_scratch()) as tmp:
+            work = Path(tmp)
+            env = self._stub_env(work)
+            env["STUB_TOUCH_HOME"] = "1"
+            home = Path(env["HOME"])
+            before = common.home_snapshot(home)
+            blocked = subprocess.run(
+                ["bash", str(STAGE)],
+                cwd=ROOT,
+                env=env,
+                capture_output=True,
+                text=True,
+            )
+            blocked_blob = f"stdout:\n{blocked.stdout}\nstderr:\n{blocked.stderr}"
+            self.assertEqual(blocked.returncode, 2, blocked_blob)
+            self.assertIn("BLOCKED: home-write", blocked.stderr)
+            self.assertIn(".npm", common.snapshot_diff(before, common.home_snapshot(home)))
+            touched = home / ".npm" / "touched"
+            touched.unlink()
+            env.pop("STUB_TOUCH_HOME")
+            (work / "stub.log").write_text("", encoding="utf-8")
+            recovered_before = common.home_snapshot(home)
+            recovered = subprocess.run(
+                ["bash", str(STAGE)],
+                cwd=ROOT,
+                env=env,
+                capture_output=True,
+                text=True,
+            )
+            recovered_blob = f"stdout:\n{recovered.stdout}\nstderr:\n{recovered.stderr}"
+            self.assertNotIn("BLOCKED: home-write", recovered.stderr, recovered_blob)
+            self._assert_cache_contract(work, env, recovered_blob)
+            changed = common.snapshot_diff(recovered_before, common.home_snapshot(home))
+            self.assertEqual(changed, [], recovered_blob)
+
+    def _run_stage(self, env: dict[str, str]) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            ["bash", str(STAGE)],
+            cwd=ROOT,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+
+    def test_operator_cache_churn_is_ignored_and_real_cache_write_fails(self):
+        # Fail: the contract fingerprints a stand-in of the operator uv cache,
+        # or a tool writes that path. Recover: churn there while stage.sh runs
+        # against a private HOME and the state UV cache, then a sealed write
+        # fails the tool, then a clean rerun passes.
+        with tempfile.TemporaryDirectory(dir=_scratch()) as tmp:
+            work = Path(tmp)
+            operator = work / "operator-home"
+            real_uv = operator / ".cache" / "uv"
+            real_uv.mkdir(parents=True)
+            (real_uv / "seed").write_text("seed", encoding="utf-8")
+            before_operator = common.home_snapshot(operator)
+            stop = threading.Event()
+
+            def churn() -> None:
+                for n in range(40):
+                    if stop.is_set():
+                        return
+                    (real_uv / f"c{n}").write_text("x", encoding="utf-8")
+                    if stop.wait(0.05):
+                        return
+
+            thr = threading.Thread(target=churn, daemon=True)
+            thr.start()
+            try:
+                env = self._stub_env(work)
+                env["UV_CACHE_DIR"] = str(real_uv)
+                home = Path(env["HOME"])
+                self.assertNotEqual(home.resolve(), operator.resolve())
+                before_private = common.home_snapshot(home)
+                passed = self._run_stage(env)
+                blob = f"stdout:\n{passed.stdout}\nstderr:\n{passed.stderr}"
+                self.assertNotIn("BLOCKED: home-write", passed.stderr, blob)
+                self._assert_cache_contract(work, env, blob)
+                self.assertEqual(
+                    common.snapshot_diff(before_private, common.home_snapshot(home)),
+                    [],
+                    blob,
+                )
+                for rec in self._records(work):
+                    seen = rec["env"].get("UV_CACHE_DIR")
+                    self.assertFalse(
+                        str(seen).startswith(str(real_uv)),
+                        f"{rec['name']} leaked the operator cache: {seen}",
                     )
+            finally:
+                stop.set()
+                thr.join(timeout=2)
+
+            changed_operator = common.snapshot_diff(
+                before_operator, common.home_snapshot(operator)
+            )
+            self.assertIn(".cache/uv", changed_operator)
+
+            leak = real_uv / "leak"
+            os.chmod(real_uv, 0o555)
+            try:
+                with self.assertRaises(PermissionError):
+                    leak.write_text("leak", encoding="utf-8")
+                env = self._stub_env(work)
+                env["STUB_WRITE_PATH"] = str(leak)
+                (work / "stub.log").write_text("", encoding="utf-8")
+                blocked = self._run_stage(env)
+                blocked_blob = f"stdout:\n{blocked.stdout}\nstderr:\n{blocked.stderr}"
+                self.assertNotEqual(blocked.returncode, 0, blocked_blob)
+                self.assertIn("PermissionError", blocked.stderr, blocked_blob)
+                self.assertFalse(leak.exists())
+            finally:
+                os.chmod(real_uv, 0o755)
+
+            env = self._stub_env(work)
+            env.pop("STUB_WRITE_PATH", None)
+            (work / "stub.log").write_text("", encoding="utf-8")
+            home = Path(env["HOME"])
+            recovered_before = common.home_snapshot(home)
+            recovered = self._run_stage(env)
+            recovered_blob = f"stdout:\n{recovered.stdout}\nstderr:\n{recovered.stderr}"
+            self.assertNotIn("BLOCKED: home-write", recovered.stderr, recovered_blob)
+            self._assert_cache_contract(work, env, recovered_blob)
+            self.assertEqual(
+                common.snapshot_diff(recovered_before, common.home_snapshot(home)),
+                [],
+                recovered_blob,
+            )
+            self.assertFalse(leak.exists())
 
     def test_existing_env_file_is_kept_byte_identical(self):
         with tempfile.TemporaryDirectory(dir=_scratch()) as tmp:
