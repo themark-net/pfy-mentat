@@ -2957,3 +2957,144 @@ class CloudBuildGateReasonTests(unittest.TestCase):
         self.assertEqual(_git(self.repo, "rev-parse", "HEAD").stdout.strip(), head)
         self.assertNotIn("\ncloud/", "\n" + _git(self.repo, "branch", "--list").stdout)
 
+
+class CloudBuildSymlinkProbeTests(unittest.TestCase):
+    """An out-of-scope symlink must not be followed and must not be committed."""
+
+    def setUp(self) -> None:
+        SCRATCH.mkdir(parents=True, exist_ok=True)
+        self.repo = _init_repo(SCRATCH / self.id().replace(".", "_"))
+        self.side = SCRATCH / (self.id().replace(".", "_") + "-side")
+        self.side.mkdir(parents=True, exist_ok=True)
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self.repo, ignore_errors=True)
+        shutil.rmtree(self.side, ignore_errors=True)
+
+    def _receipt(self) -> dict:
+        path = list((self.repo / "pipelines" / "dogfood" / "build-cloud").glob("*/receipt.json"))[0]
+        return json.loads(path.read_text(encoding="utf-8"))
+
+    def _gate(self) -> Path:
+        return _write_exe(
+            self.side / "gate.py",
+            "#!/usr/bin/env python3\nprint('GATE-OK')\nraise SystemExit(0)\n",
+        )
+
+    def test_preexisting_symlink_outside_the_worktree_does_not_run_grok(self) -> None:
+        # Fail: the agent writes through a committed symlink and the outside
+        # file changes while the build still PASSes. Recover: refuse before
+        # grok, leave the outside bytes alone, and keep no branch.
+        outside = self.side / "secret.txt"
+        outside.write_text("SECRET\n", encoding="utf-8")
+        os.symlink(str(outside), self.repo / "leak")
+        added = _git(self.repo, "add", "leak")
+        self.assertEqual(added.returncode, 0, added.stderr)
+        committed = _git(self.repo, "commit", "-m", "add leak")
+        self.assertEqual(committed.returncode, 0, committed.stderr)
+        head = _git(self.repo, "rev-parse", "HEAD").stdout.strip()
+        before = _git(self.repo, "status", "--porcelain").stdout
+        marker = self.side / "grok-started"
+        grok = _write_exe(
+            self.side / "grok.py",
+            "#!/usr/bin/env python3\n"
+            "import sys\n"
+            "from pathlib import Path\n"
+            "blob = '\\n'.join(sys.argv)\n"
+            "if 'PFY-CLOUD-REVIEW' in blob:\n"
+            "    print('verdict: accept')\n"
+            "    raise SystemExit(0)\n"
+            "Path(%r).write_text('yes\\n', encoding='utf-8')\n"
+            "Path('leak').write_text('OVERWRITTEN\\n', encoding='utf-8')\n"
+            "Path('kept.py').write_text('value = 1\\n', encoding='utf-8')\n"
+            "raise SystemExit(0)\n" % str(marker),
+        )
+        proc = _run(
+            [
+                sys.executable,
+                str(CLOUD),
+                "add kept and leave the leak",
+                "--repo",
+                str(self.repo),
+                "--retries",
+                "0",
+                "--timeout",
+                "30",
+                "--test-cmd",
+                "%s %s" % (sys.executable, self._gate()),
+                "--grok-cmd",
+                str(grok),
+            ],
+            self.repo,
+            timeout=30,
+        )
+        text = (proc.stdout or "") + (proc.stderr or "")
+        self.assertEqual(proc.returncode, 1, text)
+        payload = self._receipt()
+        self.assertEqual(payload["status"], "FAIL")
+        self.assertEqual(payload["reason"], "symlink-escape")
+        self.assertEqual(payload["exit_code"], 1)
+        self.assertIsNone(payload["commit"])
+        self.assertIsNone(payload["branch"])
+        self.assertIn("leak", payload["recovery"])
+        self.assertIn("Mark:", payload["recovery"])
+        self.assertNotIn("--local", payload["recovery"])
+        self.assertFalse(marker.exists())
+        self.assertEqual(outside.read_text(encoding="utf-8"), "SECRET\n")
+        self.assertEqual(_git(self.repo, "rev-parse", "HEAD").stdout.strip(), head)
+        self.assertEqual(_git(self.repo, "status", "--porcelain").stdout, before)
+        self.assertNotIn("\ncloud/", "\n" + _git(self.repo, "branch", "--list").stdout)
+
+    def test_agent_symlink_outside_the_worktree_is_not_committed(self) -> None:
+        # Fail: grok adds a symlink to an outside file and the build commits
+        # that link. Recover: exit 1, drop the branch, leave the outside file.
+        outside = self.side / "secret.txt"
+        outside.write_text("SECRET\n", encoding="utf-8")
+        marker = self.side / "grok-started"
+        grok = _write_exe(
+            self.side / "grok.py",
+            "#!/usr/bin/env python3\n"
+            "import os\n"
+            "import sys\n"
+            "from pathlib import Path\n"
+            "blob = '\\n'.join(sys.argv)\n"
+            "if 'PFY-CLOUD-REVIEW' in blob:\n"
+            "    print('verdict: accept')\n"
+            "    raise SystemExit(0)\n"
+            "Path(%r).write_text('yes\\n', encoding='utf-8')\n"
+            "os.symlink(%r, 'leak')\n"
+            "Path('kept.py').write_text('value = 1\\n', encoding='utf-8')\n"
+            "raise SystemExit(0)\n" % (str(marker), str(outside)),
+        )
+        head = _git(self.repo, "rev-parse", "HEAD").stdout.strip()
+        proc = _run(
+            [
+                sys.executable,
+                str(CLOUD),
+                "add kept",
+                "--repo",
+                str(self.repo),
+                "--retries",
+                "0",
+                "--timeout",
+                "30",
+                "--test-cmd",
+                "%s %s" % (sys.executable, self._gate()),
+                "--grok-cmd",
+                str(grok),
+            ],
+            self.repo,
+            timeout=30,
+        )
+        text = (proc.stdout or "") + (proc.stderr or "")
+        self.assertEqual(proc.returncode, 1, text)
+        payload = self._receipt()
+        self.assertEqual(payload["reason"], "symlink-escape")
+        self.assertIsNone(payload["commit"])
+        self.assertTrue(marker.exists())
+        self.assertEqual(outside.read_text(encoding="utf-8"), "SECRET\n")
+        self.assertEqual(_git(self.repo, "rev-parse", "HEAD").stdout.strip(), head)
+        self.assertNotIn("\ncloud/", "\n" + _git(self.repo, "branch", "--list").stdout)
+        self.assertIn("Mark:", payload["recovery"])
+        self.assertNotIn("--local", payload["recovery"])
+

@@ -289,6 +289,79 @@ def _norm_rel(path: str) -> str:
     return normalized
 
 
+def _rel_under(root: Path, full: Path) -> str:
+    try:
+        return _norm_rel(str(full.relative_to(root)))
+    except ValueError:
+        return ""
+
+
+def _skip_walk(rel: str) -> bool:
+    if not rel:
+        return True
+    if rel in {".git", "tmp", "__pycache__", ".pytest_cache"}:
+        return True
+    return (
+        rel.startswith(".git/")
+        or rel.startswith("tmp/")
+        or rel.startswith("__pycache__/")
+        or "/__pycache__/" in rel
+        or rel.startswith(".pytest_cache/")
+    )
+
+
+def _link_escapes(root: Path, link: Path) -> bool:
+    """True when the symlink target resolves outside root.
+
+    A missing target still counts. The check does not follow the link to
+    read or write it.
+    """
+    try:
+        raw = os.readlink(link)
+    except OSError:
+        return True
+    if not raw:
+        return True
+    target = Path(raw) if raw.startswith("/") else (link.parent / raw)
+    try:
+        target.resolve().relative_to(root)
+    except ValueError:
+        return True
+    return False
+
+
+def escaping_symlinks(worktree: Path) -> list[str]:
+    """Symlinks in the worktree whose targets resolve outside it."""
+    if not worktree.is_dir():
+        return []
+    root = worktree.resolve()
+    bad: list[str] = []
+    for dirpath, dirnames, filenames in os.walk(worktree, followlinks=False):
+        base = Path(dirpath)
+        kept: list[str] = []
+        for name in dirnames:
+            full = base / name
+            rel = _rel_under(worktree, full)
+            if _skip_walk(rel):
+                continue
+            if full.is_symlink():
+                if _link_escapes(root, full):
+                    bad.append(rel)
+                continue
+            kept.append(name)
+        dirnames[:] = kept
+        for name in filenames:
+            full = base / name
+            if not full.is_symlink():
+                continue
+            rel = _rel_under(worktree, full)
+            if _skip_walk(rel):
+                continue
+            if _link_escapes(root, full):
+                bad.append(rel)
+    return sorted(set(bad))
+
+
 def _glob_match(rel: str, name: str, pat: str) -> bool:
     if fnmatch_path(rel, pat) or fnmatch_path(name, pat):
         return True
@@ -496,6 +569,7 @@ TERMINAL_FAILURE_REASONS = (
     "review-rejected",
     "runner-crash",
     "scope-commit-mismatch",
+    "symlink-escape",
     "tests",
     "tests-flaky",
     "tests-tampered",
@@ -574,6 +648,14 @@ def failure_recovery(reason: str, task: str, detail: str = "") -> str:
             "Mark: the attempt changed a protected path (%s). "
             "Remove that change and rerun ./pfy build %s. "
             "auth.json, .env, and grok-home stay out of the commit."
+            % (shown, quoted)
+        )
+    if reason == "symlink-escape":
+        shown = (detail or "").strip() or "a symlink"
+        return (
+            "Mark: a symlink points outside the worktree (%s). "
+            "Remove it and rerun ./pfy build %s. "
+            "The build did not commit that link."
             % (shown, quoted)
         )
     lines = {
@@ -1240,6 +1322,14 @@ class CloudBuild:
                 worktree_recovery(self.args.task_text, self.base_ref, self.recovery_detail or "add-failed"),
             )
         assert self.worktree is not None
+        escaped = escaping_symlinks(self.worktree)
+        if escaped:
+            # Fail: a committed symlink points outside the worktree, so the
+            # agent can overwrite that target before review. Recover: stop
+            # before grok and before the gate, and keep no branch.
+            self.recovery_detail = ", ".join(escaped)
+            self.record(0, "FAIL", "symlink-escape", "")
+            return self.fail("FAIL", "symlink-escape", EXIT_FAIL, "")
         self.gate_before = self.gate()
         if (self.gate_before or {}).get("aborted") == "timeout":
             return self._gate_timeout_fail(0, str((self.gate_before or {}).get("tail") or ""))
@@ -1284,6 +1374,15 @@ class CloudBuild:
             if kind == "unauthenticated":
                 self.record(number, "FAIL", "unauthenticated", output)
                 return self.fail("FAIL", "unauthenticated", EXIT_FAIL, auth_recovery(self.args.task_text))
+            escaped = escaping_symlinks(self.worktree)
+            if escaped:
+                # Fail: the agent adds a symlink that resolves outside the
+                # worktree and the commit records that link. Recover: refuse
+                # the commit. A write the agent already made through the new
+                # link is not rolled back here.
+                self.recovery_detail = ", ".join(escaped)
+                self.record(number, "FAIL", "symlink-escape", output)
+                return self.fail("FAIL", "symlink-escape", EXIT_FAIL, "")
             changed = files_changed(self.worktree)
             protected_hits = [path for path in changed if _protected(path)]
             if protected_hits:
@@ -1384,6 +1483,11 @@ class CloudBuild:
                         continue
                     return self.fail("FAIL", "review-rejected", EXIT_FAIL, "")
                 self.review = {"verdict": "skipped", "reasons": []}
+            escaped = escaping_symlinks(self.worktree)
+            if escaped:
+                self.recovery_detail = ", ".join(escaped)
+                self.record(number, "FAIL", "symlink-escape", output)
+                return self.fail("FAIL", "symlink-escape", EXIT_FAIL, "")
             err = self.commit_paths(changed)
             if err == "timeout":
                 return self._gate_timeout_fail(number, output)
