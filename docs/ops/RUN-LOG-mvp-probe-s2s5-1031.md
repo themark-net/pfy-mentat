@@ -65,6 +65,6 @@ probe-a and probe-b share no product files. They run together. The doc sentence 
 - probe-a | none (scratch under tmp/) | nice python3 tmp/probes/probe_a.py, 21 holds, 1 defect, 1 residual | A5-sibling-symlink deletes the sibling
 - probe-b | none (archive under tmp/cloud347-src) | nice python3 tmp/probes-b/run_probes.py, 8.245s, 20 holds, 5 notes, 0 defects | no product edit
 - fix-a5-symlink | abc8985 | red: stdout contained "pruned local-build-keep-sibling". Green: same test, then both local modules 104 OK in 173.921s, then the outside-link assertion on that test | sibling and outside sentinel stay
-- probe-doc | (see handoff commit) | docs only | PROBE-s2s5-cloud347-1031.md and this handoff
+- probe-doc | 3522272 | docs only | PROBE-s2s5-cloud347-1031.md and the handoff
 
 state: lane empty | probes 48 (A 23, B 25), one A defect fixed in abc8985, B defects 0 | tests: tests.test_pfy_build_local tests.test_pfy_build_local_review 104 OK in 173.921s | err: none

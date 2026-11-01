@@ -18,7 +18,7 @@ No merge, no PR, no tag. `scripts/pfy_build_cloud.py` was not edited. No local m
 | Probe A | scratch only | 23 CLI probes of S2-S5. 21 holds, 1 defect, 1 residual |
 | Probe B | scratch only | 25 CLI probes of the three cloud347 fixes. 20 holds, 5 notes, 0 defects |
 | S5 symlink | `abc8985` | `--reap` unlinks a recorded `local-build-*` symlink and does not follow it |
-| Probe report | this handoff's commit | `docs/ops/PROBE-s2s5-cloud347-1031.md` |
+| Probe report | `3522272` | `docs/ops/PROBE-s2s5-cloud347-1031.md` and this handoff |
 
 ## Skipped
 
@@ -69,7 +69,7 @@ None. Branch B produced no contract defect. Notes are in the probe doc so the cl
 
 Runtime: `abc8985` (`scripts/pfy_build_local.py` and `tests/test_pfy_build_local.py`). Gate: Tester plus Reviewer.
 
-Docs: `7c21b6d`, `0388e97`, `1bd60f5`, and this handoff commit. Gate: pregate plus Reviewer. Pregate was not run.
+Docs: `7c21b6d`, `0388e97`, `1bd60f5`, and `3522272`. Gate: pregate plus Reviewer. Pregate was not run.
 
 ## Next step
 
