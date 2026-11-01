@@ -22,7 +22,9 @@ APP_MISS = (
 
 class BadTimeoutTests(unittest.TestCase):
     def setUp(self) -> None:
-        self._td = tempfile.TemporaryDirectory(prefix="pfy-smoke137-timeout-", dir=str(ROOT / "tmp"))
+        scratch = ROOT / "tmp"
+        scratch.mkdir(parents=True, exist_ok=True)
+        self._td = tempfile.TemporaryDirectory(prefix="pfy-smoke137-timeout-", dir=str(scratch))
         self.base = Path(self._td.name)
         self.home = self.base / "home"
         self.home.mkdir()
