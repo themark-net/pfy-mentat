@@ -11,6 +11,7 @@ import argparse
 import json
 import os
 import sys
+import tempfile
 import traceback
 from pathlib import Path
 
@@ -29,6 +30,21 @@ def _redact(text: str) -> str:
         else:
             out.append(token)
     return " ".join(out)[:800]
+
+
+def _write_text(path: Path, text: str) -> None:
+    # Temp file in the parent, then os.replace, so a symlink is replaced.
+    fd, tmpname = tempfile.mkstemp(prefix=".hermes-", dir=str(path.parent))
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(text)
+        os.replace(tmpname, path)
+    except Exception:
+        try:
+            os.unlink(tmpname)
+        except OSError:
+            pass
+        raise
 
 
 def _write_config(home: Path, model: str, base_url: str, num_ctx: int, log_path: Path, task_id: str) -> None:
@@ -56,7 +72,7 @@ mcp_servers:
     args: [{json.dumps(server)}, "--log", {json.dumps(str(log_path))}, "--task-id", {json.dumps(task_id)}]
     enabled: true
 """
-    (home / "config.yaml").write_text(text, encoding="utf-8")
+    _write_text(home / "config.yaml", text)
 
 
 def _extract(messages) -> tuple[str, str, list[dict]]:
