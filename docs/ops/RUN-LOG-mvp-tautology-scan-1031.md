@@ -78,3 +78,11 @@ state: DONE | tests: none (read only) | files: 4 notes under tmp/ | err: none
 report | 6b05285 | none (docs) | pushed
 
 Clock check before install-stub: runner absent. MemAvailable was 46528832 KiB at 02:46Z. Load under the cap.
+
+install-stub | 4587707 | tests.test_claude_install tests.test_codex_install tests.test_hermes_install tests.test_gemini_install tests.test_exo_install (13 OK) | pushed. Mutant echo WRONG red exit 1, restored.
+smoke-149 | d591f2b | tests.test_x_intake_smoke_149 tests.test_entry_149_count (36 OK) | pushed. Mutant mkdtemp dir=/tmp red, restored.
+registry | a237265 | tests.test_registry and tests.test_x_intake_smoke_106_108 (23 OK) | pushed. Mutant state_dir returns Path(".") red, restored.
+har-sibling | 4723705 | XIntakeSmoke106108Tests.test_har_work_dir_sibling_prefix_fails (2 OK with the registry root test) | pushed. Mutant startswith red, restored.
+local-bench-delete | 9843412 | ParseChoiceTests.test_rss_sampler_ignores_grok_exe and RunnerRssTests.test_eacces_exe_falls_back_to_argv0_and_recovers_stats (2 OK) | pushed. Mutant is_ollama_exe return True, both AssertionError, restored.
+
+Clock check before continue-stub: 2026-11-01T03:00:32Z. Runner absent. MemAvailable 46630860 KiB. Load 2.80 on 32 cores.

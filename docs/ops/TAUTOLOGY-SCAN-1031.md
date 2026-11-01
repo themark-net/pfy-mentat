@@ -64,7 +64,12 @@ These were read and judged not tautological. Pass 3 already said `tests/test_ent
 
 ## Landed
 
-- Install stubs (`tests/test_claude_install.py`, `tests/test_codex_install.py`, `tests/test_hermes_install.py`, `tests/test_gemini_install.py`, `tests/test_exo_install.py`): replaced in the install-stub commit. Each test runs `exec_harness` with the binary hidden. Mutation: `echo "  WRONG"` (or `echo "  next: WRONG"`) on that harness's setup line. All five tests went red (exit 1), then the script was restored. Green rerun: 13 tests OK.
+- Install stubs (`tests/test_claude_install.py`, `tests/test_codex_install.py`, `tests/test_hermes_install.py`, `tests/test_gemini_install.py`, `tests/test_exo_install.py`): `4587707`. Each test runs `exec_harness` with the binary hidden. Mutation: `echo "  WRONG"` (or `echo "  next: WRONG"`) on that harness's setup line. All five tests went red (exit 1), then the script was restored. Green rerun: 13 tests OK.
+- Smoke 149 (`tests/test_x_intake_smoke_149.py`): `d591f2b`. Real `main` keeps every `pfy-smoke-149` directory under the caller TMPDIR. The subprocess patch test is deleted. Entry count is 35. Mutation: `mkdtemp(..., dir="/tmp")` in `bwrap_ok` failed the path assert. Restored. Module plus entry count: 36 OK.
+- Registry (`tests/test_registry.py`): `a237265`. `state_dir(explicit)` is that path, a tilde expands, and a bare call uses `PFY_STATE_DIR`. Mutation: `return Path(".")` failed. Restored.
+- Har sibling (`tests/test_x_intake_smoke_106_108.py`): `4723705`. Deleted the two `/tmp/foo-evil` stdlib asserts. Receipt checks remain. Mutation: `startswith` made `work_dir_under_temp_home` true and the test failed. Restored.
+- Local bench (`tests/test_local_bench.py`): `9843412`. Deleted `test_is_ollama_runner_proc_matches_argv0_without_exe` (it only called `is_ollama_exe`). Covering tests: `test_rss_sampler_ignores_grok_exe` and the argv0 cases in `test_eacces_exe_falls_back_to_argv0_and_recovers_stats`. Mutation: `is_ollama_exe` returns True. Both failed with AssertionError. Restored. The mocked RSS tail is still open.
+- Continue stub (`tests/test_fs_nav.py`): runs `stub_harness continue` with PATH limited to python3 and mkdir. Exit 2, filesystem line, `STUB harness: continue`, and `continue-config.json` apiBase `http://127.0.0.1:1919/v1`. Mutation: the continue arm's `write_continue_config` replaced with `:`. The config file assert failed. `scripts/pfy` restored. Module: 4 OK.
 
 ## Fix order
 

@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -17,6 +19,62 @@ def _chunk() -> str:
     start = text.index("print_fs_nav()")
     end = text.index("\nstub_harness()")
     return text[start:end]
+
+
+def _extract(text: str, name: str) -> str:
+    marker = name + "() {"
+    start = text.index(marker)
+    depth = 0
+    for index in range(start, len(text)):
+        char = text[index]
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start : index + 1]
+    raise RuntimeError("unbalanced " + name)
+
+
+def _run_continue_stub(state: Path) -> subprocess.CompletedProcess[str]:
+    """Run stub_harness continue. PATH has python3 and mkdir only, so no IDE binary is present."""
+    text = PFY.read_text(encoding="utf-8")
+    body = "\n".join(
+        [
+            _extract(text, "have"),
+            _extract(text, "json_field"),
+            _extract(text, "print_fs_nav"),
+            _extract(text, "write_continue_config"),
+            _extract(text, "stub_harness"),
+            "stub_harness continue",
+        ]
+    )
+    python = shutil.which("python3")
+    mkdir = shutil.which("mkdir")
+    if not python or not mkdir:
+        raise RuntimeError("python3 and mkdir must be on PATH")
+    bindir = state / "bin"
+    bindir.mkdir()
+    os.symlink(python, bindir / "python3")
+    os.symlink(mkdir, bindir / "mkdir")
+    script = "\n".join(
+        [
+            "set -euo pipefail",
+            "ROOT=" + shlex.quote(str(ROOT)),
+            'REG="$ROOT/data/harnesses.json"',
+            "STATE_DIR=" + shlex.quote(str(state)),
+            "HOME=" + shlex.quote(str(state)),
+            body,
+        ]
+    )
+    return subprocess.run(
+        ["/bin/bash", "-c", script],
+        cwd=state,
+        capture_output=True,
+        text=True,
+        env={"PATH": str(bindir), "HOME": str(state), "PFY_STATE_DIR": str(state)},
+        timeout=30,
+    )
 
 
 class FsNavTests(unittest.TestCase):
@@ -58,12 +116,21 @@ class FsNavTests(unittest.TestCase):
         self.assertIn("apiBase: http://127.0.0.1:11434/v1", proc.stdout)
 
     def test_continue_stub_prints_filesystem_and_does_not_exec(self):
-        text = PFY.read_text(encoding="utf-8")
-        body = text.split("stub_harness()", 1)[1]
-        arm = body.split("continue)", 1)[1].split("agent-cage)", 1)[0]
-        self.assertIn("write_continue_config", arm)
-        self.assertNotIn("exec ", arm)
-        self.assertIn("print_fs_nav", body.split('echo "STUB harness:', 1)[0])
+        """Fail: the continue stub exits 0, skips the config, or execs a binary.
+        Recover: exit 2, print filesystem and STUB harness: continue, write continue-config.json.
+        """
+        scratch = ROOT / "tmp"
+        scratch.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix="fs-nav-continue-", dir=scratch) as tmp:
+            state = Path(tmp)
+            proc = _run_continue_stub(state)
+            cfg = state / "continue-config.json"
+            self.assertEqual(proc.returncode, 2, proc.stdout + proc.stderr)
+            self.assertIn("filesystem:", proc.stdout)
+            self.assertIn("STUB harness: continue", proc.stdout)
+            self.assertTrue(cfg.is_file(), proc.stdout + proc.stderr)
+            doc = json.loads(cfg.read_text(encoding="utf-8"))
+        self.assertEqual(doc["models"][0]["apiBase"], "http://127.0.0.1:1919/v1")
 
 
 if __name__ == "__main__":
