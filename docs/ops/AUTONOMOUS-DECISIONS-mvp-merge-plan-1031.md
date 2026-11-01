@@ -23,3 +23,35 @@ One line each. Choice, alternatives, why. Pre-authorized: do not ask.
 10. Choice: the lead runs the merges. The only sub-agent is `project-map`, which writes gitignored `.project-map/`. Alternatives: one sub-agent per branch. Why: the stack is ordered and shares one worktree. Sub-agents must not push and must not touch other lanes' checkouts.
 
 11. Choice: do not edit `docs/TODO.md` on this lane's branch. Alternatives: land the TODO conflict resolution here. Why: TODO is shared with other lanes. The scratch resolution is described in the plan. A TODO edit on this branch would be a cross-lane write.
+
+12. Choice: cherry-pick mvp3-review-retry instead of a textual merge. Alternatives: merge and resolve the mis-aligned hunks in place. Why: a full merge paired the wrong neighbors in `scripts/pfy_build_local.py`. Cherry-pick keeps integrate-only helpers.
+
+13. Choice: do not textual-merge mvp3-followups-1031. Alternatives: merge it after review-retry. Why: every non-merge subject is already in the cherry-pick. It is not an ancestor of integrate, so it is not safe to delete.
+
+14. Choice: cherry-pick probe-fix2, including `915edf0` (hardlink) which landed after the first three picks. Alternatives: textual merge. Why: a textual merge repeats the review-retry conflicts. The hardlink commit applied clean onto the review-timeout fix.
+
+15. Choice: crosslane code hunks stay with HEAD. Alternatives: take crosslane's pathspec order and its missing-file status. Why: on git 2.53 an exclude after a positive pathspec drops an untracked path. A missing out file must be `review-crashed`, not a status that retries.
+
+16. Choice: docs-final wins the QUICKSTART body, and the intro keeps the walkthrough link. Alternatives: keep the earlier docs-1031 card. Why: docs-final is the later measured card (`--writable-test`, stricter `--base`, runnable fence).
+
+17. Choice: dogfood2 `tree_sig` is a union (symlink hash, size, streamed sha256, no mtime). smoke_148 `home_sig` stays mtime-sensitive. smoke_149 stays mtime-ignorant. Alternatives: take either side whole. Why: dropping size or mtime on smoke_148 would hide a real-HOME change the stricter test asserts.
+
+18. Choice: fix the two cherry-pick union bugs in scratch commit `b8d9b64` before later merges. Alternatives: record the two mvp3 failures and leave them. Why: a review timeout was classified as `crashed`, and a duplicate `warnings` key dropped the allow-list warning. Both are fail-closed bugs, and the rerun passed.
+
+19. Choice: dsv4 TODO conflict keeps the integrate section. Alternatives: take dsv4's TODO. Why: same policy as mvp3. Incoming catalog files auto-merged. Do not copy the TODO hunk onto this lane.
+
+20. Choice: mutate-cloud2 wins the add/add of `run_mutants.py` and the results JSON. Alternatives: keep mutate-cloud's shorter harness. Why: cloud2 contains C1-C16 and C17-C43. A clean preview went stale once mutate-cloud had created the same paths.
+
+21. Choice: plan-1031 add/add of `docs/build-dropins/mvp-integrate-1031.md` keeps HEAD (pass 2 and pass 3 addenda). Alternatives: take the original drop-in. Why: theirs was empty at that region. The later operator addenda are the ones integrate already shipped.
+
+22. Choice: timeoutfix union keeps commit-then-overlap and adds the run budget. Both recheck tests stay. On review timeout, undo the commit before `as_reject`. Alternatives: take theirs' direct `grok_call`, or drop the budget. Why: theirs does not bind `review_row`, and `as_reject` does not undo a commit that HEAD already made.
+
+23. Choice: when a tip moved after its merge, merge the new subjects. Alternatives: freeze at the first merge. Why: dogfood3, probe-fix2, selfhost2, timeoutfix, and cloud-perf pushed during the run. A subject scan at 2026-11-01T01:20:48Z found no missing subject except this lane.
+
+24. Choice: one end batch of targeted tests at scratch `9b63b93`, then reruns after the expectation fix and the late retips. Alternatives: a full module run after every merge. Why: a later merge edits files an earlier test imported. Each plan row cites the SHA the test actually ran against. The cloud suite was not re-cited from the pre-timeoutfix log.
+
+25. Choice: leave the four stale anchor and planted-diff failures red. Alternatives: regenerate mutant catalogs or revert the runner so old patches apply. Why: the harness is fail-closed when the anchor is gone. Regenerating the catalog is a new scoring pass, not a merge resolution. The recovery is in the plan.
+
+26. Choice: scratch commit `52e3ddc` updates tests to the winning runner. Alternatives: leave the phase-clock and first-day tests red. Why: they encoded "extract has no `.git`" and the looser `--base` help. The nested recheck repo and the docs-final help are the winners. The rerun passed.
+
+27. Choice: stop the retip chase at freeze `cee9bdd` / 2026-11-01T01:20:48Z. Alternatives: keep merging until the wall cap. Why: the subject scan was empty. Further lane pushes belong in a fetch immediately before the real landing, which the plan names as the next step.

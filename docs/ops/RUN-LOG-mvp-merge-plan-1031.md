@@ -132,4 +132,30 @@ Merge order used from here:
 
 ## Items
 
-(one line per finished item: `item | commit | tests | result`)
+Scratch SHAs below are not pushed. The plan doc commit is on this branch.
+
+- integrate fast-forward | 1dee0b9 | tmp/integrate-tests.log 477 tests 502.110s | OK skipped=1
+- mvp3 cherry-pick | 49ee477 | tmp/mvp3-tests.log 104 tests | FAILED 2, fixed before later merges
+- intfix cherry-pick | 215be32 | docs only | handoff matches 1c64e50
+- backlog pfylib.md ours | de91424 | docs only | recorded
+- crosslane HEAD wins | 61f0b3e | later local and cloud suites | recorded
+- docs-final QUICKSTART theirs plus walkthrough line | 2602fad | tmp/cloud-docs-tests.log 76 tests (pre-timeoutfix) | OK
+- dogfood2 union | 90ac258 | tmp/dogfood2-review-tests.log at b8d9b64, 90 tests 144.915s | OK
+- review timeout and warnings key | b8d9b64 | same 90-test log | OK
+- dsv4 TODO ours | e6baeca | test_catalog_entry_numbers inside the 289 | passed
+- cloud2 harness superset | 276063e | anchor tests red, see plan | fail-closed, not regenerated
+- plan-1031 add/add keep HEAD addenda | cf5e0ef | docs only | recorded
+- probe-fix2 cherry-picks including hardlink | d7b3914 | test_pfy_build_local and test_pfy_build_local_review inside the 289 at 9b63b93 | passed
+- timeoutfix union, both recheck tests | 3ccc204 | test_pfy_build_cloud inside the 289 at 9b63b93 | passed
+- stacked batch | 9b63b93 | tmp/stack-final-tests.log 289 tests 301.767s plus local-t5 12 tests | 281 passed, 8 failed; local-t5 OK
+- expectation fix for recheck git and stricter help | 52e3ddc | tmp/stack-rerun-tests.log at 2275c47, 8 tests 4.355s | OK
+- late retips dogfood3 selfhost2 cloud-perf | cee9bdd | tmp/stack-late-tests.log 3 tests 0.346s | OK
+- plan doc | this branch | docs only, no product tests | see MERGE-PLAN-1031.md
+
+Four tests stay red on the stacked runner (mutant anchors and one planted diff). Recorded in the plan. Not regenerated.
+
+Host at freeze: MemAvailable about 68 GiB, load about 3.5, 32 cores. Not pressured.
+Pregate not run: drop-in forbids scripts/pregate.sh.
+
+state: lane empty | scratch cee9bdd92bce33df5a8c94c5c77eb376bc242dcd at 2026-11-01T01:20:48Z | plan doc is this commit | pregate not run | four anchor tests stay red on the stacked runner until they are re-cut
+
