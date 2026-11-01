@@ -69,7 +69,7 @@ from pathlib import Path
 from smoke import TMP, find_bin, pinned, write
 from smoke_128_130 import as_json, finish, home_sig
 from smoke_140_142 import (CHROMES, MCP_CLIENT, SYS_PATH, _body, bad_override, iso, node_major, system_python,
-                           timeout_problem, tree_hash)
+                           timeout_problem)
 
 TASTE_PIN = "6010f91a9935f1c167dfc500fb1a475681892e6b"
 GITAI_PIN = "914e481ef057ca7b9dc9a5a7338d96bca16790e1"
@@ -171,6 +171,18 @@ def finding_ids(o, level: str | None = None) -> set[str]:
 
 
 # ---------------------------------------------------------------- taste-skill
+def site_digest(root: Path) -> str:
+    """Stable digest of a site tree. A symlink is link:<target> and is not opened."""
+    rows = []
+    for path in sorted(root.rglob("*"), key=lambda p: str(p.relative_to(root))):
+        rel = str(path.relative_to(root))
+        if path.is_symlink():
+            rows.append("%s\tlink:%s" % (rel, os.readlink(path)))
+        elif path.is_file():
+            rows.append("%s\t%s" % (rel, hashlib.sha256(path.read_bytes()).hexdigest()))
+    return hashlib.sha256(("\n".join(rows)).encode("utf-8")).hexdigest()
+
+
 def smoke_taste(r: dict) -> int:
     d = Path(os.environ.get("TASTE_SKILL_DIR") or TMP / "taste-skill")
     skill = d / "skills/taste-skill"
@@ -219,7 +231,7 @@ def _taste(r: dict, node: str, git: str, chrome: str, d: Path, skill: Path, want
         (site / "clean").mkdir()
         (site / "slop/index.html").write_text(SLOP, encoding="utf-8")
         (site / "clean/index.html").write_text(CLEAN, encoding="utf-8")
-        fx_sig = tree_hash(site)
+        fx_sig = site_digest(site)
         hfile = hist / "history.json"
         extra = {"TMPDIR": str(ntmp), "TASTE_SKILL_TMP": str(ttmp), "TASTE_SKILL_HISTORY": str(hfile),
                  "XDG_CONFIG_HOME": str(xdg), "XDG_CACHE_HOME": str(cache), "XDG_DATA_HOME": str(data),
@@ -270,7 +282,7 @@ def _taste(r: dict, node: str, git: str, chrome: str, d: Path, skill: Path, want
         left = sorted(x.name for x in ttmp.iterdir() if x.name.startswith("ad-chrome-"))
         r["profiles_left"] = left
         checks["no_profile_left"] = not left
-        checks["fixtures_untouched"] = tree_hash(site) == fx_sig
+        checks["fixtures_untouched"] = site_digest(site) == fx_sig
         rel = sorted(str(p.relative_to(home)) for p in home.rglob("*"))
         r["home_files"] = rel[:20]
         checks["home_only_chrome_leftovers"] = all(chrome_leftover(x) for x in rel)
