@@ -22,7 +22,7 @@ From any pfy-mentat worktree that has this script:
 ./scripts/pregate.sh --base origin/main REF                # base for the committed gate-file diff (default)
 ```
 
-Environment knobs: `PREGATE_STEP_TIMEOUT` (seconds per check, default 2400), `PREGATE_MAX_ROOT_LEN` (default 60) and `PREGATE_KEEP_RUNS` (default 20).
+Environment knobs: `PREGATE_STEP_TIMEOUT` (seconds per check, default 2400), `PREGATE_MAX_ROOT_LEN` (default 60), `PREGATE_KEEP_RUNS` (default 20), and `PREGATE_RUNS_DIR` (absolute runs root with no whitespace; default is the main checkout `tmp/pregate-runs`). An empty, relative, or whitespace `PREGATE_RUNS_DIR` exits 2 and writes nothing.
 
 Limits:
 
@@ -32,13 +32,13 @@ Limits:
 
 ## Output
 
-- Run folder (kept after the run): `~/DEVELOP/pfy-mentat/tmp/pregate-runs/<shortsha>-<UTC stamp>-<pid>/`
+- Run folder (kept after the run): `~/DEVELOP/pfy-mentat/tmp/pregate-runs/<shortsha>-<UTC stamp>-<pid>/`, or `<PREGATE_RUNS_DIR>/<shortsha>-<UTC stamp>-<pid>/` when that override is set
   - `pregate-summary.md`: the file to attach
   - `logs/<check>.log`: one log per check; every FAIL line names its log here
   - `receipts/structural.latest.md`, `receipts/golden.latest.md`: G0 receipts (tracked files are never rewritten)
 - Convenience pointer: `~/DEVELOP/pfy-mentat/tmp/pregate-latest-summary.md` (overwritten by whichever run finishes last; attach the run-folder copy instead)
 - Exit codes: 0 PASS; 1 FAIL, or no check passed; 2 usage or setup error (unknown check, missing `--only` value, bad ref, unknown `--base`, more than one REF, path too long, whitespace in path, dirty `--in-place`); 130/143 when interrupted by SIGINT/SIGTERM
-- Retention: each run keeps the newest 20 run folders (`PREGATE_KEEP_RUNS`) and deletes older ones. Only folders in `tmp/pregate-runs/` whose name matches the run-id pattern are ever removed. Copy a summary elsewhere if it must outlive that.
+- Retention: each run keeps the newest 20 run folders (`PREGATE_KEEP_RUNS`) under the chosen runs root and deletes older ones there only. Only folders in that root whose name matches the run-id pattern are ever removed. Copy a summary elsewhere if it must outlive that.
 
 The work happens in a detached worktree at `~/DEVELOP/pfy-mentat/tmp/pg/<shortsha>-<HHMMSS>` with scratch, `PFY_STATE_DIR` and `TMPDIR` under `~/DEVELOP/pfy-mentat/tmp/pgs/`. Both are removed on exit unless `--keep-worktree`. Paths stay short because harness2 sandbox sockets must fit sun_path (108 bytes). Pregate refuses to start (exit 2) if either path is over 60 characters. On SIGINT/SIGTERM it stops only its own child processes, writes a FAIL summary and cleans up. A run killed with SIGKILL leaves a stale worktree, and the next run prunes it once no live process uses it. The per-check watchdog only signals a process that is still a direct child of its pregate, so it never hits a reused PID or a child reparented after a SIGKILL.
 

@@ -20,6 +20,7 @@
 # Logs and summary persist in ~/DEVELOP/pfy-mentat/tmp/pregate-runs/<run-id>/.
 # Exit: 0 PASS, 1 FAIL (or no check passed), 2 usage/setup error, 130/143 signal.
 # Keeps the newest PREGATE_KEEP_RUNS (default 20) run folders.
+# PREGATE_RUNS_DIR overrides that runs root (absolute, no whitespace; empty or relative exits 2).
 set -euo pipefail
 
 ALL_CHECKS="lint ci-parity ubuntu-parity eval-structural suite orphans gate-hash"
@@ -86,10 +87,27 @@ case "$MAIN_ROOT$REPO_ROOT" in
   *[[:space:]]*) die2 "repo path contains whitespace; not supported: $MAIN_ROOT" ;;
 esac
 
+# Unset keeps the main checkout. A set value is the persist and retention root.
+# Empty, relative, or whitespace exits 2 before any run folder is created.
+if [[ "${PREGATE_RUNS_DIR+x}" == x ]]; then
+  case "$PREGATE_RUNS_DIR" in
+    "") die2 "PREGATE_RUNS_DIR is empty" ;;
+    *[[:space:]]*) die2 "PREGATE_RUNS_DIR contains whitespace; not supported" ;;
+    /*) ;;
+    *) die2 "PREGATE_RUNS_DIR must be an absolute path" ;;
+  esac
+  RUNS_DIR="$PREGATE_RUNS_DIR"
+  while [[ "$RUNS_DIR" == */ && ${#RUNS_DIR} -gt 1 ]]; do
+    RUNS_DIR="${RUNS_DIR%/}"
+  done
+else
+  RUNS_DIR="$MAIN_ROOT/tmp/pregate-runs"
+fi
+
 RUN_TS="$(date -u +%Y%m%dT%H%M%SZ)"
 HHMMSS="${RUN_TS:9:6}"
 RUN_ID="${SHORT}-${RUN_TS}-$$"
-PERSIST="$MAIN_ROOT/tmp/pregate-runs/$RUN_ID"
+PERSIST="$RUNS_DIR/$RUN_ID"
 LOG_DIR="$PERSIST/logs"
 RECEIPTS="$PERSIST/receipts"
 SUMMARY="$PERSIST/pregate-summary.md"
@@ -189,8 +207,7 @@ done
 
 mkdir -p "$LOG_DIR" "$RECEIPTS"
 # Retention: keep the newest KEEP_RUNS run folders (this one included). Only
-# names matching the run-id pattern inside tmp/pregate-runs are ever removed.
-RUNS_DIR="$MAIN_ROOT/tmp/pregate-runs"
+# names matching the run-id pattern inside the chosen runs root are ever removed.
 mapfile -t _old_runs < <(find "$RUNS_DIR" -mindepth 1 -maxdepth 1 -type d -regextype posix-extended \
   -regex '.*/[0-9a-f]{7}-[0-9]{8}T[0-9]{6}Z-[0-9]+' -printf '%T@ %p\n' | sort -rn | tail -n +"$((KEEP_RUNS + 1))" | cut -d' ' -f2-)
 for d in "${_old_runs[@]}"; do
