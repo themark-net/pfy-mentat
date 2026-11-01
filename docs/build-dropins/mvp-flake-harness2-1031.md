@@ -12,6 +12,13 @@ Needs a local model: no. Do not run scripts/pregate.sh.
 1. `tests.test_harness2_local_stage.StageScriptTests.test_stub_tools_see_state_caches_and_home_stays` failed in the eval-structural step of pregate at 16f17d8 (log: `/home/mark/DEVELOP/pfy-mentat/tmp/pregate-runs/16f17d8-20261101T012942Z-951532/logs/eval-structural.log`, no traceback printed) but passed in ubuntu-parity in the same pregate and alone in 8.7s. Find the cause: timing, shared state, TMPDIR, HOME, or a parallel lane touching a shared path. Reproduce under load (run it 20 times in a loop niced, and with a CPU burner of your own under your tmp/). Fix the test or the code so it is deterministic, with a fail/recover test.
 2. Make the structural runner print the traceback of a failing unittest into eval-structural.log (it only printed the test name), with a test.
 3. Then loop: run `python3 -m unittest discover -s tests -t .` 3 times niced under the heavy lock with an in-repo TMPDIR and list every test that fails in any run but not all; fix each the same way.
+
+## Added by the operator 19:20 PT (do these first)
+A. Root cause seen in CI run 41262832115 (nimo G0 job): the harness2 stage tests failed in tearDown because `~/.cache/uv` changed while they ran (a concurrent pregate on the same host). Make the harness2 stage tests use a private HOME or UV_CACHE_DIR under the test's temp dir, so another process using uv cannot change what they check, and their own uv use cannot touch the real cache. Fail/recover test: change the real-cache stand-in during the test and prove it still passes; prove a write by the test to the real cache path would fail.
+B. tests/test_docs_hygiene.py (the shallow-clone branch near lines 68-71): use `self.skipTest("shallow clone: old main SHAs not present")` instead of returning silently. (Only if that file exists on this base; if not, record it as a cross-lane request for bot/backlog-catalog-1030.)
+C. scripts/pregate.sh must not run while a G0 job runs on this host: check for a running `Runner.Worker` process (`pgrep -f 'Runner[.]Worker'`) at start and exit with a clear message and a distinct exit code (or wait with a bounded timeout behind a flag). Test it with a fake process name.
+Before running any test that uses uv or the full suite, check `pgrep -f 'Runner[.]Worker'`; if a G0 job is running, wait (poll every 60s) until it ends.
+
 ## Hard rules (pre-authorized, no questions)
 
 - Follow the orchestrator skill (`~/.grok/skills/orchestrator/SKILL.md`) and the repo skills `prefer-behavior-and-fail-recover-tests`, `repo-handoff-doc-required` and `write-loop-exits-first`. Do not ask questions. Decide conservatively, log each decision as one line in this run's decisions file, and keep going.
