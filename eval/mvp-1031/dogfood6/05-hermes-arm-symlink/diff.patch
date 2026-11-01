@@ -1,0 +1,43 @@
+diff --git a/examples/hermes-bakeoff/hermes_arm.py b/examples/hermes-bakeoff/hermes_arm.py
+index 7409452..2e7b851 100644
+--- a/examples/hermes-bakeoff/hermes_arm.py
++++ b/examples/hermes-bakeoff/hermes_arm.py
+@@ -11,6 +11,7 @@ import argparse
+ import json
+ import os
+ import sys
++import tempfile
+ import traceback
+ from pathlib import Path
+ 
+@@ -31,6 +32,21 @@ def _redact(text: str) -> str:
+     return " ".join(out)[:800]
+ 
+ 
++def _write_text(path: Path, text: str) -> None:
++    # Temp file in the parent, then os.replace, so a symlink is replaced.
++    fd, tmpname = tempfile.mkstemp(prefix=".hermes-", dir=str(path.parent))
++    try:
++        with os.fdopen(fd, "w", encoding="utf-8") as handle:
++            handle.write(text)
++        os.replace(tmpname, path)
++    except Exception:
++        try:
++            os.unlink(tmpname)
++        except OSError:
++            pass
++        raise
++
++
+ def _write_config(home: Path, model: str, base_url: str, num_ctx: int, log_path: Path, task_id: str) -> None:
+     python = os.environ.get("BAKEOFF_PYTHON") or sys.executable
+     server = str(HERE / "mcp_server.py")
+@@ -56,7 +72,7 @@ mcp_servers:
+     args: [{json.dumps(server)}, "--log", {json.dumps(str(log_path))}, "--task-id", {json.dumps(task_id)}]
+     enabled: true
+ """
+-    (home / "config.yaml").write_text(text, encoding="utf-8")
++    _write_text(home / "config.yaml", text)
+ 
+ 
+ def _extract(messages) -> tuple[str, str, list[dict]]:

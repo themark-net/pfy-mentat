@@ -1,0 +1,14 @@
+2026-11-01T02:55:33Z
+cwd /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood6-1031
+repo /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood6-1031/tmp/target-05
+base HEAD 05e60b8c0a16cdd4fd1f6f8932576cd541afe9c1
+retries 1
+timeout 900
+test-cmd python3 -m unittest tests.test_hermes_arm_symlink
+receipt-dir /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood6-1031/eval/mvp-1031/dogfood6/05-hermes-arm-symlink
+local no
+
+finished 2026-11-01T02:57:08Z
+result PASS ok
+cloud 39069ebd86b568cd2c72818c8e8b1ed4e1335071
+landed 839ae5e

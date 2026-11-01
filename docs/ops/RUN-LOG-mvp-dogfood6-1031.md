@@ -78,6 +78,7 @@ item | commit | tests | result
 02 attach-session-symlink | 29ee1cc | tests.test_attach_session_symlink tests.test_attach 38 OK | accept
 03 attach-pid-symlink | 3675945 | tests.test_attach_pid_symlink tests.test_attach_session_symlink tests.test_attach 42 OK | accept
 04 attach-receipt-symlink | 1c100a5 | tests.test_attach_receipt_symlink tests.test_attach_pid_symlink tests.test_attach_session_symlink tests.test_attach 46 OK | accept
+05 hermes-arm-symlink | 839ae5e | tests.test_hermes_arm_symlink tests.test_hermes_bakeoff 35 OK (1 skipped) | accept
 
 ## Survey skips
 
