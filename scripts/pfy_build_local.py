@@ -7,7 +7,7 @@ Nothing is pushed and no PR is opened.
 
 Exit codes:
   0  PASS, or a clean --dry-run, or --reap
-  1  FAIL, or PASS-REJECTED (the gate was green and the review rejected the patch)
+  1  FAIL (a green gate the review rejected is FAIL, reason review-rejected)
   2  usage, or opencode is missing
   3  TIMEOUT (agent, or the overall --wall-timeout budget)
   4  BLOCKED (memory, busy host, ps error, model size, cloud tag, lock, no-model,
@@ -1145,8 +1145,6 @@ def _summary(status: str, reason: str, branch: str | None, receipt: Path) -> str
     label = status
     if status == "BLOCKED":
         label = "BLOCKED:"
-    if status == "PASS-REJECTED":
-        label = "PASS-REJECTED"
     shown = reason or ""
     return "%s %s branch=%s receipt=%s" % (label, shown, branch or "none", receipt)
 
@@ -3611,13 +3609,13 @@ def build_local(argv: list[str] | None = None) -> int:
                 feedback = "\n".join(reasons)
                 previous_diff = diff_text
                 if attempts_used >= max_attempts:
-                    status, reason, exit_code = "PASS-REJECTED", "review-rejected", EXIT_FAIL
+                    status, reason, exit_code = "FAIL", "review-rejected", EXIT_FAIL
                     _record_attempt(
-                        attempts_used, attempt_t0, mem_snap, "PASS-REJECTED", "review-rejected", checks, None, diff_stats, diff_text
+                        attempts_used, attempt_t0, mem_snap, "FAIL", "review-rejected", checks, None, diff_stats, diff_text
                     )
                     return finish()
                 _record_attempt(
-                    attempts_used, attempt_t0, mem_snap, "PASS-REJECTED", "review-rejected", checks, None, diff_stats, diff_text
+                    attempts_used, attempt_t0, mem_snap, "FAIL", "review-rejected", checks, None, diff_stats, diff_text
                 )
                 continue
 
@@ -3721,12 +3719,12 @@ def build_local(argv: list[str] | None = None) -> int:
                 feedback = "\n".join((model_review or {}).get("reasons") or ["review-unparseable"])
                 previous_diff = diff_text
                 if attempts_used >= max_attempts:
-                    status, reason, exit_code = "PASS-REJECTED", "review-rejected", EXIT_FAIL
+                    status, reason, exit_code = "FAIL", "review-rejected", EXIT_FAIL
                     _record_attempt(
                         attempts_used,
                         attempt_t0,
                         mem_snap,
-                        "PASS-REJECTED",
+                        "FAIL",
                         "review-rejected",
                         checks,
                         model_review,
@@ -3735,7 +3733,7 @@ def build_local(argv: list[str] | None = None) -> int:
                     )
                     return finish()
                 _record_attempt(
-                    attempts_used, attempt_t0, mem_snap, "PASS-REJECTED", "review-rejected", checks, model_review, diff_stats, diff_text
+                    attempts_used, attempt_t0, mem_snap, "FAIL", "review-rejected", checks, model_review, diff_stats, diff_text
                 )
                 continue
             if tree_digest(worktree) != gated_tree:

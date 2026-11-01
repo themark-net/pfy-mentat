@@ -39,4 +39,5 @@ Pregate: not at start. Runner.Worker is live. Record at the end.
 ## Items
 
 - S2 | 880478a | red: unrecognized --wall-timeout, exit 2. Green: test_wall_budget_stops_a_sleeping_retry_loop. Review module 39 OK in 87.764s. test_pfy_build_local 61 OK in 81.411s | TIMEOUT wall-timeout, exit 3, under 12s
+- S3 | 3636a2c | red: reason no-change. Green: test_agent_crash_every_attempt_is_not_labelled_no_change and test_agent_crash_then_a_fix_still_passes. Both modules 102 OK in 170.746s | FAIL agent-crashed, 3 attempts; a later fix PASS on attempt 2
 

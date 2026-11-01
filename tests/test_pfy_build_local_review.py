@@ -74,6 +74,19 @@ class ReviewLoopTests(unittest.TestCase):
     def _receipt(self, proc, receipt):
         return self.inner.receipt(proc, receipt)
 
+    def _assert_documented_reject(self, proc, data):
+        # S4: a spent review rejection stays exit 1 with reason review-rejected.
+        # The receipt status and the summary line use the operator status set.
+        allowed = {"PASS", "FAIL", "BLOCKED", "TIMEOUT", "ABORTED"}
+        self.assertEqual(data["status"], "FAIL")
+        self.assertIn(data["status"], allowed)
+        self.assertEqual(data["reason"], "review-rejected")
+        self.assertTrue(proc.stdout.startswith("FAIL "), proc.stdout)
+        self.assertNotIn("PASS-REJECTED", proc.stdout + proc.stderr)
+        self.assertNotIn("PASS-REJECTED", json.dumps(data))
+        self.assertIsNone(data["commit"])
+        self.assertIsNone(data["branch"])
+
     def test_out_of_scope_patch_is_rejected_and_the_retry_passes(self):
         task = "fix add so one plus one is two\nfiles: src/calc.py\n"
         steps = [
@@ -324,13 +337,15 @@ class ReviewLoopTests(unittest.TestCase):
         proc, receipt = self._run(task, [{"mode": "fix"}])
         self.assertEqual(proc.returncode, 1, proc.stdout + proc.stderr)
         data = self._receipt(proc, receipt)
-        self.assertEqual(data["status"], "PASS-REJECTED")
+        self._assert_documented_reject(proc, data)
         self.assertEqual(data["attempts"], 3)
-        self.assertIsNone(data["commit"])
-        self.assertIsNone(data["branch"])
         for number in (1, 2, 3):
             path = receipt / ("attempt-%d" % number) / "receipt.json"
             self.assertTrue(path.is_file(), path)
+            attempt = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(attempt["status"], "FAIL")
+            self.assertEqual(attempt["reason"], "review-rejected")
+            self.assertNotIn("PASS-REJECTED", json.dumps(attempt))
         self.assertFalse((receipt / "attempt-4" / "receipt.json").exists())
         self.assertEqual(len(self.inner.httpd.review_queue), 1)
 
@@ -546,13 +561,11 @@ class ReviewLoopTests(unittest.TestCase):
         proc, receipt = self._run(task, steps, extra=["--retries", "0"])
         self.assertEqual(proc.returncode, 1, proc.stdout + proc.stderr)
         data = self._receipt(proc, receipt)
-        self.assertEqual(data["status"], "PASS-REJECTED")
-        self.assertEqual(data["reason"], "review-rejected")
+        self._assert_documented_reject(proc, data)
         self.assertEqual(data["attempts"], 1)
-        self.assertIsNone(data["commit"])
-        self.assertIsNone(data["branch"])
         self.assertEqual(harness._branches(self.inner.repo), [])
         first = json.loads((receipt / "attempt-1" / "receipt.json").read_text(encoding="utf-8"))
+        self.assertEqual(first["status"], "FAIL")
         self.assertIn("src/notes.py", first["checks"]["scope"]["outside"])
         self.inner.assert_clean_origin()
 
@@ -565,13 +578,11 @@ class ReviewLoopTests(unittest.TestCase):
         proc, receipt = self._run(task, [{"mode": "fix"}], extra=["--retries", "0"])
         self.assertEqual(proc.returncode, 1, proc.stdout + proc.stderr)
         data = self._receipt(proc, receipt)
-        self.assertEqual(data["status"], "PASS-REJECTED")
-        self.assertEqual(data["reason"], "review-rejected")
+        self._assert_documented_reject(proc, data)
         self.assertEqual(data["attempts"], 1)
-        self.assertIsNone(data["commit"])
-        self.assertIsNone(data["branch"])
         self.assertEqual(harness._branches(self.inner.repo), [])
         first = json.loads((receipt / "attempt-1" / "receipt.json").read_text(encoding="utf-8"))
+        self.assertEqual(first["status"], "FAIL")
         missing = first["checks"]["wiring"]["missing"]
         self.assertTrue(any("tests/test_calc.py" in item for item in missing), missing)
         self.inner.assert_clean_origin()
@@ -1060,12 +1071,10 @@ class ReviewLoopTests(unittest.TestCase):
         proc, receipt = self._run(task, [{"mode": "fix"}], extra=["--retries", "2"])
         self.assertEqual(proc.returncode, 1, proc.stdout + proc.stderr)
         data = self._receipt(proc, receipt)
-        self.assertEqual(data["status"], "PASS-REJECTED")
-        self.assertEqual(data["reason"], "review-rejected")
-        self.assertIsNone(data["commit"])
-        self.assertIsNone(data["branch"])
+        self._assert_documented_reject(proc, data)
         self.assertEqual(harness._branches(self.inner.repo), [])
         first = json.loads((receipt / "attempt-1" / "receipt.json").read_text(encoding="utf-8"))
+        self.assertEqual(first["status"], "FAIL")
         self.assertEqual(first["model_review"]["verdict"], "reject")
         self.assertNotEqual(first["model_review"]["verdict"], "accept")
         self.inner.assert_clean_origin()
