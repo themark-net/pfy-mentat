@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import tempfile
 import shutil
 import signal
 import subprocess
@@ -198,11 +199,24 @@ def opencode_config(base: str, model: str) -> dict:
     }
 
 
+def _put_text(path: Path, text: str) -> None:
+    """Write text as a regular file. A symlink at path is replaced, not followed."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, name = tempfile.mkstemp(prefix=".pfy-", dir=path.parent)
+    tmp = Path(name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(text)
+        os.replace(tmp, path)
+    except Exception:
+        tmp.unlink(missing_ok=True)
+        raise
+
+
 def write_opencode_config(work: Path, base: str, model: str) -> Path:
     """Write the isolated opencode config under work and return the file path."""
     path = work / "opencode" / "config" / "opencode" / "opencode.json"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(opencode_config(base, model), indent=2) + "\n", encoding="utf-8")
+    _put_text(path, json.dumps(opencode_config(base, model), indent=2) + "\n")
     return path
 
 
