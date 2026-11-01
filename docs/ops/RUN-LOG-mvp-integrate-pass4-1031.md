@@ -103,4 +103,6 @@ merge review-quality | 2fd2625 | nice -n 19 python3 -m unittest tests.test_revie
 catch-up fetch | 5a146b8 | git fetch of the ten tips | 2026-11-01T03:16Z all ten tips still contained. No extra merge. Pregate not started by this lane.
 suite | 3c712b1 tree | TMPDIR=$PWD/tmp/suite-pass4 nice -n 19 flock heavy lock python3 -m unittest discover -s tests -t . | Ran 1320 in 938.736s. Failures 1, skipped 16. 2026-11-01T03:31:34Z to 2026-11-01T03:47:13Z. G0 was idle. This lane did not run pregate.
 built-by subjects | bbd8254 | nice -n 19 python3 -m unittest tests.test_selfhost_1031_log | 3 OK in 0.114s. Base 1dee0b9 of the same test was OK, so the failure came in with the merges. Accept the hard 72 cut, the current ellipsis subject, and 13 amended selfhost2 cherry-picks. A third subject still fails.
-demo | started | one cloud-default ./pfy build, no --local, throwaway clone tmp/demo4-target, receipt tmp/demo4-receipt | task is review finding 4, protect .env.bak and .env.local, two files. Cloud commit stays off this branch.
+demo | f6d1a3b tree | one cloud-default ./pfy build, no --local | 2026-11-01T03:53:42Z to 2026-11-01T04:21:02Z. Exit 1. Receipt FAIL review-rejected. Gate before 1, after 0. Three attempts. No cloud commit. Checker exit 1. No second build. Receipt eval/mvp-1031/demo-receipt-pass4.json.
+
+state: lane empty | ten tips contained at refetch 2026-11-01T04:22Z, suite 1320 tests with 1 merge-caused failure fixed in bbd8254, demo receipt saved as FAIL review-rejected

@@ -122,3 +122,25 @@ Functional MVP DoD lines:
 6. PASS. Nothing was pushed. No PR was opened. `pushed` is false. The integrate repo has no `cloud/` branch from this run.
 
 Cloud-default daily use, from `eval/mvp-1031/sixtask-int/REPORT.md`: VERDICT GO. Two passes of MVP-2 t1 through t6 on `./pfy build`, review on, no `--local`, no `--no-review`. Pass 1 wall 1243.8s and pass 2 wall 1016.3s. Each pass is 6/6 runner PASS, 6/6 review accept, 6/6 human accept, 6/6 gate PASS.
+
+## Pass 4
+
+One real cloud `./pfy build` on a throwaway clone of this worktree. No `--local`. No second cloud call. The integrate checkout was not the task target.
+
+Task: protect `.env.bak` and `.env.local` in `scripts/pfy_build_cloud.py`, and add `CloudBuildFailureTests.test_env_bak_and_env_local_are_not_committed`.
+
+Why picked: pass 3 review finding 4. `_protected` still matches `.env` only. `.env.example` must stay unprotected.
+
+| Field | Value |
+|-------|--------|
+| Wall time | 1640 seconds (2026-11-01T03:53:42Z to 2026-11-01T04:21:02Z) |
+| Exit code | 1 |
+| Attempts | 3 (review-rejected, commit-recheck-failed, review-rejected) |
+| Branch | none |
+| Commit | none |
+| Review verdict | reject |
+| Human verdict | no |
+| Receipt path | `eval/mvp-1031/demo-receipt-pass4.json` |
+| Checker | `python3 eval/mvp-1031/check_receipt.py eval/mvp-1031/demo-receipt-pass4.json` exit 1, status is not PASS |
+
+Demo 4: FAIL. Review rejected the diff. The gate was red before (missing test) and green after. The reviewer said the basename rule and the new test match the task, and the diff also edits the shared `_run` helper (it strips `GIT_DIR`) and calls `shutil.rmtree` on the fixture receipt directory. This lane agrees. No cloud commit was created. `pushed` is false. The caller stayed `bot/mvp-integrate-pass4-1031` at `f6d1a3b`. The clone stayed on `demo-base`. The protect rule is still open.
