@@ -80,6 +80,35 @@ class CatalogStageEvalTests(unittest.TestCase):
         self.assertEqual(harness["integration_stage"], "I1")
         self.assertNotEqual(stages["last_updated"], "2026-09-25")
 
+    def test_only_the_pinned_cards_omit_judgment_fields(self):
+        """Pipecat, LiveKit, Exo, and claude-code-unified-agents omit judgment
+        fields on purpose. A new card that omits any of uses, features,
+        potential, non_goals, or next_gate fails unless its name is added here
+        in the same change.
+        Fail: the set of cards missing those keys is not the pinned four.
+        Recovery: fill the fields from a real handoff, or extend the pin only
+        when the omission is intentional."""
+        allowed = {
+            "Pipecat",
+            "LiveKit",
+            "Exo (exoharness)",
+            "claude-code-unified-agents",
+        }
+        stages = json.loads((ROOT / "data" / "tool_integration_stages.json").read_text(encoding="utf-8"))
+        missing = _cards_missing_judgment(stages["tools"], self.mod.LLM)
+        self.assertEqual(missing, allowed)
+        extra = dict(stages["tools"])
+        extra["Example New"] = {"integration_stage": "I0", "intent": "ref_only"}
+        self.assertIn("Example New", _cards_missing_judgment(extra, self.mod.LLM) - allowed)
+
+
+def _cards_missing_judgment(tools, fields):
+    return {
+        name
+        for name, card in tools.items()
+        if any(key not in card for key in fields)
+    }
+
 
 if __name__ == "__main__":
     unittest.main()
