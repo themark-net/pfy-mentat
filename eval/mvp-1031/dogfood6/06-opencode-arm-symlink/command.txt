@@ -1,0 +1,14 @@
+2026-11-01T02:58:23Z
+cwd /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood6-1031
+repo /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood6-1031/tmp/target-06
+base HEAD 1c6039afc1e44926c4174a84eb6a92791195d116
+retries 1
+timeout 900
+test-cmd python3 -m unittest tests.test_opencode_arm_symlink
+receipt-dir /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood6-1031/eval/mvp-1031/dogfood6/06-opencode-arm-symlink
+local no
+
+finished 2026-11-01T03:00:02Z
+result PASS ok
+cloud 1f469327c8a1866442365966d1c3aa73b83af51c
+landed 51ed297

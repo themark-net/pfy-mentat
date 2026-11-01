@@ -1,0 +1,43 @@
+diff --git a/examples/hermes-bakeoff/opencode_arm.py b/examples/hermes-bakeoff/opencode_arm.py
+index a002801..1c75092 100644
+--- a/examples/hermes-bakeoff/opencode_arm.py
++++ b/examples/hermes-bakeoff/opencode_arm.py
+@@ -13,6 +13,7 @@ import os
+ import shutil
+ import subprocess
+ import sys
++import tempfile
+ from pathlib import Path
+ 
+ from schema import server_name
+@@ -28,6 +29,21 @@ def _normalize(name: str) -> str:
+     return short
+ 
+ 
++def _write_text(path: Path, text: str) -> None:
++    # Temp file in the parent, then os.replace, so a symlink is replaced.
++    fd, tmpname = tempfile.mkstemp(prefix=".opencode-", dir=str(path.parent))
++    try:
++        with os.fdopen(fd, "w", encoding="utf-8") as handle:
++            handle.write(text)
++        os.replace(tmpname, path)
++    except Exception:
++        try:
++            os.unlink(tmpname)
++        except OSError:
++            pass
++        raise
++
++
+ def _write_config(config_home: Path, model: str, base_url: str, num_ctx: int, log_path: Path, task_id: str) -> None:
+     python = os.environ.get("BAKEOFF_PYTHON") or sys.executable
+     server = str(HERE / "mcp_server.py")
+@@ -59,7 +75,7 @@ def _write_config(config_home: Path, model: str, base_url: str, num_ctx: int, lo
+     }
+     dest = config_home / "opencode" / "opencode.json"
+     dest.parent.mkdir(parents=True, exist_ok=True)
+-    dest.write_text(json.dumps(body, indent=2) + "\n", encoding="utf-8")
++    _write_text(dest, json.dumps(body, indent=2) + "\n")
+ 
+ 
+ def _parse_events(text: str) -> tuple[str, list[dict]]:

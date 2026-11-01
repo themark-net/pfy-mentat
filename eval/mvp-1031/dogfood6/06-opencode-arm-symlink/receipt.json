@@ -1,0 +1,45 @@
+{
+  "schema": "pfy-cloud-build/1",
+  "status": "PASS",
+  "reason": "ok",
+  "exit_code": 0,
+  "branch": "cloud/edit-only-examples-hermes-bakeoff-openco-20261101T025823775504Z",
+  "commit": "1f469327c8a1866442365966d1c3aa73b83af51c",
+  "base": "HEAD",
+  "review": {
+    "verdict": "accept",
+    "reasons": []
+  },
+  "attempts": [
+    {
+      "n": 1,
+      "status": "PASS",
+      "reason": "ok",
+      "output_tail": "I'll read the config writer and the symlink test so the helper replaces `opencode.json` without following the link.`Path.write_text` follows the symlink. I'll add a parent-directory temp file plus `os.replace`, and use it only for `opencode.json`.`_write_config` now writes `opencode.json` by replacing the path, so a symlink is not followed.\n\nThe new `_write_text` helper creates a temp file in the parent directory and `os.replace`s it onto the destination. A regular file still gets the JSON, including `model` `ollama/<model>` and the provider `baseURL`. A symlink, including a broken one, becomes a regular file, and the original target bytes stay. Both `mkdir` calls are unchanged. `_parse_events` and `main` are unchanged.\n\n`python3 -m unittest tests.test_opencode_arm_symlink` passed: 3 tests, OK.\n\nI'll check the edited file against the task: one symlink-safe write helper, used only for `opencode.json`, with both mkdir calls left in place.verdict: accept\n\nThe diff only changes `examples/hermes-bakeoff/opencode_arm.py`. `_write_text` creates a temp file in the parent directory and `os.replace`s it onto `opencode.json`, and that helper is the only writer for that path. Both `mkdir` calls remain, the JSON still includes `ollama/<model>` and `baseURL`, and `_parse_events` and `main` are untouched. No tests are deleted, nothing is recursively deleted, and nothing targets the filesystem root.\n",
+      "review": {
+        "verdict": "accept",
+        "reasons": []
+      }
+    }
+  ],
+  "gate": {
+    "cmd": "python3 -m unittest tests.test_opencode_arm_symlink",
+    "before": {
+      "cmd": "python3 -m unittest tests.test_opencode_arm_symlink",
+      "exit": 1,
+      "tail": "\n.FF\n======================================================================\nFAIL: test_write_replaces_broken_symlink (tests.test_opencode_arm_symlink.OpenCodeArmSymlinkTests.test_write_replaces_broken_symlink)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood6-1031/tmp/target-06/tmp/cloud-build/20261101T025823775504Z/tests/test_opencode_arm_symlink.py\", line 58, in test_write_replaces_broken_symlink\n    self.assertFalse((dest_dir / \"missing-opencode\").exists())\n    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: True is not false\n\n======================================================================\nFAIL: test_write_replaces_symlink_and_leaves_target (tests.test_opencode_arm_symlink.OpenCodeArmSymlinkTests.test_write_replaces_symlink_and_leaves_target)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood6-1031/tmp/target-06/tmp/cloud-build/20261101T025823775504Z/tests/test_opencode_arm_symlink.py\", line 46, in test_write_replaces_symlink_and_leaves_target\n    self.assertEqual(target.read_text(encoding=\"utf-8\"), '{\"keep\": 1}\\n')\n    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: '{\\n  \"$schema\": \"https://opencode.ai/confi[1093 chars]n}\\n' != '{\"keep\": 1}\\n'\nDiff is 1197 characters long. Set self.maxDiff to None to see it.\n\n----------------------------------------------------------------------\nRan 3 tests in 0.002s\n\nFAILED (failures=2)\n",
+      "started": true
+    },
+    "after": {
+      "cmd": "python3 -m unittest tests.test_opencode_arm_symlink",
+      "exit": 0,
+      "tail": "\n...\n----------------------------------------------------------------------\nRan 3 tests in 0.002s\n\nOK\n",
+      "started": true
+    }
+  },
+  "recovery": "",
+  "pushed": false,
+  "worktree_removed": true,
+  "task": "Edit only examples/hermes-bakeoff/opencode_arm.py. Do not edit any file under tests/. Do not add a file. Do not commit. Do not push. _write_config writes config_home / \"opencode\" / \"opencode.json\" with Path.write_text, which follows a symlink and overwrites the target. Add one helper in this file that writes text as a regular file: create a temp file in the parent directory and os.replace it onto the destination, so a symlink is replaced and the target bytes stay. Use that helper for the opencode.json write only. Keep both mkdir calls. A regular opencode.json still receives the JSON, including model ollama/<model> and the provider baseURL. A symlink, including a broken symlink, becomes a regular file and the target bytes stay. A broken symlink must not create the missing target. Do not change _parse_events or main. Do not add an em dash or an en dash.",
+  "finished_at": "2026-11-01T03:00:02Z"
+}
