@@ -1,0 +1,15 @@
+diff --git a/bootstrap/agenc/install.sh b/bootstrap/agenc/install.sh
+index c296301..167d7d0 100755
+--- a/bootstrap/agenc/install.sh
++++ b/bootstrap/agenc/install.sh
+@@ -54,8 +54,8 @@ ensure_node() {
+   platform="node-${ver}-${os}-${arch}"
+   dest="${NODE_CACHE}/${ver}"
+   if [[ ! -x "${dest}/bin/node" ]]; then
+-    mkdir -p "$NODE_CACHE"
+-    tarball="/tmp/${platform}.tar.xz"
++    tarball="${TMPDIR:-$NODE_CACHE}/${platform}.tar.xz"
++    mkdir -p "$(dirname "$tarball")"
+     url="https://nodejs.org/dist/${ver}/${platform}.tar.xz"
+     log "downloading Node ${ver} → ${dest}"
+     curl -fsSL "$url" -o "$tarball"

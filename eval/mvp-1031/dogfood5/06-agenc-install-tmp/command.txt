@@ -1,0 +1,13 @@
+started 2026-11-01T02:12:01Z
+cwd /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood5-1031
+repo /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood5-1031/tmp/target-04
+base HEAD df8d34f
+retries 1
+timeout 900
+test-cmd python3 -m unittest tests.test_agenc_install_tmpdir
+receipt-dir /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood5-1031/eval/mvp-1031/dogfood5/06-agenc-install-tmp
+local no
+finished 2026-11-01T02:13:57Z
+result PASS ok
+cloud bc672303791a7b5d3e45f1bfe009c38ded53c258
+landed 4828050

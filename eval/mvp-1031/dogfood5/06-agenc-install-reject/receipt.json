@@ -1,0 +1,45 @@
+{
+  "schema": "pfy-cloud-build/1",
+  "status": "PASS",
+  "reason": "ok",
+  "exit_code": 0,
+  "branch": "cloud/edit-only-bootstrap-agenc-install-sh-do-20261101T020848563186Z",
+  "commit": "4def314cd67a10d906153f44a3d32eaeda3d5143",
+  "base": "HEAD",
+  "review": {
+    "verdict": "accept",
+    "reasons": []
+  },
+  "attempts": [
+    {
+      "n": 1,
+      "status": "PASS",
+      "reason": "ok",
+      "output_tail": "I'll update `ensure_node` so the Node tarball lands under `TMPDIR` or `NODE_CACHE`, and I'll read the script and the test first so the change stays inside that function.The tarball is hard-coded under `/tmp`. I'll point it at `TMPDIR` or `NODE_CACHE` and create that directory before `curl`.The unit tests passed. I'll confirm an unset `TMPDIR` puts the tarball under `NODE_CACHE`.The unset-`TMPDIR` check wrote the tarball path under `NODE_CACHE`. I'll remove the scratch directory that check left behind.`ensure_node` now stores the Node tarball under `TMPDIR` when that variable is set, and under `NODE_CACHE` when it is not.\n\nThe download path is `tarball=\"${TMPDIR:-$NODE_CACHE}/${platform}.tar.xz\"`. The script creates that directory before `curl`. The download URL, the extract, and the `rm` of the tarball are unchanged. A Node that is already new enough still returns before any tarball path is chosen.\n\n`python3 -m unittest tests.test_agenc_install_tmpdir` passed (2 tests). With `TMPDIR` unset, the `-o` path was under `NODE_CACHE`. No commit and no push.\n\nI'll check the install script against the task and the reject rules before giving a verdict.verdict: accept\n\nThe diff edits only `bootstrap/agenc/install.sh`. It sets `tarball=\"${TMPDIR:-$NODE_CACHE}/${platform}.tar.xz\"` and runs `mkdir -p \"$(dirname \"$tarball\")\"` before the existing curl. The URL, extract, and `rm -f \"$tarball\"` stay as they were. A new-enough Node still returns before any tarball path is chosen. `install_official`, `install_npm`, and `main` are unchanged. The diff adds no em dash or en dash, no test deletion, no recursive delete, and no command aimed at the filesystem root.\n",
+      "review": {
+        "verdict": "accept",
+        "reasons": []
+      }
+    }
+  ],
+  "gate": {
+    "cmd": "python3 -m unittest tests.test_agenc_install_tmpdir",
+    "before": {
+      "cmd": "python3 -m unittest tests.test_agenc_install_tmpdir",
+      "exit": 1,
+      "tail": "\n.F\n======================================================================\nFAIL: test_old_node_tarball_stays_under_tmpdir (tests.test_agenc_install_tmpdir.AgencInstallTmpdirTests.test_old_node_tarball_stays_under_tmpdir)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood5-1031/tmp/target-03/tmp/cloud-build/20261101T020848563186Z/tests/test_agenc_install_tmpdir.py\", line 103, in test_old_node_tarball_stays_under_tmpdir\n    self.assertTrue(path.startswith(str(self.tmpdir) + \"/\"), path)\n    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: False is not true : /tmp/node-v25.9.0-linux-x64.tar.xz\n\n----------------------------------------------------------------------\nRan 2 tests in 0.016s\n\nFAILED (failures=1)\n",
+      "started": true
+    },
+    "after": {
+      "cmd": "python3 -m unittest tests.test_agenc_install_tmpdir",
+      "exit": 0,
+      "tail": "\n..\n----------------------------------------------------------------------\nRan 2 tests in 0.016s\n\nOK\n",
+      "started": true
+    }
+  },
+  "recovery": "",
+  "pushed": false,
+  "worktree_removed": true,
+  "task": "Edit only bootstrap/agenc/install.sh. Do not edit any file under tests/. Do not add a file. Do not commit. Do not push.\n\nensure_node downloads the Node tarball to /tmp/${platform}.tar.xz. That ignores TMPDIR.\n\nSet tarball=\"${TMPDIR:-$NODE_CACHE}/${platform}.tar.xz\" and mkdir -p the directory that holds the tarball before curl. Do not use /tmp for the tarball. Keep the curl URL, the extract, and the rm of the tarball.\n\nA node that is already new enough still returns before any tarball path is chosen. An old node still tries to download, and the -o path is under TMPDIR when TMPDIR is set. When TMPDIR is unset, the tarball is under NODE_CACHE, not /tmp.\n\nDo not change install_official, install_npm, or main. Do not add an em dash or an en dash.",
+  "finished_at": "2026-11-01T02:10:49Z"
+}
