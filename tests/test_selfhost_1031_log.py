@@ -1,8 +1,10 @@
 """Built-by trailers on this branch must point at a PASS receipt.
 
-The commit subject is the runner's subject: the task text collapsed to one
-line and cut at 72 characters. A planted trailer in a temp repo fails when
-the receipt is missing, not PASS, or the subject does not match.
+A matching subject is either the old hard cut at 72 characters or the
+current runner subject (whole words, then an ellipsis). Thirteen selfhost2
+cherry-picks amended the subject after the cloud commit. Those shas are
+listed. Any other subject fails. A planted trailer in a temp repo fails
+when the receipt is missing, not PASS, or the subject does not match.
 """
 from __future__ import annotations
 
@@ -19,13 +21,89 @@ TRAILER_PREFIX = "Built-by: ./pfy build (cloud) receipt "
 
 
 def expected_subject(task: str) -> str:
-    """Runner subject: collapsed task, cut at 72, trailing space removed.
+    """Older runner subject: collapsed task, cut at 72, trailing space removed.
 
     git stores the subject without a trailing space when the cut lands on
     the space between words. The comparison uses that stored subject.
     """
     collapsed = " ".join((task or "").split())
     return (collapsed[:72] or "task").rstrip()
+
+
+def runner_subject(task: str) -> str:
+    """Current cloud runner subject. Kept in scripts/pfy_build_cloud.py."""
+    import importlib.util
+
+    cached = getattr(runner_subject, "fn", None)
+    if cached is None:
+        path = ROOT / "scripts" / "pfy_build_cloud.py"
+        spec = importlib.util.spec_from_file_location("pfy_build_cloud_subject", path)
+        if spec is None or spec.loader is None:
+            raise RuntimeError("could not load commit_subject")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        cached = mod.commit_subject
+        setattr(runner_subject, "fn", cached)
+    return cached(task)
+
+
+# Selfhost2 cherry-picks. The cloud subject stayed on the throwaway commit.
+# The landed subject was amended. Receipt path is part of the exception so a
+# trailer that moves to a different PASS receipt still fails.
+AMENDED_CHERRY_PICKS = {
+    "18ed977ff5603bc093e7ffeb2f8062a7f972c813": (
+        "Skip backup_once when the path is a symlink.",
+        "eval/selfhost2-1031/13-backup-once/receipt.json",
+    ),
+    "c97d0a1fabfc1cd478ec87dae85813d3b3948427": (
+        "Treat a symlinked mcp config as absent.",
+        "eval/selfhost2-1031/12-apply-mcp/receipt.json",
+    ),
+    "b6e387a9b6ef8d7c97d399d80a0ee3c9511dd0fe": (
+        "Skip the follow when a setup ledger path is a symlink.",
+        "eval/selfhost2-1031/11-setup-ledger/receipt.json",
+    ),
+    "3eeab428e8798577e0d1e0ea1695641490c10c44": (
+        "Replace a hedge ledger symlink instead of writing through it.",
+        "eval/selfhost2-1031/10-hedge-ledger/receipt.json",
+    ),
+    "d217349f1acc2df28501d5456a25d92bf0c6264e": (
+        "Copy skill symlinks instead of their targets.",
+        "eval/selfhost2-1031/09-install-symlink/receipt.json",
+    ),
+    "67e3333a76c3eae4fc641eea73992cd326d05aae": (
+        "Reject a harness symlink without reading its target.",
+        "eval/selfhost2-1031/08-surface-symlink/receipt.json",
+    ),
+    "e6339ca3c6deaa66c80614c204ffa119238e3f65": (
+        "Leave a symlinked adapter file in place.",
+        "eval/selfhost2-1031/07-adapter-symlink-ops/receipt.json",
+    ),
+    "1faa9fd7e80beb442b184206e409d07f508b72b6": (
+        "Hash smoke 137 fixture symlinks as readlink text.",
+        "eval/selfhost2-1031/06-smoke137-hash/receipt.json",
+    ),
+    "91386568b3c5ad2f22bdfa7d066af1ec76922494": (
+        "Hash smoke 140 fixture symlinks as readlink text.",
+        "eval/selfhost2-1031/05-smoke140-hash/receipt.json",
+    ),
+    "ae5e5e5e74597a7eba996bf5e0b47417878a888a": (
+        "Hash adapter symlink targets as readlink text.",
+        "eval/selfhost2-1031/04-adapter-hash/receipt.json",
+    ),
+    "36bc071c3e82a8f26cb8494833c078689e3c8f86": (
+        "Refuse a relative typed-decisions smoke receipt directory.",
+        "eval/selfhost2-1031/03-typed-receipt/receipt.json",
+    ),
+    "cdf4d681c19c16937a866b2b99d6884a0e7372f4": (
+        "Refuse a relative Kolibri smoke receipt directory.",
+        "eval/selfhost2-1031/02b-kolibri-receipt/receipt.json",
+    ),
+    "4a0fe4eeebd2d0d83520e932b4c62eddcad89197": (
+        "Record mode and symlink targets in the AgentDescent home snapshot.",
+        "eval/selfhost2-1031/01-ad-snap/receipt.json",
+    ),
+}
 
 
 def _git(repo: Path, args: list[str]) -> subprocess.CompletedProcess[str]:
@@ -67,9 +145,15 @@ def built_by_problems(repo: Path) -> list[str]:
             problems.append("%s receipt status is %s" % (sha[:12], data.get("status")))
             continue
         subject = message.splitlines()[0].strip() if message.splitlines() else ""
-        want = expected_subject(str(data.get("task") or ""))
-        if subject != want:
-            problems.append("%s subject %r != receipt task %r" % (sha[:12], subject, want))
+        task = str(data.get("task") or "")
+        if subject == expected_subject(task) or subject == runner_subject(task):
+            continue
+        if AMENDED_CHERRY_PICKS.get(sha) == (subject, rel):
+            continue
+        problems.append(
+            "%s subject %r != runner subject %r or hard cut %r"
+            % (sha[:12], subject, runner_subject(task), expected_subject(task))
+        )
     return problems
 
 
@@ -141,6 +225,49 @@ class SelfhostBuiltByTests(unittest.TestCase):
             os.remove(receipt)
             missing = built_by_problems(repo)
             self.assertTrue(any("missing" in item for item in missing), missing)
+
+    def test_hard_cut_and_ellipsis_pass_and_a_third_subject_fails(self) -> None:
+        # Fail: only the hard 72 cut is accepted, so a current runner subject
+        # is flagged. Fail the other way: any prose subject is accepted.
+        # Recover: accept both shipped forms, and reject a third.
+        scratch = ROOT / "tmp" / "selfhost-1031-tests"
+        scratch.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix="built-by-forms-", dir=scratch) as td:
+            repo = Path(td)
+            _init_repo(repo)
+            task = ("alpha " * 20).strip()
+            hard = expected_subject(task)
+            ellipsis = runner_subject(task)
+            self.assertNotEqual(hard, ellipsis)
+            self.assertTrue(ellipsis.endswith("..."), ellipsis)
+            for name, subject in (("hard", hard), ("ellipsis", ellipsis)):
+                rel = "eval/selfhost-1031/%s/receipt.json" % name
+                receipt = repo / rel
+                receipt.parent.mkdir(parents=True, exist_ok=True)
+                receipt.write_text(
+                    json.dumps({"status": "PASS", "task": task}) + "\n",
+                    encoding="utf-8",
+                )
+                _git(repo, ["add", rel])
+                message = "%s\n\n%s%s\n" % (subject, TRAILER_PREFIX, rel)
+                proc = _git(repo, ["commit", "-q", "-m", message])
+                self.assertEqual(proc.returncode, 0, proc.stderr)
+            self.assertEqual(built_by_problems(repo), [])
+
+            rel = "eval/selfhost-1031/other/receipt.json"
+            receipt = repo / rel
+            receipt.parent.mkdir(parents=True, exist_ok=True)
+            receipt.write_text(
+                json.dumps({"status": "PASS", "task": task}) + "\n",
+                encoding="utf-8",
+            )
+            _git(repo, ["add", rel])
+            message = "A hand written subject\n\n%s%s\n" % (TRAILER_PREFIX, rel)
+            proc = _git(repo, ["commit", "-q", "-m", message])
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            problems = built_by_problems(repo)
+            self.assertEqual(len(problems), 1, problems)
+            self.assertIn("hand written", problems[0])
 
 
 if __name__ == "__main__":
