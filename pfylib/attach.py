@@ -26,6 +26,7 @@ import json
 import os
 import signal
 import sys
+import tempfile
 import time
 import urllib.request
 from dataclasses import asdict, dataclass, field
@@ -79,8 +80,25 @@ def _require(hid: str, root_dir: Path | None = None) -> dict:
 
 # ------------------------------------------------------------- state files ---
 
+def _write_regular_text(path: Path, text: str) -> None:
+    # Temp file in the parent, then os.replace, so a symlink is replaced.
+    fd, tmpname = tempfile.mkstemp(prefix=".pfy-session-", dir=str(path.parent))
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(text)
+        os.replace(tmpname, path)
+    except Exception:
+        try:
+            os.unlink(tmpname)
+        except OSError:
+            pass
+        raise
+
+
 def read_session_reach(hid: str, STATE) -> str:
     path = Path(STATE) / _require(hid)["session_file"]
+    if path.is_symlink():
+        return ""
     if not path.is_file():
         return ""
     try:
@@ -92,7 +110,8 @@ def read_session_reach(hid: str, STATE) -> str:
 def write_session_reach(hid: str, STATE, text: str) -> None:
     STATE = Path(STATE)
     STATE.mkdir(parents=True, exist_ok=True)
-    (STATE / _require(hid)["session_file"]).write_text((text or "").strip()[:80] + "\n", encoding="utf-8")
+    body = (text or "").strip()[:80] + "\n"
+    _write_regular_text(STATE / _require(hid)["session_file"], body)
 
 
 def clear_session_reach(hid: str, STATE) -> None:
