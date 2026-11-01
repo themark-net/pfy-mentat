@@ -1,6 +1,6 @@
 # Handoff: mvp3-fix2-1031
 
-Branch `bot/mvp3-review-retry`. Worktree `~/DEVELOP/pfy-mentat/tmp/mvp3`. The tip is the commit that adds this file. Its parent is `d2521b5`.
+Branch `bot/mvp3-review-retry`. Worktree `~/DEVELOP/pfy-mentat/tmp/mvp3`. The final tip of this lane is `16f17d8`, the merge of probe-fix2 findings `29da017` and `915edf0` onto `d168446`. This file was added in `d168446`. Its parent is `d2521b5`.
 
 Tester FAIL on `6664713` is answered on this branch. No rebase, no amend, no force push, no merge, no PR.
 
@@ -21,11 +21,11 @@ Reviewer follow-ups 1-10 were already on this branch. See `docs/ops/HANDOFF-mvp3
 
 Command: `TMPDIR=$PWD/tmp flock ~/DEVELOP/pfy-mentat/tmp/heavy-1030.lock python3 -m unittest discover -s tests -t .`
 
-Ran 1007 tests in 728.294s. FAILED (failures=1, skipped=16). Exit 1.
+At `16f17d8` the pregate full suite is 1014 tests. On the tester box that run was FAILED (failures=1, skipped=32). The failure is `tests.test_hedge.DetectorTests.test_detector_runs_offline`, which also failed at `6664713`. CI on that tip reported 1014 OK.
 
-The one failure is `tests.test_local_bench.OutdirPathTests.test_relative_outdir_log_path_safe`. `TMPDIR` is inside this repo, so the helper returns a relative log path. The mvp3-fix-1031 handoff recorded the same environmental failure. This lane does not change that helper. `tests.test_hedge.DetectorTests.test_detector_runs_offline` did not fail in this run.
+The `d168446` run in this worktree was 1007 tests in 728.294s, FAILED (failures=1, skipped=16). That failure is `tests.test_local_bench.OutdirPathTests.test_relative_outdir_log_path_safe`. `TMPDIR` is inside this repo, so the helper returns a relative log path. The mvp3-fix-1031 handoff recorded the same environmental failure. This lane does not change that helper.
 
-Targeted before that run: `tests.test_pfy_build_local_review` and `tests.test_pfy_build_local`, 92 tests, OK, 158.563s. A `BrokenPipeError` from the stub HTTP server during kill-during-review is noise. The result is OK.
+Targeted review modules at `16f17d8`: `tests.test_pfy_build_local_review` and `tests.test_pfy_build_local`, 99 tests, OK. The `d168446` count was 92, in 158.563s. A `BrokenPipeError` from the stub HTTP server during kill-during-review is noise. The result is OK.
 
 ## Open
 
