@@ -94,3 +94,4 @@ merge localbench-tmpdir | 2279366 | nice -n 19 python3 -m unittest tests.test_lo
 merge probe-int | 450c339 | nice -n 19 python3 -m unittest tests.test_pfy_build_cloud | tip b2cbd4f, clean, 67 OK in 21.580s
 merge pass3-review | 3122349 | nice -n 19 python3 -m unittest tests.test_workflow_image_pin | tip cc338de, clean, 33 OK in 20.244s
 merge dogfood3 | 8e9354d | nice -n 19 python3 -m unittest tests.test_smoke_098_bad_timeout tests.test_smoke_103_bad_timeout tests.test_smoke_106_bad_timeout tests.test_smoke_128_bad_timeout tests.test_smoke_131_bad_timeout tests.test_x_intake_smoke_098_100 tests.test_x_intake_smoke_103_105 tests.test_x_intake_smoke_106_108 tests.test_x_intake_smoke_128_130 tests.test_x_intake_smoke_131_133 | tip f50192a, clean, 119 OK in 29.411s
+merge hermes-check | 7689bcb | nice -n 19 python3 -m unittest tests.test_hermes_bakeoff | tip 61396e4, clean, 32 OK skipped=1 in 3.187s
