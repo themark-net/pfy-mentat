@@ -1,0 +1,45 @@
+{
+  "schema": "pfy-cloud-build/1",
+  "status": "PASS",
+  "reason": "ok",
+  "exit_code": 0,
+  "branch": "cloud/edit-only-pfylib-hedge-py-do-not-edit-an-20261101T020951530246Z",
+  "commit": "d96b8112f1e3c002d7c46b0664dff31c50b263be",
+  "base": "HEAD",
+  "review": {
+    "verdict": "accept",
+    "reasons": []
+  },
+  "attempts": [
+    {
+      "n": 1,
+      "status": "PASS",
+      "reason": "ok",
+      "output_tail": "I'll edit only `pfylib/hedge.py` so ledger load and save treat a symlink as the path itself, then run the symlink test.The ledger currently follows `hedge-ledger.json` when that path is a symlink. I'll stop that in `load_ledger` and `save_ledger` only.`load_ledger` and `save_ledger` in `pfylib/hedge.py` no longer follow a symlink at `hedge-ledger.json`.\n\n- A symlink, including a broken one, makes `load_ledger` return `{\"version\": 1, \"entries\": [], \"spent\": 0}` without reading the target.\n- `save_ledger` writes through `_put_text`, which uses `os.replace` to put a regular file at that path. The symlink inode is replaced, and the old target is left unchanged.\n- A normal file still round-trips: save, then load, returns the same entries and spent amount.\n\n`python3 -m unittest tests.test_hedge_ledger_symlink` passed (4 tests).\n\nI'll check the hedge.py diff against the task and the reject rules before giving a verdict.verdict: accept\n",
+      "review": {
+        "verdict": "accept",
+        "reasons": []
+      }
+    }
+  ],
+  "gate": {
+    "cmd": "python3 -m unittest tests.test_hedge_ledger_symlink",
+    "before": {
+      "cmd": "python3 -m unittest tests.test_hedge_ledger_symlink",
+      "exit": 1,
+      "tail": "\nF.FF\n======================================================================\nFAIL: test_load_does_not_read_symlink_target (tests.test_hedge_ledger_symlink.HedgeLedgerSymlinkTests.test_load_does_not_read_symlink_target)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood4-1031/tmp/target-07/tmp/cloud-build/20261101T020951530246Z/tests/test_hedge_ledger_symlink.py\", line 43, in test_load_does_not_read_symlink_target\n    self.assertEqual(loaded[\"entries\"], [])\n    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: Lists differ: [{'lane': 'cloud', 'amount': 9, 'task': 'keep'}] != []\n\nFirst list contains 1 additional elements.\nFirst extra element 0:\n{'lane': 'cloud', 'amount': 9, 'task': 'keep'}\n\n- [{'amount': 9, 'lane': 'cloud', 'task': 'keep'}]\n+ []\n\n======================================================================\nFAIL: test_save_does_not_create_a_broken_symlink_target (tests.test_hedge_ledger_symlink.HedgeLedgerSymlinkTests.test_save_does_not_create_a_broken_symlink_target)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood4-1031/tmp/target-07/tmp/cloud-build/20261101T020951530246Z/tests/test_hedge_ledger_symlink.py\", line 64, in test_save_does_not_create_a_broken_symlink_target\n    self.assertFalse(missing.exists())\n    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^\nAssertionError: True is not false\n\n======================================================================\nFAIL: test_save_replaces_symlink_and_leaves_target (tests.test_hedge_ledger_symlink.HedgeLedgerSymlinkTests.test_save_replaces_symlink_and_leaves_target)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood4-1031/tmp/target-07/tmp/cloud-build/20261101T020951530246Z/tests/test_hedge_ledger_symlink.py\", line 53, in test_save_replaces_symlink_and_leaves_target\n    self.assertEqual(outside.read_text(encoding=\"utf-8\"), '{\"spent\":9,\"entries\":[{\"task\":\"keep\"}]}\\n')\n    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: '{\\n  \"version\": 1,\\n  \"updated\": \"2026-11-[131 chars]n}\\n' != '{\"spent\":9,\"entries\":[{\"task\":\"keep\"}]}\\n'\n+ {\"spent\":9,\"entries\":[{\"task\":\"keep\"}]}\n- {\n-   \"version\": 1,\n-   \"updated\": \"2026-11-01T02:09:51Z\",\n-   \"spent\": 0,\n-   \"entries\": [\n-     {\n-       \"lane\": \"local\",\n-       \"task\": \"bulk\",\n-       \"amount\": 0\n-     }\n-   ]\n- }\n\n\n----------------------------------------------------------------------\nRan 4 tests in 0.002s\n\nFAILED (failures=3)\n",
+      "started": true
+    },
+    "after": {
+      "cmd": "python3 -m unittest tests.test_hedge_ledger_symlink",
+      "exit": 0,
+      "tail": "\n....\n----------------------------------------------------------------------\nRan 4 tests in 0.002s\n\nOK\n",
+      "started": true
+    }
+  },
+  "recovery": "",
+  "pushed": false,
+  "worktree_removed": true,
+  "task": "Edit only pfylib/hedge.py. Do not edit any file under tests/. Do not add a file. Do not commit. Do not push.\n\nload_ledger uses path.is_file() and path.read_text(). save_ledger uses path.write_text(). Both follow a symlink at <state>/hedge-ledger.json. load returns the target JSON. save changes the target bytes and leaves the path as a symlink. write_text on a broken symlink creates the missing target.\n\nWhen the path is a symlink, including a broken symlink, do not open, read, or write the target. load_ledger returns the empty ledger {\"version\": 1, \"entries\": [], \"spent\": 0}. save_ledger replaces the symlink with a regular file. os.replace replaces the symlink inode and does not follow it.\n\nAdd import tempfile next to import os.\n\nAdd this helper immediately above load_ledger:\n\ndef _put_text(path: Path, text: str) -> None:\n    \"\"\"Write text as a regular file. A symlink at path is replaced, not followed.\"\"\"\n    path.parent.mkdir(parents=True, exist_ok=True)\n    fd, name = tempfile.mkstemp(prefix=\".pfy-\", dir=path.parent)\n    tmp = Path(name)\n    try:\n        with os.fdopen(fd, \"w\", encoding=\"utf-8\") as fh:\n            fh.write(text)\n        os.replace(tmp, path)\n    except Exception:\n        tmp.unlink(missing_ok=True)\n        raise\n\nIn load_ledger, if path.is_symlink(), return empty before any read. Do not call read_text on a symlink.\n\nIn save_ledger, keep the payload dict. Replace path.write_text(...) with _put_text(path, json.dumps(payload, indent=2) + \"\\n\"). Do not call write_text on path.\n\nDo not edit decide, record, or reset_ledger. reset_ledger already calls save_ledger. A regular file still round-trips: save then load returns the same entries and spent. Do not use an em dash or an en dash.",
+  "finished_at": "2026-11-01T02:11:23Z"
+}

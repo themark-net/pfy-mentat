@@ -80,3 +80,4 @@ item | commit | tests | result
 04 hiroute-term-wait | d507591 | tests.test_smoke_146_term_wait 3 OK; tests.test_x_intake_smoke_146_147 35 OK | accept
 05 skillup-fixture-digest | e6aad0d | tests.test_smoke_146_fixture_digest tests.test_smoke_146_term_wait tests.test_x_intake_smoke_146_147 41 OK | accept
 06 taste-fixture-digest | 538c771 | tests.test_smoke_143_site_digest tests.test_x_intake_smoke_143_145 73 OK (1 skipped) | accept
+07 hedge-ledger-symlink | none | red gate dropped, not landed | reject cross-lane FINDING-D4-01

@@ -1,0 +1,9 @@
+started 2026-11-01T02:09:51Z
+cwd /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood4-1031
+repo /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood4-1031/tmp/target-07
+base HEAD 11aa2035e836aec2b2e444bea4f5b07e25c19c2d
+retries 1
+timeout 900
+test-cmd python3 -m unittest tests.test_hedge_ledger_symlink
+receipt-dir /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood4-1031/eval/mvp-1031/dogfood4/07-hedge-ledger-symlink
+local no

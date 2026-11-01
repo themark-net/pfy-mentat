@@ -1,0 +1,47 @@
+diff --git a/pfylib/hedge.py b/pfylib/hedge.py
+index 8745dbd..0a0ba43 100644
+--- a/pfylib/hedge.py
++++ b/pfylib/hedge.py
+@@ -25,6 +25,7 @@ from __future__ import annotations
+ 
+ import json
+ import os
++import tempfile
+ import subprocess
+ from datetime import datetime, timezone
+ from pathlib import Path
+@@ -94,9 +95,25 @@ def ledger_path(state: Path | None = None) -> Path:
+     return registry.state_dir(state) / LEDGER_FILE
+ 
+ 
++def _put_text(path: Path, text: str) -> None:
++    """Write text as a regular file. A symlink at path is replaced, not followed."""
++    path.parent.mkdir(parents=True, exist_ok=True)
++    fd, name = tempfile.mkstemp(prefix=".pfy-", dir=path.parent)
++    tmp = Path(name)
++    try:
++        with os.fdopen(fd, "w", encoding="utf-8") as fh:
++            fh.write(text)
++        os.replace(tmp, path)
++    except Exception:
++        tmp.unlink(missing_ok=True)
++        raise
++
++
+ def load_ledger(state: Path | None = None) -> dict:
+     path = ledger_path(state)
+     empty = {"version": 1, "entries": [], "spent": 0}
++    if path.is_symlink():
++        return empty
+     if not path.is_file():
+         return empty
+     try:
+@@ -119,7 +136,7 @@ def save_ledger(ledger: dict, state: Path | None = None) -> Path:
+         "spent": int(ledger.get("spent") or 0),
+         "entries": list(ledger.get("entries") or []),
+     }
+-    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
++    _put_text(path, json.dumps(payload, indent=2) + "\n")
+     return path
+ 
+ 
