@@ -1579,6 +1579,129 @@ class LocalBuildTests(unittest.TestCase):
                     timeout=20,
                 )
 
+    def test_reap_does_not_follow_a_symlink_onto_a_sibling_worktree(self):
+        # The pid file names one local-build directory. Replacing that path
+        # with a symlink to another local-build worktree must not delete the
+        # sibling. --reap unlinks the recorded name only. The sibling and its
+        # sentinel stay registered. A real directory with that prefix is still
+        # removed on a later reap (see the SIGKILL prune test).
+        cmd, _receipt = self.command("hang", extra=["--timeout", "60", "--retries", "0"])
+        proc = subprocess.Popen(
+            cmd,
+            cwd=self.repo,
+            env=self.env("hang"),
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            start_new_session=True,
+        )
+        sibling = self.repo / "tmp" / "local-build-keep-sibling"
+        outside_link = self.repo / "tmp" / "local-build-outside-link"
+        recorded = ""
+        try:
+            deadline = time.monotonic() + 25
+            pid_path = self.repo / "tmp" / "local-build.pids.json"
+            while time.monotonic() < deadline and proc.poll() is None:
+                if pid_path.is_file():
+                    try:
+                        recorded = str(json.loads(pid_path.read_text(encoding="utf-8")).get("worktree") or "")
+                    except (OSError, json.JSONDecodeError):
+                        recorded = ""
+                    if recorded:
+                        break
+                time.sleep(0.05)
+            self.assertTrue(recorded, "pid file did not record a worktree")
+            self.assertTrue(proc.poll() is None, "hang exited before the worktree was registered")
+            os.killpg(proc.pid, signal.SIGKILL)
+            proc.communicate(timeout=5)
+            recorded_path = Path(recorded)
+            tmp_root = (self.repo / "tmp").resolve()
+            self.assertEqual(recorded_path.parent.resolve(), tmp_root)
+            self.assertTrue(recorded_path.name.startswith("local-build-"))
+            self.assertNotEqual(recorded_path.name, sibling.name)
+            added = subprocess.run(
+                ["git", "-C", str(self.repo), "worktree", "add", "--detach", str(sibling), "HEAD"],
+                text=True,
+                capture_output=True,
+                timeout=20,
+            )
+            self.assertEqual(added.returncode, 0, added.stdout + added.stderr)
+            (sibling / "KEEP").write_text("SIBLING-KEEP\n", encoding="utf-8")
+            subprocess.run(["rm", "-rf", "--", str(recorded_path)], check=True, timeout=20)
+            recorded_path.symlink_to(sibling.resolve())
+            self.assertTrue(recorded_path.is_symlink())
+            reap = subprocess.run(
+                [str(ROOT / "pfy"), "build", "--local", "--reap", "--repo", str(self.repo)],
+                cwd=self.repo,
+                env=self.env("noop"),
+                text=True,
+                capture_output=True,
+                timeout=20,
+            )
+            self.assertEqual(reap.returncode, 0, reap.stdout + reap.stderr)
+            self.assertNotIn("pruned local-build-keep-sibling", reap.stdout or "")
+            self.assertTrue(sibling.is_dir(), reap.stdout + reap.stderr)
+            self.assertFalse(sibling.is_symlink())
+            self.assertEqual((sibling / "KEEP").read_text(encoding="utf-8"), "SIBLING-KEEP\n")
+            self.assertIn(str(sibling.resolve()), self._local_build_worktrees())
+            self.assertFalse(recorded_path.exists(), recorded_path)
+            # Same reap rule for a link that leaves the repo. The sentinel
+            # stays. Only the local-build-* name is removed.
+            outside = self.tmp / "outside-dir"
+            outside.mkdir()
+            (outside / "KEEP").write_text("OUTSIDE-KEEP\n", encoding="utf-8")
+            outside_link.symlink_to(outside)
+            dead = subprocess.Popen(["sleep", "30"])
+            dead.kill()
+            dead.wait(timeout=5)
+            pid_path.write_text(
+                json.dumps(
+                    {
+                        "pid": dead.pid,
+                        "pgid": 0,
+                        "agent_pgid": 0,
+                        "worktree": str(outside_link),
+                    }
+                ),
+                encoding="utf-8",
+            )
+            again = subprocess.run(
+                [str(ROOT / "pfy"), "build", "--local", "--reap", "--repo", str(self.repo)],
+                cwd=self.repo,
+                env=self.env("noop"),
+                text=True,
+                capture_output=True,
+                timeout=20,
+            )
+            self.assertEqual(again.returncode, 0, again.stdout + again.stderr)
+            self.assertEqual((outside / "KEEP").read_text(encoding="utf-8"), "OUTSIDE-KEEP\n")
+            self.assertTrue(outside.is_dir())
+            self.assertFalse(outside_link.is_symlink())
+            self.assertTrue(sibling.is_dir())
+            self.assertEqual((sibling / "KEEP").read_text(encoding="utf-8"), "SIBLING-KEEP\n")
+        finally:
+            if proc.poll() is None:
+                try:
+                    os.killpg(proc.pid, signal.SIGKILL)
+                except OSError:
+                    pass
+                try:
+                    proc.communicate(timeout=5)
+                except Exception:
+                    pass
+            if sibling.exists() or sibling.is_symlink():
+                subprocess.run(
+                    ["git", "-C", str(self.repo), "worktree", "remove", "--force", str(sibling)],
+                    capture_output=True,
+                    text=True,
+                    timeout=20,
+                )
+                if sibling.is_symlink():
+                    sibling.unlink()
+            if outside_link.is_symlink() or outside_link.exists():
+                if outside_link.is_symlink():
+                    outside_link.unlink()
+
     def test_missing_runtime_dir_is_not_reported_as_missing_bwrap(self):
         # Do not add --unsafe-no-sandbox. That flag skips the bridge, so the
         # runtime-dir guard would never run on a host without bwrap.

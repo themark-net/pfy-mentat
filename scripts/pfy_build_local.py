@@ -18,8 +18,10 @@ A SIGKILL of this process cannot write a receipt. The pid file under
 `pfy build --local --reap`, signal that process group and write ABORTED for
 any build-local directory that has no receipt, and for the pid file's receipt
 dir when that receipt is missing. That same reap removes the worktree path
-recorded in the pid file when the path is under <repo>/tmp and its first
-directory name starts with local-build-. Other worktrees are left in place.
+recorded in the pid file when the path is one directory under <repo>/tmp
+and that directory name starts with local-build-. The leaf is not resolved:
+a symlink is unlinked and not followed, so a local-build name that points at
+another worktree does not delete the target. Other worktrees are left in place.
 
 Receipt schema: pfy-local-build/1
 """
@@ -2833,26 +2835,49 @@ def _stub_extra_rw() -> list[Path]:
 
 
 def _recorded_build_worktree(repo: Path, raw) -> Path | None:
-    """Pid-file worktree, only when it is one local-build dir under repo/tmp."""
+    """Pid-file worktree, only when it is one local-build dir under repo/tmp.
+
+    Do not resolve the leaf. ``Path.resolve`` follows a symlink, and a
+    local-build-* name that points at another local-build directory would
+    then be removed as if it were the recorded worktree.
+    """
     text = str(raw or "").strip()
-    if not text:
+    if not text or "\x00" in text:
+        return None
+    path = Path(text)
+    if not path.is_absolute():
         return None
     try:
-        path = Path(text).resolve()
-        rel = path.relative_to((repo / "tmp").resolve())
-    except (OSError, ValueError):
+        tmp = (repo / "tmp").resolve()
+        parent = path.parent.resolve()
+    except OSError:
         return None
-    if not rel.parts or not rel.parts[0].startswith("local-build-"):
+    if parent != tmp:
         return None
-    return path
+    name = path.name
+    if name in ("", ".", "..") or not name.startswith("local-build-"):
+        return None
+    return parent / name
 
 
 def _drop_worktree(repo: Path, worktree: Path | None) -> None:
     if worktree is None:
         return
+    try:
+        if worktree.is_symlink():
+            # Unlink the name only. git worktree remove and rmtree would
+            # follow the link onto a sibling or an outside directory.
+            worktree.unlink()
+            _git(repo, ["worktree", "prune"])
+            return
+    except OSError:
+        return
     _git(repo, ["worktree", "remove", "--force", str(worktree)])
-    if worktree.exists():
-        shutil.rmtree(worktree, ignore_errors=True)
+    try:
+        if worktree.exists() and not worktree.is_symlink():
+            shutil.rmtree(worktree, ignore_errors=True)
+    except OSError:
+        pass
     _git(repo, ["worktree", "prune"])
 
 
