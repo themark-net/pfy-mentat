@@ -104,11 +104,13 @@ fi
 # 7) Optional one-shot LLM (only if provider keys present)
 if [[ "${AGENC_SMOKE_LLM:-0}" == "1" ]]; then
   log "check: headless print (AGENC_SMOKE_LLM=1)"
-  if AGENC_OFFLINE=1 AGENC_UPDATE_CHECK=0 "$LAUNCHER" --no-tui -p "Reply with exactly: PONG" 2>&1 | tee /tmp/agenc-smoke-llm.txt | grep -qi pong; then
+  llm_log="${TMPDIR:-${ROOT}/tmp}/agenc-smoke-llm.txt"
+  mkdir -p "$(dirname "$llm_log")"
+  if AGENC_OFFLINE=1 AGENC_UPDATE_CHECK=0 "$LAUNCHER" --no-tui -p "Reply with exactly: PONG" 2>&1 | tee "$llm_log" | grep -qi pong; then
     log "  OK: LLM print returned PONG"
     pass=$((pass + 1))
   else
-    fail "LLM print smoke failed (see /tmp/agenc-smoke-llm.txt)"
+    fail "LLM print smoke failed (see $llm_log)"
   fi
 else
   log "  skip LLM print (set AGENC_SMOKE_LLM=1 and provider keys to enable)"
