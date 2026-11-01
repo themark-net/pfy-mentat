@@ -49,3 +49,4 @@ Survey skips, recorded before item 01, do not count as a no-progress streak. Det
 
 04 smoke137-timeout attempt 1 | none | tests.test_smoke_137_bad_timeout before exit 1, after exit 0, recheck FileNotFoundError on tmp | FAIL commit-recheck-failed
 04 smoke137-timeout | d75d407865ef | tests.test_smoke_137_bad_timeout tests.test_x_intake_smoke_137_139 57 OK | accept
+05 agenc-smoke-tmp | ef1f2c2 | tests.test_agenc_smoke_tmpdir 2 OK | accept

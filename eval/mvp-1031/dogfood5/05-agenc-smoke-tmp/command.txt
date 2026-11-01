@@ -1,0 +1,13 @@
+started 2026-11-01T02:04:46Z
+cwd /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood5-1031
+repo /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood5-1031/tmp/target-02
+base HEAD d291367
+retries 1
+timeout 900
+test-cmd python3 -m unittest tests.test_agenc_smoke_tmpdir
+receipt-dir /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood5-1031/eval/mvp-1031/dogfood5/05-agenc-smoke-tmp
+local no
+finished 2026-11-01T02:06:44Z
+result PASS ok
+cloud 01115aaf1c096ee155369b349081ebd003a7ab62
+landed ef1f2c2
