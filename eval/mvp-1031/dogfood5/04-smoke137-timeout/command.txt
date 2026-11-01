@@ -1,0 +1,13 @@
+started 2026-11-01T01:59:30Z
+cwd /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood5-1031
+repo /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood5-1031/tmp/target-01
+base HEAD 7d7c5f49bafc0337bce23d1afd999a1667bfc0af
+retries 1
+timeout 900
+test-cmd python3 -m unittest tests.test_smoke_137_bad_timeout
+receipt-dir /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood5-1031/eval/mvp-1031/dogfood5/04-smoke137-timeout
+local no
+finished 2026-11-01T02:01:05Z
+result PASS ok
+cloud cc05a173ea0bee987de4f519e602a29cc0cbd4ee
+landed d75d407865efcda24be06e1b895fae8950b74faf

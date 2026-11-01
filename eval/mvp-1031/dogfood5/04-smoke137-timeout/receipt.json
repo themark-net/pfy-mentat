@@ -1,0 +1,45 @@
+{
+  "schema": "pfy-cloud-build/1",
+  "status": "PASS",
+  "reason": "ok",
+  "exit_code": 0,
+  "branch": "cloud/edit-only-examples-x-intake-local-smoke-20261101T015930713599Z",
+  "commit": "cc05a173ea0bee987de4f519e602a29cc0cbd4ee",
+  "base": "HEAD",
+  "review": {
+    "verdict": "accept",
+    "reasons": []
+  },
+  "attempts": [
+    {
+      "n": 1,
+      "status": "PASS",
+      "reason": "ok",
+      "output_tail": "I'll edit only `examples/x-intake-local/smoke_137_139.py` so a bad `PFY_XINTAKE_TIMEOUT` fail-closes before the entry runs. First I'll read the module, the timeout helper, and the smoke test.The fail-close helper already lives in `smoke_140_142`. I'll match that call site and check the smoke test so the docstring and `main()` line up with it.`timeout_problem` already fail-closes in `smoke_140_142`. I'll import it and call it in `main()` after the receipt and entry are chosen, and add the docstring sentence.`examples/x-intake-local/smoke_137_139.py` now fail-closes a bad `PFY_XINTAKE_TIMEOUT` before the entry runs.\n\n- `timeout_problem` is imported from `smoke_140_142` and called in `main()` after the receipt and entry function are chosen, and before `fn(receipt)`.\n- A value that is not a finite number of seconds greater than 0 sets `receipt[\"reason\"]` and returns exit 2. Unset or empty still calls the entry.\n- The module docstring now says that any other value (`abc`, `0`, `-1`, `nan`, `inf`) exits 2 before the entry runs.\n\n`python3 -m unittest tests.test_smoke_137_bad_timeout` passed (2 tests).\n\nI'll review the diff against the task and check the file it touches before giving a verdict.verdict: accept\n\nThe diff edits only `examples/x-intake-local/smoke_137_139.py`. It imports `timeout_problem` from `smoke_140_142`, checks it after the receipt and `fn` are set and before `fn(receipt)`, and adds the requested docstring sentence. No tests were deleted, no recursive delete was added, and nothing targets the filesystem root.\n",
+      "review": {
+        "verdict": "accept",
+        "reasons": []
+      }
+    }
+  ],
+  "gate": {
+    "cmd": "python3 -m unittest tests.test_smoke_137_bad_timeout",
+    "before": {
+      "cmd": "python3 -m unittest tests.test_smoke_137_bad_timeout",
+      "exit": 1,
+      "tail": "_2_before_app_lookup\n    self.assertIn(\"PFY_XINTAKE_TIMEOUT\", receipt[\"reason\"])\n    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: 'PFY_XINTAKE_TIMEOUT' not found in 'neatroots not found ($NEATROOTS_APP or tmp/neatroots/app with neatroots/dist/cli.js); unpack the v0.2.9 neatroots.tar.gz there, see the handoff. Never run install.sh'\n\n======================================================================\nFAIL: test_bad_timeout_exits_2_before_app_lookup (tests.test_smoke_137_bad_timeout.BadTimeoutTests.test_bad_timeout_exits_2_before_app_lookup) (timeout='0')\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood5-1031/tmp/target-01/tmp/cloud-build/20261101T015930713599Z/tests/test_smoke_137_bad_timeout.py\", line 70, in test_bad_timeout_exits_2_before_app_lookup\n    self.assertIn(\"PFY_XINTAKE_TIMEOUT\", receipt[\"reason\"])\n    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: 'PFY_XINTAKE_TIMEOUT' not found in 'neatroots not found ($NEATROOTS_APP or tmp/neatroots/app with neatroots/dist/cli.js); unpack the v0.2.9 neatroots.tar.gz there, see the handoff. Never run install.sh'\n\n======================================================================\nFAIL: test_bad_timeout_exits_2_before_app_lookup (tests.test_smoke_137_bad_timeout.BadTimeoutTests.test_bad_timeout_exits_2_before_app_lookup) (timeout='-1')\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood5-1031/tmp/target-01/tmp/cloud-build/20261101T015930713599Z/tests/test_smoke_137_bad_timeout.py\", line 70, in test_bad_timeout_exits_2_before_app_lookup\n    self.assertIn(\"PFY_XINTAKE_TIMEOUT\", receipt[\"reason\"])\n    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: 'PFY_XINTAKE_TIMEOUT' not found in 'neatroots not found ($NEATROOTS_APP or tmp/neatroots/app with neatroots/dist/cli.js); unpack the v0.2.9 neatroots.tar.gz there, see the handoff. Never run install.sh'\n\n======================================================================\nFAIL: test_bad_timeout_exits_2_before_app_lookup (tests.test_smoke_137_bad_timeout.BadTimeoutTests.test_bad_timeout_exits_2_before_app_lookup) (timeout='nan')\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood5-1031/tmp/target-01/tmp/cloud-build/20261101T015930713599Z/tests/test_smoke_137_bad_timeout.py\", line 70, in test_bad_timeout_exits_2_before_app_lookup\n    self.assertIn(\"PFY_XINTAKE_TIMEOUT\", receipt[\"reason\"])\n    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: 'PFY_XINTAKE_TIMEOUT' not found in 'neatroots not found ($NEATROOTS_APP or tmp/neatroots/app with neatroots/dist/cli.js); unpack the v0.2.9 neatroots.tar.gz there, see the handoff. Never run install.sh'\n\n======================================================================\nFAIL: test_bad_timeout_exits_2_before_app_lookup (tests.test_smoke_137_bad_timeout.BadTimeoutTests.test_bad_timeout_exits_2_before_app_lookup) (timeout='inf')\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood5-1031/tmp/target-01/tmp/cloud-build/20261101T015930713599Z/tests/test_smoke_137_bad_timeout.py\", line 70, in test_bad_timeout_exits_2_before_app_lookup\n    self.assertIn(\"PFY_XINTAKE_TIMEOUT\", receipt[\"reason\"])\n    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: 'PFY_XINTAKE_TIMEOUT' not found in 'neatroots not found ($NEATROOTS_APP or tmp/neatroots/app with neatroots/dist/cli.js); unpack the v0.2.9 neatroots.tar.gz there, see the handoff. Never run install.sh'\n\n----------------------------------------------------------------------\nRan 2 tests in 0.415s\n\nFAILED (failures=5)\n",
+      "started": true
+    },
+    "after": {
+      "cmd": "python3 -m unittest tests.test_smoke_137_bad_timeout",
+      "exit": 0,
+      "tail": "\n..\n----------------------------------------------------------------------\nRan 2 tests in 0.458s\n\nOK\n",
+      "started": true
+    }
+  },
+  "recovery": "",
+  "pushed": false,
+  "worktree_removed": true,
+  "task": "Edit only examples/x-intake-local/smoke_137_139.py. Do not edit any file under tests/. Do not add a file. Do not commit. Do not push.\nPFY_XINTAKE_TIMEOUT is documented as a float number of seconds > 0. tmo() (imported from smoke_128_130) turns a bad value into 600 and main() still calls the entry. smoke_140_142.timeout_problem already fail-closes this. Import timeout_problem from smoke_140_142. Do not import it from smoke_128_130 (that module does not define it on this branch). Do not copy the function body. In main(), after the receipt dict is built and fn is chosen, and before the try that calls fn(receipt):\nbad = timeout_problem()\nif bad:\n    receipt[\"reason\"] = bad\n    return write(a.entry, receipt, 2)\nUnset or empty still calls the entry, so a missing neatroots app still reports the neatroots-not-found reason. A value that is not a finite number > 0 (abc, 0, -1, nan, inf) exits 2 with a reason that names PFY_XINTAKE_TIMEOUT and does not call the entry. In the module docstring, add one sentence after the existing PFY_XINTAKE_TIMEOUT sentence: any other value (abc, 0, -1, nan, inf) exits 2 before the entry runs. Do not change tree_hash, tmo, iso, or any entry function. Do not edit smoke_140_142.py or smoke_128_130.py.",
+  "finished_at": "2026-11-01T02:01:05Z"
+}

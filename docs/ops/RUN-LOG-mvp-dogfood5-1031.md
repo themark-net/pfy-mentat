@@ -46,3 +46,6 @@ Survey skips, recorded before item 01, do not count as a no-progress streak. Det
 2026-11-01T01:47:00Z: pass3 findings 3, 4, and 7 skipped. probe-int modified `scripts/pfy_build_cloud.py` before this lane committed a product edit. The red test was not pushed.
 
 2026-11-01T01:52:00Z: item 04 red test `tests.test_smoke_137_bad_timeout` FAILED (failures=5). Unset and empty still report the neatroots prereq miss. Cloud build starts next.
+
+04 smoke137-timeout attempt 1 | none | tests.test_smoke_137_bad_timeout before exit 1, after exit 0, recheck FileNotFoundError on tmp | FAIL commit-recheck-failed
+04 smoke137-timeout | d75d407865ef | tests.test_smoke_137_bad_timeout tests.test_x_intake_smoke_137_139 57 OK | accept
