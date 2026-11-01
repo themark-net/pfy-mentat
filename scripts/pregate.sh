@@ -16,10 +16,11 @@
 #
 # One pregate per host at a time is the supported mode. Repo paths with
 # whitespace are refused (exit 2). An unresolvable --base exits 2.
-# A running Runner.Worker (pgrep -f 'Runner[.]Worker') exits 3 at start.
-# PREGATE_RUNNER_PGREP overrides that pattern. Bracket one character so
-# pgrep does not match its own argv. PREGATE_RUNNER_POLL is the wait
-# interval in seconds (default 2).
+# A running Runner.Worker (pgrep -x 'Runner[.]Worker') exits 3 at start.
+# -x matches the process name. pgrep -f also matches shells that only
+# quote that name, and those shells sit on this host while a lane waits.
+# PREGATE_RUNNER_PGREP overrides the pattern. PREGATE_RUNNER_POLL is the
+# wait interval in seconds (default 2).
 #
 # Checks: lint ci-parity ubuntu-parity eval-structural suite orphans gate-hash
 # Logs and summary persist in ~/DEVELOP/pfy-mentat/tmp/pregate-runs/<run-id>/.
@@ -83,13 +84,15 @@ fi
 
 # Refuse to start while a G0 job is on this host. The default pattern is
 # Runner[.]Worker. Exit 3 is distinct from a failed check (1) and from usage (2).
-if pgrep -f "$RUNNER_PATTERN" >/dev/null 2>&1; then
+# pgrep -x matches the process name only. A shell that quotes Runner.Worker
+# is not a worker (discover 05:08Z, image-pin tests, all three runs).
+if pgrep -x "$RUNNER_PATTERN" >/dev/null 2>&1; then
   if [[ "$WAIT_RUNNER" -eq 0 ]]; then
     echo "pregate: GitHub runner worker is running on this host; not starting. Pass --wait-runner SECONDS to wait for it to exit." >&2
     exit 3
   fi
   deadline=$(( $(date +%s) + WAIT_RUNNER ))
-  while pgrep -f "$RUNNER_PATTERN" >/dev/null 2>&1; do
+  while pgrep -x "$RUNNER_PATTERN" >/dev/null 2>&1; do
     now=$(date +%s)
     if (( now >= deadline )); then
       echo "pregate: GitHub runner worker still running after ${WAIT_RUNNER}s; not starting." >&2
