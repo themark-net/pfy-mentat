@@ -10,12 +10,12 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from pfylib import attach, registry  # noqa: E402
+from tests.support_missing_harness import run_missing_harness  # noqa: E402
 
 INSTALL = (
     "curl -fsSL https://raw.githubusercontent.com/exoharness/exo/main/setup.sh -o setup.sh"
     " && bash setup.sh"
 )
-PFY = ROOT / "scripts" / "pfy"
 
 
 class ExoInstallTests(unittest.TestCase):
@@ -26,11 +26,14 @@ class ExoInstallTests(unittest.TestCase):
         self.assertIsNone(attach.profile("exo", ROOT))
         self.assertEqual(registry.load_harnesses(ROOT).get("default_harness"), "grok")
 
-    def test_cli_stub_reads_setup_from_the_registry(self):
-        text = PFY.read_text(encoding="utf-8")
-        stub = text.split("STUB harness: exo", 1)[1].split("exit 2", 1)[0]
-        self.assertIn("json_field setup exo", stub)
-        self.assertNotIn("setup.sh", stub)
+    def test_missing_binary_prints_registry_installer_and_exits_2(self):
+        """Fail: the missing exo arm prints another installer, exits 0, or runs setup.sh.
+        Recover: print the registry setup line and exit 2. Do not create setup.sh."""
+        proc = run_missing_harness("exo")
+        self.assertEqual(proc.returncode, 2, proc.stdout + proc.stderr)
+        self.assertIn(INSTALL, proc.stdout)
+        self.assertIn("STUB harness: exo", proc.stdout)
+        self.assertFalse((ROOT / "setup.sh").exists())
 
 
 if __name__ == "__main__":

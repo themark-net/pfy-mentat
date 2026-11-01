@@ -11,9 +11,9 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from pfylib import attach, registry  # noqa: E402
+from tests.support_missing_harness import run_missing_harness  # noqa: E402
 
 INSTALL = "curl -fsSL https://chatgpt.com/codex/install.sh | sh"
-PFY = ROOT / "scripts" / "pfy"
 
 
 class CodexInstallTests(unittest.TestCase):
@@ -40,11 +40,13 @@ class CodexInstallTests(unittest.TestCase):
         self.assertFalse(missing["ok"])
         self.assertEqual(missing["next_step"], INSTALL)
 
-    def test_cli_stub_reads_setup_from_the_registry(self):
-        text = PFY.read_text(encoding="utf-8")
-        stub = text.split("FAIL attach -- codex missing", 1)[1].split("exit 2", 1)[0]
-        self.assertIn("json_field setup codex", stub)
-        self.assertNotIn("install.sh | sh", stub)
+    def test_missing_binary_prints_registry_installer_and_exits_2(self):
+        """Fail: the missing codex arm prints another installer, exits 0, or runs curl.
+        Recover: print the registry setup line and exit 2. Do not execute it."""
+        proc = run_missing_harness("codex")
+        self.assertEqual(proc.returncode, 2, proc.stdout + proc.stderr)
+        self.assertIn(INSTALL, proc.stdout)
+        self.assertIn("FAIL attach -- codex missing", proc.stdout)
 
 
 if __name__ == "__main__":

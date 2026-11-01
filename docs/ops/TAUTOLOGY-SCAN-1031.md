@@ -62,6 +62,10 @@ These were read and judged not tautological. Pass 3 already said `tests/test_ent
 - `tests/test_x_intake_smoke_149.py` `test_pass` and `tests/test_x_intake_smoke_148.py` `test_pass`: only exit 0.
 - `eval/mvp-1031/sixtask/check_report.py`: Gate, Review, and Human cells are summed from the report into the totals row and are not compared to the receipt. The sixtask-int checker does compare those cells. Not a test of this repo's suite. Left as a checker gap, not a test row.
 
+## Landed
+
+- Install stubs (`tests/test_claude_install.py`, `tests/test_codex_install.py`, `tests/test_hermes_install.py`, `tests/test_gemini_install.py`, `tests/test_exo_install.py`): replaced in the install-stub commit. Each test runs `exec_harness` with the binary hidden. Mutation: `echo "  WRONG"` (or `echo "  next: WRONG"`) on that harness's setup line. All five tests went red (exit 1), then the script was restored. Green rerun: 13 tests OK.
+
 ## Fix order
 
 This lane fixes the rows whose production behavior can be run without a local model and without editing a live-lane file or a scored fixture. First the five install stubs, then the two smoke 149 temp-dir tests, then the smaller owned notes that have a local replacement (`test_registry`, `test_shimmy_ensure`, `test_fs_nav`, `test_workflow_image_pin`, `test_x_intake_smoke_106_108`) while the wall clock allows. Each replacement is proved by a mutation that turns the test red, then restored. Fixture rows stay documented only.

@@ -11,9 +11,9 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from pfylib import attach, registry  # noqa: E402
+from tests.support_missing_harness import run_missing_harness  # noqa: E402
 
 INSTALL = "curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash"
-PFY = ROOT / "scripts" / "pfy"
 
 
 class HermesInstallTests(unittest.TestCase):
@@ -40,12 +40,13 @@ class HermesInstallTests(unittest.TestCase):
         self.assertFalse(missing["ok"])
         self.assertEqual(missing["next_step"], INSTALL)
 
-    def test_cli_stub_reads_setup_from_the_registry(self):
-        text = PFY.read_text(encoding="utf-8")
-        arm = text.split("hermes)", 1)[1]
-        stub = arm.split("STUB harness: hermes", 1)[1].split("exit 2", 1)[0]
-        self.assertIn('json_field setup hermes', stub)
-        self.assertNotIn("install.sh | bash", stub)
+    def test_missing_binary_prints_registry_installer_and_exits_2(self):
+        """Fail: the missing hermes arm prints another installer, exits 0, or runs curl.
+        Recover: print the registry setup line and exit 2. Do not execute it."""
+        proc = run_missing_harness("hermes")
+        self.assertEqual(proc.returncode, 2, proc.stdout + proc.stderr)
+        self.assertIn(INSTALL, proc.stdout)
+        self.assertIn("STUB harness: hermes", proc.stdout)
 
 
 if __name__ == "__main__":

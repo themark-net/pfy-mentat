@@ -10,9 +10,9 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from pfylib import attach, registry  # noqa: E402
+from tests.support_missing_harness import run_missing_harness  # noqa: E402
 
 INSTALL = "npm install -g @google/gemini-cli"
-PFY = ROOT / "scripts" / "pfy"
 
 
 class GeminiInstallTests(unittest.TestCase):
@@ -22,11 +22,13 @@ class GeminiInstallTests(unittest.TestCase):
         self.assertIsNone(row.get("attach"))
         self.assertIsNone(attach.profile("gemini", ROOT))
 
-    def test_cli_stub_reads_setup_from_the_registry(self):
-        text = PFY.read_text(encoding="utf-8")
-        stub = text.split("STUB harness: gemini", 1)[1].split("exit 2", 1)[0]
-        self.assertIn("json_field setup gemini", stub)
-        self.assertNotIn("npm install", stub)
+    def test_missing_binary_prints_registry_installer_and_exits_2(self):
+        """Fail: the missing gemini arm prints another installer, exits 0, or runs npm.
+        Recover: print the registry setup line and exit 2. Do not execute it."""
+        proc = run_missing_harness("gemini")
+        self.assertEqual(proc.returncode, 2, proc.stdout + proc.stderr)
+        self.assertIn(INSTALL, proc.stdout)
+        self.assertIn("STUB harness: gemini", proc.stdout)
 
 
 if __name__ == "__main__":
