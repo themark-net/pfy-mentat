@@ -99,6 +99,8 @@ class AgencInstallTmpdirTests(unittest.TestCase):
         self.assertNotEqual(proc.returncode, 0, proc.stdout + proc.stderr)
         outs = [line[2:] for line in self.curl_lines() if line.startswith("o ")]
         self.assertTrue(outs, self.curl_lines())
+        cache = self.home / ".local" / "share" / "pfy-mentat" / "node"
+        self.assertTrue(cache.is_dir(), "NODE_CACHE was not created before the download")
         for path in outs:
             self.assertTrue(path.startswith(str(self.tmpdir) + "/"), path)
             self.assertTrue(path.endswith(".tar.xz"), path)
