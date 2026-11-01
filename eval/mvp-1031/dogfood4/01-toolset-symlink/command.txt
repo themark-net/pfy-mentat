@@ -1,0 +1,9 @@
+started 2026-11-01T01:48:10Z
+cwd /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood4-1031
+repo /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood4-1031/tmp/target-01
+base HEAD 4930064d0e399af7e16be2bf9bcdb14c3f459485
+retries 1
+timeout 900
+test-cmd python3 -m unittest tests.test_toolset_apply_symlink
+receipt-dir /home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood4-1031/eval/mvp-1031/dogfood4/01-toolset-symlink
+local no

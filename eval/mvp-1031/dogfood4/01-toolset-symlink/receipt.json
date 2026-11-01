@@ -1,0 +1,45 @@
+{
+  "schema": "pfy-cloud-build/1",
+  "status": "PASS",
+  "reason": "ok",
+  "exit_code": 0,
+  "branch": "cloud/edit-only-pfylib-toolsets-py-do-not-edit-20261101T014810394571Z",
+  "commit": "5d542ce232b881a271a8052c14f183e8418cc278",
+  "base": "HEAD",
+  "review": {
+    "verdict": "accept",
+    "reasons": []
+  },
+  "attempts": [
+    {
+      "n": 1,
+      "status": "PASS",
+      "reason": "ok",
+      "output_tail": "I'll edit only `pfylib/toolsets.py` so symlink destinations are replaced with regular files instead of followed. First I'm reading the current helpers and the remote-check note.The write path follows symlinks today. I'll add the two helpers and switch write, marker, and JSON merge so a symlink is replaced instead of followed.The symlink tests passed. I'll also run the existing toolset apply tests to confirm regular-file writes still behave the same.`apply()` now replaces an in-root symlink with a regular file instead of writing through it. Only `pfylib/toolsets.py` changed.\n\n- `import tempfile` sits next to `import os`.\n- `_put_text` writes a temp file and `os.replace`s it onto the destination, so the symlink inode is replaced.\n- `_regular_text` treats a symlink, including a broken one, as empty and does not read the target.\n- Marker writes, JSON merges, and mode `write` all go through those helpers. A regular file is still updated and stays a regular file. An outside-resolving path is still refused by `_under` before any write.\n\n`python3 -m unittest tests.test_toolset_apply_symlink tests.test_toolsets`  -  29 tests, all passed. No commit and no push.\n\nI'll check the diff against the task and the reject rules before giving a verdict.verdict: accept\n\nThe edit is confined to `pfylib/toolsets.py`. Symlinks are replaced through `os.replace` without being followed, regular files still update in place, and `_under`, symlink mode, and the invalid-JSON failure path are unchanged.\n",
+      "review": {
+        "verdict": "accept",
+        "reasons": []
+      }
+    }
+  ],
+  "gate": {
+    "cmd": "python3 -m unittest tests.test_toolset_apply_symlink",
+    "before": {
+      "cmd": "python3 -m unittest tests.test_toolset_apply_symlink",
+      "exit": 1,
+      "tail": "\nFF..F\n======================================================================\nFAIL: test_append_marker_does_not_read_or_write_through_symlink (tests.test_toolset_apply_symlink.ApplySymlinkTests.test_append_marker_does_not_read_or_write_through_symlink)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood4-1031/tmp/target-01/tmp/cloud-build/20261101T014810394571Z/tests/test_toolset_apply_symlink.py\", line 64, in test_append_marker_does_not_read_or_write_through_symlink\n    self.assertEqual(target.read_text(encoding=\"utf-8\"), \"keep-body\\n\")\n    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: 'keep-body\\n\\n<!-- pfy-toolset:jev begin -->\\nblock\\n[26 chars]->\\n' != 'keep-body\\n'\n  keep-body\n- \n- <!-- pfy-toolset:jev begin -->\n- block\n- <!-- pfy-toolset:jev end -->\n\n\n======================================================================\nFAIL: test_json_merge_does_not_read_or_write_through_symlink (tests.test_toolset_apply_symlink.ApplySymlinkTests.test_json_merge_does_not_read_or_write_through_symlink)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood4-1031/tmp/target-01/tmp/cloud-build/20261101T014810394571Z/tests/test_toolset_apply_symlink.py\", line 77, in test_json_merge_does_not_read_or_write_through_symlink\n    self.assertEqual(json.loads(target.read_text(encoding=\"utf-8\")), {\"keep\": 1})\n    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: {'keep': 1, 'added': 2} != {'keep': 1}\n- {'added': 2, 'keep': 1}\n+ {'keep': 1}\n\n======================================================================\nFAIL: test_write_replaces_symlink_and_leaves_target (tests.test_toolset_apply_symlink.ApplySymlinkTests.test_write_replaces_symlink_and_leaves_target)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/mark/DEVELOP/pfy-mentat/tmp/mvp-dogfood4-1031/tmp/target-01/tmp/cloud-build/20261101T014810394571Z/tests/test_toolset_apply_symlink.py\", line 53, in test_write_replaces_symlink_and_leaves_target\n    self.assertEqual(target.read_text(encoding=\"utf-8\"), \"keep\")\n    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: 'new\\n' != 'keep'\n+ keep\n- new\n- \n\n\n----------------------------------------------------------------------\nRan 5 tests in 0.003s\n\nFAILED (failures=3)\n",
+      "started": true
+    },
+    "after": {
+      "cmd": "python3 -m unittest tests.test_toolset_apply_symlink",
+      "exit": 0,
+      "tail": "\n.....\n----------------------------------------------------------------------\nRan 5 tests in 0.003s\n\nOK\n",
+      "started": true
+    }
+  },
+  "recovery": "",
+  "pushed": false,
+  "worktree_removed": true,
+  "task": "Edit only pfylib/toolsets.py. Do not edit any file under tests/. Do not add a file. Do not commit. Do not push.\n\napply() follows an in-root symlink. mode write calls path.write_text, and _write_marker and _merge_json call path.is_file, path.read_text, and path.write_text. Those follow the link, so the target bytes change and the path stays a symlink.\n\nWhen the destination is a symlink, including a broken symlink, do not open, read, or write the target. Replace the symlink with a regular file. os.replace replaces the symlink inode and does not follow it.\n\nAdd import tempfile next to import os.\n\nAdd these two helpers immediately above _write_marker:\n\ndef _put_text(path: Path, text: str) -> None:\n    \"\"\"Write text as a regular file. A symlink at path is replaced, not followed.\"\"\"\n    path.parent.mkdir(parents=True, exist_ok=True)\n    fd, name = tempfile.mkstemp(prefix=\".pfy-\", dir=path.parent)\n    tmp = Path(name)\n    try:\n        with os.fdopen(fd, \"w\", encoding=\"utf-8\") as fh:\n            fh.write(text)\n        os.replace(tmp, path)\n    except Exception:\n        tmp.unlink(missing_ok=True)\n        raise\n\n\ndef _regular_text(path: Path) -> str:\n    \"\"\"Bytes of a regular file. A symlink is absent content, not the target.\"\"\"\n    if path.is_symlink() or not path.is_file():\n        return \"\"\n    return path.read_text(encoding=\"utf-8\", errors=\"replace\")\n\nIn _write_marker, replace the existing = path.read_text line with existing = _regular_text(path). Replace path.parent.mkdir and path.write_text(new) with _put_text(path, new). Keep the begin/end block format and the replaced versus appended action strings.\n\nIn _merge_json, load JSON only when path is a regular file: if path.is_symlink() or not path.is_file(), start from {}. Do not read a symlink. Keep the invalid-JSON FAIL return for a regular file. Replace path.parent.mkdir and path.write_text with _put_text(path, json.dumps(cfg, indent=2) + \"\\n\").\n\nIn apply(), mode write must call _put_text(path, str(f.get(\"content\") or \"\")) and set res = \"written\". Do not call path.write_text there.\n\nDo not change _under, _allowed_roots, _apply_symlink, plan(), or symlink mode. An outside-resolving path stays refused by _under before any write. A regular file still updates in place and stays a regular file. Do not use an em dash or an en dash.",
+  "finished_at": "2026-11-01T01:50:16Z"
+}

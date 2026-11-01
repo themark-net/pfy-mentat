@@ -74,3 +74,4 @@ Each build: throwaway clone under `tmp/target-<n>`, `./pfy build` with `--repo` 
 ## Items
 
 item | commit | tests | result
+01 toolset-symlink | d900cc3 | tests.test_toolset_apply_symlink tests.test_toolsets 29 OK | accept
