@@ -111,6 +111,21 @@ class BothJobsRunPinned(_Base):
         )
         self.assertEqual(self.run_gate(self.fake(body)).returncode, 0)
 
+    def test_tester_gets_80_turns_and_reviewer_40_by_default(self) -> None:
+        body = (
+            "turns = sys.argv[sys.argv.index('--max-turns') + 1]\n"
+            "want = {'tester': '80', 'reviewer': '40'}[job]\n"
+            "verdict.write_text('SHA: %s\\nVERDICT: %s\\n' % (sha, 'PASS' if turns == want else 'FAIL'))\n"
+        )
+        proc = self.run_gate(self.fake(body))
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+
+    def test_jobs_option_runs_only_the_named_job(self) -> None:
+        proc = self.run_gate(self.fake(GOOD), "--jobs", "tester")
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertEqual(self.header("tester").get("VERDICT"), "PASS")
+        self.assertFalse((self.out / self.sha / "reviewer.md").exists())
+
     def test_short_sha_is_resolved_and_pinned_in_full(self) -> None:
         proc = self.run_gate(self.fake(GOOD), sha=self.sha[:7])
         self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)

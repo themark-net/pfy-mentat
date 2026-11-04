@@ -9,7 +9,7 @@ spot-check them.
 ```
 python3 scripts/pfy_gate_jobs.py run --repo <checkout> --sha <sha> --base <base> \
   [--out <dir>] [--grok-cmd "grok --output-format json"] [--timeout 1800] \
-  [--max-turns 40] [--brief <file>]
+  [--max-turns N] [--brief <file>] [--jobs tester,reviewer]
 ```
 
 - The SHA is resolved to the full 40 chars. An unknown SHA or base exits 2 and runs nothing.

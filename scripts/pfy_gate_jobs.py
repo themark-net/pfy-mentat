@@ -25,6 +25,8 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 JOBS = ("tester", "reviewer")
+# The tester hit 40 turns on the 533a634 replay before writing a verdict.
+DEFAULT_TURNS = {"tester": 80, "reviewer": 40}
 # One blank line is the header separator. Three more keep a raw VERDICT or
 # SHA line outside the first eight lines of the file.
 _RAW_PAD = "\n\n\n\n"
@@ -278,11 +280,15 @@ def cmd_run(args: argparse.Namespace) -> int:
         brief = brief_path.read_text(encoding="utf-8")
     else:
         brief = "(none)"
+    jobs = tuple(j for j in JOBS if j in args.jobs.split(","))
+    if not jobs or set(args.jobs.split(",")) - set(JOBS):
+        print(f"error: --jobs must name {','.join(JOBS)}", file=sys.stderr)
+        return 2
     out = _out_dir(args.out, repo)
     (out / sha).mkdir(parents=True, exist_ok=True)
     (out / sha / "summary.json").unlink(missing_ok=True)
     results: dict[str, dict] = {}
-    with ThreadPoolExecutor(max_workers=len(JOBS)) as pool:
+    with ThreadPoolExecutor(max_workers=len(jobs)) as pool:
         futures = {
             pool.submit(
                 run_job,
@@ -293,16 +299,16 @@ def cmd_run(args: argparse.Namespace) -> int:
                 out=out,
                 grok_cmd=args.grok_cmd,
                 timeout=args.timeout,
-                max_turns=args.max_turns,
+                max_turns=args.max_turns or DEFAULT_TURNS[job],
                 brief=brief,
                 keep=args.keep,
             ): job
-            for job in JOBS
+            for job in jobs
         }
         for fut, job in futures.items():
             results[job] = fut.result()
-    ordered = {job: results[job] for job in JOBS}
-    passed = all(ordered[job]["verdict"] == "PASS" and ordered[job]["reason"] == "ok" for job in JOBS)
+    ordered = {job: results[job] for job in jobs}
+    passed = all(ordered[job]["verdict"] == "PASS" and ordered[job]["reason"] == "ok" for job in jobs)
     summary = {
         "sha": sha,
         "base": base,
@@ -310,7 +316,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         "jobs": ordered,
     }
     (out / sha / "summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
-    for job in JOBS:
+    for job in jobs:
         rec = ordered[job]
         print(f"{job}: {rec['verdict']} {rec['reason']}", file=sys.stderr)
     return 0 if passed else 1
@@ -401,7 +407,8 @@ def _build_parser() -> argparse.ArgumentParser:
     run.add_argument("--out", default=None)
     run.add_argument("--grok-cmd", default="grok")
     run.add_argument("--timeout", type=float, default=1800)
-    run.add_argument("--max-turns", type=int, default=40)
+    run.add_argument("--max-turns", type=int, default=None, help="default: tester 80, reviewer 40")
+    run.add_argument("--jobs", default="tester,reviewer", help="comma list; check still needs both")
     run.add_argument("--brief", default=None)
     run.add_argument("--keep", action="store_true")
 
