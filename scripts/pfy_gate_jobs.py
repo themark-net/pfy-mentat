@@ -115,21 +115,23 @@ def _kill_group(proc: subprocess.Popen[str]) -> None:
 
 
 def run_grok(
-    argv: list[str], cwd: Path, env: dict[str, str], timeout: float
+    argv: list[str], cwd: Path, env: dict[str, str], timeout: float, log: Path
 ) -> tuple[bool, bool, int | None]:
-    """Return (started, timed_out, exit_code)."""
-    try:
-        proc = subprocess.Popen(
-            argv,
-            cwd=cwd,
-            env=env,
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            start_new_session=True,
-        )
-    except OSError:
-        return False, False, None
+    """Return (started, timed_out, exit_code). Job stdout and stderr go to log."""
+    with open(log, "ab") as sink:
+        try:
+            proc = subprocess.Popen(
+                argv,
+                cwd=cwd,
+                env=env,
+                stdin=subprocess.DEVNULL,
+                stdout=sink,
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
+            )
+        except OSError as exc:
+            sink.write(f"could not start {argv[0]}: {exc}\n".encode())
+            return False, False, None
     try:
         code = proc.wait(timeout=timeout)
     except subprocess.TimeoutExpired:
@@ -199,7 +201,11 @@ def run_job(
     t0 = time.monotonic()
     raw_path = (out / sha / f"{job}.raw.md").resolve()
     final_path = out / sha / f"{job}.md"
+    log_path = out / sha / f"{job}.log"
     raw_path.parent.mkdir(parents=True, exist_ok=True)
+    # A re-run must never judge or publish the previous run's files.
+    for stale in (raw_path, final_path, log_path):
+        stale.unlink(missing_ok=True)
     wt = (repo / "tmp" / "gate-jobs" / f"{sha[:12]}-{job}-{os.getpid()}").resolve()
     timed_out = False
     crashed = False
@@ -224,7 +230,7 @@ def run_job(
                     env["GATE_JOB"] = job
                     env["GATE_VERDICT"] = str(raw_path)
                     env["TMPDIR"] = str((wt / "tmp").resolve())
-                    started, timed_out, exit_code = run_grok(argv, wt, env, timeout)
+                    started, timed_out, exit_code = run_grok(argv, wt, env, timeout, log_path)
                     head = _head(wt)
                     if not timed_out and (not started or exit_code != 0):
                         crashed = True
@@ -274,6 +280,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         brief = "(none)"
     out = _out_dir(args.out, repo)
     (out / sha).mkdir(parents=True, exist_ok=True)
+    (out / sha / "summary.json").unlink(missing_ok=True)
     results: dict[str, dict] = {}
     with ThreadPoolExecutor(max_workers=len(JOBS)) as pool:
         futures = {

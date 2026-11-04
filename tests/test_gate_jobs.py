@@ -154,6 +154,15 @@ class FailClosed(_Base):
     def test_missing_grok_binary_is_fail(self) -> None:
         self.assert_fail(self.run_gate(str(self.tmp / "no-such-grok")), "crash")
 
+    def test_rerun_that_writes_nothing_does_not_reuse_the_previous_pass(self) -> None:
+        self.assertEqual(self.run_gate(self.fake(GOOD)).returncode, 0)
+        self.assert_fail(self.run_gate(self.fake("pass\n")), "no-verdict")
+
+    def test_job_output_is_kept_in_a_log_beside_the_verdict(self) -> None:
+        self.run_gate(self.fake("print('probe output ' + job)\nsys.exit(3)\n"))
+        for job in ("tester", "reviewer"):
+            self.assertIn("probe output " + job, (self.out / self.sha / ("%s.log" % job)).read_text())
+
     def test_one_failing_job_fails_the_gate(self) -> None:
         body = "word = 'FAIL' if job == 'reviewer' else 'PASS'\nverdict.write_text('SHA: %s\\nVERDICT: %s\\n' % (sha, word))\n"
         proc = self.run_gate(self.fake(body))
