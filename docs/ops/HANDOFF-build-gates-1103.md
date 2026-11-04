@@ -14,7 +14,7 @@
   `<out>/<sha>/<job>.log` for why. Unknown SHA or base exits 2 before any job.
 
 ## Left to do
-- Tester ran out of turns at 40 on the replay; default is now tester 80, reviewer 40 (`--jobs` reruns one job).
+- Tester ran out of turns at 40 on the first replay; default is now tester 80, reviewer 40 (`--jobs` reruns one job). The tester-only rerun at 80 gave an earned FAIL in 48 turns, $1.424 (see GATE-VERDICTS.md).
 - Not wired into `pfy` or the bots yet; the bots still need their prompts pointed at `check`.
 - Headroom: catalog only. grill-me: optional pre-ticket step, not wired into lanes.mts.
 - The lane reviewer gave no verdict twice on G1 (exit 143); landed by hand after review and

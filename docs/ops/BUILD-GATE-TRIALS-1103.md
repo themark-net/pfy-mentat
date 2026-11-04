@@ -40,3 +40,11 @@ All numbers below are single runs measured on nimo tonight. No sudo was used.
 - Recommendation for sandcastle-grok: optional `grill` step before a batch is cut. The
   coordinator (not Mark) answers with the recommended answers or overrides, and any answer
   that changes behavior becomes an exit-test case. Run it with tools off and a hard turn cap.
+
+## Gate replay costs (533a634)
+
+| run | job | outcome | turns | seconds | cost |
+|---|---|---|---|---|---|
+| 1 (40 turns) | reviewer | FAIL ok | 34 | 892 | $0.787 |
+| 1 (40 turns) | tester | FAIL crash (turn cap) | 40 | 1108 | $1.052 |
+| 2 (80 turns) | tester | FAIL ok | 48 | 1510 | $1.424 |

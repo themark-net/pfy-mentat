@@ -72,3 +72,13 @@ exited 1, `summary.json` verdict FAIL.
   no verdict written. Fail-closed worked, but the FAIL was not earned by evidence. Its log
   shows it had already found a failing unit test masked by a shell `echo`. Use
   `--max-turns 80` for the tester on lanes of this size.
+
+### Tester rerun with the 80-turn default, 2026-11-03 22:46 to 23:11 PT
+
+`run --sha 533a634 --base bedb5ce --jobs tester --grok-cmd "grok --output-format json" --timeout 2400`
+gave `FAIL ok`: an earned FAIL in 48 turns, 1510 s, $1.424. Its own blockers, each with a probe:
+content-only manifest misses a chmod to 100755; `tmp` skipped at any depth (a tracked
+`src/tmp/conf.py` rewrite was committed); `.pytest_cache`/`.coverage`/`.pyc` writes cause a
+false `gate-rewrote`; unlinking the held lock file lets two builds both succeed; a non-UTF-8
+pid file crashes `--reap`. It also listed 7 surviving mutants and ran red-first on base.
+Both jobs now FAIL 533a634 on evidence.
