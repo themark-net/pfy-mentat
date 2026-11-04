@@ -58,3 +58,17 @@ that writes nothing can never inherit an older PASS.
    cited file:line. If the spot-check disagrees, the gate is FAIL and the disagreement goes
    in the post.
 4. Never accept a verdict for a SHA other than the PR head. A new push means a new run.
+
+## Behavior run: replay of 533a634 (base bedb5ce), 2026-11-03 22:07 to 22:26 PT
+
+`run --sha 533a634 --base bedb5ce --grok-cmd "grok --output-format json" --timeout 1800 --max-turns 40`
+exited 1, `summary.json` verdict FAIL.
+
+- reviewer: `FAIL ok`, 34 turns, 892 s, $0.787. Its own Blockers match tonight's human
+  FAILs: `Mark:` recovery text at pfy_build_cloud.py:619/634 locked in by tests, no
+  HANDOFF doc in the range, `.pytest_cache`/`.pyc` writes counted as gate-rewrote, and C4's
+  star-import exit test going red on a patch-anchor mismatch rather than the lock.
+- tester: `FAIL crash`, hit `--max-turns 40` (grok exits nonzero) after 1108 s, $1.052, with
+  no verdict written. Fail-closed worked, but the FAIL was not earned by evidence. Its log
+  shows it had already found a failing unit test masked by a shell `echo`. Use
+  `--max-turns 80` for the tester on lanes of this size.
