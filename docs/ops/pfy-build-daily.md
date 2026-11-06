@@ -119,7 +119,7 @@ The runner does not read `auth.json`. A rate limit does not auto-start `--local`
 
 ## Commit recheck
 
-After the post-change gate passes, the runner checks the new commit in a detached worktree of the same repo (`git worktree add --detach`). That copy has the repo history and its own temp dir. `worktree add` uses an empty hooks path, so a checkout hook does not run. The gate process is not given `GIT_CONFIG_*`. The runner removes the worktree and prunes it on the way out, including when the gate times out, is interrupted, rewrites files, or raises.
+After the post-change gate passes, the runner checks the new commit in a detached worktree of the same repo (`git worktree add --detach`). That copy has the repo history and its own temp dir. The directory is created mode 0700 before add, so a short parent such as `/var/tmp` is not left world-readable. `worktree add` uses an empty hooks path, so a checkout hook does not run. The gate process is not given `GIT_CONFIG_*`. The runner removes the worktree and prunes it on the way out, including when the gate times out, is interrupted, rewrites files, or raises.
 
 If that gate fails, the runner rechecks the base commit the same way. When the base fails the same tests, or both fail with the same tail, the receipt reason is `recheck-env-failed`. The run stops. The failure is not sent back to the agent.
 

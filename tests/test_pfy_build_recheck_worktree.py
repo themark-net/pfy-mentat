@@ -336,6 +336,51 @@ class RecheckWorktreeTests(unittest.TestCase):
         self.assertLessEqual(len(changed), 2, rows)
         self._assert_recheck_gone()
 
+    def test_recheck_checkout_is_private(self) -> None:
+        """Fail: worktree add on the short parent follows the umask, so the
+        recheck tree is 0775 while the gate runs and other users can read it.
+        Recover: the directory is 0700 before the gate, the run passes, and
+        the directory is gone afterwards."""
+        log = self.side / "mode.txt"
+        gate = _write_exe(
+            self.side / "gate.py",
+            "#!/usr/bin/env python3\n"
+            "import os\n"
+            "from pathlib import Path\n"
+            "here = Path('.').resolve()\n"
+            "if here.name.startswith('recheck-'):\n"
+            "    mode = here.stat().st_mode & 0o777\n"
+            "    with Path(os.environ['PFY_MODE_LOG']).open('a', encoding='utf-8') as handle:\n"
+            "        handle.write('%04o\\n' % mode)\n"
+            "    if mode != 0o700:\n"
+            "        raise SystemExit(1)\n"
+            "print('ok')\n"
+            "raise SystemExit(0)\n",
+        )
+        grok = _write_exe(
+            self.side / "grok.py",
+            "#!/usr/bin/env python3\n"
+            "from pathlib import Path\n"
+            "Path('kept.py').write_text('value = 1\\n', encoding='utf-8')\n"
+            "raise SystemExit(0)\n",
+        )
+        proc = self._build(
+            grok,
+            gate,
+            "add a private recheck",
+            extra=["--no-review", "--retries", "0"],
+            env={"PFY_MODE_LOG": str(log)},
+        )
+        text = (proc.stdout or "") + (proc.stderr or "")
+        self.assertEqual(proc.returncode, 0, text)
+        modes = [line for line in log.read_text(encoding="utf-8").splitlines() if line.strip()]
+        self.assertTrue(modes, text)
+        self.assertTrue(all(line == "0700" for line in modes), modes)
+        payload = self._receipt()
+        self.assertEqual(payload["status"], "PASS", payload)
+        self.assertEqual(payload["reason"], "ok")
+        self._assert_recheck_gone()
+
     def test_recheck_worktree_is_removed_when_the_gate_raises(self) -> None:
         """Fail: an exception during the recheck gate leaves the extra
         worktree registered. Recover: the worktree is removed and pruned,

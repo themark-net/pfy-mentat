@@ -1781,7 +1781,17 @@ class CloudBuild:
                 if dest.exists():
                     shutil.rmtree(dest, ignore_errors=True)
             try:
-                hooks.mkdir(parents=True, exist_ok=True)
+                # Same rule as the build worktree: git would create this
+                # directory from the umask, and the short parent is often
+                # /var/tmp. An empty directory keeps its mode through add.
+                # Do not create the parent. It is the build worktree's parent.
+                # A symlink planted on the short parent must not be chmod'd.
+                if hooks.is_symlink() or (hooks.exists() and not hooks.is_dir()):
+                    return "commit-recheck-failed", "worktree add failed"
+                hooks.mkdir(exist_ok=True)
+                os.chmod(hooks, 0o700)
+                dest.mkdir()
+                os.chmod(dest, 0o700)
             except OSError:
                 return "commit-recheck-failed", "worktree add failed"
             proc = _git(
@@ -1797,6 +1807,10 @@ class CloudBuild:
                 ],
             )
             if proc.returncode != 0 or not dest.is_dir():
+                return "commit-recheck-failed", "worktree add failed"
+            try:
+                os.chmod(dest, 0o700)
+            except OSError:
                 return "commit-recheck-failed", "worktree add failed"
             again = self.gate(dest)
             tail = str(again.get("tail") or "")
