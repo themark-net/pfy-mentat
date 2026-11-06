@@ -652,6 +652,7 @@ TERMINAL_FAILURE_REASONS = (
     "build-busy",
     "commit-failed",
     "commit-recheck-failed",
+    "recheck-env-failed",
     "gate-rewrote",
     "interrupted",
     "no-change",
@@ -804,6 +805,12 @@ def failure_recovery(reason: str, task: str, detail: str = "") -> str:
         "commit-recheck-failed": (
             "The fresh extract of the commit did not pass the gate. "
             "The branch was not kept. Rerun ./pfy build %s."
+        ),
+        "recheck-env-failed": (
+            "The recheck gate failed on the new commit and on the base commit "
+            "in the same way. This is an environment failure, not a task failure. "
+            "Fix the checkout or the test command, then rerun ./pfy build %s. "
+            "The agent was not asked to retry."
         ),
         "commit-failed": "Git commit failed. The branch was not kept. Rerun ./pfy build %s.",
         "scope-commit-mismatch": (
@@ -1209,6 +1216,52 @@ def files_changed(worktree: Path) -> list[str]:
             continue
         found.append(rel)
     return found
+
+
+def docs_only_change(paths: list[str]) -> bool:
+    """True when every changed path is under docs/ or is a markdown file.
+
+    An empty list is not docs-only. A code, test, or config path keeps
+    the flake gate.
+    """
+    if not paths:
+        return False
+    for rel in paths:
+        norm = _norm_rel(rel)
+        if norm.startswith("docs/") or norm.endswith(".md"):
+            continue
+        return False
+    return True
+
+
+_FAIL_NAME = re.compile(r"(?m)^(?:FAIL|ERROR):\s+([^\s(]+)|^FAILED\s+(\S+)")
+
+
+def failing_test_names(tail: str) -> set[str]:
+    found = set()
+    for match in _FAIL_NAME.finditer(tail or ""):
+        name = (match.group(1) or match.group(2) or "").strip()
+        if name:
+            found.add(name)
+    return found
+
+
+def _norm_gate_tail(tail: str) -> str:
+    return "\n".join(line.strip() for line in (tail or "").splitlines() if line.strip())
+
+
+def same_recheck_failure(commit_tail: str, base_tail: str) -> bool:
+    """True when the commit recheck and the base recheck failed the same way.
+
+    Same named tests match. When neither side names a test, both failing
+    with the same tail is the same environment failure. Different names,
+    or a name on only one side, stay a task failure so the agent can retry.
+    """
+    left = failing_test_names(commit_tail)
+    right = failing_test_names(base_tail)
+    if left or right:
+        return bool(left) and left == right
+    return _norm_gate_tail(commit_tail) == _norm_gate_tail(base_tail)
 
 
 def cached_names(worktree: Path) -> list[str]:
@@ -1706,56 +1759,45 @@ class CloudBuild:
         return record
 
     def recheck_sha(self, sha: str) -> tuple[str | None, str]:
-        """Run the gate on a fresh extract of sha. None means it passed."""
+        """Run the gate on a detached worktree at sha. None means it passed.
+
+        The worktree is added from this build's repo, so history checks see
+        the real commits. It has its own temp dir. worktree add uses an empty
+        hooks path, so a checkout hook does not run. The gate process is not
+        given GIT_CONFIG_*. remove and prune run on the way out, including
+        when the gate raises. Timeout, interrupt, and gate-rewrote stay
+        distinct from a red gate.
+        """
         if not sha or self.worktree is None:
-            return "commit-recheck-failed", "archive failed"
-        dest = self.repo / "tmp" / ("recheck-" + sha[:12])
-        if dest.exists():
-            shutil.rmtree(dest, ignore_errors=True)
+            return "commit-recheck-failed", "worktree add failed"
+        repo = self.worktree
+        label = "%s-%s" % (sha[:12], os.getpid())
+        parent = self.worktree.parent
+        dest = parent / ("recheck-" + label)
+        hooks = parent / ("recheck-hooks-" + label)
         try:
-            archived = subprocess.run(
-                ["git", "-C", str(self.worktree), "archive", sha],
-                capture_output=True,
-                check=False,
+            if dest.exists():
+                _git(repo, ["worktree", "remove", "--force", str(dest)])
+                if dest.exists():
+                    shutil.rmtree(dest, ignore_errors=True)
+            try:
+                hooks.mkdir(parents=True, exist_ok=True)
+            except OSError:
+                return "commit-recheck-failed", "worktree add failed"
+            proc = _git(
+                repo,
+                [
+                    "-c",
+                    "core.hooksPath=%s" % hooks,
+                    "worktree",
+                    "add",
+                    "--detach",
+                    str(dest),
+                    sha,
+                ],
             )
-            if archived.returncode != 0 or not archived.stdout:
-                return "commit-recheck-failed", "archive failed"
-            dest.mkdir(parents=True, exist_ok=True)
-            extracted = subprocess.run(
-                ["tar", "-x", "-C", str(dest)],
-                input=archived.stdout,
-                capture_output=True,
-                check=False,
-            )
-            if extracted.returncode != 0:
-                return "commit-recheck-failed", "extract failed"
-            # The extract has no .git. Without one, git walks up to the caller
-            # repo and a gate that runs git sees the parent tree. A nested
-            # repo whose index is the archive keeps that walk inside the extract.
-            hooks = dest.parent / ("recheck-hooks-" + sha[:12])
-            hooks.mkdir(parents=True, exist_ok=True)
-            git_base = [
-                "git",
-                "-C",
-                str(dest),
-                "-c",
-                "user.name=%s" % AUTHOR_NAME,
-                "-c",
-                "user.email=%s" % AUTHOR_EMAIL,
-                "-c",
-                "commit.gpgsign=false",
-                "-c",
-                "core.hooksPath=%s" % hooks,
-            ]
-            init = subprocess.run([*git_base, "init", "-q"], capture_output=True, check=False)
-            added = subprocess.run([*git_base, "add", "-A"], capture_output=True, check=False)
-            committed = subprocess.run(
-                [*git_base, "commit", "-q", "--allow-empty", "-m", "recheck"],
-                capture_output=True,
-                check=False,
-            )
-            if init.returncode != 0 or added.returncode != 0 or committed.returncode != 0:
-                return "commit-recheck-failed", "extract failed"
+            if proc.returncode != 0 or not dest.is_dir():
+                return "commit-recheck-failed", "worktree add failed"
             again = self.gate(dest)
             tail = str(again.get("tail") or "")
             if again.get("aborted") == "timeout":
@@ -1768,8 +1810,34 @@ class CloudBuild:
                 return "commit-recheck-failed", tail
             return None, tail
         finally:
-            shutil.rmtree(dest, ignore_errors=True)
-            shutil.rmtree(dest.parent / ("recheck-hooks-" + sha[:12]), ignore_errors=True)
+            # A remove or prune error must not hide the gate result, and
+            # must not skip the rest of the cleanup.
+            try:
+                _git(repo, ["worktree", "remove", "--force", str(dest)])
+            except (OSError, subprocess.TimeoutExpired):
+                pass
+            if dest.exists():
+                shutil.rmtree(dest, ignore_errors=True)
+            try:
+                _git(repo, ["worktree", "prune"])
+            except (OSError, subprocess.TimeoutExpired):
+                pass
+            shutil.rmtree(hooks, ignore_errors=True)
+
+    def _recheck_against_base(self, tail: str) -> tuple[str, str]:
+        """The new commit already failed the recheck. Compare the base commit.
+
+        The same failing tests, or both sides failing with the same tail,
+        are an environment failure. A different failure stays
+        commit-recheck-failed so the agent can retry. Timeout, interrupt,
+        and gate-rewrote on the base keep those statuses.
+        """
+        base_reason, base_tail = self.recheck_sha(self.base_sha)
+        if base_reason in ("timeout", "interrupted", "gate-rewrote"):
+            return base_reason, base_tail
+        if base_reason == "commit-recheck-failed" and same_recheck_failure(tail, base_tail):
+            return "recheck-env-failed", tail
+        return "commit-recheck-failed", tail
 
     def grok_call(self, prompt: str) -> tuple[str, int, str, str]:
         if not self.grok:
@@ -1963,6 +2031,9 @@ class CloudBuild:
         reason, tail = self.recheck_sha(sha or "")
         self.recheck_tail = tail
         if reason:
+            if reason == "commit-recheck-failed":
+                reason, tail = self._recheck_against_base(tail)
+                self.recheck_tail = tail
             self._undo_commit(keep_edits=False)
             self.reason = reason
             return reason
@@ -2426,10 +2497,15 @@ class CloudBuild:
             # retry may have raised args.timeout to the time still left.
             arm(False)
             custom_gate = (self.args.test_cmd or "").strip() != DEFAULT_TEST_CMD
+            docs_only = docs_only_change(changed)
+            # A docs-only diff skips the flake gate and does not overlap a
+            # second copy. The attempt then runs the suite at most twice:
+            # this post-change gate and the commit recheck.
             serial = (
                 os.environ.get("PFY_BUILD_SERIAL_GATES") == "1"
                 or not changed
                 or custom_gate
+                or docs_only
             )
             pair = None if serial else self._parallel_post_gates()
             if pair is None:
@@ -2460,8 +2536,11 @@ class CloudBuild:
                     continue
                 return self.fail("FAIL", "tests", EXIT_FAIL, "")
             if again is None:
-                arm(False)
-                again = self.gate()
+                if docs_only:
+                    again = after
+                else:
+                    arm(False)
+                    again = self.gate()
             self.gate_after = again
             if again.get("aborted") == "timeout":
                 return self._gate_timeout_fail(number, output + "\n" + str(again.get("tail") or ""))
@@ -2610,6 +2689,26 @@ class CloudBuild:
                 if recheck_reason == "gate-rewrote":
                     self._undo_commit(keep_edits=False)
                     return self._gate_rewrote_fail(number, output + "\n" + (recheck_tail or ""))
+                if recheck_reason == "commit-recheck-failed":
+                    recheck_reason, recheck_tail = self._recheck_against_base(recheck_tail)
+                    self.recheck_tail = recheck_tail
+                    if recheck_reason == "timeout":
+                        self._undo_commit(keep_edits=False)
+                        return self._gate_timeout_fail(number, output + "\n" + (recheck_tail or ""))
+                    if recheck_reason == "interrupted" or self.state.interrupted:
+                        self._undo_commit(keep_edits=False)
+                        self.record(number, "FAIL", "interrupted", output)
+                        return self.fail("FAIL", "interrupted", EXIT_FAIL, "")
+                    if recheck_reason == "gate-rewrote":
+                        self._undo_commit(keep_edits=False)
+                        return self._gate_rewrote_fail(number, output + "\n" + (recheck_tail or ""))
+                if recheck_reason == "recheck-env-failed":
+                    self._undo_commit(keep_edits=False)
+                    shown = output
+                    if recheck_tail:
+                        shown = (output or "") + "\n" + recheck_tail
+                    self.record(number, "FAIL", "recheck-env-failed", shown)
+                    return self.fail("FAIL", "recheck-env-failed", EXIT_FAIL, "")
                 if recheck_reason:
                     self._undo_commit(keep_edits=False)
                     feedback = "commit-recheck-failed\n%s" % (self.recheck_tail or "")
@@ -2642,6 +2741,12 @@ class CloudBuild:
                 err = self.commit_paths(changed)
             if err == "timeout":
                 return self._gate_timeout_fail(number, output)
+            if err == "recheck-env-failed":
+                shown = output
+                if self.recheck_tail:
+                    shown = (output or "") + "\n" + self.recheck_tail
+                self.record(number, "FAIL", err, shown)
+                return self.fail("FAIL", err, EXIT_FAIL, "")
             if err == "commit-recheck-failed" and number < self.max_attempts:
                 feedback = "commit-recheck-failed\n%s" % (self.recheck_tail or "")
                 previous_diff = diff_text

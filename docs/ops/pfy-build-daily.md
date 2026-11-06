@@ -114,7 +114,18 @@ The runner does not read `auth.json`. A rate limit does not auto-start `--local`
 | `scope-commit-mismatch` | 1 FAIL | `reason` `scope-commit-mismatch`. Index reset. No branch. | The commit set is the reviewed path list. `git add -A -f` is not the cloud commit. A staged name outside that list aborts the commit. |
 | dirty caller | 0 when the new worktree base is clean. 1 when the base ref cannot be checked out (`reason` `worktree-failed`). | A PASS receipt names the new branch only. Dirty caller files are not in the new commit. | The runner never stashes or resets the caller. Dirty caller files stay dirty. |
 | `interrupted` | 1 FAIL | `status` `FAIL`, `reason` `interrupted`. No branch. SIGINT or SIGTERM. | The grok process group is signaled. Rerun the same command when the task should run again. |
+| `recheck-env-failed` | 1 FAIL. No retry. | `reason` `recheck-env-failed`. No branch. The agent is not called again. | The recheck gate failed on the new commit and on the base commit in the same way. Fix the checkout or the test command, then rerun `./pfy build`. |
 | `ABORTED` | `--reap` exits 0. The killed run wrote nothing. | `status` `ABORTED`, `reason` `no-receipt`, for a cloud pid-file entry whose receipt is missing. | After SIGKILL, run `./pfy build --reap`. Reap signals only pgids in `tmp/cloud-build.pids.json`. It does not signal pgids listed only in `tmp/local-build.pids.json`. |
+
+## Commit recheck
+
+After the post-change gate passes, the runner checks the new commit in a detached worktree of the same repo (`git worktree add --detach`). That copy has the repo history and its own temp dir. `worktree add` uses an empty hooks path, so a checkout hook does not run. The gate process is not given `GIT_CONFIG_*`. The runner removes the worktree and prunes it on the way out, including when the gate times out, is interrupted, rewrites files, or raises.
+
+If that gate fails, the runner rechecks the base commit the same way. When the base fails the same tests, or both fail with the same tail, the receipt reason is `recheck-env-failed`. The run stops. The failure is not sent back to the agent.
+
+A docs-only diff is one where every changed path is under `docs/` or ends in `.md`, and no path is code, tests, or config. That diff skips the flake gate. The suite then runs at most twice for the attempt: the post-change gate and the commit recheck.
+
+History checks that name a fixed commit skip when `git cat-file -e <sha>^{commit}` fails. That covers a shallow clone and any other checkout that does not contain the commit. A checkout that has the commit still runs the check.
 
 ## Receipt rules
 

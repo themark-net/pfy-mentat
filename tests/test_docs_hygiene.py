@@ -6,10 +6,30 @@ import subprocess
 import unittest
 from pathlib import Path
 
+from tests.git_history import commit_available
+
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
 MISSING_ADR = "0017-product-catalog-evaluation-handoff-harness.md"
 LINK_RE = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
+HISTORY_BLOBS = (
+    ("7197200", "scripts/eval-auto.sh"),
+    ("7197200", "examples/eval-harness/tasks/010-mutation-safety-note/score.py"),
+    ("c0d9072", "scripts/eval-auto.sh"),
+    ("c0d9072", "examples/eval-harness/tasks/013-stage-card/score.py"),
+)
+
+
+def skip_reason_for_history(repo: Path) -> str | None:
+    """Skip when a cited commit object is missing, not only on a shallow clone."""
+    missing = []
+    for sha, _rel in HISTORY_BLOBS:
+        if sha in missing or commit_available(repo, sha):
+            continue
+        missing.append(sha)
+    if not missing:
+        return None
+    return "referenced commit %s is not in this repo" % ", ".join(missing)
 
 
 def _missing_relative_links():
@@ -59,22 +79,12 @@ class DocsHygieneTests(unittest.TestCase):
         self.assertTrue((ROOT / "scripts" / "eval-auto.sh").is_file())
         self.assertTrue((ROOT / "examples" / "eval-harness" / "tasks" / "010-mutation-safety-note").is_dir())
         self.assertTrue((ROOT / "examples" / "eval-harness" / "tasks" / "013-stage-card").is_dir())
-        shallow = subprocess.run(
-            ["git", "rev-parse", "--is-shallow-repository"],
-            cwd=ROOT,
-            capture_output=True,
-            text=True,
-        )
-        if shallow.stdout.strip() == "true":
-            # CI checks out with depth 1, so the old main SHAs are not in the clone.
-            # The string checks above still run; the object check needs full history.
-            return
-        for sha, rel in (
-            ("7197200", "scripts/eval-auto.sh"),
-            ("7197200", "examples/eval-harness/tasks/010-mutation-safety-note/score.py"),
-            ("c0d9072", "scripts/eval-auto.sh"),
-            ("c0d9072", "examples/eval-harness/tasks/013-stage-card/score.py"),
-        ):
+        # The string checks above always run. The object check needs the commit.
+        # A shallow clone and a one-commit recheck both lack these old SHAs.
+        reason = skip_reason_for_history(ROOT)
+        if reason:
+            self.skipTest(reason)
+        for sha, rel in HISTORY_BLOBS:
             probe = subprocess.run(
                 ["git", "cat-file", "-e", f"{sha}:{rel}"],
                 cwd=ROOT,

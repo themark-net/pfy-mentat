@@ -4,8 +4,9 @@ How this fails: the note is missing, a command is not the one `./pfy` help
 advertises, a cited SHA is not the commit with that subject, an em dash
 slips in, or Still open is empty. A bot then runs the wrong command or
 treats a closed gap as open.
-A shallow checkout (CI fetch-depth 1) has no history, so the SHA check
-skips there and runs in pregate on full history.
+The SHA check skips when the landed commit is not in this checkout
+(`git cat-file -e <sha>^{commit}` fails), including a shallow clone and
+a one-commit recheck. It still runs when that commit is present.
 Recover: put the four commands back, cite the git SHAs, and list what is
 still open in ASCII hyphens. Point the prior handoff, the pfy module map,
 and the README simple path at this note.
@@ -15,6 +16,8 @@ from __future__ import annotations
 import subprocess
 import unittest
 from pathlib import Path
+
+from tests.git_history import commit_available
 
 ROOT = Path(__file__).resolve().parents[1]
 HANDOFF = ROOT / "docs" / "HANDOFF-headless-1105.md"
@@ -53,27 +56,49 @@ def _text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def _shallow() -> bool:
-    proc = subprocess.run(
-        ["git", "rev-parse", "--is-shallow-repository"],
-        cwd=ROOT,
+def _subject_hits(repo: Path, subject: str) -> list[str] | None:
+    log = subprocess.run(
+        ["git", "log", "--format=%H%x09%s"],
+        cwd=repo,
         capture_output=True,
         text=True,
         check=False,
     )
-    return proc.stdout.strip() == "true"
+    if log.returncode != 0:
+        return None
+    return [
+        line.split("\t", 1)[0]
+        for line in (log.stdout or "").splitlines()
+        if line.endswith("\t" + subject)
+    ]
 
 
-def _commit(subject: str) -> str:
-    log = subprocess.check_output(
-        ["git", "log", "--format=%H%x09%s"],
-        cwd=ROOT,
-        text=True,
-    )
-    hits = [line.split("\t", 1)[0] for line in log.splitlines() if line.endswith("\t" + subject)]
-    if len(hits) != 1:
-        raise AssertionError("expected one commit for %r, found %s" % (subject, hits))
-    return hits[0]
+def _commit_in(repo: Path, subject: str) -> str | None:
+    hits = _subject_hits(repo, subject)
+    if hits is None or len(hits) != 1:
+        return None
+    sha = hits[0]
+    if not commit_available(repo, sha):
+        return None
+    return sha
+
+
+def landed_commit_skip_reason(repo: Path) -> str | None:
+    """Skip when a landed commit object is missing, not only on a shallow clone.
+
+    More than one commit with that subject is not a missing object. The
+    citation test still fails that case.
+    """
+    missing = []
+    for subject in LANDED:
+        hits = _subject_hits(repo, subject)
+        if hits is not None and len(hits) > 1:
+            return None
+        if not hits or not commit_available(repo, hits[0]):
+            missing.append(subject)
+    if not missing:
+        return None
+    return "referenced commit is not in this repo: %s" % ", ".join(missing)
 
 
 def _still_open(text: str) -> list[str]:
@@ -106,14 +131,14 @@ class HeadlessHandoffTests(unittest.TestCase):
 
     def test_handoff_cites_the_landed_commits(self):
         self.assertTrue(HANDOFF.is_file(), "docs/HANDOFF-headless-1105.md is missing")
-        if _shallow():
-            # CI checks out fetch-depth 1, so the landed commits are not in
-            # the log there. Pregate runs this on full history.
-            self.skipTest("shallow checkout: landed commits not in git log")
+        reason = landed_commit_skip_reason(ROOT)
+        if reason:
+            self.skipTest(reason)
         note = _text(HANDOFF)
         missing = []
         for subject in LANDED:
-            sha = _commit(subject)
+            sha = _commit_in(ROOT, subject)
+            self.assertIsNotNone(sha, subject)
             if sha not in note:
                 missing.append("%s %s" % (sha, subject))
             ancestor = subprocess.run(

@@ -4,9 +4,11 @@ How this fails: a row's status, exit code, or review disagrees with
 receipt.json, the median line disagrees with the walls, or a human-accept
 PASS commit does not carry the Built-by trailer for that receipt.
 How we recover: fix the report row or the trailer, then rerun the checker.
-A shallow clone skips the real-tree audit when a referenced commit is
-absent. The planted trailer mismatch builds its own git repo under TMPDIR.
-The planted status mismatch stays under this worktree's tmp/.
+The real-tree audit skips when a referenced commit is absent
+(`git cat-file -e <sha>^{commit}` fails), including a shallow clone and
+a one-commit recheck. The planted trailer mismatch builds its own git
+repo under TMPDIR. The planted status mismatch stays under this
+worktree's tmp/.
 """
 from __future__ import annotations
 
@@ -18,6 +20,8 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+
+from tests.git_history import commit_available
 
 REPO = Path(__file__).resolve().parents[1]
 CHECK = REPO / "eval" / "dogfood2-1031" / "check_reports.py"
@@ -44,17 +48,6 @@ def _checker():
     return mod
 
 
-def _shallow(repo: Path) -> bool:
-    proc = subprocess.run(
-        ["git", "rev-parse", "--is-shallow-repository"],
-        cwd=repo,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    return proc.stdout.strip() == "true"
-
-
 def _missing_trailer_commits(repo: Path) -> list[str]:
     """PASS human-accept shas check_trailer looks up. Other rows are not commits."""
     rows = _checker().parse_runs_table((DOGFOOD / "REPORT.md").read_text(encoding="utf-8"))
@@ -63,15 +56,17 @@ def _missing_trailer_commits(repo: Path) -> list[str]:
         if row["status"] != "PASS" or row["human"] != "yes":
             continue
         sha = row["commit"]
-        probe = subprocess.run(
-            ["git", "-C", str(repo), "cat-file", "-e", "%s^{commit}" % sha],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        if probe.returncode != 0:
+        if not commit_available(repo, sha):
             missing.append(sha)
     return missing
+
+
+def real_tree_skip_reason(repo: Path) -> str | None:
+    """Skip when a cited commit object is missing, not only on a shallow clone."""
+    missing = _missing_trailer_commits(repo)
+    if not missing:
+        return None
+    return "referenced commit %s is not in this repo" % ", ".join(missing)
 
 
 def _git(repo: Path, args: list[str]) -> None:
@@ -87,15 +82,11 @@ def _git(repo: Path, args: list[str]) -> None:
 
 class Dogfood2ReportTests(unittest.TestCase):
     def test_real_tree_matches_receipts_and_trailers(self) -> None:
-        # A fetch-depth 1 clone does not have the build commits. Skip only
-        # then. A full clone still runs, and a missing commit fails the checker.
-        if _shallow(REPO):
-            missing = _missing_trailer_commits(REPO)
-            if missing:
-                self.skipTest(
-                    "shallow clone; referenced commit %s is not in this repo"
-                    % ", ".join(missing)
-                )
+        # A checkout that does not contain the build commits skips. A checkout
+        # that has them still runs, and a present commit with a bad trailer fails.
+        reason = real_tree_skip_reason(REPO)
+        if reason:
+            self.skipTest(reason)
         proc = _run(DOGFOOD)
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertIn("OK runs=9", proc.stdout)
