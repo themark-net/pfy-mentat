@@ -1,3 +1,5 @@
+Moved to themark-net/pfy-deanery.
+
 # pfy-deanery (Deanery)
 
 **pfy-deanery (Deanery) — Your PFY. It gets sent out, finds the tools, applies the standards, and reports back with receipts.**
