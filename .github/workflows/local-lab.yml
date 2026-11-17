@@ -33,6 +33,8 @@ concurrency:
 jobs:
   lab:
     name: lab (${{ github.event.inputs.mode || 'auto' }})
+    # pfy-mentat is a frozen pointer; scheduled lab runs belong on pfy-deanery.
+    if: github.repository == 'themark-net/pfy-deanery'
     runs-on: [self-hosted, Linux, X64, pfy-mentat]
     timeout-minutes: 120
     steps:

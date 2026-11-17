@@ -26,6 +26,8 @@ jobs:
     # sandbox tests failed. main has no required status checks, so the job name
     # follows the image.
     name: G0 (ubuntu-24.04)
+    # Skip the daily cron on this frozen pointer; push/PR shards still run.
+    if: github.repository == 'themark-net/pfy-deanery' || github.event_name != 'schedule'
     runs-on: ubuntu-24.04
     # A hung apt mirror held shard 0 of run 42764532767 for 30+ minutes
     # under the 360-minute default. Fail the job instead.
@@ -220,7 +222,9 @@ jobs:
     name: G0 (self-hosted nimo)
     # Not a landing gate. Branch pull requests and workflow_dispatch stay on
     # the ubuntu job. A pregate cache hit is the nimo evidence for those.
-    if: github.event_name == 'schedule' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'))
+    # Schedule is a no-op on this frozen pointer (live cron is pfy-deanery).
+    # A rare push to main/master can still use the registered mentat runner.
+    if: (github.event_name == 'schedule' && github.repository == 'themark-net/pfy-deanery') || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'))
     runs-on: [self-hosted, Linux, X64, pfy-mentat]
     # Don't block main if the lab machine is offline
     continue-on-error: true
